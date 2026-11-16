@@ -306,6 +306,13 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+- A mid-turn ask sends the model the running turn's prompt as well as the
+  question. With a non-Claude model behind a proxy (2026-11-16), some mid-turn
+  asks got an answer to that prompt instead of the question, on 2.1.322,
+  2.1.323 and 2.1.325 alike. That answer took as long as the main reply, so it
+  looked as if the ask had waited for the turn. The request is built inside
+  the CLI, so Sesori can't shape it. Mid-turn asks with a real Claude model
+  were checked only on 2.1.322.
 
 Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
 
@@ -937,6 +944,15 @@ credentials is not equivalent: a harness with bundled free models or an
 environment-supplied key is usable with an empty credential store, and blocking
 those installs is worse than the stale ready state this capability replaces.
 
+Hermes reads its model and provider from `hermes status`. A self-updating
+Hermes checkout with an unfinished source update rebuilds its TUI, web and
+desktop products in front of every command except `--version`/`--help`, which
+takes 50 s or more and outlived the 10 s probe timeout, so each probe killed
+and restarted the update. The status probe now sets Hermes' documented
+install-probe policy `HERMES_DISABLE_LAZY_INSTALLS=1`, which skips that
+launch-time completion; `hermes acp` does not, so the agent launch still
+finishes the update (verified against the Hermes canary source, 2026-11-15).
+
 The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running blocks further starts and
 moves the slot to the state its `recovery` selects: `authenticationRequired` for
@@ -1132,8 +1148,11 @@ compaction state and show no row.
 ## Compaction on request
 
 The bridge can ask a harness to compact a session's context without a client
-command, through `compactSession`, for scheduled tasks to call before a run
-resumes a quiet session (no scheduled-task consumer calls it yet). It only starts a compaction on a quiet session: a session that
+command, through `compactSession`. Same-session scheduled tasks with auto-compact on
+call it once a run's session has been quiet for `min(cache life - 2 minutes,
+25 minutes)` (25 minutes when the life is unknown), or before the next run
+when that comes first. It only starts a compaction on a
+quiet session: a session that
 is running, retrying, holding queued prompts or waiting for input answers
 "busy", and the request never stops or queues behind that work. A harness that
 cannot compact answers "unsupported". Each plugin's descriptor declares

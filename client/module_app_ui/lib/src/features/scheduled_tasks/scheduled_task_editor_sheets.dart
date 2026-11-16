@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 import "../session_list/session_list_headings.dart";
 import "scheduled_task_formatter.dart";
 
@@ -22,12 +23,20 @@ Future<void> showScheduledTaskWhenSheet({required BuildContext context}) {
 }
 
 /// Opens the Each run sheet over the task editor, applying each choice at once.
+/// The task's composer says which harness the task runs on.
 Future<void> showScheduledTaskEachRunSheet({required BuildContext context}) {
   final cubit = context.read<ScheduledTaskEditorCubit>();
+  final composer = context.read<NewSessionCubit>();
   return showPregoModal<void>(
     context: context,
     title: context.loc.scheduledTaskEachRun,
-    builder: (_) => BlocProvider.value(value: cubit, child: const _EachRunSheet()),
+    builder: (_) => MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: cubit),
+        BlocProvider.value(value: composer),
+      ],
+      child: const _EachRunSheet(),
+    ),
   );
 }
 
@@ -36,18 +45,13 @@ ScheduledTaskEditorReady? _readyOf(ScheduledTaskEditorState state) => switch (st
   ScheduledTaskEditorLoading() || ScheduledTaskEditorUnavailable() => null,
 };
 
-/// A sheet's content, growing and shrinking with its choices rather than
-/// snapping to a new height.
+/// A sheet's content. Each part that comes and goes animates its own room,
+/// so the rows below it glide rather than jump, and the sheet follows.
 class const _SheetBody({required final List<Widget> children}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-    child: AnimatedSize(
-      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-    ),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
   );
 }
 
@@ -74,67 +78,88 @@ class const _WhenSheet() extends StatelessWidget {
           ],
         ),
         const SizedBox(height: PregoSpacing.xl),
-        PregoGroupedRows(
-          children: switch (schedule) {
-            TaskScheduleOnce(:final at) => [
-              PregoDateTimeField(
-                key: const Key("scheduled-task-once-at"),
-                icon: TablerRegular.calendar,
-                label: loc.scheduledTaskDateAndTime,
-                valueLabel: labels.localDateTime(at: at),
-                value: _dateTimeOf(at),
-                mode: PregoDateTimeFieldMode.dateAndTime,
-                // A one-off time that has passed cannot be picked.
-                minimum: cubit.zoneNow,
-                onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
-              ),
-            ],
-            TaskScheduleDaily(:final time) || TaskScheduleWeekdays(:final time) || TaskScheduleWeekly(:final time) => [
-              _TimeField(
-                time: time,
-                label: loc.scheduledTaskTime,
-                valueLabel: labels.timeOfDay(time: time),
-              ),
-            ],
-            TaskScheduleEveryHours(:final hours, :final start) => [
-              _HoursRow(hours: hours),
-              PregoDateTimeField(
-                key: const Key("scheduled-task-interval-start"),
-                icon: TablerRegular.clock_play,
-                label: loc.scheduledTaskStarting,
-                valueLabel: labels.localDateTime(at: start),
-                value: _dateTimeOf(start),
-                mode: PregoDateTimeFieldMode.dateAndTime,
-                minimum: null,
-                onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
-              ),
-            ],
-            TaskScheduleUnknown() => const [],
+        // Every few hours has two rows where the others have one.
+        AnimatedSize(
+          duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+          curve: transcriptMotionCurve,
+          alignment: Alignment.topCenter,
+          child: PregoGroupedRows(
+            children: switch (schedule) {
+              TaskScheduleOnce(:final at) => [
+                PregoDateTimeField(
+                  key: const Key("scheduled-task-once-at"),
+                  icon: TablerRegular.calendar,
+                  label: loc.scheduledTaskDateAndTime,
+                  valueLabel: labels.localDateTime(at: at),
+                  value: _dateTimeOf(at),
+                  mode: PregoDateTimeFieldMode.dateAndTime,
+                  // A one-off time that has passed cannot be picked.
+                  minimum: cubit.zoneNow,
+                  onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
+                ),
+              ],
+              TaskScheduleDaily(:final time) ||
+              TaskScheduleWeekdays(:final time) ||
+              TaskScheduleWeekly(:final time) => [
+                _TimeField(
+                  time: time,
+                  label: loc.scheduledTaskTime,
+                  valueLabel: labels.timeOfDay(time: time),
+                ),
+              ],
+              TaskScheduleEveryHours(:final hours, :final start) => [
+                _HoursRow(hours: hours),
+                PregoDateTimeField(
+                  key: const Key("scheduled-task-interval-start"),
+                  icon: TablerRegular.clock_play,
+                  label: loc.scheduledTaskStarting,
+                  valueLabel: labels.localDateTime(at: start),
+                  value: _dateTimeOf(start),
+                  mode: PregoDateTimeFieldMode.dateAndTime,
+                  minimum: null,
+                  onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
+                ),
+              ],
+              TaskScheduleUnknown() => const [],
+            },
+          ),
+        ),
+        AnimatedBanner(
+          banner: switch (schedule) {
+            TaskScheduleWeekly(:final days) => Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+              child: _Weekdays(days: days, labels: labels),
+            ),
+            _ => null,
           },
         ),
-        if (schedule case TaskScheduleWeekly(:final days)) ...[
-          const SizedBox(height: PregoSpacing.md),
-          _Weekdays(days: days, labels: labels),
-        ],
-        if (ready.offersMissedRunChoice) ...[
-          SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false),
-          PregoGroupedRows(
-            children: [
-              _ChoiceRow(
-                key: const Key("scheduled-task-run-when-back"),
-                label: loc.scheduledTaskRunWhenBack,
-                selected: ready.missedRunPolicy != TaskMissedRunPolicy.waitForNext,
-                onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.runWhenBack),
-              ),
-              _ChoiceRow(
-                key: const Key("scheduled-task-wait-for-next"),
-                label: loc.scheduledTaskWaitForNext,
-                selected: ready.missedRunPolicy == TaskMissedRunPolicy.waitForNext,
-                onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.waitForNext),
-              ),
-            ],
-          ),
-        ],
+        AnimatedBanner(
+          banner: ready.offersMissedRunChoice
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false),
+                    PregoGroupedRows(
+                      children: [
+                        _ChoiceRow(
+                          key: const Key("scheduled-task-run-when-back"),
+                          label: loc.scheduledTaskRunWhenBack,
+                          selected: ready.missedRunPolicy != TaskMissedRunPolicy.waitForNext,
+                          onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.runWhenBack),
+                        ),
+                        _ChoiceRow(
+                          key: const Key("scheduled-task-wait-for-next"),
+                          label: loc.scheduledTaskWaitForNext,
+                          selected: ready.missedRunPolicy == TaskMissedRunPolicy.waitForNext,
+                          onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.waitForNext),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : null,
+        ),
       ],
     );
   }
@@ -257,7 +282,10 @@ class const _EachRunSheet() extends StatelessWidget {
     final ready = _readyOf(cubit.state);
     if (ready == null) return const SizedBox.shrink();
     final loc = context.loc;
-    final sameSession = ready.runMode is TaskRunModeSameSession;
+    final autoCompact = switch (ready.runMode) {
+      TaskRunModeSameSession(:final autoCompact) => autoCompact,
+      TaskRunModeNewSession() || TaskRunModeUnknown() => null,
+    };
     final approveAll = ready.approvalMode == TaskApprovalMode.approveAll;
     return _SheetBody(
       children: [
@@ -266,17 +294,25 @@ class const _EachRunSheet() extends StatelessWidget {
             _ChoiceRow(
               key: const Key("scheduled-task-new-session"),
               label: loc.scheduledTaskStartsNewSession,
-              selected: !sameSession,
+              selected: autoCompact == null,
               onTap: () => cubit.setSameSession(sameSession: false),
             ),
             _ChoiceRow(
               key: const Key("scheduled-task-same-session"),
               label: loc.scheduledTaskContinuesSession,
-              selected: sameSession,
+              selected: autoCompact != null,
               onTap: () => cubit.setSameSession(sameSession: true),
             ),
-            // Step 11 adds the auto-compact switch here, under Continue.
           ],
+        ),
+        AnimatedBanner(
+          banner: switch (autoCompact) {
+            final autoCompact? => Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+              child: _AutoCompactRow(autoCompact: autoCompact),
+            ),
+            null => null,
+          },
         ),
         SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
         PregoGroupedRows(
@@ -294,6 +330,50 @@ class const _EachRunSheet() extends StatelessWidget {
               onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.approveAll),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A same-session task's auto-compact switch. On a harness that cannot
+/// compact on request it reads off and does nothing, and a tap says why.
+class const _AutoCompactRow({required final bool autoCompact}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final cubit = context.read<ScheduledTaskEditorCubit>();
+    // Null until the composer reports a harness; the choice stands meanwhile,
+    // and Save holds it to what the harness can do.
+    final harness = context.select((NewSessionCubit composer) => composer.state.config?.selectedPlugin);
+    final unsupportedBy = switch (harness) {
+      final harness? when !harness.supportsCompactionOnRequest => harness.displayName,
+      _ => null,
+    };
+    final on = autoCompact && unsupportedBy == null;
+    void toggle() {
+      if (unsupportedBy == null) return cubit.setAutoCompact(autoCompact: !on);
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.scheduledTaskAutoCompactUnsupported(unsupportedBy),
+        variant: PregoPopupAlertsNotificationsVariant.info,
+      );
+    }
+
+    return PregoGroupedRows(
+      children: [
+        MergeSemantics(
+          child: PregoGroupedRow(
+            key: const Key("scheduled-task-auto-compact"),
+            title: Text(loc.scheduledTaskAutoCompact),
+            subtitle: Text(loc.scheduledTaskAutoCompactDetail),
+            // Off and disabled where the harness cannot compact; its taps
+            // reach the row, which says why.
+            trailing: PregoSwitch(
+              value: on,
+              onChanged: unsupportedBy == null ? (value) => cubit.setAutoCompact(autoCompact: value) : null,
+            ),
+            onTap: toggle,
+          ),
         ),
       ],
     );

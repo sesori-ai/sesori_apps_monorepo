@@ -162,6 +162,43 @@ void main() {
       ]);
     });
 
+    test("probes status without letting Hermes finish a pending source update", () async {
+      final processes = _ProbeProcessService(
+        spawnError: null,
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("0.21.5+2453.gd0288be\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
+            stdoutBytes: utf8.encode("Model: deepseek-v4-flash\nProvider: OpenCode Go\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+        servesAcp: false,
+      );
+
+      final result = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const {"HERMES_HOME": "/scratch/hermes-home"},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.21.5+2453.gd0288be"));
+      expect(processes.spawnedArguments[1], const ["status"]);
+      // Without this policy a pending self-update rebuilds Hermes' products in
+      // front of `hermes status`, which outlives the probe timeout.
+      expect(processes.spawnedEnvironments[1], const {
+        "HERMES_HOME": "/scratch/hermes-home",
+        "HERMES_DISABLE_LAZY_INSTALLS": "1",
+      });
+    });
+
     test("reports runtime missing when the PATH command cannot spawn", () async {
       final pathDirectory = await Directory.systemTemp.createTemp("hermes-missing-path");
       addTearDown(() async {
@@ -558,6 +595,10 @@ void main() {
         const ["acp"],
         const ["sessions", "delete", "catalog-session", "--yes"],
       ]);
+      // Only the status probe skips a pending Hermes source update; the agent
+      // launch still runs it so the update eventually finishes.
+      expect(processes.spawnedEnvironments[0]?["HERMES_DISABLE_LAZY_INSTALLS"], "1");
+      expect(processes.spawnedEnvironments[1]?.containsKey("HERMES_DISABLE_LAZY_INSTALLS"), isNot(isTrue));
 
       await plugin.shutdown(budget: null);
       expect(processes.gracefulSignals, [101, 100]);
@@ -595,6 +636,7 @@ class _ProbeProcessService({
   int _nextAcpPid = 100;
   final List<String> spawnedExecutables = <String>[];
   final List<List<String>> spawnedArguments = <List<String>>[];
+  final List<Map<String, String>?> spawnedEnvironments = <Map<String, String>?>[];
   final List<int> gracefulSignals = <int>[];
 
   @override
@@ -609,6 +651,7 @@ class _ProbeProcessService({
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List<String>.from(arguments));
+    spawnedEnvironments.add(environment);
     final error = spawnError;
     if (error != null) {
       throw error;

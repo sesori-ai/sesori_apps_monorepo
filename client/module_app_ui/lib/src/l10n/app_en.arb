@@ -3069,6 +3069,15 @@
   "@scheduledTaskStartsNewSession": {"description": "Each run choice: every run starts its own session."},
   "scheduledTaskContinuesSession": "Continue in the same session",
   "@scheduledTaskContinuesSession": {"description": "Each run choice: every run continues the session the first run started."},
+  "scheduledTaskAutoCompact": "Auto-compact",
+  "@scheduledTaskAutoCompact": {"description": "Each run sheet switch, under Continue in the same session: compact the session between runs."},
+  "scheduledTaskAutoCompactDetail": "Compacts the session before its prompt cache goes cold, so the next run starts small.",
+  "@scheduledTaskAutoCompactDetail": {"description": "Subtitle under the Auto-compact switch explaining what it does."},
+  "scheduledTaskAutoCompactUnsupported": "{harness} can't compact on request",
+  "@scheduledTaskAutoCompactUnsupported": {
+    "description": "Notice shown when the user taps the Auto-compact switch, which stays off because the task's harness cannot compact a session when asked.",
+    "placeholders": {"harness": {"type": "String", "example": "Copilot"}}
+  },
   "scheduledTaskApprovalsHeading": "Approvals",
   "@scheduledTaskApprovalsHeading": {"description": "Each run sheet heading for how a run answers permission requests."},
   "scheduledTaskApprovalsAsk": "Ask me",
