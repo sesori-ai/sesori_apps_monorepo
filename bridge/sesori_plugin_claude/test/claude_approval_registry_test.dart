@@ -408,7 +408,11 @@ void main() {
           registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.plan),
           ClaudePermissionMode.plan,
         );
-        expect(registry.permissionModeFor(sessionId: "session-1", requested: null), isNull);
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: null),
+          ClaudePermissionMode.acceptEdits,
+        );
+        expect(registry.permissionModeFor(sessionId: "session-2", requested: null), isNull);
         expect(
           registry.permissionModeFor(sessionId: "session-2", requested: ClaudePermissionMode.standard),
           ClaudePermissionMode.standard,

@@ -445,11 +445,12 @@ final class ClaudeApprovalRegistry({
       List.unmodifiable(_allowedTools[sessionId] ?? const <String>{});
 
   /// The mode [sessionId]'s process runs in when the client asks for
-  /// [requested]. After Always on a file edit, the asking default stays
-  /// accept-edits, so neither the next turn nor a relaunched process puts it
-  /// back; an explicit other mode, such as plan, still applies.
+  /// [requested]. After Always on a file edit, the asking default, or no
+  /// mode at all as in a bridge-started send without remembered defaults,
+  /// stays accept-edits, so neither the next turn nor a relaunched process
+  /// puts it back; an explicit other mode, such as plan, still applies.
   ClaudePermissionMode? permissionModeFor({required String sessionId, required ClaudePermissionMode? requested}) =>
-      requested == ClaudePermissionMode.standard && _acceptEditsSessions.contains(sessionId)
+      (requested == null || requested == ClaudePermissionMode.standard) && _acceptEditsSessions.contains(sessionId)
       ? ClaudePermissionMode.acceptEdits
       : requested;
 
