@@ -42,6 +42,8 @@ void showSideChatSheet({
             scrollController: scrollController,
             harnessName: PregoBrandLogo.displayNameFor(pluginId),
             onClose: navigator.pop,
+            // The keyboard waits for a tap, so the sheet opens on what it holds.
+            autofocusQuestion: false,
           ),
         ),
       ),
