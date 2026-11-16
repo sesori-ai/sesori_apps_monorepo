@@ -18,8 +18,8 @@ void main() {
     setUp(() {
       repository = _FakeCursorCatalogRepository();
       tracker = CursorCatalogTracker();
-      commandTracker = AcpCommandTracker();
-      stagedCommandTracker = AcpCommandTracker();
+      commandTracker = AcpCommandTracker(selectionCommands: const {});
+      stagedCommandTracker = AcpCommandTracker(selectionCommands: const {});
       service = CursorCatalogService(
         repository: repository,
         tracker: tracker,

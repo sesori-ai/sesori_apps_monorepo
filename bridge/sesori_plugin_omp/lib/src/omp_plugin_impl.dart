@@ -52,7 +52,7 @@ class OmpPlugin._({
       sessionDirectory: null,
     );
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: OmpCatalogRepository.selectionCommands);
     final childSessionTracker = AcpChildSessionTracker();
     final catalogApi = OmpAcpApi(
       binaryPath: binaryPath,

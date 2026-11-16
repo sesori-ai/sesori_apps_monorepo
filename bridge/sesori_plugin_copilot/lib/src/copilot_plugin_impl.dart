@@ -27,7 +27,7 @@ class CopilotPlugin._({
     required AcpProcessFactory processFactory,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: CopilotCatalogRepository.selectionCommands);
     final childSessionTracker = AcpChildSessionTracker();
     final launchSpec = CopilotBinary.launchSpec(
       binary: binaryPath,

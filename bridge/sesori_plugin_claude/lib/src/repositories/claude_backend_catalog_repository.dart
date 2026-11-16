@@ -53,9 +53,10 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   static const List<String> _families = ["fable", "opus", "sonnet", "haiku"];
   static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
-  /// Claude's native `/fast` toggle is not offered: the session's fast-mode
-  /// selection owns that setting, and the process state it tracks would drift.
-  static const String fastModeCommand = "fast";
+  /// Claude's native `/model`, `/effort` and `/fast` are not offered: the
+  /// session's selection owns those settings, and the process state it tracks
+  /// would drift.
+  static const Set<String> selectionCommands = {"model", "effort", "fast"};
 
   /// Claude's native command that compacts the conversation.
   static const String compactionCommand = "compact";
@@ -278,7 +279,7 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
 
   PluginCommand? _command(ClaudeCommandDto dto, {required Set<String> skillNames}) {
     final name = dto.name?.trim();
-    if (name == null || name.isEmpty || name == fastModeCommand) return null;
+    if (name == null || name.isEmpty || selectionCommands.contains(name)) return null;
     return PluginCommand(
       name: name,
       description: trimmedOrNull(value: dto.description),

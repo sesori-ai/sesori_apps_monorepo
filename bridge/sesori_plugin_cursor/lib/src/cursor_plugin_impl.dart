@@ -65,9 +65,9 @@ class CursorPlugin._({
       launchScope: launchDirectory,
     );
     final catalogTracker = CursorCatalogTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();
-    final stagedCommandTracker = AcpCommandTracker();
+    final stagedCommandTracker = AcpCommandTracker(selectionCommands: const {});
     final configurationTracker = AcpSessionConfigurationTracker();
     const taskMapper = CursorTaskMapper();
     final catalogCommandListener = AcpCommandListener(

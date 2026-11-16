@@ -14,6 +14,11 @@ enum CopilotConfigOptionKind({required final String category}) {
 }
 
 class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
+  /// Copilot's native `/model` changes the model the session selection owns.
+  /// The CLI defines it as a built-in, but no captured ACP list has confirmed
+  /// that Copilot advertises it.
+  static const Set<String> selectionCommands = {"model"};
+
   AcpCommandTracker? _commandTracker;
   StreamSubscription<AcpNotification>? _commandSubscription;
   Completer<void>? _commandSnapshot;
@@ -26,7 +31,7 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
     if (!initialized.agentCapabilities.closeSession) {
       throw StateError("GitHub Copilot option discovery requires session/close");
     }
-    final tracker = AcpCommandTracker();
+    final tracker = AcpCommandTracker(selectionCommands: selectionCommands);
     _commandTracker = tracker;
     final snapshot = Completer<void>();
     _commandSnapshot = snapshot;

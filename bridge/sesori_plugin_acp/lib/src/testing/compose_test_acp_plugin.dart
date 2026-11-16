@@ -13,7 +13,7 @@ TestAcpPlugin composeTestAcpPlugin({
   String launchDirectory = "/repo",
 }) {
   final configurationTracker = AcpSessionConfigurationTracker();
-  final commandTracker = AcpCommandTracker();
+  final commandTracker = AcpCommandTracker(selectionCommands: const {});
   final childSessionTracker = AcpChildSessionTracker();
   return TestAcpPlugin(
     id: id,

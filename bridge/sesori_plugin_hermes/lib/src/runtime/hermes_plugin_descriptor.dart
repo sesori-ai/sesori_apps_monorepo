@@ -406,7 +406,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         modelId: hasConfiguredModel ? status.model : null,
         providerId: hasConfiguredModel ? status.provider : null,
       );
-    final commandTracker = AcpCommandTracker();
+    // Hermes's native `/model` changes the model the session selection owns.
+    final commandTracker = AcpCommandTracker(selectionCommands: const {"model"});
     final childSessionTracker = AcpChildSessionTracker();
     final eventMapper = HermesEventMapper(
       launchDirectory: cwd,

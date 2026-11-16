@@ -1216,6 +1216,22 @@ bridge host. A sandboxed, credential-free Pi 1.0.4 RPC probe on macOS arm64
 (2026-10-06) confirmed both sources, the `/mcp` status reply and the hidden
 `/llama`; OAuth sign-in against a real MCP server was not exercised.
 
+Native commands that change a setting the session picker owns are hidden, and
+sending one is rejected as a stale option, so the harness cannot drift from the
+selection Sesori sends:
+
+| Harness | Hidden | Evidence |
+|---|---|---|
+| Claude | `/model`, `/effort`, `/fast` | CLI 2.1.325 lists all three as non-interactive built-ins. |
+| OMP | `/model`, `/switch`, `/effort` | Captured ACP command list. `/fast` and `/slow` stay listed because OMP's picker has no fast toggle. |
+| Hermes | `/model` | Captured ACP command list. |
+| GitHub Copilot | `/model` | Defined as a CLI 1.0.78 built-in. No captured ACP list confirms that Copilot advertises it, so this is not verified. |
+
+Codex, OpenCode, Pi 1.5.2, Cursor 2026.07.23, Grok 1.0.30, DeepSeek 0.2.2 and
+Antigravity 1.4.5 advertise no model, effort or fast command. DeepSeek and
+Antigravity were checked against their installed sources and this document, not
+against a live capture.
+
 ## Pi extension startup dialogs
 
 Pi RPC supports extension select, confirm, input, and editor dialogs during

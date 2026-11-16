@@ -503,7 +503,7 @@ HermesPlugin _plugin({
       modelId: configuredModelId,
       providerId: configuredProviderId,
     );
-  final commandTracker = AcpCommandTracker();
+  final commandTracker = AcpCommandTracker(selectionCommands: const {});
   final childSessionTracker = AcpChildSessionTracker();
   final repository = HermesCatalogRepository(
     api: HermesAcpApi(

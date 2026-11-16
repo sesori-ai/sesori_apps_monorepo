@@ -37,7 +37,7 @@ class GrokPlugin._({
     required ServerClock clock,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();
     final api = GrokAcpApi(
       binaryPath: binaryPath,

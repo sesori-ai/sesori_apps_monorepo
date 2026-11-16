@@ -7,7 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
   final configurationTracker = AcpSessionConfigurationTracker();
-  final commandTracker = AcpCommandTracker();
+  final commandTracker = AcpCommandTracker(selectionCommands: const {});
   final childSessionTracker = AcpChildSessionTracker();
   const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
   final mapper = DeepSeekEventMapper(

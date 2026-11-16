@@ -108,6 +108,10 @@ variant, and worktree mode, and creating the session with its first input.
   whose folder was deleted, probes in the host-created state directory, never the
   bridge process's launch directory, so a deleted project's sessions still open and
   reload with the user's and Claude's own entries.
+- A native command that changes a setting the picker owns is never listed, and
+  sending one fails as a stale option: Claude's `/model`, `/effort` and `/fast`,
+  OMP's `/model`, `/switch` and `/effort`, Hermes's `/model` and Copilot's
+  `/model`. The picker stays the only place those settings change.
 - A Claude catalog probe never runs anything the project controls: a project's
   probe runs in a temporary mirror holding only copies of its command files
   (`.claude/commands/**/*.md`) and skill files (`.claude/skills/<skill>/SKILL.md`),
