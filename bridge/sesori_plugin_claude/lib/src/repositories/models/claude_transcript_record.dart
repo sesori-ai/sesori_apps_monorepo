@@ -72,11 +72,13 @@ final class const ClaudeTranscriptUserRecord({
   /// Distinguishes peer messages and task outcomes from ordinary user input.
   required final ClaudeMessageOriginKind originKind,
 
-  /// Whether the record carries the turn attribution the CLI stamps on a
-  /// message the host sent. Records the CLI writes on its own, such as the
-  /// `/model` breadcrumb a `set_model` request leaves, are not host-submitted
-  /// (verified against CLI 2.1.325).
-  required final bool isHostSubmitted,
+  /// Whether an SDK-mode CLI, the mode the plugin runs, wrote the record
+  /// without the turn attribution it stamps on every message its host sends.
+  /// Such a record is one the CLI wrote on its own, such as the `/model`
+  /// breadcrumb a `set_model` request leaves (verified against CLI 2.1.325).
+  /// The terminal UI never stamps attribution, so its records are never
+  /// counted here.
+  required final bool isUnattributedSdkRecord,
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,

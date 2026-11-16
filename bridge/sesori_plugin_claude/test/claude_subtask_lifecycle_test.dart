@@ -503,7 +503,7 @@ ClaudeTranscriptUserRecord _userRecord({
   isCompactSummary: false,
   toolUseResult: toolUseResult,
   originKind: originKind,
-  isHostSubmitted: true,
+  isUnattributedSdkRecord: false,
   cwd: "/tmp/project",
   timestamp: null,
   isSidechain: false,

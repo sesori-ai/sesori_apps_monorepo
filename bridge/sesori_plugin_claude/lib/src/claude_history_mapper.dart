@@ -139,9 +139,10 @@ final class const ClaudeHistoryMapper({
           final blocks = _content.map(content: record.content);
           if (_content.commandEnvelope(blocks: blocks) case final command?) {
             // The `set_model` request that applies the picked model makes the
-            // CLI record a `/model` envelope nobody typed. Only a `/model` the
-            // host sent carries turn attribution, so that one stays.
-            if (command.name == _modelCommand && !record.isHostSubmitted) continue;
+            // CLI record a `/model` envelope nobody typed. A `/model` the host
+            // sent carries turn attribution, and one typed in the terminal UI
+            // comes from another entrypoint, so both stay.
+            if (command.name == _modelCommand && record.isUnattributedSdkRecord) continue;
             final turn = _MappedHistoryMessage(
               message: _commandTurn(
                 sessionId: sessionId,

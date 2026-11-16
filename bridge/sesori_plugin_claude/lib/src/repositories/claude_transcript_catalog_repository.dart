@@ -553,6 +553,9 @@ final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
 );
 
+/// The entrypoint an SDK-mode CLI, the mode the plugin runs, records.
+const String _sdkEntrypoint = "sdk-cli";
+
 /// How much of a first prompt can title a session nobody named.
 const int _promptTitleLength = 100;
 
@@ -779,7 +782,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
         isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
         originKind: dto.originKind,
-        isHostSubmitted: dto.turnAttributionKey != null,
+        isUnattributedSdkRecord: dto.entrypoint == _sdkEntrypoint && dto.turnAttributionKey == null,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
