@@ -103,6 +103,9 @@ class CodexPlugin._({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => CodexModelRepository.promptCacheLife;
+
   static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);

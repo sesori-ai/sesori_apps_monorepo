@@ -7,16 +7,25 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
+import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
+import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/archived_session_validator.dart";
+import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_deletion_service.dart";
+import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
@@ -28,9 +37,13 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
+import "../../helpers/test_drive_roots_api.dart";
 
 void main() {
   group("SessionCreationService", () {
@@ -49,6 +62,7 @@ void main() {
     late ScratchRepository scratchRepository;
     late String uploadsRoot;
     late TestPluginRuntime runtime;
+    late List<LocalSessionMutation> mutations;
 
     setUp(() async {
       db = createTestDatabase();
@@ -90,6 +104,8 @@ void main() {
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
       );
+      mutations = [];
+      mutationDispatcher.mutations.listen(mutations.add);
       service = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
@@ -100,6 +116,13 @@ void main() {
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
+        sessionDeletionService: _deletionService(
+          sessionRepository: repository,
+          operationDispatcher: operationDispatcher,
+          mutationDispatcher: mutationDispatcher,
+          scratchRepository: scratchRepository,
+          uploadsParent: scratchParent.path,
+        ),
       );
     });
 
@@ -172,6 +195,7 @@ void main() {
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
 
       final creation = localService.createSession(
@@ -334,6 +358,7 @@ void main() {
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
 
       final creation = localService.createSession(
@@ -393,6 +418,39 @@ void main() {
       expect(metadataRepository.generateCalls, isZero);
       expect(await defaultsRepository.read(pluginId: "fake"), isNull);
       expect(sessionOptionsService.explicitInvalidations, [(pluginId: "fake", projectId: "/repo")]);
+      // The refused session is deleted, and the deletion event removes its row.
+      expect(plugin.deletedSessionIds, ["backend-session"]);
+      expect(mutations.whereType<SessionDeleted>().map((mutation) => mutation.session.id), hasLength(1));
+      expect(await db.sessionDao.getSession(sessionId: mutations.single.session.id), isNull);
+    });
+
+    test("a scheduled run whose command is refused as stale deletes the session before the retry", () async {
+      plugin.sendCommandError = const PluginStaleOptionsException(
+        operation: "sendCommand",
+        message: "unsupported command model",
+      );
+
+      await expectLater(
+        service.createScheduledRunSession(
+          request: const CreateSessionRequest(
+            commandSource: null,
+            projectId: "/repo",
+            pluginId: "fake",
+            dedicatedWorktree: false,
+            parts: [PromptPart.text(text: "Review it")],
+            variant: SessionVariant(id: "high"),
+            agent: null,
+            model: PromptModel(providerID: "provider", modelID: "withdrawn"),
+            command: "review",
+          ),
+          scheduledRun: (taskId: "stk_nightly", approvalOverride: SessionApprovalMode.yolo),
+        ),
+        throwsA(isA<StaleSessionPromptOptionsException>()),
+      );
+
+      expect(plugin.deletedSessionIds, ["backend-session"]);
+      expect(mutations.whereType<SessionDeleted>(), hasLength(1));
+      expect(await db.sessionDao.getSession(sessionId: mutations.single.session.id), isNull);
     });
 
     test("stores the created root and remembers its complete plugin-scoped selection", () async {
@@ -520,6 +578,7 @@ void main() {
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -567,6 +626,7 @@ void main() {
         scratchRepository: scratchRepository,
         projectCatalogIdentityCalculator: calculator,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       late Session created;
 
@@ -997,6 +1057,10 @@ class _FakePlugin() implements NativeProjectsPluginApi {
   String? lastCreateUserVisibleText;
   List<PluginPromptPart>? lastCreateParts;
   Object? sendCommandError;
+  final List<String> deletedSessionIds = [];
+
+  @override
+  Future<void> deleteSession(String sessionId) async => deletedSessionIds.add(sessionId);
 
   @override
   String get id => "fake";
@@ -1064,6 +1128,57 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     if (sendCommandError case final error?) throw error;
   }
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+SessionDeletionService _deletionService({
+  required SessionRepository sessionRepository,
+  required SessionOperationDispatcher operationDispatcher,
+  required SessionMutationDispatcher mutationDispatcher,
+  required ScratchRepository scratchRepository,
+  required String uploadsParent,
+}) {
+  final chatHistory = createTestChatHistory();
+  return SessionDeletionService(
+    sessionLifecycleService: SessionLifecycleService(
+      continuations: const EmptySessionContinuations(),
+      mutations: const UnusedContinuationMutations(),
+      views: const PassThroughSessionViews(),
+      abortService: SessionAbortService(
+        sessionRepository: sessionRepository,
+        dispatcher: operationDispatcher,
+        continuations: const EmptySessionContinuations(),
+        views: const PassThroughSessionViews(),
+        mutations: const UnusedContinuationMutations(),
+      ),
+      stopDeadline: Duration.zero,
+      worktreeService: DeletionWorktreeServiceFake(),
+      sessionRepository: sessionRepository,
+      filesystemRepository: FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      ),
+      sessionOperationDispatcher: operationDispatcher,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+      chatHistoryService: chatHistory.service,
+    ),
+    sessionMutationDispatcher: mutationDispatcher,
+    chatHistoryService: chatHistory.service,
+    scratchRepository: scratchRepository,
+    promptUploadRepository: PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: p.join(uploadsParent, "uploads"),
+    ),
+    transcriptRepository: PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: p.join(uploadsParent, "transcripts"),
+    ),
+  );
+}
+
+class _UnusedSessionDeletionService() implements SessionDeletionService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

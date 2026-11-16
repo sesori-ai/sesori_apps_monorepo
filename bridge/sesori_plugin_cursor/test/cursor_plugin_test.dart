@@ -630,6 +630,14 @@ void main() {
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
+    test("an Anthropic model caches for 5 minutes and any other model is unknown", () async {
+      capture(catalogResult(), fromNewSession: true);
+      expect(await plugin.getPromptCacheLife(sessionId: "s1"), isNull);
+
+      capture({...effortModelSelectionResult(modelId: "sonnet-4.6"), "sessionId": "s1"}, fromNewSession: true);
+      expect(await plugin.getPromptCacheLife(sessionId: "s1"), const Duration(minutes: 5));
+    });
+
     test("getSessionOptions delegates one plugin-scoped tracker snapshot", () async {
       capture(catalogResult(), fromNewSession: true);
 
@@ -1274,7 +1282,7 @@ void main() {
       await client.dispose();
     });
 
-    test("a rejected model switch stamps the model actually in effect", () async {
+    test("a rejected model switch fails the turn and keeps the model actually in effect", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
@@ -1295,12 +1303,14 @@ void main() {
         "id": modelFrame["id"],
         "error": {"code": -32000, "message": "rejected"},
       });
-      await pump();
-      await respond("session/set_config_option", const {}); // mode
-      await respond("session/set_config_option", const {}); // effort
-      await applying;
+      await expectLater(applying, throwsA(isA<PluginStaleOptionsException>()));
 
       expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "gpt-5.4");
+      expect(
+        fake.written.where((f) => f["method"] == "session/set_config_option"),
+        hasLength(1),
+        reason: "mode and effort are not applied after the model was rejected",
+      );
 
       await client.dispose();
     });
@@ -1341,8 +1351,7 @@ void main() {
         "id": modelFrame["id"],
         "error": {"code": -32000, "message": "rejected"},
       });
-      await pump();
-      await b;
+      await expectLater(b, throwsA(isA<PluginStaleOptionsException>()));
 
       expect(plugin.eventMapper.modelForSession(sessionId: "sB"), "gpt-5.4");
 

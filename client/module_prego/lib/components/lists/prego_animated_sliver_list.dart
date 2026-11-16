@@ -6,6 +6,10 @@ import "../../motion/prego_reduced_motion.dart";
 /// How long a row of a [PregoAnimatedSliverList] takes to open or close.
 const Duration pregoAnimatedListItemDuration = Duration(milliseconds: 260);
 
+/// How long a [PregoAnimatedSliverList.slidesWhenMoved] row takes to slide to
+/// its new place.
+const Duration pregoAnimatedListSlideDuration = Duration(milliseconds: 200);
+
 /// A sliver list that reconciles keyed [items] and animates rows as they enter
 /// or leave.
 ///
@@ -18,6 +22,10 @@ const Duration pregoAnimatedListItemDuration = Duration(milliseconds: 260);
 /// Scrolled past its top, the list keeps the rows on screen where they stand:
 /// rows that arrive or leave above the screen, such as one moving to the top,
 /// change nothing under the user's eyes.
+///
+/// A row on screen that moves up closes where it was and opens at its new
+/// place, unless [slidesWhenMoved]: then it and the rows it passes slide from
+/// where they stood to where they now stand.
 class const PregoAnimatedSliverList<T>({
   super.key,
 
@@ -29,6 +37,11 @@ class const PregoAnimatedSliverList<T>({
 
   /// Builds an item at its current index.
   required final Widget Function(BuildContext context, int index, T item) itemBuilder,
+
+  /// Whether a row slides to its new place when the rows reorder, as one the
+  /// user dragged there. Only rows it holds for before and after the update
+  /// slide, and only among each other.
+  required final bool Function(T item) slidesWhenMoved,
 }) extends StatefulWidget {
   @override
   State<PregoAnimatedSliverList<T>> createState() => _PregoAnimatedSliverListState<T>();
@@ -44,6 +57,10 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
 
   /// Row motions an update started, run once its frame has painted.
   final _motionsAfterFrame = <({_RowMotion motion, bool opening})>[];
+
+  /// Carries the rows an update reordered from where they stood to their new
+  /// places; made by the first update that reorders any.
+  ({AnimationController controller, CurvedAnimation curve})? _slide;
 
   @override
   void initState() {
@@ -79,19 +96,31 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     // A row on screen that moves up past the row before it, as one updated
     // moves to the top, closes where it was, and a copy of it takes its new
     // place, so the rows below close up instead of jumping.
-    bool movesUp({required int index, required Key itemKey}) =>
+    bool slides({required T item, required Key itemKey}) => switch (nextIndexByKey[itemKey]) {
+      final to? => widget.slidesWhenMoved(item) && widget.slidesWhenMoved(widget.items[to]),
+      null => false,
+    };
+    bool movesUp({required int index, required Key itemKey, required T item}) =>
         landsOnScreen(index) &&
+        !slides(item: item, itemKey: itemKey) &&
         switch ((nextIndexByKey[itemKey], nextIndexByKey[previousRetained])) {
           (final to?, final before?) => to < before,
           _ => false,
         };
+    // The sliding rows kept, in their old order with their old indices, to
+    // tell which of them moved.
+    final slidingBefore = <Key, ({int order, int index})>{};
     for (final (index, entry) in _entries.indexed) {
       final (itemKey, generation) = entry.key.value;
       final _Entry<T> closing;
       switch (entry) {
-        case _ShownEntry<T>() when nextIndexByKey.containsKey(itemKey) && !movesUp(index: index, itemKey: itemKey):
+        case _ShownEntry<T>(:final item)
+            when nextIndexByKey.containsKey(itemKey) && !movesUp(index: index, itemKey: itemKey, item: item):
           retained[itemKey] = entry;
           previousRetained = itemKey;
+          if (slides(item: item, itemKey: itemKey)) {
+            slidingBefore[itemKey] = (order: slidingBefore.length, index: index);
+          }
           continue;
         case _ShownEntry<T>(:final entering):
           // A row that never got to open has nothing on screen to close.
@@ -119,10 +148,17 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
 
     final entries = [...leading];
     final arrivals = <int>[];
+    var slidingAfter = 0;
+    // The old indices of the rows whose place among the sliding rows changed.
+    final moved = <int>{};
     for (final (index, item) in widget.items.indexed) {
       final itemKey = nextKeys[index];
       switch (retained[itemKey]) {
         case final kept?:
+          if (slidingBefore[itemKey] case (:final order, index: final was)) {
+            if (order != slidingAfter) moved.add(was);
+            slidingAfter++;
+          }
           entries.add(_ShownEntry(key: kept.key, item: item, sourceIndex: index, entering: kept.entering));
         case null:
           final key = _PregoAnimatedSliverItemKey((itemKey, (generations[itemKey] ?? -1) + 1));
@@ -132,6 +168,11 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       entries.addAll(closingAfter[itemKey] ?? const []);
     }
     _setEntries(entries);
+    if (context.findRenderObject() case final _RenderPregoAnimatedSliverList sliver when moved.isNotEmpty && animates) {
+      final slide = _slide ?? _makeSlide();
+      sliver.slide(indices: moved, progress: slide.curve);
+      slide.controller.forward(from: 0);
+    }
 
     // A scrolled list keeps its first visible row where it stands, so what
     // the update puts or takes away before that row lands or goes above the
@@ -260,8 +301,17 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     _indexByKey = {for (final (index, entry) in entries.indexed) entry.key: index};
   }
 
+  ({AnimationController controller, CurvedAnimation curve}) _makeSlide() {
+    final controller = AnimationController(vsync: this, duration: pregoAnimatedListSlideDuration);
+    return _slide = (controller: controller, curve: CurvedAnimation(parent: controller, curve: Curves.easeOut));
+  }
+
   @override
   void dispose() {
+    if (_slide case (:final controller, :final curve)?) {
+      curve.dispose();
+      controller.dispose();
+    }
     for (final entry in _entries) {
       switch (entry) {
         case _ShownEntry(:final entering):
@@ -368,6 +418,53 @@ class const _PregoAnimatedSliverListView({required super.delegate}) extends Sliv
 class _RenderPregoAnimatedSliverList({required super.childManager}) extends RenderSliverList {
   ({int index, double offset})? _kept;
 
+  /// The rows an update reordered and where each was painted as it arrived;
+  /// resolved to [_slides] by the next layout.
+  Map<RenderBox, double>? _slidFrom;
+
+  /// How far above or below its place each sliding row paints, at the start
+  /// of [_slideProgress].
+  Map<RenderBox, double> _slides = const {};
+  Animation<double>? _slideProgress;
+
+  /// Slides the rows laid out at [indices] from where they are painted to
+  /// where the next layout puts them, over [progress]. Rows still sliding
+  /// carry on from where they stand.
+  void slide({required Set<int> indices, required Animation<double> progress}) {
+    final from = <RenderBox, double>{};
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      if (indices.contains(indexOf(child)) || _slides.containsKey(child)) {
+        if (childScrollOffset(child) case final offset?) from[child] = offset + _slideOf(child);
+      }
+    }
+    _slidFrom = from;
+    if (!identical(progress, _slideProgress)) {
+      _slideProgress?.removeListener(_onSlide);
+      _slideProgress = progress..addListener(_onSlide);
+    }
+    markNeedsLayout();
+  }
+
+  /// Paints the slide's next frame, and lets the rows go once it ends.
+  void _onSlide() {
+    if (_slideProgress?.isCompleted ?? false) _slides = const {};
+    markNeedsPaint();
+  }
+
+  double _slideOf(RenderBox child) => switch ((_slides[child], _slideProgress)) {
+    (final shift?, final progress?) => shift * (1 - progress.value),
+    _ => 0,
+  };
+
+  @override
+  double childMainAxisPosition(RenderBox child) => super.childMainAxisPosition(child) + _slideOf(child);
+
+  @override
+  void dispose() {
+    _slideProgress?.removeListener(_onSlide);
+    super.dispose();
+  }
+
   /// Lays out the row now at [index] at the scroll [offset] it had before.
   void keepRow({required int index, required double offset}) {
     _kept = (index: index, offset: offset);
@@ -381,6 +478,13 @@ class _RenderPregoAnimatedSliverList({required super.childManager}) extends Rend
       _place(index: index, offset: offset);
     }
     super.performLayout();
+    if (_slidFrom case final from?) {
+      _slidFrom = null;
+      _slides = {
+        for (var child = firstChild; child != null; child = childAfter(child))
+          if ((from[child], childScrollOffset(child)) case (final was?, final now?) when was != now) child: was - now,
+      };
+    }
   }
 
   void _place({required int index, required double offset}) {

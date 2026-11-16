@@ -174,6 +174,34 @@ void main() {
     expect(tracker.snapshotForSession(sessionId: "session-2").modelId, isNull);
   });
 
+  test("refuses a model or reasoning level the last catalog no longer lists", () async {
+    final tracker = AcpSessionConfigurationTracker();
+    final service = DeepSeekSessionOptionsService(
+      repository: _FakeCatalogRepository(options: mapper.map(catalog(failures: const []))),
+      configurationTracker: tracker,
+      pluginId: DeepSeekIdentity.id,
+      discoveryTimeout: const Duration(seconds: 1),
+    );
+    final client = AcpStdioClient(
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "unused", args: []),
+      processFactory: (_) async => FakeAcpProcess(),
+    );
+    void validate({required String modelId, required String? variant}) => service.validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: "session-1",
+      cwd: "/project",
+      model: (providerID: providerId, modelID: modelId),
+      variant: variant == null ? null : PluginSessionVariant(id: variant),
+    );
+
+    validate(modelId: "retired", variant: null);
+    await service.getSessionOptions(client: client, cwd: "/project");
+
+    expect(() => validate(modelId: "retired", variant: null), throwsA(isA<PluginStaleOptionsException>()));
+    expect(() => validate(modelId: selectionId, variant: "max"), throwsA(isA<PluginStaleOptionsException>()));
+    validate(modelId: selectionId, variant: "high");
+  });
+
   test("session config capture derives provider without decoding the opaque model id", () {
     final tracker = AcpSessionConfigurationTracker();
     final service = DeepSeekSessionOptionsService(
@@ -209,6 +237,94 @@ void main() {
 
     expect(tracker.processDefaults.modelId, selectionId);
     expect(tracker.snapshotForSession(sessionId: "session-1").providerId, providerId);
+
+    // No catalog for a dedicated worktree's directory: the session's own
+    // offered models still catch a stale model.
+    void validateIn(String modelId) => service.validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: "session-1",
+      cwd: "/worktrees/session-1",
+      model: (providerID: providerId, modelID: modelId),
+      variant: null,
+    );
+    expect(() => validateIn("retired"), throwsA(isA<PluginStaleOptionsException>()));
+    validateIn(selectionId);
+  });
+
+  test("a model that lists no reasoning levels refuses any, and an empty catalog stops the check", () async {
+    final repository = _FakeCatalogRepository(
+      options: mapper.map(
+        const DeepSeekCatalogResponseDto(
+          agent: DeepSeekAgentDto(id: "deepseek", name: "DeepSeek", primary: true),
+          providers: [
+            DeepSeekProviderDto(
+              id: providerId,
+              name: "Synthetic Provider",
+              models: [
+                DeepSeekModelDto(
+                  id: selectionId,
+                  upstreamModelId: "model/alpha-α",
+                  name: "Synthetic Model",
+                  reasoningEfforts: [],
+                  defaultReasoningEffort: null,
+                  supportsImages: true,
+                ),
+              ],
+            ),
+          ],
+          defaultSelectionId: selectionId,
+          commands: [],
+          failures: [],
+        ),
+      ),
+    );
+    final service = DeepSeekSessionOptionsService(
+      repository: repository,
+      configurationTracker: AcpSessionConfigurationTracker(),
+      pluginId: DeepSeekIdentity.id,
+      discoveryTimeout: const Duration(seconds: 1),
+    );
+    final client = AcpStdioClient(
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "unused", args: []),
+      processFactory: (_) async => FakeAcpProcess(),
+    );
+    void validate() => service.validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: "session-1",
+      cwd: "/project",
+      model: (providerID: providerId, modelID: "retired"),
+      variant: const PluginSessionVariant(id: "high"),
+    );
+
+    await service.getSessionOptions(client: client, cwd: "/project");
+    expect(
+      () => service.validateTurnSelection(
+        operation: "sendPrompt",
+        sessionId: "session-1",
+        cwd: "/project",
+        model: (providerID: providerId, modelID: selectionId),
+        variant: const PluginSessionVariant(id: "high"),
+      ),
+      throwsA(isA<PluginStaleOptionsException>()),
+    );
+    expect(validate, throwsA(isA<PluginStaleOptionsException>()));
+
+    repository.laterOptions = const PluginSessionOptions(
+      agents: [
+        PluginAgent(
+          name: "deepseek",
+          description: "DeepSeek session",
+          model: null,
+          mode: PluginAgentMode.primary,
+          hidden: false,
+        ),
+      ],
+      providers: PluginProvidersResult(providers: []),
+      commands: [],
+      completeness: PluginSessionOptionsCompleteness.partial,
+    );
+    await service.getSessionOptions(client: client, cwd: "/project");
+    validate();
   });
 }
 
@@ -219,12 +335,15 @@ class _FakeCatalogRepository({required final PluginSessionOptions options}) exte
         mapper: const DeepSeekCatalogMapper(),
       );
 
+  /// What a later discovery reports instead of [options].
+  PluginSessionOptions? laterOptions;
+
   @override
   Future<PluginSessionOptions> discover({
     required AcpStdioClient client,
     required String cwd,
     required Duration timeout,
-  }) async => options;
+  }) async => laterOptions ?? options;
 }
 
 class _FakeConfigRepository({final int? failAt}) implements AcpSessionConfigRepository {

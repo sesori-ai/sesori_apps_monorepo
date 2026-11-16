@@ -71,6 +71,21 @@ class DeepSeekPlugin({
   );
 
   @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => deepSeekSessionOptionsService.validateTurnSelection(
+    operation: operation,
+    sessionId: sessionId,
+    cwd: directoryForSession(sessionId: sessionId),
+    model: model,
+    variant: variant,
+  );
+
+  @override
   Future<void> applyTurnSelection({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,

@@ -54,6 +54,7 @@ void main() {
     yolo = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: false));
     analytics = stubbedProductAnalyticsService();
     when(() => bridgeSettings.yoloSettings).thenAnswer((_) => yolo.stream);
+    when(() => repository.listTasks()).thenAnswer((_) async => const ScheduledTaskSuccess(value: <ScheduledTask>[]));
     addTearDown(yolo.close);
   });
 
@@ -109,6 +110,15 @@ void main() {
       yolo.add(const YoloSettingsResponse(enabled: true));
 
       expect((await ready(createCubit())).approvalMode, TaskApprovalMode.approveAll);
+    });
+
+    test("says an older computer cannot take a task before one is filled in", () async {
+      when(() => repository.listTasks()).thenAnswer((_) async => const ScheduledTaskBridgeOutdated());
+
+      expect(
+        await settled(createCubit()),
+        const ScheduledTaskEditorState.unavailable(reason: ScheduledTaskEditorUnavailableReason.bridgeOutdated),
+      );
     });
 
     test("cannot open without the device zone", () async {

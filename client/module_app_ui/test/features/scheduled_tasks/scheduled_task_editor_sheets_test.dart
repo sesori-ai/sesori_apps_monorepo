@@ -2,6 +2,7 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/scheduled_tasks/scheduled_task_editor_sheets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -52,8 +53,10 @@ void main() {
     required PluginMetadata harness,
     required Future<void> Function({required BuildContext context}) show,
   }) async {
+    final repository = MockScheduledTaskRepository();
+    when(repository.listTasks).thenAnswer((_) async => const ScheduledTaskSuccess(value: []));
     final editor = ScheduledTaskEditorCubit(
-      repository: MockScheduledTaskRepository(),
+      repository: repository,
       timeZoneSource: _FixedTimeZoneSource(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
       productAnalyticsService: MockProductAnalyticsService(),

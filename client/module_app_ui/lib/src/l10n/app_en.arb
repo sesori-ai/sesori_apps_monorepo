@@ -1614,6 +1614,8 @@
   "@sessionListPinFailed": {"description": "Error alert when the computer could not pin a session."},
   "sessionListUnpinFailed": "Failed to unpin session",
   "@sessionListUnpinFailed": {"description": "Error alert when the computer could not unpin a session."},
+  "sessionListPinMoveFailed": "Couldn't save the pinned order",
+  "@sessionListPinMoveFailed": {"description": "Error alert when the computer refused a dragged pinned session's new place, after the rows slid back."},
   "sessionListSendToSession": "Send to another session…",
   "@sessionListSendToSession": {"description": "Session menu entry that opens the sheet for sending this session's work into another session."},
   "sendSessionTitle": "Send to another session",

@@ -153,6 +153,7 @@ class const _TaskList({
   @override
   Widget build(BuildContext context) => PregoAnimatedSliverList<_Entry>(
     items: entries,
+    slidesWhenMoved: (_) => false,
     itemKey: (entry) => switch (entry) {
       // A task moving between headings is a new row there.
       _HeadingEntry(:final heading) => ValueKey("heading-$heading"),

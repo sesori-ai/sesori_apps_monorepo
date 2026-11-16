@@ -457,6 +457,14 @@ final class ClaudePlugin({
             _sessionWithoutTranscript(sessionId) != null,
       );
 
+  /// The cache life the account's billing route gives, as the catalog read it
+  /// from Claude's handshake.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => (await _catalogService.getCatalog(
+    directory: await _directoryForSession(sessionId),
+    refresh: false,
+  )).promptCacheLife;
+
   /// Runs Claude's `/compact` with the session's applied selection, so the
   /// compaction neither switches the model nor restarts the process.
   @override
