@@ -67,6 +67,9 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   late final AnimationController _slide = AnimationController(vsync: this)..addStatusListener(_onSlideStatus);
   late final Animation<double> _shown = CurvedAnimation(parent: _slide, curve: _curve)..addListener(_coverPage);
   late final DesktopTrailingPanelCover _cover;
+
+  /// Whether the page is on top, and so the one the pill keeps clear of.
+  bool _isCurrentPage = true;
   final _scrollController = ScrollController();
   final _focusScope = FocusScopeNode(debugLabel: "Side chat panel");
 
@@ -85,8 +88,17 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A pushed subtask or Changes page takes the pill over, and this page
+    // takes it back on return.
+    _isCurrentPage = ModalRoute.isCurrentOf(context) ?? true;
+    _coverPage();
+  }
+
+  @override
   void dispose() {
-    _cover.width.value = 0;
+    _cover.release(by: this);
     _slide.dispose();
     _scrollController.dispose();
     _focusScope.dispose();
@@ -151,7 +163,13 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
 
   /// Tells the shell how much of the page's edge the panel covers, so the
   /// connection pill moves aside with it.
-  void _coverPage() => _cover.width.value = (DesktopSideChatPanelHost.width + _inset) * _shown.value;
+  void _coverPage() {
+    if (_isCurrentPage) {
+      _cover.cover(by: this, width: (DesktopSideChatPanelHost.width + _inset) * _shown.value);
+    } else {
+      _cover.release(by: this);
+    }
+  }
 
   void _onSlideStatus(AnimationStatus status) {
     if (status == AnimationStatus.dismissed) setState(() => _opening = null);
