@@ -29,19 +29,28 @@ class PendingSessionArchiveCubit({required final SessionCleanupService cleanupSe
   Stream<PendingSessionArchiveOutcome> get outcomes => _outcomes.stream;
 
   /// Opens the Undo window for [session]. One window at a time: an archive
-  /// still inside its window is committed first.
-  void archive({required Session session, required bool deleteWorktree}) {
+  /// still inside its window is committed first. [callerOffersUndo] is true
+  /// when the caller shows its own alert with Undo, for [undoWindow].
+  void archive({required Session session, required bool deleteWorktree, required bool callerOffersUndo}) {
     _commitWindow();
     emit(
       PendingSessionArchiveState(
-        window: PendingArchiveOpen(session: session, deleteWorktree: deleteWorktree),
+        window: PendingArchiveOpen(
+          session: session,
+          deleteWorktree: deleteWorktree,
+          callerOffersUndo: callerOffersUndo,
+        ),
         archivingIds: state.archivingIds,
       ),
     );
     _timer = Timer(undoWindow, _commitWindow);
   }
 
-  void undo() {
+  /// Takes back [sessionId]'s archive. Does nothing once its window has closed,
+  /// so a late Undo can never take back another session's archive.
+  void undo({required String sessionId}) {
+    final window = state.window;
+    if (window is! PendingArchiveOpen || window.session.id != sessionId) return;
     _timer?.cancel();
     _timer = null;
     emit(PendingSessionArchiveState(window: const PendingArchiveIdle(), archivingIds: state.archivingIds));

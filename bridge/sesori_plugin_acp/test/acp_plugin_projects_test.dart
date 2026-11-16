@@ -899,5 +899,5 @@ class _HaltMapper({
 }) extends AcpEventMapper {
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) =>
-      text.startsWith("HALT:") ? const AcpHaltNotice(errorName: "test_halt") : null;
+      text.startsWith("HALT:") ? const AcpHaltNotice(errorName: "test_halt", kind: PluginErrorKind.failure) : null;
 }

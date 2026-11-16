@@ -2232,6 +2232,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sendSessionSentArchived(String target, String source) {
+    return 'Sent to “$target”. Archived “$source”.';
+  }
+
+  @override
   String get sendSessionOpen => 'Open';
 
   @override
@@ -3219,6 +3224,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailEditRefusedBody => 'The session didn\'t accept the edit. Nothing changed.';
+
+  @override
+  String get sessionDetailEditSendingLock => 'Sending your edit. You can type again in a moment.';
 
   @override
   String get sessionDetailEditOptionsChanged =>

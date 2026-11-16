@@ -3907,6 +3907,12 @@ abstract class AppLocalizations {
   /// **'Sent to “{target}”'**
   String sendSessionSent(String target);
 
+  /// Alert when a send succeeded and the sent session was archived, as the send sheet's switch asked. {target} is the receiving session's title, {source} the sent session's.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to “{target}”. Archived “{source}”.'**
+  String sendSessionSentArchived(String target, String source);
+
   /// Action on the sent alert that opens the receiving session.
   ///
   /// In en, this message translates to:
@@ -5592,6 +5598,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The session didn\'t accept the edit. Nothing changed.'**
   String get sessionDetailEditRefusedBody;
+
+  /// Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your edit. You can type again in a moment.'**
+  String get sessionDetailEditSendingLock;
 
   /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
   ///

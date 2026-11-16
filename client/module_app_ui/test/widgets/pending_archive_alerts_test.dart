@@ -61,7 +61,7 @@ void main() {
       ),
     );
 
-    cubit.archive(session: session, deleteWorktree: true);
+    cubit.archive(session: session, deleteWorktree: true, callerOffersUndo: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text("Session archived"), findsOneWidget);
@@ -75,7 +75,7 @@ void main() {
   testWidgets("offers Undo for as long as the window is open, and Undo sends nothing", (tester) async {
     await pumpAlerts(tester);
 
-    cubit.archive(session: session, deleteWorktree: true);
+    cubit.archive(session: session, deleteWorktree: true, callerOffersUndo: false);
     await tester.pump();
     await tester.pump(PendingSessionArchiveCubit.undoWindow - const Duration(milliseconds: 500));
     expect(find.text("Session archived"), findsOneWidget);
@@ -107,7 +107,7 @@ void main() {
   }
 
   Future<void> commitArchive(WidgetTester tester) async {
-    cubit.archive(session: session, deleteWorktree: true);
+    cubit.archive(session: session, deleteWorktree: true, callerOffersUndo: false);
     await tester.pump();
     await tester.pump(PendingSessionArchiveCubit.undoWindow);
     await tester.pumpAndSettle();
@@ -211,7 +211,7 @@ void main() {
       () => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: false),
     ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
-    cubit.archive(session: session, deleteWorktree: true);
+    cubit.archive(session: session, deleteWorktree: true, callerOffersUndo: false);
     await tester.pump();
     await tester.pump(PendingSessionArchiveCubit.undoWindow);
     await tester.pump();
@@ -234,10 +234,10 @@ void main() {
         () => repository.archiveSession(sessionId: "s2", deleteWorktree: true, force: false),
       ).thenAnswer((_) async => ApiResponse.success(other));
 
-      cubit.archive(session: session, deleteWorktree: true);
+      cubit.archive(session: session, deleteWorktree: true, callerOffersUndo: false);
       await tester.pump();
       // Archiving the second commits the first, which fails inside the second's window.
-      cubit.archive(session: other, deleteWorktree: true);
+      cubit.archive(session: other, deleteWorktree: true, callerOffersUndo: false);
       await tester.pump(const Duration(milliseconds: 500));
       failure.complete(ApiResponse.error(ApiError.generic()));
       await tester.pump();
@@ -276,7 +276,7 @@ void main() {
         () => repository.archiveSession(sessionId: "s3", deleteWorktree: true, force: false),
       ).thenAnswer((_) async => ApiResponse.success(third));
 
-      cubit.archive(session: third, deleteWorktree: true);
+      cubit.archive(session: third, deleteWorktree: true, callerOffersUndo: false);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.text("Session archived"), findsOneWidget);
