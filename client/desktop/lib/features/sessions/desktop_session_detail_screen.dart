@@ -273,6 +273,7 @@ class const DesktopSessionDetailView({
         final parts => parts.join(" · "),
       },
       subtitle: null,
+      keptSuffix: sessionForkTitleSuffix,
       // One group, whose actions bring their own gaps, so the toolbar's spacing
       // never sees an empty slot.
       actions: [

@@ -58,6 +58,7 @@ class const ArchivedSessionsView({
         endClearance: 0,
       ),
     ],
+    titleKeptSuffix: null,
   );
 
   static Future<void> _refresh({required BuildContext context}) async {

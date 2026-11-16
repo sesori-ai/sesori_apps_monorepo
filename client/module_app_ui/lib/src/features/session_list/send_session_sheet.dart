@@ -115,13 +115,12 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
                       spacing: PregoSpacing.xs,
                       children: [
                         Flexible(
-                          child: Text(
-                            switch (target) {
+                          child: PregoKeptSuffixText(
+                            text: switch (target) {
                               null => loc.sendSessionChooseTarget,
                               final target => target.session.title ?? loc.sessionListUntitled,
                             },
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            keptSuffix: sessionForkTitleSuffix,
                             style: prego.textTheme.textMd.regular.copyWith(
                               color: target == null ? prego.colors.textTertiary : prego.colors.textSecondary,
                             ),

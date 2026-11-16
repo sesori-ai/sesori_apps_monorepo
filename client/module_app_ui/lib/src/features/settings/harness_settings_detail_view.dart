@@ -107,6 +107,7 @@ class const HarnessSettingsDetailView({
             PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
         ],
         slivers: [content],
+        titleKeptSuffix: null,
       ),
     };
   }

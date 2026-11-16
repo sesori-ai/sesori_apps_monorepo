@@ -15,6 +15,7 @@ Widget _harness() {
       automaticallyImplyLeading: false,
       floatingActionButton: SizedBox(key: _fabKey, width: 120, height: 52),
       slivers: [SliverToBoxAdapter(child: SizedBox(height: 10))],
+      titleKeptSuffix: null,
     ),
   );
 }
@@ -49,6 +50,7 @@ void main() {
               ),
             ),
           ],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -80,6 +82,7 @@ void main() {
               ),
             ),
           ],
+          titleKeptSuffix: null,
         ),
       ),
     );

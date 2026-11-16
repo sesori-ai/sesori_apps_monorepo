@@ -107,6 +107,7 @@ class const NotificationSettingsView({
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

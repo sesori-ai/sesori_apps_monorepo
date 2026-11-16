@@ -39,6 +39,7 @@ class const DesktopScheduledTaskEditorScreen({
           title: title,
           titleDetail: null,
           subtitle: null,
+          keptSuffix: null,
           actions: const [],
         ),
         backgroundColor: null,

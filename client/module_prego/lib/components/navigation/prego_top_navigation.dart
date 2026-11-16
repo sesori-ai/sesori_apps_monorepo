@@ -5,6 +5,7 @@ import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
 import "../../utils/color_extensions.dart";
 import "../buttons/prego_buttons_icon_glass.dart";
+import "../prego_kept_suffix_text.dart";
 import "prego_nav_leading_title.dart";
 import "prego_nav_title.dart";
 
@@ -91,6 +92,10 @@ class const PregoTopNavigation({
   /// bar's own muted style (inline mode). A `null` or empty value renders the
   /// title on its own.
   final String? subtitleText,
+
+  /// Kept whole when a long [title] ending with it is cut (see
+  /// [PregoKeptSuffixText]), in inline mode; null cuts the title at its end.
+  required final String? titleKeptSuffix,
 
   /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
@@ -191,7 +196,7 @@ class const PregoTopNavigation({
       // Inline mode: a fixed, centred title+subtitle (PregoNavTitle).
       // Collapsing mode: the title that fades in as the large title collapses.
       middle: titleMode == PregoTopNavigationTitleMode.inline
-          ? PregoNavTitle(title: title, subtitle: subtitleText)
+          ? PregoNavTitle(title: title, subtitle: subtitleText, titleKeptSuffix: titleKeptSuffix)
           : _buildCollapsedTitle(),
       trailing: actions == null
           ? null
