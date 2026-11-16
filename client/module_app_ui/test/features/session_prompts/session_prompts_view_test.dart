@@ -123,6 +123,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         child: SessionPromptsView(
           sessionId: "s1",
           prompts: TranscriptPromptList(entries: entries, isIndexed: isIndexed),
