@@ -73,6 +73,7 @@ void _sendToAnother({
       sourceSessionId: source.id,
       sourcePluginId: source.pluginId,
       targetSessionId: target.session.id,
+      targetTitle: target.session.title,
     );
     final open = PregoPopupAlertsNotificationsAction(
       label: loc.sendSessionOpen,

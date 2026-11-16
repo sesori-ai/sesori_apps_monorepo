@@ -218,6 +218,7 @@ void _registerDependencies({
   // The page's own action service runs its menu actions.
   getIt.registerSingleton<SessionActionService>(
     SessionActionService(
+      sendTracker: SessionSendTracker(),
       sessionRepository: promptDispatcher,
       sessionCleanupService: SessionCleanupService(repository: promptDispatcher),
       sessionUnseenTracker: FakeSessionUnseenTracker(),

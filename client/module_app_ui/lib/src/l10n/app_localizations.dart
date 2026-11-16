@@ -4447,6 +4447,12 @@ abstract class AppLocalizations {
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
 
+  /// Words on a session row's meta line, and the row's status for a screen reader, while this app sends the session into another one and the session writes its summary. target is the receiving session's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to “{target}”…'**
+  String sessionListSending(String target);
+
   /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
   ///
   /// In en, this message translates to:

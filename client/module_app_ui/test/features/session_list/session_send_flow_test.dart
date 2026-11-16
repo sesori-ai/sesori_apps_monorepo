@@ -131,7 +131,12 @@ void main() {
   }
 
   void answerSend(Future<SendToSessionResult> Function() answer) => when(
-    () => actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+    () => actions.sendToSession(
+      targetTitle: any(named: "targetTitle"),
+      sourceSessionId: "source",
+      sourcePluginId: source.pluginId,
+      targetSessionId: "target",
+    ),
   ).thenAnswer((_) => answer());
 
   Future<void> tapSend(WidgetTester tester) async {
@@ -213,8 +218,12 @@ void main() {
     await tapSend(tester);
     expect(find.text("Archive a pinned session?"), findsOneWidget);
     verifyNever(
-      () =>
-          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+      () => actions.sendToSession(
+        targetTitle: any(named: "targetTitle"),
+        sourceSessionId: "source",
+        sourcePluginId: source.pluginId,
+        targetSessionId: "target",
+      ),
     );
 
     await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel"));
@@ -222,8 +231,12 @@ void main() {
     expect(find.text("Archive a pinned session?"), findsNothing);
     expect(find.byKey(const Key("send_session_send")), findsOneWidget);
     verifyNever(
-      () =>
-          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+      () => actions.sendToSession(
+        targetTitle: any(named: "targetTitle"),
+        sourceSessionId: "source",
+        sourcePluginId: source.pluginId,
+        targetSessionId: "target",
+      ),
     );
 
     await tapSend(tester);
@@ -231,8 +244,12 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () =>
-          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+      () => actions.sendToSession(
+        targetTitle: any(named: "targetTitle"),
+        sourceSessionId: "source",
+        sourcePluginId: source.pluginId,
+        targetSessionId: "target",
+      ),
     ).called(1);
     // Asked once, before the send; the archive after it doesn't ask again.
     expect(find.text("Archive a pinned session?"), findsNothing);
@@ -248,8 +265,12 @@ void main() {
 
     expect(find.text("Archive a pinned session?"), findsNothing);
     verify(
-      () =>
-          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+      () => actions.sendToSession(
+        targetTitle: any(named: "targetTitle"),
+        sourceSessionId: "source",
+        sourcePluginId: source.pluginId,
+        targetSessionId: "target",
+      ),
     ).called(1);
     expect(archives.state.hiddenIds, isEmpty);
     await archives.close();

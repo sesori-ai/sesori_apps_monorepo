@@ -84,10 +84,12 @@ class SessionActionsCubit({
     required String sourceSessionId,
     required String sourcePluginId,
     required String targetSessionId,
+    required String? targetTitle,
   }) => _actionService.sendToSession(
     sourceSessionId: sourceSessionId,
     sourcePluginId: sourcePluginId,
     targetSessionId: targetSessionId,
+    targetTitle: targetTitle,
   );
 
   /// The send sheet's last "Archive this session after sending" choice; on

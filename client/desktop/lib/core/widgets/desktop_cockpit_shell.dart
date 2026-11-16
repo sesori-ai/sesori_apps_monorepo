@@ -32,6 +32,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     filterTracker: getIt<SessionListFilterTracker>(),
     sseEventTracker: getIt<SseEventTracker>(),
     sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+    sessionSendTracker: getIt<SessionSendTracker>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [

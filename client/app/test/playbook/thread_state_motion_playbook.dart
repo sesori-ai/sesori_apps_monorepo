@@ -205,6 +205,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
   );
 
   Widget _thread({required String id, required String title, required bool working}) => SessionTile(
+    sending: null,
     key: ValueKey(id),
     session: testSession(id: id, title: title, branchName: "main", pluginId: "codex"),
     projectLabel: null,

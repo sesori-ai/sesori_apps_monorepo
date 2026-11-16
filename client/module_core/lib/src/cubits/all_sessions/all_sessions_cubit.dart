@@ -12,6 +12,7 @@ import "../../services/models/session_list_quick_filter.dart";
 import "../../services/models/session_window_state.dart";
 import "../../services/project_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
+import "../../services/session_send_tracker.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
@@ -29,6 +30,7 @@ class AllSessionsCubit({
   required final SessionListFilterTracker _filterTracker,
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
+  required final SessionSendTracker _sessionSendTracker,
 }) extends Cubit<AllSessionsState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Set<String> _hiddenSessionIds = const {};
@@ -47,6 +49,7 @@ class AllSessionsCubit({
         _projectInventory.stateStream.distinct().skip(1),
         _sseEventTracker.sessionActivity.skip(1),
         _sessionUnseenTracker.sessionUnseen.skip(1),
+        _sessionSendTracker.sending.skip(1),
         // [selectProject] already shows its own selection.
         _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId),
       ]).debounceTime(Duration.zero).listen((_) => _update()),
@@ -139,6 +142,7 @@ class AllSessionsCubit({
     }
     final activity = _sseEventTracker.currentSessionActivity;
     final unseen = _sessionUnseenTracker.currentSessionUnseen;
+    final sending = _sessionSendTracker.currentSending;
     final sessions = switch (window) {
       SessionWindowLoaded(:final sessions) => sessions,
       SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
@@ -159,6 +163,7 @@ class AllSessionsCubit({
                   (session.interruption?.unacknowledged ?? false) &&
                   !(activity[project.id]?[session.id]?.isRunning ?? false),
               backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
+              sending: sending[session.id],
             ),
     ];
     final next = AllSessionsState(
