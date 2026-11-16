@@ -11,6 +11,7 @@ import "../cubits/session_search/session_search_cubit.dart";
 import "../foundation/platform/device_time_zone_source.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
+import "../repositories/archive_after_send_preference_storage.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/permission_repository.dart";
@@ -88,6 +89,7 @@ SessionActionsCubit createSessionActionsCubit({required GetIt locator, required 
     actionService: locator<SessionActionService>(),
     abortService: locator<SessionAbortService>(),
     feedbackPromptService: locator<FeedbackPromptService>(),
+    archiveAfterSendStorage: locator<ArchiveAfterSendPreferenceStorage>(),
   );
 }
 

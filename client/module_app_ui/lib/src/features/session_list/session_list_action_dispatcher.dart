@@ -138,6 +138,7 @@ class const SessionListActionDispatcher({
             isRunning: isRunning,
             createSearch: createSessionSearch,
             openSession: openSession,
+            onSessionArchived: onSessionArchived,
           ),
         ),
       // Archiving is permanent, so an already-archived row has no archive
@@ -223,7 +224,11 @@ class const SessionListActionDispatcher({
         return;
       }
       if (!context.mounted) return;
-      context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: session.hasWorktree);
+      context.read<PendingSessionArchiveCubit>().archive(
+        session: session,
+        deleteWorktree: session.hasWorktree,
+        callerOffersUndo: false,
+      );
       onSessionArchived?.call(context: context, sessionId: session.id);
     }());
   }

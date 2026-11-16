@@ -35,10 +35,10 @@ void main() {
 
   test("Undo inside the window sends nothing and brings the row back", () {
     fakeAsync((async) {
-      cubit.archive(session: first, deleteWorktree: true);
+      cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       expect(cubit.state.hiddenIds, {"first"});
 
-      cubit.undo();
+      cubit.undo(sessionId: "first");
       async.elapse(PendingSessionArchiveCubit.undoWindow * 2);
 
       expect(cubit.state.hiddenIds, isEmpty);
@@ -56,7 +56,7 @@ void main() {
     fakeAsync((async) {
       stubArchive(sessionId: "first", answer: () async => ApiResponse.success(first));
 
-      cubit.archive(session: first, deleteWorktree: false);
+      cubit.archive(session: first, deleteWorktree: false, callerOffersUndo: false);
       async.elapse(PendingSessionArchiveCubit.undoWindow);
 
       verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false)).called(1);
@@ -66,14 +66,31 @@ void main() {
     });
   });
 
+  test("a late Undo for an archive already committed leaves the next window open", () {
+    fakeAsync((async) {
+      stubArchive(sessionId: "first", answer: () async => ApiResponse.success(first));
+
+      cubit
+        ..archive(session: first, deleteWorktree: true, callerOffersUndo: true)
+        ..archive(session: second, deleteWorktree: true, callerOffersUndo: false)
+        ..undo(sessionId: "first");
+      async.flushMicrotasks();
+
+      expect(cubit.state.window, isA<PendingArchiveOpen>().having((w) => w.session.id, "session", "second"));
+      expect(cubit.state.hiddenIds, {"first", "second"});
+      cubit.undo(sessionId: "second");
+      expect(cubit.state.window, isA<PendingArchiveIdle>());
+    });
+  });
+
   test("a second archive commits the first, whose late refusal leaves the second window intact", () {
     fakeAsync((async) {
       final firstReply = Completer<ApiResponse<shared.Session>>();
       stubArchive(sessionId: "first", answer: () => firstReply.future);
 
       cubit
-        ..archive(session: first, deleteWorktree: true)
-        ..archive(session: second, deleteWorktree: true);
+        ..archive(session: first, deleteWorktree: true, callerOffersUndo: false)
+        ..archive(session: second, deleteWorktree: true, callerOffersUndo: false);
       async.flushMicrotasks();
       verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: false)).called(1);
       expect(cubit.state.hiddenIds, {"first", "second"});
@@ -115,7 +132,7 @@ void main() {
         () => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false),
       ).thenAnswer((_) async => ApiResponse.success(first));
 
-      cubit.archive(session: first, deleteWorktree: true);
+      cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       async.elapse(PendingSessionArchiveCubit.undoWindow);
 
       verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false)).called(1);
@@ -131,7 +148,7 @@ void main() {
         () => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: false),
       ).thenThrow(refusal(const [shared.CleanupIssue.sharedWorktree(), shared.CleanupIssue.unstagedChanges()]));
 
-      cubit.archive(session: first, deleteWorktree: true);
+      cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       async.elapse(PendingSessionArchiveCubit.undoWindow);
 
       verifyNever(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false));
@@ -160,9 +177,9 @@ void main() {
       stubArchive(sessionId: "first", answer: () async => ApiResponse.error(ApiError.generic()));
       stubArchive(sessionId: "second", answer: () async => throw StateError("connection lost"));
 
-      cubit.archive(session: first, deleteWorktree: true);
+      cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       async.elapse(PendingSessionArchiveCubit.undoWindow);
-      cubit.archive(session: second, deleteWorktree: true);
+      cubit.archive(session: second, deleteWorktree: true, callerOffersUndo: false);
       async.elapse(PendingSessionArchiveCubit.undoWindow);
 
       expect(outcomes, [isA<PendingSessionArchiveFailed>(), isA<PendingSessionArchiveFailed>()]);
@@ -172,7 +189,7 @@ void main() {
 
   test("closing inside the window sends nothing", () {
     fakeAsync((async) {
-      cubit.archive(session: first, deleteWorktree: true);
+      cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       unawaited(cubit.close());
       async.elapse(PendingSessionArchiveCubit.undoWindow * 2);
 

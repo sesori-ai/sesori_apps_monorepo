@@ -607,6 +607,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             // The first message is in the transcript once it is sending.
             hasMessages: isSending,
             canSend: cubit.canSubmit,
+            lockedNote: null,
             attachmentsSupported: cubit.offersAttachments ? composerData?.plugin?.supportsPromptAttachments : false,
             // Unresolved until a bridge has answered discovery.
             fileUploadsSupported: !cubit.offersAttachments

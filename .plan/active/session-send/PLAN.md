@@ -494,10 +494,14 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     echo or a later live update of the echo is stamped `notSent`. Once the echo has arrived it also calls
     `ChatHistoryService.markHandoffNotSent({sessionId, messageId})`, which runs on the session's history write lane
     and replaces the stored `sent` stamp; when the refresh before the split replaced the echo with a replayed message
-    under another id, that id is marked too. A definite 4xx refusal of the summarise prompt still forgets the
-    stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A stored mark pushes a history refresh,
-    so an open chat turns its marker into "Couldn't send" without a reload; the requesting client also gets the
-    failure alert.
+    under another id, that id is marked too. A harness can also store the request without ever echoing it live
+    (a Claude source stopped before its echo). For a failure before the echo, `SessionSendService` waits up to ten
+    seconds for the source's next idle. It then refreshes the history and finds the last user message with the exact
+    request text. When that message has no stamp, the store stamps it `notSent`; a stamped match is an earlier
+    send's request and stays as it is. A definite 4xx refusal of the summarise prompt still forgets the stamp in
+    `sendPrompt`, because no turn happened, so the mark finds nothing. A stored mark pushes a history refresh, so an
+    open chat turns its marker into "Couldn't send" without a reload; the requesting client also gets the failure
+    alert.
   - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id
     still pairs with the stamped live row and keeps its stamp. Marking a stored stamp `notSent` refreshes the row's
     `updatedAt`, so the next replay still treats the row as current and pairs it.
@@ -899,6 +903,15 @@ including l10n output.
 - **Risk and test focus:** low to medium. Check the refusal modal and Undo behave as in a plain archive, and that
   leaving the source page during the send still archives it.
 - **Expected result:** with the switch on, the source is archived after the summary lands. No database change.
+- **As built:**
+  - `PendingSessionArchiveCubit.archive` takes a required `callerOffersUndo`, carried on `PendingArchiveOpen`.
+    `PendingArchiveAlerts` then leaves out its own "Session archived" alert, because the send's combined alert carries
+    the archive's Undo. The flag is generic, so no `module_core` class learns about sends.
+  - `undo` takes the session id and only takes back that session's open window. The send's alert and the shared
+    alert can sit on different overlays, so a late Undo on one must never cancel a newer archive.
+  - The combined alert lasts the Undo window (5 s), not the 8 s of the other send alerts, so Undo never outlives the
+    window.
+  - The sheet reads the remembered choice before it opens, so the switch never flips while the sheet slides in.
 
 ### Step 10: analytics
 
