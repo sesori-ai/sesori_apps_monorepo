@@ -175,19 +175,22 @@ class SessionSendService({
       if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
         throw _rejected(code: code);
       }
-      final settings = SessionPromptService.settingsFrom(defaults: source.promptDefaults);
       try {
-        await _prompts.sendPromptAlreadyReserved(
+        await _prompts.sendWithDefaults(
           sessionId: source.id,
-          promptId: promptId,
-          parts: [PromptPart.text(text: requestText)],
-          variant: settings.variant,
-          fastMode: settings.fastMode,
-          agent: settings.agent,
-          model: settings.model,
-          handoff: MessageHandoff.sent(
-            targetSessionId: target.id,
-            targetTitle: _nonBlank(text: target.title),
+          defaults: source.promptDefaults,
+          send: (settings) => _prompts.sendPromptAlreadyReserved(
+            sessionId: source.id,
+            promptId: promptId,
+            parts: [PromptPart.text(text: requestText)],
+            variant: settings.variant,
+            fastMode: settings.fastMode,
+            agent: settings.agent,
+            model: settings.model,
+            handoff: MessageHandoff.sent(
+              targetSessionId: target.id,
+              targetTitle: _nonBlank(text: target.title),
+            ),
           ),
         );
       } on Object catch (error, stackTrace) {
@@ -416,33 +419,36 @@ class SessionSendService({
     }
     Log.i("Saved the transcript of session ${source.id} for ${target.id} at $transcriptPath (${bytes.length} bytes)");
 
-    final settings = SessionPromptService.settingsFrom(defaults: target.promptDefaults);
     try {
-      await _prompts.sendPrompt(
+      await _prompts.sendWithDefaults(
         sessionId: target.id,
-        promptId: null,
-        parts: [
-          PromptPart.text(
-            text: _handoffText(
-              sourceTitle: source.title,
-              harnessName: harnessName,
-              sourceDirectory: source.directory,
-              summary: summary,
-              transcriptPath: transcriptPath,
+        defaults: target.promptDefaults,
+        send: (settings) => _prompts.sendPrompt(
+          sessionId: target.id,
+          promptId: null,
+          parts: [
+            PromptPart.text(
+              text: _handoffText(
+                sourceTitle: source.title,
+                harnessName: harnessName,
+                sourceDirectory: source.directory,
+                summary: summary,
+                transcriptPath: transcriptPath,
+              ),
             ),
+          ],
+          variant: settings.variant,
+          fastMode: settings.fastMode,
+          agent: settings.agent,
+          model: settings.model,
+          command: null,
+          commandSource: null,
+          handoff: MessageHandoff.received(
+            sourceSessionId: source.id,
+            sourceTitle: _nonBlank(text: source.title),
+            summary: summary,
+            transcriptPath: transcriptPath,
           ),
-        ],
-        variant: settings.variant,
-        fastMode: settings.fastMode,
-        agent: settings.agent,
-        model: settings.model,
-        command: null,
-        commandSource: null,
-        handoff: MessageHandoff.received(
-          sourceSessionId: source.id,
-          sourceTitle: _nonBlank(text: source.title),
-          summary: summary,
-          transcriptPath: transcriptPath,
         ),
       );
     } on Object catch (error, stackTrace) {

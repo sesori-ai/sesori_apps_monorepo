@@ -19,67 +19,19 @@ class const ReconciledSelection({
 /// Resolves an agent/model/variant/fast-mode/command selection against the catalog a
 /// backend currently advertises.
 ///
-/// This is the one owner of that policy. It previously existed twice — once for
-/// the New Session screen and once inside `SessionDetailCubit` — and the two
-/// copies drifted: only one of them honored [ProviderModel.isAvailable]. Every
-/// screen now reconciles through [reconcile] so a selection cannot be validated
-/// one way in one place and another way elsewhere.
+/// This is the one owner of that policy in the app. It previously existed
+/// twice — once for the New Session screen and once inside
+/// `SessionDetailCubit` — and the two copies drifted: only one of them honored
+/// [ProviderModel.isAvailable]. Every screen now reconciles through [reconcile]
+/// so a selection cannot be validated one way in one place and another way
+/// elsewhere. The per-option rules it builds on come from
+/// [SessionSelectionRules], which the bridge shares.
 ///
 /// Pure and stateless: it reads a catalog and returns a selection, and never
 /// emits, persists, or calls a backend. Const-constructed by its callers rather
 /// than resolved from the container, like the other calculators in this package.
-class const SessionSelectionCalculator() {
+class const SessionSelectionCalculator() extends SessionSelectionRules {
   static const DefaultModelSelector _defaultModelSelector = DefaultModelSelector();
-
-  /// The agents a user may pick. Hidden agents and sub-agents are backend
-  /// bookkeeping, never picker entries.
-  List<AgentInfo> selectableAgents({required List<AgentInfo> agents}) {
-    return agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList(growable: false);
-  }
-
-  /// Whether [model] is one the catalog still offers.
-  ///
-  /// A model the backend marks unavailable counts as absent: it is listed so a
-  /// transcript naming it can still be read, not so it can be selected again.
-  bool isModelAvailable({required List<ProviderInfo> providers, required AgentModel model}) {
-    return _providerModel(providers: providers, model: model)?.isAvailable ?? false;
-  }
-
-  /// The effort/thinking variants [model] offers, in the order the plugin
-  /// declared them. `"none"` is a backend spelling of "no variant", never a
-  /// picker entry.
-  ///
-  /// A model the catalog does not offer has no known variants, so it offers
-  /// only the one it carries: a session kept on its own unlisted model still
-  /// shows the effort it recorded, and nothing else.
-  List<SessionVariant> availableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    if (model == null) return const [];
-    final providerModel = _providerModel(providers: providers, model: model);
-    if (providerModel == null || !providerModel.isAvailable) {
-      final carried = model.variant;
-      return carried == null || carried == "none" ? const [] : [SessionVariant(id: carried)];
-    }
-    return providerModel.variants
-        .where((variant) => variant != "none")
-        .map((variant) => SessionVariant(id: variant))
-        .toList(growable: false);
-  }
-
-  /// The variant [model] runs at when none was chosen: the plugin's declared
-  /// default when the model offers it, otherwise the first it offers, or null
-  /// when it offers none.
-  String? defaultVariant({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    if (model == null) return null;
-    final variants = availableVariants(providers: providers, model: model);
-    final declared = _providerModel(providers: providers, model: model)?.defaultVariant;
-    return variants.any((variant) => variant.id == declared) ? declared : variants.firstOrNull?.id;
-  }
 
   /// The variant a switch to [model] runs at: the first of [candidates] the
   /// model offers, otherwise [defaultVariant].
@@ -97,47 +49,6 @@ class const SessionSelectionCalculator() {
           (candidate) => candidate != null && variants.any((variant) => variant.id == candidate),
         ) ??
         defaultVariant(providers: providers, model: model);
-  }
-
-  /// The fast mode [model] offers, or null when it has none or the catalog no
-  /// longer offers the model.
-  FastModeSupport? fastModeSupport({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    if (model == null) return null;
-    final providerModel = _providerModel(providers: providers, model: model);
-    if (providerModel == null || !providerModel.isAvailable) return null;
-    return providerModel.fastMode;
-  }
-
-  /// Whether [model] runs in fast mode given the user's [requested] choice:
-  /// only while the model's fast mode is available, otherwise off.
-  bool resolvedFastMode({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-    required bool requested,
-  }) {
-    return requested && fastModeSupport(providers: providers, model: model) is FastModeAvailable;
-  }
-
-  /// The agent to run, given [candidates] in preference order: the first the
-  /// catalog still offers, otherwise the first selectable agent, otherwise null
-  /// because there is nothing to select.
-  ///
-  /// Null candidates are skipped rather than treated as a choice, so a caller
-  /// may pass a value it does not have. A caller for which "unset" is itself
-  /// meaningful — a queued prompt inheriting the session's agent — must keep
-  /// that rule on its own side rather than asking for it here.
-  String? validatedAgentName({
-    required List<AgentInfo> agents,
-    required List<String?> candidates,
-  }) {
-    final selectable = selectableAgents(agents: agents);
-    return candidates.firstWhereOrNull(
-          (candidate) => candidate != null && selectable.any((agent) => agent.name == candidate),
-        ) ??
-        selectable.firstOrNull?.name;
   }
 
   /// Reconciles a desired selection against the catalog.
@@ -184,7 +95,7 @@ class const SessionSelectionCalculator() {
     final variants = availableVariants(providers: providers, model: model);
     return ReconciledSelection(
       agentName: agentName,
-      model: _withResolvedVariant(providers: providers, model: model, availableVariants: variants),
+      model: withResolvedVariant(providers: providers, model: model),
       availableVariants: variants,
     );
   }
@@ -197,20 +108,6 @@ class const SessionSelectionCalculator() {
   }) {
     if (staged == null) return null;
     return commands.firstWhereOrNull((command) => command.name == staged.name);
-  }
-
-  /// A model that offers variants always runs at a named one, so an unset or
-  /// withdrawn variant resolves to [defaultVariant].
-  AgentModel? _withResolvedVariant({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-    required List<SessionVariant> availableVariants,
-  }) {
-    if (model == null) return null;
-    if (availableVariants.any((variant) => variant.id == model.variant)) return model;
-    return model.copyWith(
-      variant: defaultVariant(providers: providers, model: model),
-    );
   }
 
   AgentModel? _firstAvailable({
@@ -235,12 +132,5 @@ class const SessionSelectionCalculator() {
       }
     }
     return null;
-  }
-
-  ProviderModel? _providerModel({
-    required List<ProviderInfo> providers,
-    required AgentModel model,
-  }) {
-    return providers.firstWhereOrNull((provider) => provider.id == model.providerID)?.models[model.modelID];
   }
 }

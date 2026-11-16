@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -498,6 +499,88 @@ void main() {
       // The rejected selection is not persisted as the session's defaults.
       expect((await db.sessionDao.getSession(sessionId: "s1") ?? fail("missing stored session")).lastAgent, isNull);
     });
+
+    group("a bridge prompt refused for stale options", () {
+      const staleDefaults = SessionPromptDefaults(
+        agent: "removed-agent",
+        model: AgentModel(providerID: "p", modelID: "m", variant: "removed"),
+        fastMode: false,
+      );
+      const staleRefusal = StaleSessionPromptOptionsException(
+        cause: PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent"),
+        causeStackTrace: StackTrace.empty,
+      );
+
+      Future<List<PromptSettings>> sendRefusingFirst({required SessionPromptDefaults defaults}) async {
+        final sent = <PromptSettings>[];
+        await service.sendWithDefaults(
+          sessionId: "s1",
+          defaults: defaults,
+          send: (settings) async {
+            sent.add(settings);
+            if (sent.length == 1) throw staleRefusal;
+          },
+        );
+        return sent;
+      }
+
+      test("is resent once with the agent and variant corrected against the rediscovered catalog", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: true));
+
+        final sent = await sendRefusingFirst(defaults: staleDefaults);
+
+        expect(optionsService.explicitRefreshes.single, (pluginId: "fake", projectId: "/repo"));
+        expect(sent, hasLength(2));
+        expect(sent.last.agent, "build");
+        expect(sent.last.model, const PromptModel(providerID: "p", modelID: "m"));
+        expect(sent.last.variant, const SessionVariant(id: "high"));
+      });
+
+      test("is rethrown when the catalog no longer offers the model", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: false));
+
+        await expectLater(sendRefusingFirst(defaults: staleDefaults), throwsA(same(staleRefusal)));
+      });
+
+      test("is rethrown when the catalog already offers every option", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: true));
+        const current = SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "p", modelID: "m", variant: "high"),
+          fastMode: false,
+        );
+
+        await expectLater(sendRefusingFirst(defaults: current), throwsA(same(staleRefusal)));
+      });
+
+      test("is rethrown when the catalog can't be read", () async {
+        optionsService.refreshOutcome = const SessionOptionsCacheUnavailable();
+
+        await expectLater(sendRefusingFirst(defaults: staleDefaults), throwsA(same(staleRefusal)));
+      });
+    });
+  });
+
+  group("SessionPromptService.correctedDefaults", () {
+    test("keeps an unset agent unset and turns off a fast mode the model doesn't offer", () {
+      final corrected = SessionPromptService.correctedDefaults(
+        defaults: const SessionPromptDefaults(
+          agent: null,
+          model: AgentModel(providerID: "p", modelID: "m", variant: "low"),
+          fastMode: true,
+        ),
+        catalog: _catalog(modelAvailable: true),
+      );
+
+      expect(
+        corrected,
+        const SessionPromptDefaults(
+          agent: null,
+          model: AgentModel(providerID: "p", modelID: "m", variant: "low"),
+          fastMode: false,
+        ),
+      );
+    });
   });
 
   group("SessionPromptService file delivery", () {
@@ -643,3 +726,37 @@ void main() {
 }
 
 Matcher _pluginText(Object? text) => isA<PluginPromptPartText>().having((part) => part.text, "text", text);
+
+SessionOptionsResponse _catalog({required bool modelAvailable}) => SessionOptionsResponse(
+  agents: const Agents(
+    agents: [
+      AgentInfo(name: "explore", description: null, model: null, mode: AgentMode.subagent),
+      AgentInfo(name: "build", description: null, model: null, mode: AgentMode.primary),
+    ],
+  ),
+  providers: ProviderListResponse(
+    items: [
+      ProviderInfo(
+        id: "p",
+        name: "Provider",
+        defaultModelID: "m",
+        models: {
+          "m": ProviderModel(
+            id: "m",
+            providerID: "p",
+            name: "Model",
+            variants: const ["low", "high"],
+            defaultVariant: "high",
+            family: null,
+            isAvailable: modelAvailable,
+            fastMode: null,
+            releaseDate: null,
+          ),
+        },
+      ),
+    ],
+    connectedOnly: false,
+  ),
+  commands: const CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
+);

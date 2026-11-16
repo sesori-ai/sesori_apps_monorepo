@@ -881,6 +881,13 @@ final class _Prompts() implements SessionPromptService {
   }
 
   @override
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) => send(SessionPromptService.settingsFrom(defaults: defaults));
+
+  @override
   Future<void> sendPrompt({
     required String sessionId,
     required String? promptId,

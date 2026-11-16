@@ -129,7 +129,10 @@ The bridge sends the source session a summarise prompt through the existing prom
   through the normal prompt path, and filtering transcripts the harness owns (Claude's JSONL keeps it) would differ per
   harness. So the turn stays in the harness's history, the bridge marks it (D11), and the client folds it into the
   one-line marker (D12). The same rule holds on every harness.
-- **It uses the source's prompt defaults** (agent, model, variant, fast mode), like continuation does.
+- **It uses the source's prompt defaults** (agent, model, variant, fast mode), like continuation does. When the
+  harness refuses them as stale, `SessionPromptService.sendWithDefaults` corrects the agent, variant and fast mode
+  against the rediscovered catalog and resends once, for both the summary request and the handoff; the model is
+  never replaced.
 - **Draft wording**, kept short. Sesori hides it behind the marker, but the harness's own transcript and terminal UI
   still show it:
 

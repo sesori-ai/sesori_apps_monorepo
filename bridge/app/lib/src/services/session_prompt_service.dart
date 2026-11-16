@@ -152,6 +152,33 @@ class SessionPromptService({
     );
   }
 
+  /// Sends a prompt the bridge starts itself (session sending, quota
+  /// continuation) through [send], with the settings [sessionId]'s remembered
+  /// [defaults] give.
+  ///
+  /// When the harness refuses those settings as stale, it recovers the way
+  /// the app does: it rediscovers the catalog, corrects the agent, variant and
+  /// fast mode with [correctedDefaults], and sends once more when that changed
+  /// anything. The model is never replaced. A refusal the correction can't
+  /// answer, such as a model the catalog no longer offers, is rethrown.
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) async {
+    try {
+      await send(settingsFrom(defaults: defaults));
+    } on StaleSessionPromptOptionsException catch (error, stackTrace) {
+      if (defaults == null) rethrow;
+      final catalog = await _rediscoveredCatalog(sessionId: sessionId);
+      if (catalog == null) rethrow;
+      final corrected = correctedDefaults(defaults: defaults, catalog: catalog);
+      if (corrected == null || corrected == defaults) Error.throwWithStackTrace(error, stackTrace);
+      Log.i("Resending a bridge prompt to session $sessionId with options corrected against the harness catalog");
+      await send(settingsFrom(defaults: corrected));
+    }
+  }
+
   Future<void> sendPromptAlreadyReserved({
     required String sessionId,
     required String promptId,
@@ -515,6 +542,26 @@ class SessionPromptService({
     }
   }
 
+  /// The catalog of [sessionId]'s harness, discovered afresh, or null when it
+  /// can't be read.
+  Future<SessionOptionsResponse?> _rediscoveredCatalog({required String sessionId}) async {
+    try {
+      final scope = await _sessionRepository.findSessionOptionsScope(sessionId: sessionId);
+      if (scope == null) return null;
+      final outcome = await _sessionOptionsService.refreshExplicit(
+        pluginId: scope.pluginId,
+        projectId: scope.projectId,
+      );
+      return switch (outcome) {
+        SessionOptionsAvailable(:final response) => response,
+        _ => null,
+      };
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not rediscover the session options of session $sessionId", error, stackTrace);
+      return null;
+    }
+  }
+
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
   ///
   /// Runs on the same serialized family lane as sends, so a cancel cannot
@@ -620,6 +667,30 @@ class SessionPromptService({
       fastMode: defaults?.fastMode ?? false,
       agent: defaults?.agent,
       model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+    );
+  }
+
+  /// [defaults] corrected against [catalog] by the rules the app applies to a
+  /// stale selection: an agent the catalog no longer offers becomes its first
+  /// selectable one, a variant the model no longer offers becomes the model's
+  /// default, and fast mode stays on only while the model offers it. An unset
+  /// agent stays unset, so the harness keeps choosing it.
+  ///
+  /// Null when the catalog no longer offers the model. The session keeps its
+  /// own model, so the user picks another one instead.
+  static SessionPromptDefaults? correctedDefaults({
+    required SessionPromptDefaults defaults,
+    required SessionOptionsResponse catalog,
+  }) {
+    const rules = SessionSelectionRules();
+    final providers = catalog.providers.items;
+    final model = defaults.model;
+    if (model != null && !rules.isModelAvailable(providers: providers, model: model)) return null;
+    final agent = defaults.agent;
+    return SessionPromptDefaults(
+      agent: agent == null ? null : rules.validatedAgentName(agents: catalog.agents.agents, candidates: [agent]),
+      model: rules.withResolvedVariant(providers: providers, model: model),
+      fastMode: rules.resolvedFastMode(providers: providers, model: model, requested: defaults.fastMode),
     );
   }
 }
