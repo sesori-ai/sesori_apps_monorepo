@@ -7044,6 +7044,123 @@ void main() {
     });
   });
 
+  group("a text selection", () {
+    const first = "The first reply's text";
+    const second = "The second reply's text";
+    final replies = [
+      // Timestamped, so each row has one beside it to leave out.
+      _message(messageId: "u0", role: "user", text: "A prompt", createdAtMs: 1700000000000),
+      _message(messageId: "a0", role: "assistant", text: first, createdAtMs: 1700000001000),
+      _message(messageId: "a1", role: "assistant", text: second, createdAtMs: 1700000002000),
+    ];
+
+    PregoReadableSelectionAreaState transcriptArea(WidgetTester tester) => tester.state(
+      find.ancestor(
+        of: find.byKey(const Key("session-detail-message-list-view")),
+        matching: find.byType(PregoReadableSelectionArea),
+      ),
+    );
+
+    PregoReadableSelectionAreaState messageArea(WidgetTester tester, String text) =>
+        tester.state(find.ancestor(of: find.text(text), matching: find.byType(PregoReadableSelectionArea)).first);
+
+    /// Drags from the start of the first reply to the end of the second.
+    Future<void> dragFromFirstIntoSecond(WidgetTester tester) async {
+      final start = tester.getTopLeft(find.text(first)) + const Offset(1, 5);
+      final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await drag.moveTo(tester.getCenter(find.text(second)));
+      await tester.pump();
+      await drag.moveTo(tester.getTopRight(find.text(second)) + const Offset(-1, 5));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      "dragged with a mouse runs from one message into the next, and copies their text in order",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+
+        await dragFromFirstIntoSecond(tester);
+
+        // Line by line, without the prompt above or either row's timestamp,
+        // and each message's menu copies all of it.
+        expect(messageArea(tester, first).selectedText, "$first\n$second");
+        expect(messageArea(tester, second).selectedText, "$first\n$second");
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets(
+      "a right-click on it offers Copy selected text, and a message outside it still offers Copy",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+        await dragFromFirstIntoSecond(tester);
+        final selected = transcriptArea(tester).selectedText;
+
+        await tester.tapAt(
+          tester.getCenter(find.text(first)),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy selected text"), findsOneWidget);
+        expect(transcriptArea(tester).selectedText, selected, reason: "the open menu keeps the selection");
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+
+        await tester.tapAt(
+          tester.getCenter(find.text("A prompt")),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy"), findsOneWidget);
+        expect(find.text("Copy selected text"), findsNothing);
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets("Select text selects only its own message, with the selection's toolbar", (tester) async {
+      await _pumpTurns(tester, messages: replies);
+
+      await tester.longPress(find.text(second));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Select text"));
+      await tester.pumpAndSettle();
+
+      expect(transcriptArea(tester).selectedText, second);
+      expect(messageArea(tester, first).selectedText, isNull);
+      expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
+    });
+
+    testWidgets(
+      "after Select text, the start handle runs into the message above",
+      (tester) async {
+        await _pumpTurns(tester, messages: replies);
+        await tester.longPress(find.text(second));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Select text"));
+        await tester.pumpAndSettle();
+
+        // The start handle stands on the selection's first character.
+        final handle = await tester.startGesture(tester.getTopLeft(find.text(second)) + const Offset(0, 4));
+        await tester.pump();
+        await handle.moveTo(tester.getCenter(find.text(second)) - const Offset(0, 20));
+        await tester.pump();
+        await handle.moveTo(tester.getTopLeft(find.text(first)) + const Offset(1, 5));
+        await tester.pump();
+        await handle.up();
+        await tester.pumpAndSettle();
+
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+  });
+
   group("a turn that ends early", () {
     final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
     final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);

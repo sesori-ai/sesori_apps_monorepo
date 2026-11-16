@@ -1247,16 +1247,21 @@ class ChatHistoryService({
     await _backfillSessionForRead(sessionId: sessionId);
   }
 
-  /// Turns the stored `sent` handoff of the user message [messageId] into its
-  /// not-sent form, after the session's pending captures, and announces the
-  /// change on [historyRefreshes], so a client showing "Summary sent" reloads
-  /// it without waiting for its next history load.
-  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) async {
+  /// Stamps the user message [messageId] with [notSent] in place of its
+  /// stored `sent` handoff, or of none, after the session's pending captures,
+  /// and announces the change on [historyRefreshes], so an open chat shows
+  /// the marker's new state without waiting for its next history load.
+  Future<void> markHandoffNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) async {
     final marked = await _enqueue(
       sessionId: sessionId,
       write: () => _chatHistoryRepository.markHandoffNotSent(
         sessionId: sessionId,
         messageId: messageId,
+        notSent: notSent,
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       ),
     );
