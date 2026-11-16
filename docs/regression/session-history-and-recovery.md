@@ -603,11 +603,12 @@ reconnect or restart.
   replacement. The row a cut-off turn ends on lacks the next row its replay
   holds, so while it is still the store's newest row a re-import matches it by
   its previous row and its content, which the replay may complete when the stop
-  landed mid-stream (an empty Oh My Pi reasoning row, for example). The first
+  landed mid-stream (an empty Oh My Pi reasoning row, for example), provided
+  their known times agree and exactly one replayed row qualifies. The first
   read after a restart, before the plugin resolves the running row, matches it
-  the same way, so it shows once. Opening the session, or the bridge accepting a prompt for it,
-  acknowledges the interruption with one session update; an acknowledged one
-  stays stored. Sessions from a bridge without this report no interruption.
+  the same way, so it shows once. Opening the session, or the bridge accepting
+  a prompt for it, acknowledges the interruption with one session update; an
+  acknowledged one stays stored. Sessions from a bridge without this report no interruption.
 
 ## Regression Levels
 
