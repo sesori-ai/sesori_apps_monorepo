@@ -7729,6 +7729,24 @@ abstract class AppLocalizations {
   /// **'Continue in the same session'**
   String get scheduledTaskContinuesSession;
 
+  /// Each run sheet switch, under Continue in the same session: compact the session between runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-compact'**
+  String get scheduledTaskAutoCompact;
+
+  /// Subtitle under the Auto-compact switch explaining what it does.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacts the session before its prompt cache goes cold, so the next run starts small.'**
+  String get scheduledTaskAutoCompactDetail;
+
+  /// Notice shown when the user taps the Auto-compact switch, which stays off because the task's harness cannot compact a session when asked.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} can\'t compact on request'**
+  String scheduledTaskAutoCompactUnsupported(String harness);
+
   /// Each run sheet heading for how a run answers permission requests.
   ///
   /// In en, this message translates to:

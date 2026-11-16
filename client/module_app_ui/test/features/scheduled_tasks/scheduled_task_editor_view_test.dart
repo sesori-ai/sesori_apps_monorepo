@@ -56,6 +56,7 @@ const _composing = NewSessionState.composing(project: _project, config: _config,
 const _submission = TaskComposerSubmission(
   project: _project,
   pluginId: "fixture",
+  compactsOnRequest: true,
   agent: null,
   model: null,
   variant: null,

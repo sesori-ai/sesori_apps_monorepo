@@ -1309,6 +1309,7 @@ class NewSessionCubit({
           submission: TaskComposerSubmission(
             project: current.project,
             pluginId: plugin.id,
+            compactsOnRequest: plugin.supportsCompactionOnRequest,
             agent: data.agent,
             model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
             variant: variant == null ? null : SessionVariant(id: variant),

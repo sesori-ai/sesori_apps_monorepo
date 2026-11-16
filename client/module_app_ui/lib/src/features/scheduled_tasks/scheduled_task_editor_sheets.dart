@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 import "../session_list/session_list_headings.dart";
 import "scheduled_task_formatter.dart";
 
@@ -22,12 +23,20 @@ Future<void> showScheduledTaskWhenSheet({required BuildContext context}) {
 }
 
 /// Opens the Each run sheet over the task editor, applying each choice at once.
+/// The task's composer says which harness the task runs on.
 Future<void> showScheduledTaskEachRunSheet({required BuildContext context}) {
   final cubit = context.read<ScheduledTaskEditorCubit>();
+  final composer = context.read<NewSessionCubit>();
   return showPregoModal<void>(
     context: context,
     title: context.loc.scheduledTaskEachRun,
-    builder: (_) => BlocProvider.value(value: cubit, child: const _EachRunSheet()),
+    builder: (_) => MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: cubit),
+        BlocProvider.value(value: composer),
+      ],
+      child: const _EachRunSheet(),
+    ),
   );
 }
 
@@ -257,43 +266,105 @@ class const _EachRunSheet() extends StatelessWidget {
     final ready = _readyOf(cubit.state);
     if (ready == null) return const SizedBox.shrink();
     final loc = context.loc;
-    final sameSession = ready.runMode is TaskRunModeSameSession;
+    final autoCompact = switch (ready.runMode) {
+      TaskRunModeSameSession(:final autoCompact) => autoCompact,
+      TaskRunModeNewSession() || TaskRunModeUnknown() => null,
+    };
     final approveAll = ready.approvalMode == TaskApprovalMode.approveAll;
-    return _SheetBody(
+    // The auto-compact switch opens and folds on its own under Continue, so
+    // the Approvals rows below glide rather than jump; the sheet follows it.
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PregoGroupedRows(
+            children: [
+              _ChoiceRow(
+                key: const Key("scheduled-task-new-session"),
+                label: loc.scheduledTaskStartsNewSession,
+                selected: autoCompact == null,
+                onTap: () => cubit.setSameSession(sameSession: false),
+              ),
+              _ChoiceRow(
+                key: const Key("scheduled-task-same-session"),
+                label: loc.scheduledTaskContinuesSession,
+                selected: autoCompact != null,
+                onTap: () => cubit.setSameSession(sameSession: true),
+              ),
+            ],
+          ),
+          AnimatedBanner(
+            banner: switch (autoCompact) {
+              final autoCompact? => Padding(
+                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+                child: _AutoCompactRow(autoCompact: autoCompact),
+              ),
+              null => null,
+            },
+          ),
+          SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
+          PregoGroupedRows(
+            children: [
+              _ChoiceRow(
+                key: const Key("scheduled-task-approvals-ask"),
+                label: loc.scheduledTaskApprovalsAsk,
+                selected: !approveAll,
+                onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.ask),
+              ),
+              _ChoiceRow(
+                key: const Key("scheduled-task-approvals-all"),
+                label: loc.scheduledTaskApprovalsAll,
+                selected: approveAll,
+                onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.approveAll),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A same-session task's auto-compact switch. On a harness that cannot
+/// compact on request it reads off and does nothing, and a tap says why.
+class const _AutoCompactRow({required final bool autoCompact}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final cubit = context.read<ScheduledTaskEditorCubit>();
+    // Null until the composer reports a harness; the choice stands meanwhile,
+    // and Save holds it to what the harness can do.
+    final harness = context.select((NewSessionCubit composer) => composer.state.config?.selectedPlugin);
+    final unsupportedBy = switch (harness) {
+      final harness? when !harness.supportsCompactionOnRequest => harness.displayName,
+      _ => null,
+    };
+    final on = autoCompact && unsupportedBy == null;
+    void toggle() {
+      if (unsupportedBy == null) return cubit.setAutoCompact(autoCompact: !on);
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.scheduledTaskAutoCompactUnsupported(unsupportedBy),
+        variant: PregoPopupAlertsNotificationsVariant.info,
+      );
+    }
+
+    return PregoGroupedRows(
       children: [
-        PregoGroupedRows(
-          children: [
-            _ChoiceRow(
-              key: const Key("scheduled-task-new-session"),
-              label: loc.scheduledTaskStartsNewSession,
-              selected: !sameSession,
-              onTap: () => cubit.setSameSession(sameSession: false),
+        MergeSemantics(
+          child: PregoGroupedRow(
+            key: const Key("scheduled-task-auto-compact"),
+            title: Text(loc.scheduledTaskAutoCompact),
+            subtitle: Text(loc.scheduledTaskAutoCompactDetail),
+            // Off and disabled where the harness cannot compact; its taps
+            // reach the row, which says why.
+            trailing: PregoSwitch(
+              value: on,
+              onChanged: unsupportedBy == null ? (value) => cubit.setAutoCompact(autoCompact: value) : null,
             ),
-            _ChoiceRow(
-              key: const Key("scheduled-task-same-session"),
-              label: loc.scheduledTaskContinuesSession,
-              selected: sameSession,
-              onTap: () => cubit.setSameSession(sameSession: true),
-            ),
-            // Step 11 adds the auto-compact switch here, under Continue.
-          ],
-        ),
-        SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
-        PregoGroupedRows(
-          children: [
-            _ChoiceRow(
-              key: const Key("scheduled-task-approvals-ask"),
-              label: loc.scheduledTaskApprovalsAsk,
-              selected: !approveAll,
-              onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.ask),
-            ),
-            _ChoiceRow(
-              key: const Key("scheduled-task-approvals-all"),
-              label: loc.scheduledTaskApprovalsAll,
-              selected: approveAll,
-              onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.approveAll),
-            ),
-          ],
+            onTap: toggle,
+          ),
         ),
       ],
     );
