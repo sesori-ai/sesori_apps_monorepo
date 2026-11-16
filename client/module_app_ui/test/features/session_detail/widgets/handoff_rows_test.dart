@@ -174,6 +174,8 @@ void main() {
             valueListenable: reserve,
             builder: (context, room, _) => ListView(
               reverse: true,
+              // The phone's physics, which spring back from past the end.
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               padding: EdgeInsets.only(top: room),
               children: [
                 const SizedBox(height: 60, child: Text("reply")),
@@ -188,9 +190,19 @@ void main() {
     final prompt = tester.getTopLeft(find.text("prompt")).dy;
     expect(prompt, greaterThan(0));
 
-    await toggleHolding(tester: tester, edge: () => tester.getTopLeft(card));
+    final top = tester.getTopLeft(card).dy;
+    final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+    await tester.tap(toggle);
+    for (var frame = 0; frame < 30; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.getTopLeft(card).dy, moreOrLessEquals(top, epsilon: 0.5));
+      // A hold past the end would spring back, and the spring fight the hold.
+      expect(position.isScrollingNotifier.value, isFalse);
+    }
     expect(tester.getTopLeft(find.text("prompt")).dy, prompt);
     expect(tester.getSize(card).height, greaterThan(600));
+    // Once grown, only the room on screen stays: none to scroll into above.
+    expect(position.maxScrollExtent - position.pixels, lessThanOrEqualTo(1));
   });
 
   testWidgets("a summary that fits shows whole, without Show all", (tester) async {

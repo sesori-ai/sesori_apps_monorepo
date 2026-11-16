@@ -834,7 +834,7 @@ including l10n output.
   - "Show less" tapped while the card's top is scrolled off screen keeps the toggle under the finger, and the top
     comes down to it. Holding the top there would throw the card off the screen. Otherwise the top stays put, as
     planned.
-  - A transcript shorter than the screen can't scroll, so before the card grows the list keeps the empty space above its oldest row as top padding (`TranscriptTopReserve`); the card then holds its top there too, and gives the space back once it has collapsed.
+  - A transcript shorter than the screen can't scroll, so before the card grows the list keeps the empty space above its oldest row, plus the growth to come, as top padding (`TranscriptTopReserve`), and the card starts growing once that has laid out. Every hold then stays in range (a hold past the end starts a spring back, whose end notification lands mid-layout). The room ahead goes back once the card has grown, the rest once it has collapsed.
 
 ### Step 9: archive the source after sending
 

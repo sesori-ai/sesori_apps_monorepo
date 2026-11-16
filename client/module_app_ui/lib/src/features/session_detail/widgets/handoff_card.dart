@@ -1,3 +1,4 @@
+import "dart:math";
 import "dart:ui" show lerpDouble;
 
 import "package:flutter/rendering.dart";
@@ -53,6 +54,10 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
   /// coming down to it, so the card isn't thrown off screen.
   bool _holdsTop = true;
 
+  /// The room a short transcript keeps above it for the growth still to come,
+  /// given back once the card has grown.
+  double _roomAhead = 0;
+
   String get _storageId => "handoff-card-expanded:${widget.messageId}";
 
   bool get _expanded => _expansion.isForwardOrCompleted;
@@ -63,6 +68,10 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
     if (PageStorage.maybeOf(context)?.readState(context, identifier: _storageId) == true) _expansion.value = 1;
     _eased.addListener(_keepTopInPlace);
     _expansion.addStatusListener((status) {
+      if (status.isCompleted && _roomAhead > 0) {
+        giveBackTranscriptSpaceAbove(context: context, extent: _roomAhead);
+        _roomAhead = 0;
+      }
       if (status.isDismissed) releaseTranscriptSpaceAbove(context: context);
     });
   }
@@ -77,8 +86,21 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
   void _toggle() {
     final expanding = !_expanded;
     _holdsTop = expanding || _topOnScreen();
-    if (expanding) reserveTranscriptSpaceAbove(context: context);
     PageStorage.maybeOf(context)?.writeState(context, expanding, identifier: _storageId);
+    final ahead = max(0.0, (_summaryHeight ?? 0) - HandoffCard.collapsedSummaryHeight);
+    if (expanding && reserveTranscriptSpaceAbove(context: context, ahead: ahead)) {
+      _roomAhead = ahead;
+      // The room is there to scroll into once the transcript lays out with it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _move(expanding: true);
+      });
+    } else {
+      _move(expanding: expanding);
+    }
+    setState(() {});
+  }
+
+  void _move({required bool expanding}) {
     if (context.isReducedMotion || pregoActivatedByKeyboard) {
       _expansion.value = expanding ? 1 : 0;
     } else if (expanding) {
@@ -86,7 +108,6 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
     } else {
       _expansion.reverse();
     }
-    setState(() {});
   }
 
   bool _topOnScreen() {
