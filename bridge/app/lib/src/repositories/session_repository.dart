@@ -1060,7 +1060,10 @@ class SessionRepository({
       return await _runtime.useIfActive<Duration?>(
         pluginId: binding.pluginId,
         operation: SessionOperation.getPromptCacheLife,
-        body: (plugin, _) => plugin.getPromptCacheLife(sessionId: binding.backendSessionId),
+        body: (plugin, _) {
+          _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+          return plugin.getPromptCacheLife(sessionId: binding.backendSessionId);
+        },
       );
     } on Object catch (error, stackTrace) {
       Log.w("Could not read session $sessionId's prompt-cache life", error, stackTrace);
