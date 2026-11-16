@@ -37,28 +37,37 @@ class PreferRequiredNamedParametersRule extends NoSlopMultiRule {
   PreferRequiredNamedParametersRule({required super.ignoreTestFiles})
     : super(
         name: codePositionalParams.lowerCaseName,
-        description: 'Enforces required named parameters for multi-argument functions.',
+        description:
+            'Enforces required named parameters for multi-argument functions.',
       );
 
   static const codePositionalParams = LintCode(
     'prefer_required_named_parameters',
     'Make named: {0} (only 1 positional allowed)',
-    correctionMessage: 'Use named parameters: {required Type name} or {Type name = default}.',
+    correctionMessage:
+        'Use named parameters: {required Type name} or {Type name = default}.',
     uniqueName: 'LintCode.prefer_required_named_parameters.positional',
   );
 
   static const codeMissingRequired = LintCode(
     'prefer_required_named_parameters',
     'Add required or default: {0}',
-    correctionMessage: 'Use named parameters: {required Type name} or {Type name = default}.',
+    correctionMessage:
+        'Use named parameters: {required Type name} or {Type name = default}.',
     uniqueName: 'LintCode.prefer_required_named_parameters.required',
   );
 
   @override
-  List<DiagnosticCode> get diagnosticCodes => [codePositionalParams, codeMissingRequired];
+  List<DiagnosticCode> get diagnosticCodes => [
+    codePositionalParams,
+    codeMissingRequired,
+  ];
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     final visitor = _Visitor(this);
     registry.addFunctionDeclaration(this, visitor);
     registry.addMethodDeclaration(this, visitor);
@@ -124,7 +133,8 @@ class _Visitor extends SimpleAstVisitor<void> {
       }
 
       if (!param.isRequired && param.defaultClause == null) {
-        if (!_isNullableParameter(param) && !_isNullableFunctionParameter(param)) {
+        if (!_isNullableParameter(param) &&
+            !_isNullableFunctionParameter(param)) {
           continue;
         }
         if (_isNullableFunctionParameter(param)) {
@@ -180,7 +190,8 @@ class _Visitor extends SimpleAstVisitor<void> {
   bool _hasQueryParamAnnotation(FormalParameter param) {
     final metadata = param.metadata;
     for (final annotation in metadata) {
-      if (annotation.name.name == 'QueryParam' || annotation.name.name == 'queryParam') {
+      if (annotation.name.name == 'QueryParam' ||
+          annotation.name.name == 'queryParam') {
         return true;
       }
     }

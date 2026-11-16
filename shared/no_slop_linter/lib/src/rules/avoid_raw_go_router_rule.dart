@@ -31,7 +31,8 @@ class AvoidRawGoRouterRule extends NoSlopRule {
   AvoidRawGoRouterRule({required super.ignoreTestFiles})
     : super(
         name: code.lowerCaseName,
-        description: 'Forbids raw GoRouter navigation and direct GoRouter access.',
+        description:
+            'Forbids raw GoRouter navigation and direct GoRouter access.',
       );
 
   static const code = LintCode(

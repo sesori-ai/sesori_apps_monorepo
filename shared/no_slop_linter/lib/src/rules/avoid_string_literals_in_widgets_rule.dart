@@ -23,7 +23,10 @@ import 'package:analyzer/error/error.dart';
 /// - `Text('$count items')` - interpolated (likely dynamic, allowed)
 class AvoidStringLiteralsInWidgetsRule extends NoSlopRule {
   AvoidStringLiteralsInWidgetsRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Forbids hardcoded strings in Text widgets.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids hardcoded strings in Text widgets.',
+      );
 
   static const code = LintCode(
     'avoid_string_literals_in_widgets',
@@ -35,7 +38,10 @@ class AvoidStringLiteralsInWidgetsRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addInstanceCreationExpression(this, _Visitor(this));
   }
 }

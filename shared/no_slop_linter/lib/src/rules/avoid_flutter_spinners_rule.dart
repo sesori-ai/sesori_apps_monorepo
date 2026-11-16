@@ -63,7 +63,8 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (libraryIdentifier == null) return;
 
     final spinnerPackage = _spinnerPackages[typeName];
-    if (spinnerPackage != null && _isFromPackage(libraryIdentifier, spinnerPackage)) {
+    if (spinnerPackage != null &&
+        _isFromPackage(libraryIdentifier, spinnerPackage)) {
       rule.reportAtNode(constructorName);
       return;
     }

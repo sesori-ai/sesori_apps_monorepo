@@ -40,8 +40,14 @@ void open() {
 
     await assertDiagnostics(source, [
       lint(source.indexOf('showDialog<'), 'showDialog'.length),
-      lint(source.indexOf('showModalBottomSheet<'), 'showModalBottomSheet'.length),
-      lint(source.indexOf('showCupertinoModalPopup<'), 'showCupertinoModalPopup'.length),
+      lint(
+        source.indexOf('showModalBottomSheet<'),
+        'showModalBottomSheet'.length,
+      ),
+      lint(
+        source.indexOf('showCupertinoModalPopup<'),
+        'showCupertinoModalPopup'.length,
+      ),
     ]);
   }
 

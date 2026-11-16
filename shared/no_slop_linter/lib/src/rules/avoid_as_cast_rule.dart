@@ -24,19 +24,26 @@ import '../utils/no_slop_rule.dart';
 /// - `switch (object) { case String s => ... }` - pattern matching
 class AvoidAsCastRule extends NoSlopRule {
   AvoidAsCastRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Forbids type casting with as.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids type casting with as.',
+      );
 
   static const code = LintCode(
     'avoid_as_cast',
     "Avoid type casting with 'as'. It can throw TypeError at runtime.",
-    correctionMessage: "Use 'is' for type checking with smart cast, or pattern matching.",
+    correctionMessage:
+        "Use 'is' for type checking with smart cast, or pattern matching.",
   );
 
   @override
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addAsExpression(this, _Visitor(this));
   }
 }

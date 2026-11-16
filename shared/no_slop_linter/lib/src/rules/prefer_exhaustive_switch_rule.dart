@@ -49,7 +49,11 @@ import 'package:analyzer/error/error.dart';
 /// - switch (stringValue) { case 'a': ...; default: ... } - default OK for String
 class PreferExhaustiveSwitchRule extends NoSlopRule {
   PreferExhaustiveSwitchRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Forbids catch-all cases in switches on enums and sealed classes.');
+    : super(
+        name: code.lowerCaseName,
+        description:
+            'Forbids catch-all cases in switches on enums and sealed classes.',
+      );
 
   static const code = LintCode(
     'prefer_exhaustive_switch',
@@ -61,7 +65,10 @@ class PreferExhaustiveSwitchRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     final visitor = _Visitor(rule: this, typeSystem: context.typeSystem);
     registry.addSwitchStatement(this, visitor);
     registry.addSwitchExpression(this, visitor);
@@ -114,12 +121,18 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (scrutineeType == null || !_isExhaustiveType(scrutineeType)) return;
 
     final picksOutValues = node.cases.any(
-      (member) => _picksOutValue(pattern: member.guardedPattern.pattern, scrutineeType: scrutineeType),
+      (member) => _picksOutValue(
+        pattern: member.guardedPattern.pattern,
+        scrutineeType: scrutineeType,
+      ),
     );
     if (!picksOutValues) return;
 
     for (final member in node.cases) {
-      if (_isCatchAll(guardedPattern: member.guardedPattern, scrutineeType: scrutineeType)) {
+      if (_isCatchAll(
+        guardedPattern: member.guardedPattern,
+        scrutineeType: scrutineeType,
+      )) {
         rule.reportAtNode(member);
       }
     }
@@ -139,26 +152,43 @@ class _Visitor extends SimpleAstVisitor<void> {
 
   /// Whether [guardedPattern] is unguarded and matches every non-null value of
   /// [scrutineeType].
-  bool _isCatchAll({required GuardedPattern guardedPattern, required DartType scrutineeType}) {
+  bool _isCatchAll({
+    required GuardedPattern guardedPattern,
+    required DartType scrutineeType,
+  }) {
     if (guardedPattern.whenClause != null) return false;
-    return _matchesEveryValue(pattern: guardedPattern.pattern, scrutineeType: scrutineeType);
+    return _matchesEveryValue(
+      pattern: guardedPattern.pattern,
+      scrutineeType: scrutineeType,
+    );
   }
 
   /// Whether [pattern] names a specific value or subtype, rather than matching
   /// every non-null value or only null.
-  bool _picksOutValue({required DartPattern pattern, required DartType scrutineeType}) {
+  bool _picksOutValue({
+    required DartPattern pattern,
+    required DartType scrutineeType,
+  }) {
     final unwrapped = pattern.unParenthesized;
-    if (unwrapped is ConstantPattern && unwrapped.expression is NullLiteral) return false;
-    return !_matchesEveryValue(pattern: unwrapped, scrutineeType: scrutineeType);
+    if (unwrapped is ConstantPattern && unwrapped.expression is NullLiteral)
+      return false;
+    return !_matchesEveryValue(
+      pattern: unwrapped,
+      scrutineeType: scrutineeType,
+    );
   }
 
-  bool _matchesEveryValue({required DartPattern pattern, required DartType scrutineeType}) {
+  bool _matchesEveryValue({
+    required DartPattern pattern,
+    required DartType scrutineeType,
+  }) {
     return switch (pattern.unParenthesized) {
-      WildcardPattern(:final type) || DeclaredVariablePattern(:final type) => _coversScrutinee(
-        typeAnnotation: type,
+      WildcardPattern(:final type) || DeclaredVariablePattern(:final type) =>
+        _coversScrutinee(typeAnnotation: type, scrutineeType: scrutineeType),
+      NullCheckPattern(:final pattern) => _matchesEveryValue(
+        pattern: pattern,
         scrutineeType: scrutineeType,
       ),
-      NullCheckPattern(:final pattern) => _matchesEveryValue(pattern: pattern, scrutineeType: scrutineeType),
       ObjectPattern(:final type, :final fields) =>
         _coversScrutinee(typeAnnotation: type, scrutineeType: scrutineeType) &&
             fields.every((field) => _bindsWholeField(field.pattern)),
@@ -169,15 +199,22 @@ class _Visitor extends SimpleAstVisitor<void> {
   /// Whether a field subpattern matches every value of its field, null included.
   bool _bindsWholeField(DartPattern pattern) {
     return switch (pattern.unParenthesized) {
-      WildcardPattern(type: null) || DeclaredVariablePattern(type: null) => true,
+      WildcardPattern(type: null) ||
+      DeclaredVariablePattern(type: null) => true,
       _ => false,
     };
   }
 
-  bool _coversScrutinee({required TypeAnnotation? typeAnnotation, required DartType scrutineeType}) {
+  bool _coversScrutinee({
+    required TypeAnnotation? typeAnnotation,
+    required DartType scrutineeType,
+  }) {
     if (typeAnnotation == null) return true;
     final patternType = typeAnnotation.type;
     if (patternType == null) return false;
-    return typeSystem.isSubtypeOf(typeSystem.promoteToNonNull(scrutineeType), patternType);
+    return typeSystem.isSubtypeOf(
+      typeSystem.promoteToNonNull(scrutineeType),
+      patternType,
+    );
   }
 }

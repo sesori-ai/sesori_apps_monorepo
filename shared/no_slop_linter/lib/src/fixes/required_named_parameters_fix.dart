@@ -8,9 +8,8 @@ import 'package:analyzer/source/source_range.dart';
 /// Shared helper mixin for required named parameter fixes.
 mixin _RequiredNamedParamsFixHelpers {
   /// Collects positional and named parameters, skipping super parameters.
-  ({List<FormalParameter> positionalParams, List<FormalParameter> namedParams}) _collectParams(
-    FormalParameterList paramList,
-  ) {
+  ({List<FormalParameter> positionalParams, List<FormalParameter> namedParams})
+  _collectParams(FormalParameterList paramList) {
     final positionalParams = <FormalParameter>[];
     final namedParams = <FormalParameter>[];
 
@@ -37,7 +36,9 @@ mixin _RequiredNamedParamsFixHelpers {
 
   /// Ensure a named param has 'required' if it's nullable without a default.
   String _ensureRequired(FormalParameter param) {
-    if (!param.isRequired && param.defaultClause == null && _isNullableParameter(param)) {
+    if (!param.isRequired &&
+        param.defaultClause == null &&
+        _isNullableParameter(param)) {
       return _insertRequired(param);
     }
     return param.toSource();
@@ -79,12 +80,15 @@ mixin _RequiredNamedParamsFixHelpers {
 
   /// Check if a named param needs 'required' added.
   bool _needsRequired(FormalParameter param) {
-    return !param.isRequired && param.defaultClause == null && _isNullableParameter(param);
+    return !param.isRequired &&
+        param.defaultClause == null &&
+        _isNullableParameter(param);
   }
 }
 
 /// A quick fix that converts all positional params to required named params.
-class RequiredNamedParamsAllNamedFix extends ResolvedCorrectionProducer with _RequiredNamedParamsFixHelpers {
+class RequiredNamedParamsAllNamedFix extends ResolvedCorrectionProducer
+    with _RequiredNamedParamsFixHelpers {
   RequiredNamedParamsAllNamedFix({required super.context});
 
   static const _fixKind = FixKind(
@@ -94,7 +98,8 @@ class RequiredNamedParamsAllNamedFix extends ResolvedCorrectionProducer with _Re
   );
 
   @override
-  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;
@@ -132,7 +137,8 @@ class RequiredNamedParamsAllNamedFix extends ResolvedCorrectionProducer with _Re
 }
 
 /// A quick fix that keeps the first positional param and converts the rest to required named.
-class RequiredNamedParamsKeepFirstFix extends ResolvedCorrectionProducer with _RequiredNamedParamsFixHelpers {
+class RequiredNamedParamsKeepFirstFix extends ResolvedCorrectionProducer
+    with _RequiredNamedParamsFixHelpers {
   RequiredNamedParamsKeepFirstFix({required super.context});
 
   static const _fixKind = FixKind(
@@ -142,7 +148,8 @@ class RequiredNamedParamsKeepFirstFix extends ResolvedCorrectionProducer with _R
   );
 
   @override
-  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;
@@ -175,7 +182,8 @@ class RequiredNamedParamsKeepFirstFix extends ResolvedCorrectionProducer with _R
     if (namedParts.isEmpty) {
       newParamList = '(${positionalParts.join(', ')})';
     } else {
-      newParamList = '(${positionalParts.join(', ')}, {${namedParts.join(', ')}})';
+      newParamList =
+          '(${positionalParts.join(', ')}, {${namedParts.join(', ')}})';
     }
 
     await builder.addDartFileEdit(file, (builder) {
@@ -188,7 +196,8 @@ class RequiredNamedParamsKeepFirstFix extends ResolvedCorrectionProducer with _R
 }
 
 /// A quick fix that adds 'required' to nullable named params that need it.
-class RequiredNamedParamsAddRequiredFix extends ResolvedCorrectionProducer with _RequiredNamedParamsFixHelpers {
+class RequiredNamedParamsAddRequiredFix extends ResolvedCorrectionProducer
+    with _RequiredNamedParamsFixHelpers {
   RequiredNamedParamsAddRequiredFix({required super.context});
 
   static const _fixKind = FixKind(
@@ -198,7 +207,8 @@ class RequiredNamedParamsAddRequiredFix extends ResolvedCorrectionProducer with 
   );
 
   @override
-  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;

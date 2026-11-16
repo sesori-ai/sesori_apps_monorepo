@@ -23,7 +23,10 @@ import '../utils/no_slop_rule.dart';
 /// - When parameter type is specifically `EdgeInsets` (not `EdgeInsetsGeometry`)
 class PreferEdgeInsetsDirectionalRule extends NoSlopRule {
   PreferEdgeInsetsDirectionalRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Enforces EdgeInsetsDirectional for RTL support.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Enforces EdgeInsetsDirectional for RTL support.',
+      );
 
   static const code = LintCode(
     'prefer_edge_insets_directional',
@@ -37,7 +40,10 @@ class PreferEdgeInsetsDirectionalRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addInstanceCreationExpression(this, _Visitor(this));
   }
 }
@@ -55,7 +61,9 @@ class _Visitor extends SimpleAstVisitor<void> {
 
     final constructorName = node.constructorName.name?.name;
     if (constructorName == null ||
-        !PreferEdgeInsetsDirectionalRule._problematicConstructors.contains(constructorName)) {
+        !PreferEdgeInsetsDirectionalRule._problematicConstructors.contains(
+          constructorName,
+        )) {
       return;
     }
 

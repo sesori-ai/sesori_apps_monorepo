@@ -56,7 +56,14 @@ void main() {
         ScheduledTaskRun(
           id: "run-2",
           scheduledFor: ScheduledTaskInstant(at: 1, offsetMinutes: -300),
-          outcome: ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+          outcome: ScheduledTaskRunOutcome.failed(
+            reason: TaskRunFailureReason.modelUnavailable,
+            attempt: ScheduledTaskRunAttempt(
+              pluginId: "claude",
+              model: PromptModel(providerID: "anthropic", modelID: "opus"),
+              projectPath: null,
+            ),
+          ),
         ),
         ScheduledTaskRun(
           id: "run-1",
@@ -99,7 +106,8 @@ void main() {
       expect(ScheduledTaskRunOutcome.fromJson({"kind": "cancelled"}), isA<ScheduledTaskRunOutcomeUnknown>());
       expect(
         ScheduledTaskRunOutcome.fromJson({"kind": "failed", "reason": "quotaExhausted"}),
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.unknown),
+        // An older bridge sends no attempt.
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.unknown, attempt: null),
       );
       expect(
         SessionScheduledTaskMark.fromJson({"taskId": "t", "name": "n", "kind": "chained"}).kind,

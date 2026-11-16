@@ -95,9 +95,17 @@ void main() {
 
   test("run history keeps the newest rows, newest first, with their outcomes", () async {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    const failed = ScheduledTaskRunOutcome.failed(
+      reason: TaskRunFailureReason.modelUnavailable,
+      attempt: ScheduledTaskRunAttempt(
+        pluginId: "claude",
+        model: PromptModel(providerID: "anthropic", modelID: "opus"),
+        projectPath: "/repo",
+      ),
+    );
     await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+      outcome: failed,
       minute: 1,
     );
     await recordRun(
@@ -109,7 +117,7 @@ void main() {
     final runs = await repository.listRuns(taskId: task.id);
     expect(runs.map((run) => run.outcome), [
       const ScheduledTaskRunOutcome.started(sessionId: null, late: true),
-      const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+      failed,
     ]);
     expect(runs.first.scheduledFor, const ScheduledTaskInstant(at: 2, offsetMinutes: 120));
     expect((await repository.latestRuns(taskIds: {task.id}))[task.id], runs.first);

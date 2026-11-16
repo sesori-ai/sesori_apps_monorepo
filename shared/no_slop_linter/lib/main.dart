@@ -24,9 +24,11 @@
 import 'package:analysis_server_plugin/plugin.dart';
 import 'package:analysis_server_plugin/registry.dart';
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/plugin_server.dart' show PluginServer;
+import 'package:analysis_server_plugin/src/plugin_server.dart'
+    show PluginServer;
 // ignore: implementation_imports
-import 'package:analysis_server_plugin/src/registry.dart' show PluginRegistryImpl;
+import 'package:analysis_server_plugin/src/registry.dart'
+    show PluginRegistryImpl;
 
 import 'src/fixes/add_return_type_fix.dart';
 import 'src/fixes/exhaustive_switch_fix.dart';
@@ -62,22 +64,46 @@ class _NoSlopLinterPlugin extends Plugin {
     // Warning rules (enabled by default)
     registry.registerWarningRule(AvoidAsCastRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidBangOperatorRule(ignoreTestFiles: false));
-    registry.registerWarningRule(AvoidDynamicReturnTypeRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidInteractionModeReadsRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidLegacyFlutterDesignImportsRule(ignoreTestFiles: false));
+    registry.registerWarningRule(
+      AvoidDynamicReturnTypeRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      AvoidFlutterSpinnersRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      AvoidImplicitTostringRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      AvoidInteractionModeReadsRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      AvoidLegacyFlutterDesignImportsRule(ignoreTestFiles: false),
+    );
     registry.registerWarningRule(AvoidMaterialIconsRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));
+    registry.registerWarningRule(
+      AvoidMutableClassFieldsRule(ignoreTestFiles: true),
+    );
     registry.registerWarningRule(AvoidNavigatorOfRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidRawGoRouterRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidRawModalPresentersRule(ignoreTestFiles: true));
-    registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true));
+    registry.registerWarningRule(
+      AvoidRawModalPresentersRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true),
+    );
     registry.registerWarningRule(PreferSpecificTypeRule(ignoreTestFiles: true));
-    registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));
-    registry.registerWarningRule(PreferExhaustiveSwitchRule(ignoreTestFiles: true));
-    registry.registerWarningRule(PreferRequiredNamedParametersRule(ignoreTestFiles: true));
-    registry.registerWarningRule(PreferTextAlignDirectionalRule(ignoreTestFiles: true));
+    registry.registerWarningRule(
+      PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      PreferExhaustiveSwitchRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      PreferRequiredNamedParametersRule(ignoreTestFiles: true),
+    );
+    registry.registerWarningRule(
+      PreferTextAlignDirectionalRule(ignoreTestFiles: true),
+    );
 
     // Fixes
     registry.registerFixForRule(

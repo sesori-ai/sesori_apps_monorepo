@@ -28,7 +28,10 @@ import 'package:analyzer/error/error.dart';
 /// - Fields in private classes (`class _Foo { String bar; }`) are allowed
 class AvoidMutableClassFieldsRule extends NoSlopRule {
   AvoidMutableClassFieldsRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Forbids non-final public instance fields.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Forbids non-final public instance fields.',
+      );
 
   static const code = LintCode(
     'avoid_mutable_class_fields',
@@ -40,7 +43,10 @@ class AvoidMutableClassFieldsRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addFieldDeclaration(this, _Visitor(this));
   }
 }

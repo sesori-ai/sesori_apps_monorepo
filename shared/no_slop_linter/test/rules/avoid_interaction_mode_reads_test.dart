@@ -9,9 +9,12 @@ void main() {
   });
 }
 
-const _scope = "import 'package:theme_prego/interactions/prego_interaction_scope.dart';";
-const _designSystem = "import 'package:theme_prego/theme/prego_design_system.dart';";
-const _composer = "import 'package:sesori_app_ui/src/features/session_detail/composer_presentation_scope.dart';";
+const _scope =
+    "import 'package:theme_prego/interactions/prego_interaction_scope.dart';";
+const _designSystem =
+    "import 'package:theme_prego/theme/prego_design_system.dart';";
+const _composer =
+    "import 'package:sesori_app_ui/src/features/session_detail/composer_presentation_scope.dart';";
 const _imports = '$_scope\n$_designSystem\n$_composer\n';
 
 /// The package under test (`test`) stands in for a product shell. Fake
@@ -65,11 +68,14 @@ class PregoDesignSystem {
       PregoDesignSystem(isDesktopScale: isDesktopScale ?? this.isDesktopScale);
 }
 ''');
-    newFile('$_appUi/lib/src/features/session_detail/composer_presentation_scope.dart', r'''
+    newFile(
+      '$_appUi/lib/src/features/session_detail/composer_presentation_scope.dart',
+      r'''
 enum ComposerPresentation { touch, pointer }
 
 bool isPointer(ComposerPresentation presentation) => presentation == ComposerPresentation.pointer;
-''');
+''',
+    );
   }
 
   void test_reportsEachReadInSharedCode() async {
@@ -89,20 +95,33 @@ bool handedIn(PregoInteractionMode mode) => mode == PregoInteractionMode.touch;
     newFile(_sharedFile, source);
 
     await assertDiagnosticsInFile(_sharedFile, [
-      lint(source.indexOf('PregoInteractionScope.of(context) =='), 'PregoInteractionScope.of(context)'.length),
-      lint(source.indexOf('PregoInteractionScope.of(context) !='), 'PregoInteractionScope.of(context)'.length),
+      lint(
+        source.indexOf('PregoInteractionScope.of(context) =='),
+        'PregoInteractionScope.of(context)'.length,
+      ),
+      lint(
+        source.indexOf('PregoInteractionScope.of(context) !='),
+        'PregoInteractionScope.of(context)'.length,
+      ),
       lint(
         source.indexOf('context.getInheritedWidgetOfExactType'),
         'context.getInheritedWidgetOfExactType<PregoInteractionScope>()'.length,
       ),
       lint(
         source.indexOf('context.dependOnInheritedWidgetOfExactType'),
-        'context.dependOnInheritedWidgetOfExactType<PregoInteractionScope>()'.length,
+        'context.dependOnInheritedWidgetOfExactType<PregoInteractionScope>()'
+            .length,
       ),
       lint(source.indexOf('isDesktopScale;'), 'isDesktopScale'.length),
-      lint(source.indexOf('ComposerPresentation.pointer;'), 'ComposerPresentation.pointer'.length),
+      lint(
+        source.indexOf('ComposerPresentation.pointer;'),
+        'ComposerPresentation.pointer'.length,
+      ),
       lint(source.indexOf('.touch;\nbool handedIn'), '.touch'.length),
-      lint(source.indexOf('PregoInteractionMode.touch;'), 'PregoInteractionMode.touch'.length),
+      lint(
+        source.indexOf('PregoInteractionMode.touch;'),
+        'PregoInteractionMode.touch'.length,
+      ),
     ]);
   }
 
@@ -151,9 +170,18 @@ double sizeOf(PregoInteractionMode mode) => switch (mode) {
     newFile(_sharedFile, source);
 
     await assertDiagnosticsInFile(_sharedFile, [
-      lint(source.indexOf('PregoInteractionScope.of(context)'), 'PregoInteractionScope.of(context)'.length),
-      lint(source.lastIndexOf('PregoInteractionScope.of(context)'), 'PregoInteractionScope.of(context)'.length),
-      lint(source.lastIndexOf('PregoInteractionMode.touch'), 'PregoInteractionMode.touch'.length),
+      lint(
+        source.indexOf('PregoInteractionScope.of(context)'),
+        'PregoInteractionScope.of(context)'.length,
+      ),
+      lint(
+        source.lastIndexOf('PregoInteractionScope.of(context)'),
+        'PregoInteractionScope.of(context)'.length,
+      ),
+      lint(
+        source.lastIndexOf('PregoInteractionMode.touch'),
+        'PregoInteractionMode.touch'.length,
+      ),
       lint(source.lastIndexOf('.pointer => 32'), '.pointer'.length),
     ]);
   }
@@ -168,7 +196,10 @@ bool pointer(BuildContext context) => PregoInteractionScope.of(context) == Prego
     newFile(path, source);
 
     await assertDiagnosticsInFile(path, [
-      lint(source.indexOf('PregoInteractionScope.of'), 'PregoInteractionScope.of(context)'.length),
+      lint(
+        source.indexOf('PregoInteractionScope.of'),
+        'PregoInteractionScope.of(context)'.length,
+      ),
     ]);
   }
 
@@ -201,9 +232,15 @@ $_scope
 bool reveals(BuildContext context) => PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
 ''');
 
-    await assertNoDiagnosticsInFile('$_themePrego/lib/interactions/prego_interaction_scope.dart');
-    await assertNoDiagnosticsInFile('$_themePrego/lib/theme/prego_design_system.dart');
-    await assertNoDiagnosticsInFile('$_appUi/lib/src/features/session_detail/composer_presentation_scope.dart');
+    await assertNoDiagnosticsInFile(
+      '$_themePrego/lib/interactions/prego_interaction_scope.dart',
+    );
+    await assertNoDiagnosticsInFile(
+      '$_themePrego/lib/theme/prego_design_system.dart',
+    );
+    await assertNoDiagnosticsInFile(
+      '$_appUi/lib/src/features/session_detail/composer_presentation_scope.dart',
+    );
     await assertNoDiagnosticsInFile(wrapper);
   }
 

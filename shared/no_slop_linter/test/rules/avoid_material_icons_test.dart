@@ -49,7 +49,10 @@ const icon = material.Icons.close;
 ''';
 
     await assertDiagnostics(source, [
-      lint(source.indexOf('material.Icons.close'), 'material.Icons.close'.length),
+      lint(
+        source.indexOf('material.Icons.close'),
+        'material.Icons.close'.length,
+      ),
     ]);
   }
 

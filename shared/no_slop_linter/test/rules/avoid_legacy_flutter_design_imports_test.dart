@@ -17,8 +17,10 @@ class AvoidLegacyFlutterDesignImportsTest extends AnalysisRuleTest {
       ..addFile('lib/material.dart', 'class MaterialMarker {}')
       ..addFile('lib/cupertino.dart', 'class CupertinoMarker {}')
       ..addFile('lib/foundation.dart', 'class FoundationMarker {}');
-    newPackage('material_ui').addFile('lib/material_ui.dart', 'class MaterialMarker {}');
-    newPackage('cupertino_ui').addFile('lib/cupertino_ui.dart', 'class CupertinoMarker {}');
+    newPackage('material_ui')
+        .addFile('lib/material_ui.dart', 'class MaterialMarker {}');
+    newPackage('cupertino_ui')
+        .addFile('lib/cupertino_ui.dart', 'class CupertinoMarker {}');
     super.setUp();
   }
 

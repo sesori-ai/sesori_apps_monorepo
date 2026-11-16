@@ -19,7 +19,10 @@ import 'package:analyzer/error/error.dart';
 /// - Pattern matching with `case` statements
 class AvoidBangOperatorRule extends NoSlopRule {
   AvoidBangOperatorRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Detects usage of the bang operator.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Detects usage of the bang operator.',
+      );
 
   static const code = LintCode(
     'avoid_bang_operator',
@@ -32,7 +35,10 @@ class AvoidBangOperatorRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     registry.addPostfixExpression(this, _Visitor(this));
   }
 }

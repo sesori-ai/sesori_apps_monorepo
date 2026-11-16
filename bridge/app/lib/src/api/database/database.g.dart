@@ -5532,6 +5532,10 @@ mixin $ScheduledTaskRunsTableTableToColumns
   /// Set only for a failed run.
   TaskRunFailureReason? get reason;
 
+  /// What a failed run tried to use, as JSON. Null for other outcomes and for
+  /// failed runs recorded before the bridge kept it.
+  String? get attemptJson;
+
   /// Set only for a started run.
   bool get late;
 
@@ -5562,6 +5566,9 @@ mixin $ScheduledTaskRunsTableTableToColumns
       map['reason'] = Variable<String>(
         $ScheduledTaskRunsTableTable.$converterreasonn.toSql(reason),
       );
+    }
+    if (!nullToAbsent || attemptJson != null) {
+      map['attempt_json'] = Variable<String>(attemptJson);
     }
     map['late'] = Variable<bool>(late);
     if (!nullToAbsent || userPromptedAt != null) {
@@ -5675,6 +5682,17 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
       ).withConverter<TaskRunFailureReason?>(
         $ScheduledTaskRunsTableTable.$converterreasonn,
       );
+  static const VerificationMeta _attemptJsonMeta = const VerificationMeta(
+    'attemptJson',
+  );
+  @override
+  late final GeneratedColumn<String> attemptJson = GeneratedColumn<String>(
+    'attempt_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _lateMeta = const VerificationMeta('late');
   @override
   late final GeneratedColumn<bool> late = GeneratedColumn<bool>(
@@ -5718,6 +5736,7 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
     firedAt,
     outcome,
     reason,
+    attemptJson,
     late,
     userPromptedAt,
     compactRequestedAt,
@@ -5782,6 +5801,15 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
       );
     } else if (isInserting) {
       context.missing(_firedAtMeta);
+    }
+    if (data.containsKey('attempt_json')) {
+      context.handle(
+        _attemptJsonMeta,
+        attemptJson.isAcceptableOrUnknown(
+          data['attempt_json']!,
+          _attemptJsonMeta,
+        ),
+      );
     }
     if (data.containsKey('late')) {
       context.handle(
@@ -5854,6 +5882,10 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
           data['${effectivePrefix}reason'],
         ),
       ),
+      attemptJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attempt_json'],
+      ),
       late: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}late'],
@@ -5917,6 +5949,11 @@ class ScheduledTaskRunDto extends DataClass
   @override
   final TaskRunFailureReason? reason;
 
+  /// What a failed run tried to use, as JSON. Null for other outcomes and for
+  /// failed runs recorded before the bridge kept it.
+  @override
+  final String? attemptJson;
+
   /// Set only for a started run.
   @override
   final bool late;
@@ -5937,6 +5974,7 @@ class ScheduledTaskRunDto extends DataClass
     required this.firedAt,
     required this.outcome,
     this.reason,
+    this.attemptJson,
     required this.late,
     this.userPromptedAt,
     this.compactRequestedAt,
@@ -5955,6 +5993,9 @@ class ScheduledTaskRunDto extends DataClass
       reason: reason == null && nullToAbsent
           ? const Value.absent()
           : Value(reason),
+      attemptJson: attemptJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attemptJson),
       late: Value(late),
       userPromptedAt: userPromptedAt == null && nullToAbsent
           ? const Value.absent()
@@ -5985,6 +6026,7 @@ class ScheduledTaskRunDto extends DataClass
       reason: $ScheduledTaskRunsTableTable.$converterreasonn.fromJson(
         serializer.fromJson<String?>(json['reason']),
       ),
+      attemptJson: serializer.fromJson<String?>(json['attemptJson']),
       late: serializer.fromJson<bool>(json['late']),
       userPromptedAt: serializer.fromJson<int?>(json['userPromptedAt']),
       compactRequestedAt: serializer.fromJson<int?>(json['compactRequestedAt']),
@@ -6008,6 +6050,7 @@ class ScheduledTaskRunDto extends DataClass
       'reason': serializer.toJson<String?>(
         $ScheduledTaskRunsTableTable.$converterreasonn.toJson(reason),
       ),
+      'attemptJson': serializer.toJson<String?>(attemptJson),
       'late': serializer.toJson<bool>(late),
       'userPromptedAt': serializer.toJson<int?>(userPromptedAt),
       'compactRequestedAt': serializer.toJson<int?>(compactRequestedAt),
@@ -6023,6 +6066,7 @@ class ScheduledTaskRunDto extends DataClass
     int? firedAt,
     ScheduledTaskRunOutcomeKind? outcome,
     Value<TaskRunFailureReason?> reason = const Value.absent(),
+    Value<String?> attemptJson = const Value.absent(),
     bool? late,
     Value<int?> userPromptedAt = const Value.absent(),
     Value<int?> compactRequestedAt = const Value.absent(),
@@ -6036,6 +6080,7 @@ class ScheduledTaskRunDto extends DataClass
     firedAt: firedAt ?? this.firedAt,
     outcome: outcome ?? this.outcome,
     reason: reason.present ? reason.value : this.reason,
+    attemptJson: attemptJson.present ? attemptJson.value : this.attemptJson,
     late: late ?? this.late,
     userPromptedAt: userPromptedAt.present
         ? userPromptedAt.value
@@ -6058,6 +6103,9 @@ class ScheduledTaskRunDto extends DataClass
       firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
       outcome: data.outcome.present ? data.outcome.value : this.outcome,
       reason: data.reason.present ? data.reason.value : this.reason,
+      attemptJson: data.attemptJson.present
+          ? data.attemptJson.value
+          : this.attemptJson,
       late: data.late.present ? data.late.value : this.late,
       userPromptedAt: data.userPromptedAt.present
           ? data.userPromptedAt.value
@@ -6079,6 +6127,7 @@ class ScheduledTaskRunDto extends DataClass
           ..write('firedAt: $firedAt, ')
           ..write('outcome: $outcome, ')
           ..write('reason: $reason, ')
+          ..write('attemptJson: $attemptJson, ')
           ..write('late: $late, ')
           ..write('userPromptedAt: $userPromptedAt, ')
           ..write('compactRequestedAt: $compactRequestedAt')
@@ -6096,6 +6145,7 @@ class ScheduledTaskRunDto extends DataClass
     firedAt,
     outcome,
     reason,
+    attemptJson,
     late,
     userPromptedAt,
     compactRequestedAt,
@@ -6112,6 +6162,7 @@ class ScheduledTaskRunDto extends DataClass
           other.firedAt == this.firedAt &&
           other.outcome == this.outcome &&
           other.reason == this.reason &&
+          other.attemptJson == this.attemptJson &&
           other.late == this.late &&
           other.userPromptedAt == this.userPromptedAt &&
           other.compactRequestedAt == this.compactRequestedAt);
@@ -6127,6 +6178,7 @@ class ScheduledTaskRunsTableCompanion
   final Value<int> firedAt;
   final Value<ScheduledTaskRunOutcomeKind> outcome;
   final Value<TaskRunFailureReason?> reason;
+  final Value<String?> attemptJson;
   final Value<bool> late;
   final Value<int?> userPromptedAt;
   final Value<int?> compactRequestedAt;
@@ -6139,6 +6191,7 @@ class ScheduledTaskRunsTableCompanion
     this.firedAt = const Value.absent(),
     this.outcome = const Value.absent(),
     this.reason = const Value.absent(),
+    this.attemptJson = const Value.absent(),
     this.late = const Value.absent(),
     this.userPromptedAt = const Value.absent(),
     this.compactRequestedAt = const Value.absent(),
@@ -6152,6 +6205,7 @@ class ScheduledTaskRunsTableCompanion
     required int firedAt,
     required ScheduledTaskRunOutcomeKind outcome,
     this.reason = const Value.absent(),
+    this.attemptJson = const Value.absent(),
     required bool late,
     this.userPromptedAt = const Value.absent(),
     this.compactRequestedAt = const Value.absent(),
@@ -6171,6 +6225,7 @@ class ScheduledTaskRunsTableCompanion
     Expression<int>? firedAt,
     Expression<String>? outcome,
     Expression<String>? reason,
+    Expression<String>? attemptJson,
     Expression<bool>? late,
     Expression<int>? userPromptedAt,
     Expression<int>? compactRequestedAt,
@@ -6185,6 +6240,7 @@ class ScheduledTaskRunsTableCompanion
       if (firedAt != null) 'fired_at': firedAt,
       if (outcome != null) 'outcome': outcome,
       if (reason != null) 'reason': reason,
+      if (attemptJson != null) 'attempt_json': attemptJson,
       if (late != null) 'late': late,
       if (userPromptedAt != null) 'user_prompted_at': userPromptedAt,
       if (compactRequestedAt != null)
@@ -6201,6 +6257,7 @@ class ScheduledTaskRunsTableCompanion
     Value<int>? firedAt,
     Value<ScheduledTaskRunOutcomeKind>? outcome,
     Value<TaskRunFailureReason?>? reason,
+    Value<String?>? attemptJson,
     Value<bool>? late,
     Value<int?>? userPromptedAt,
     Value<int?>? compactRequestedAt,
@@ -6215,6 +6272,7 @@ class ScheduledTaskRunsTableCompanion
       firedAt: firedAt ?? this.firedAt,
       outcome: outcome ?? this.outcome,
       reason: reason ?? this.reason,
+      attemptJson: attemptJson ?? this.attemptJson,
       late: late ?? this.late,
       userPromptedAt: userPromptedAt ?? this.userPromptedAt,
       compactRequestedAt: compactRequestedAt ?? this.compactRequestedAt,
@@ -6254,6 +6312,9 @@ class ScheduledTaskRunsTableCompanion
         $ScheduledTaskRunsTableTable.$converterreasonn.toSql(reason.value),
       );
     }
+    if (attemptJson.present) {
+      map['attempt_json'] = Variable<String>(attemptJson.value);
+    }
     if (late.present) {
       map['late'] = Variable<bool>(late.value);
     }
@@ -6277,6 +6338,7 @@ class ScheduledTaskRunsTableCompanion
           ..write('firedAt: $firedAt, ')
           ..write('outcome: $outcome, ')
           ..write('reason: $reason, ')
+          ..write('attemptJson: $attemptJson, ')
           ..write('late: $late, ')
           ..write('userPromptedAt: $userPromptedAt, ')
           ..write('compactRequestedAt: $compactRequestedAt')
@@ -11796,6 +11858,7 @@ typedef $$ScheduledTaskRunsTableTableCreateCompanionBuilder =
       required int firedAt,
       required ScheduledTaskRunOutcomeKind outcome,
       Value<TaskRunFailureReason?> reason,
+      Value<String?> attemptJson,
       required bool late,
       Value<int?> userPromptedAt,
       Value<int?> compactRequestedAt,
@@ -11810,6 +11873,7 @@ typedef $$ScheduledTaskRunsTableTableUpdateCompanionBuilder =
       Value<int> firedAt,
       Value<ScheduledTaskRunOutcomeKind> outcome,
       Value<TaskRunFailureReason?> reason,
+      Value<String?> attemptJson,
       Value<bool> late,
       Value<int?> userPromptedAt,
       Value<int?> compactRequestedAt,
@@ -11915,6 +11979,11 @@ class $$ScheduledTaskRunsTableTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnFilters<String> get attemptJson => $composableBuilder(
+    column: $table.attemptJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get late => $composableBuilder(
     column: $table.late,
     builder: (column) => ColumnFilters(column),
@@ -12016,6 +12085,11 @@ class $$ScheduledTaskRunsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get attemptJson => $composableBuilder(
+    column: $table.attemptJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get late => $composableBuilder(
     column: $table.late,
     builder: (column) => ColumnOrderings(column),
@@ -12110,6 +12184,11 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String> get reason =>
       $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get attemptJson => $composableBuilder(
+    column: $table.attemptJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get late =>
       $composableBuilder(column: $table.late, builder: (column) => column);
@@ -12220,6 +12299,7 @@ class $$ScheduledTaskRunsTableTableTableManager
                 Value<ScheduledTaskRunOutcomeKind> outcome =
                     const Value.absent(),
                 Value<TaskRunFailureReason?> reason = const Value.absent(),
+                Value<String?> attemptJson = const Value.absent(),
                 Value<bool> late = const Value.absent(),
                 Value<int?> userPromptedAt = const Value.absent(),
                 Value<int?> compactRequestedAt = const Value.absent(),
@@ -12232,6 +12312,7 @@ class $$ScheduledTaskRunsTableTableTableManager
                 firedAt: firedAt,
                 outcome: outcome,
                 reason: reason,
+                attemptJson: attemptJson,
                 late: late,
                 userPromptedAt: userPromptedAt,
                 compactRequestedAt: compactRequestedAt,
@@ -12246,6 +12327,7 @@ class $$ScheduledTaskRunsTableTableTableManager
                 required int firedAt,
                 required ScheduledTaskRunOutcomeKind outcome,
                 Value<TaskRunFailureReason?> reason = const Value.absent(),
+                Value<String?> attemptJson = const Value.absent(),
                 required bool late,
                 Value<int?> userPromptedAt = const Value.absent(),
                 Value<int?> compactRequestedAt = const Value.absent(),
@@ -12258,6 +12340,7 @@ class $$ScheduledTaskRunsTableTableTableManager
                 firedAt: firedAt,
                 outcome: outcome,
                 reason: reason,
+                attemptJson: attemptJson,
                 late: late,
                 userPromptedAt: userPromptedAt,
                 compactRequestedAt: compactRequestedAt,

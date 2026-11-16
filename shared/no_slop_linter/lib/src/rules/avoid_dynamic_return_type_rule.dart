@@ -25,7 +25,10 @@ import 'package:analyzer/error/error.dart';
 /// - `external dynamic foo();` - external functions (JS interop) are skipped
 class AvoidDynamicReturnTypeRule extends NoSlopRule {
   AvoidDynamicReturnTypeRule({required super.ignoreTestFiles})
-    : super(name: code.lowerCaseName, description: 'Requires explicit non-dynamic return types.');
+    : super(
+        name: code.lowerCaseName,
+        description: 'Requires explicit non-dynamic return types.',
+      );
 
   static const code = LintCode(
     'avoid_dynamic_return_type',
@@ -37,7 +40,10 @@ class AvoidDynamicReturnTypeRule extends NoSlopRule {
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
+  void registerRuleProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
+  ) {
     final visitor = _Visitor(this);
     registry.addFunctionDeclaration(this, visitor);
     registry.addMethodDeclaration(this, visitor);
@@ -71,10 +77,7 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (rule.isCurrentFileExcluded) return;
     if (node.externalKeyword != null) return;
 
-    rule._checkReturnType(
-      returnType: node.returnType,
-      functionNode: node,
-    );
+    rule._checkReturnType(returnType: node.returnType, functionNode: node);
   }
 
   @override
@@ -83,9 +86,6 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (node.isSetter) return;
     if (node.externalKeyword != null) return;
 
-    rule._checkReturnType(
-      returnType: node.returnType,
-      functionNode: node,
-    );
+    rule._checkReturnType(returnType: node.returnType, functionNode: node);
   }
 }

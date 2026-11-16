@@ -27,7 +27,10 @@ class RequiredNamedParamsFixTest extends AnalysisRuleFixTest {
       context: StubCorrectionProducerContext.instance,
     );
     expect(fix.fixKind.id, 'no_slop_linter.fix.requiredNamedParamsAllNamed');
-    expect(fix.fixKind.message, 'Convert all positional params to required named');
+    expect(
+      fix.fixKind.message,
+      'Convert all positional params to required named',
+    );
   }
 
   void test_allNamedFix_hasSingleLocationApplicability() {
@@ -42,7 +45,10 @@ class RequiredNamedParamsFixTest extends AnalysisRuleFixTest {
       context: StubCorrectionProducerContext.instance,
     );
     expect(fix.fixKind.id, 'no_slop_linter.fix.requiredNamedParamsKeepFirst');
-    expect(fix.fixKind.message, 'Keep first positional, convert rest to required named');
+    expect(
+      fix.fixKind.message,
+      'Keep first positional, convert rest to required named',
+    );
   }
 
   void test_keepFirstFix_hasSingleLocationApplicability() {

@@ -24,7 +24,8 @@ class AddReturnTypeFix extends ResolvedCorrectionProducer {
   );
 
   @override
-  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;
@@ -40,7 +41,8 @@ class AddReturnTypeFix extends ResolvedCorrectionProducer {
       final typeString = _inferReturnType(body);
       if (typeString == null) return;
 
-      final insertOffset = targetNode.isGetter && targetNode.propertyKeyword != null
+      final insertOffset =
+          targetNode.isGetter && targetNode.propertyKeyword != null
           ? targetNode.propertyKeyword!.offset
           : targetNode.name.offset;
 
@@ -54,7 +56,8 @@ class AddReturnTypeFix extends ResolvedCorrectionProducer {
       final typeString = _inferReturnType(body);
       if (typeString == null) return;
 
-      final insertOffset = targetNode.isGetter && targetNode.propertyKeyword != null
+      final insertOffset =
+          targetNode.isGetter && targetNode.propertyKeyword != null
           ? targetNode.propertyKeyword!.offset
           : targetNode.name.offset;
 

@@ -1943,10 +1943,13 @@ String toString() {
 @JsonSerializable()
 
 class ScheduledTaskRunFailed implements ScheduledTaskRunOutcome {
-  const ScheduledTaskRunFailed({@JsonKey(unknownEnumValue: TaskRunFailureReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'failed';
+  const ScheduledTaskRunFailed({@JsonKey(unknownEnumValue: TaskRunFailureReason.unknown) required this.reason, required this.attempt,  String? $type}): $type = $type ?? 'failed';
   factory ScheduledTaskRunFailed.fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunFailedFromJson(json);
 
 @JsonKey(unknownEnumValue: TaskRunFailureReason.unknown) final  TaskRunFailureReason reason;
+/// What the run tried to use, which the task may no longer name. Null for
+/// a run recorded before bridges kept it.
+ final  ScheduledTaskRunAttempt? attempt;
 
 @JsonKey(name: 'kind')
 final String $type;
@@ -1960,18 +1963,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunFailed&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.attempt, attempt) || other.attempt == attempt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,reason);
+    return Object.hash(runtimeType,reason,attempt);
 }
 
 @override
 String toString() {
-    return 'ScheduledTaskRunOutcome.failed(reason: $reason)';
+    return 'ScheduledTaskRunOutcome.failed(reason: $reason, attempt: $attempt)';
 }
 
 
@@ -2018,6 +2021,181 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$ScheduledTaskRunAttempt {
+
+ String get pluginId;/// Null when the task left the model to the harness.
+ PromptModel? get model;/// Null when the computer no longer had the project at all.
+ String? get projectPath;
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ScheduledTaskRunAttemptCopyWith<ScheduledTaskRunAttempt> get copyWith => _$ScheduledTaskRunAttemptCopyWithImpl<ScheduledTaskRunAttempt>(this as ScheduledTaskRunAttempt, _$identity);
+
+  /// Serializes this ScheduledTaskRunAttempt to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as ScheduledTaskRunAttempt;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunAttempt&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.projectPath, _this.projectPath) || other.projectPath == _this.projectPath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as ScheduledTaskRunAttempt;
+  return Object.hash(runtimeType,_this.pluginId,_this.model,_this.projectPath);
+}
+
+@override
+String toString() {
+  final _this = this as ScheduledTaskRunAttempt;
+  return 'ScheduledTaskRunAttempt(pluginId: ${_this.pluginId}, model: ${_this.model}, projectPath: ${_this.projectPath})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ScheduledTaskRunAttemptCopyWith<$Res>  {
+  factory $ScheduledTaskRunAttemptCopyWith(ScheduledTaskRunAttempt value, $Res Function(ScheduledTaskRunAttempt) _then) = _$ScheduledTaskRunAttemptCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, PromptModel? model, String? projectPath
+});
+
+
+$PromptModelCopyWith<$Res>? get model;
+
+}
+/// @nodoc
+class _$ScheduledTaskRunAttemptCopyWithImpl<$Res>
+    implements $ScheduledTaskRunAttemptCopyWith<$Res> {
+  _$ScheduledTaskRunAttemptCopyWithImpl(this._self, this._then);
+
+  final ScheduledTaskRunAttempt _self;
+  final $Res Function(ScheduledTaskRunAttempt) _then;
+
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? pluginId = null,Object? model = freezed,Object? projectPath = freezed,}) {
+  return _then(ScheduledTaskRunAttempt(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as PromptModel?,projectPath: freezed == projectPath ? _self.projectPath : projectPath // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
+
+  return $PromptModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _ScheduledTaskRunAttempt implements ScheduledTaskRunAttempt {
+  const _ScheduledTaskRunAttempt({required this.pluginId, required this.model, required this.projectPath});
+  factory _ScheduledTaskRunAttempt.fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunAttemptFromJson(json);
+
+@override final  String pluginId;
+/// Null when the task left the model to the harness.
+@override final  PromptModel? model;
+/// Null when the computer no longer had the project at all.
+@override final  String? projectPath;
+
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ScheduledTaskRunAttemptCopyWith<_ScheduledTaskRunAttempt> get copyWith => __$ScheduledTaskRunAttemptCopyWithImpl<_ScheduledTaskRunAttempt>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ScheduledTaskRunAttemptToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScheduledTaskRunAttempt&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.model, model) || other.model == model)&&(identical(other.projectPath, projectPath) || other.projectPath == projectPath));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,model,projectPath);
+}
+
+@override
+String toString() {
+    return 'ScheduledTaskRunAttempt(pluginId: $pluginId, model: $model, projectPath: $projectPath)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ScheduledTaskRunAttemptCopyWith<$Res> implements $ScheduledTaskRunAttemptCopyWith<$Res> {
+  factory _$ScheduledTaskRunAttemptCopyWith(_ScheduledTaskRunAttempt value, $Res Function(_ScheduledTaskRunAttempt) _then) = __$ScheduledTaskRunAttemptCopyWithImpl;
+@override @useResult
+$Res call({
+ String pluginId, PromptModel? model, String? projectPath
+});
+
+
+@override $PromptModelCopyWith<$Res>? get model;
+
+}
+/// @nodoc
+class __$ScheduledTaskRunAttemptCopyWithImpl<$Res>
+    implements _$ScheduledTaskRunAttemptCopyWith<$Res> {
+  __$ScheduledTaskRunAttemptCopyWithImpl(this._self, this._then);
+
+  final _ScheduledTaskRunAttempt _self;
+  final $Res Function(_ScheduledTaskRunAttempt) _then;
+
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? model = freezed,Object? projectPath = freezed,}) {
+  return _then(_ScheduledTaskRunAttempt(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as PromptModel?,projectPath: freezed == projectPath ? _self.projectPath : projectPath // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+/// Create a copy of ScheduledTaskRunAttempt
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptModelCopyWith<$Res>? get model {
+    if (_self.model == null) {
+    return null;
+  }
+
+  return $PromptModelCopyWith<$Res>(_self.model!, (value) {
+    return _then(_self.copyWith(model: value));
+  });
+}
+}
 
 
 /// @nodoc

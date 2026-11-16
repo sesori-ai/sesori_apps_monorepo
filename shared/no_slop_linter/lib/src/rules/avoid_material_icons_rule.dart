@@ -51,7 +51,8 @@ class _Visitor extends SimpleAstVisitor<void> {
   void visitPropertyAccess(PropertyAccess node) {
     if (rule.isCurrentFileExcluded) return;
     final target = node.target;
-    if (target is PrefixedIdentifier && _isMaterialIcons(target.identifier.element)) {
+    if (target is PrefixedIdentifier &&
+        _isMaterialIcons(target.identifier.element)) {
       rule.reportAtNode(node);
     }
   }
@@ -59,6 +60,7 @@ class _Visitor extends SimpleAstVisitor<void> {
   bool _isMaterialIcons(Element? element) {
     if (element is! ClassElement || element.name != 'Icons') return false;
     final library = element.library.identifier;
-    return library.startsWith('package:material_ui/') || library.startsWith('package:flutter/');
+    return library.startsWith('package:material_ui/') ||
+        library.startsWith('package:flutter/');
   }
 }
