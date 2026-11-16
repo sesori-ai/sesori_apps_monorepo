@@ -4,6 +4,7 @@ import "package:clock/clock.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -1334,7 +1335,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
-  void _onTopReserveChanged() => setState(() {});
+  void _onTopReserveChanged() {
+    // A card leaving the list mid-layout gives its room back from inside the
+    // frame, where the list can't rebuild until the next one.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
 
   Widget _buildRow({
     required String entryId,

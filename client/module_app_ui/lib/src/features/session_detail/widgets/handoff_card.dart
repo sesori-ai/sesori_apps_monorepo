@@ -82,6 +82,16 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
   }
 
   @override
+  void deactivate() {
+    // A card leaving the transcript, as when the page closes mid-motion, gives
+    // back the room it kept; the lookup needs a context still in the tree.
+    if (_reserved > 0) giveBackTranscriptSpaceAbove(context: context, extent: _reserved);
+    _reserved = 0;
+    _roomAhead = 0;
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _eased.dispose();
     _expansion.dispose();
