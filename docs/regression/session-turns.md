@@ -137,7 +137,8 @@ defaults and queued client sends coherent.
   stopped during this turn" line in the Stopped line's style, after the turn's last loaded message: under the reply
   when it streamed one, under the prompt when the stop came before any output. The turn ends there, so the next
   prompt opens a new turn even with no reply between, in the transcript and in the bridge's prompt index alike.
-  The line replaces every Stopped line in that turn, so Claude Code and Codex, which record a bridge shutdown like a user Stop, show only the Interrupted line, never both. While
+  The line replaces every Stopped line in that turn, so Claude Code and Codex, which record a bridge
+  shutdown like a user Stop, show only the Interrupted line, never both. While
   the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
   line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
   above moves. While the session is idle and an edit is open or sending, Continue stays but dims like the locked
