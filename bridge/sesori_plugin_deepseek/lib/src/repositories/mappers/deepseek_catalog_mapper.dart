@@ -73,6 +73,24 @@ class const DeepSeekCatalogMapper() {
     );
   }
 
+  /// The model ids session/new or session/load offered, or null when the
+  /// result carries no model option.
+  Set<String>? mapSessionModelIds({required AcpNewSessionResult result}) {
+    final groups = result.configOptions.where((option) => option["id"] == "deepseek.model").firstOrNull?["options"];
+    if (groups is! List) return null;
+    final ids = <String>{};
+    for (final rawGroup in groups) {
+      if (rawGroup is! Map) continue;
+      final options = rawGroup["options"];
+      if (options is! List) continue;
+      for (final option in options) {
+        final value = option is Map ? option["value"] : null;
+        if (value is String && value.isNotEmpty) ids.add(value);
+      }
+    }
+    return ids;
+  }
+
   ({String modelId, String providerId, String? variant})? mapSessionSelection({
     required AcpNewSessionResult result,
   }) {
