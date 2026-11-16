@@ -729,11 +729,17 @@ defaults and queued client sends coherent.
   follow-up that changes the model, variant or agent, one behind another
   waiting prompt, and a failed or unrecognised steering reply (logged) keep
   stop-and-send. A follow-up OMP does not admit returns to Queued and
-  dispatches after the running turn without a cancel. A prompt OMP rejects
-  with `-32003` because it runs a turn of its own (a background-job wake)
-  keeps its sent row and a busy session, and is resent every second until OMP
-  takes it; Stop ends the wait with no error, and after 30 minutes the
-  rejection shows as the inline error below. A second follow-up sent
+  dispatches after the running turn without a cancel. From OMP 18.20.1 a
+  prompt that starts a background job (or live sub-agents) stays open until
+  the job ends plus a short follow-up turn, so the session stays busy and a
+  follow-up in that window returns to Queued and dispatches afterwards; Stop
+  ends the prompt at once but not the job, and the next prompt stays open
+  until the old job finishes (verified live on 18.21.0, 2026-11-16). On OMP
+  before 18.20.1, a prompt OMP rejects with `-32003` because it runs a turn
+  of its own (a background-job wake) keeps its sent row and a busy session,
+  and is resent every second until OMP takes it; Stop ends the wait with no
+  error, and after 30 minutes the rejection shows as the inline error below.
+  A second follow-up sent
   while the first is still Sending waits for it and steers only once the first
   was injected, so it never overtakes it. An abort while a follow-up is Sending
   removes it, and a late reply never publishes it. The running turn's reply to

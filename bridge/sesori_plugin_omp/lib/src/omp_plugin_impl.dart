@@ -148,10 +148,11 @@ class OmpPlugin._({
     activeSessionResolver: () => activeTurnSessionId,
   );
 
-  /// From 18.18.9 until 18.20.1, ACP session deletion persists an empty
-  /// untitled replacement session
+  /// From 18.18.9 until 18.20.1 (fixed there, not in 18.20.0), ACP session
+  /// deletion persists an empty untitled replacement session
   /// (https://github.com/can1357/oh-my-pi/issues/19068), and `session/new`
-  /// still writes an empty untitled session at once (18.21.0). An entry with
+  /// alone still writes an empty untitled session at once (verified on
+  /// 18.21.0). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
   /// A missing or non-int count keeps the entry.
@@ -178,10 +179,12 @@ class OmpPlugin._({
     required List<Map<String, dynamic>> prompt,
   }) => _steeringService.steer(client: client, sessionId: sessionId, prompt: prompt);
 
-  /// OMP answers `-32003` ("Agent is already processing…") when its session
-  /// runs a turn no client prompt owns, such as a wake for a background job's
-  /// result (OMP before 18.20.1 starts one after a prompt ends). Steering is
-  /// refused then too, and OMP rejects the prompt before recording it.
+  /// OMP before 18.20.1 answers `-32003` ("Agent is already processing…")
+  /// when its session runs a turn no client prompt owns, such as the wake it
+  /// starts for a background job's result after a prompt ends. Steering is
+  /// refused then too, and OMP rejects the prompt before recording it. From
+  /// 18.20.1 the prompt stays open until the job's follow-up turn ends and
+  /// OMP queues a second prompt instead (verified on 18.21.0).
   @override
   bool isBusyPromptRejection({required AcpRpcException error}) => error.code == _sessionBusyCode;
 
