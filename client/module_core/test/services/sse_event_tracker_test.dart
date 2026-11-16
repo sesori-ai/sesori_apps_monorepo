@@ -84,6 +84,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: true,
                   childSessionIds: [],
@@ -91,6 +92,7 @@ void main() {
                   updatedAt: 10,
                 ),
                 ActiveSession(
+                  sending: null,
                   id: "s2",
                   mainAgentRunning: false,
                   childSessionIds: [],
@@ -179,6 +181,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: false,
                   childSessionIds: [],
@@ -191,6 +194,7 @@ void main() {
               id: "/bar",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s2",
                   mainAgentRunning: true,
                   childSessionIds: [],
@@ -198,6 +202,7 @@ void main() {
                   updatedAt: null,
                 ),
                 ActiveSession(
+                  sending: null,
                   id: "s3",
                   mainAgentRunning: false,
                   childSessionIds: [],
@@ -243,6 +248,7 @@ void main() {
                 id: "/foo",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "s1",
                     mainAgentRunning: false,
                     childSessionIds: [],
@@ -268,6 +274,7 @@ void main() {
                 id: "/foo",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "s1",
                     mainAgentRunning: false,
                     childSessionIds: [],
@@ -275,6 +282,7 @@ void main() {
                     updatedAt: null,
                   ),
                   ActiveSession(
+                    sending: null,
                     id: "s2",
                     mainAgentRunning: true,
                     childSessionIds: [],
@@ -317,6 +325,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: running,
                   childSessionIds: [],
@@ -378,6 +387,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: false,
                   childSessionIds: [],
@@ -385,6 +395,7 @@ void main() {
                   updatedAt: null,
                 ),
                 ActiveSession(
+                  sending: null,
                   id: "s2",
                   mainAgentRunning: true,
                   childSessionIds: [],
@@ -392,6 +403,7 @@ void main() {
                   updatedAt: null,
                 ),
                 ActiveSession(
+                  sending: null,
                   id: "s3",
                   mainAgentRunning: false,
                   childSessionIds: [],
@@ -471,6 +483,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: true,
                   awaitingInput: true,
@@ -513,6 +526,7 @@ void main() {
               id: "/foo",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "s1",
                   mainAgentRunning: true,
                   awaitingInput: false,
@@ -791,6 +805,7 @@ void main() {
                 id: "/foo",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "s1",
                     mainAgentRunning: true,
                     childSessionIds: [],

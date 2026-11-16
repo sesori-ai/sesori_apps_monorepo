@@ -16,6 +16,7 @@ const _two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
 const _scratch = ProjectSummary(id: "scratch", name: "No project", path: "/scratch", time: null);
 
 const _running = SessionActivityInfo(
+  sending: null,
   mainAgentRunning: true,
   isRunning: true,
   lastUserActivityAt: null,
@@ -275,6 +276,7 @@ void main() {
 
   test("a session waiting on the user counts whatever the list shows, unless hidden or in an unlisted project", () {
     const waiting = SessionActivityInfo(
+      sending: null,
       awaitingInput: true,
       isRunning: false,
       lastUserActivityAt: null,

@@ -470,6 +470,7 @@ class FakeSessionRepository({
         activeSessions: [
           for (final active in summary.activeSessions)
             ActiveSession(
+              sending: null,
               id: active.id,
               mainAgentRunning: active.mainAgentRunning,
               awaitingInput: active.awaitingInput,

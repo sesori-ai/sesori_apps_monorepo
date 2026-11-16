@@ -538,8 +538,8 @@ void main() {
           ProjectActivitySummary(
             id: '/foo',
             activeSessions: [
-              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(id: '/bar', activeSessions: []),
@@ -622,16 +622,16 @@ void main() {
           ProjectActivitySummary(
             id: '/alpha',
             activeSessions: [
-              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's5', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(
             id: '/beta',
-            activeSessions: [ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null)],
+            activeSessions: [ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null)],
           ),
           ProjectActivitySummary(id: '/gamma', activeSessions: []),
         ],
@@ -827,13 +827,13 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/test',
         activeSessions: [
-          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's6', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's7', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's5', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's6', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's7', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       expect(summary.id, '/test');
@@ -844,10 +844,10 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/my/path',
         activeSessions: [
-          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       final json = summary.toJson();
@@ -898,6 +898,7 @@ void main() {
       expect(legacy.toJson(), isNot(contains('updatedAt')));
 
       const current = ActiveSession(
+        sending: null,
         id: 'current',
         mainAgentRunning: true,
         lastUserActivityAt: 20,

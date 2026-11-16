@@ -122,7 +122,13 @@ void main() {
         ProjectActivitySummary(
           id: "project",
           activeSessions: [
-            ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+            ActiveSession(
+              sending: null,
+              id: "session-one",
+              awaitingInput: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
           ],
         ),
       ];
@@ -268,8 +274,20 @@ void main() {
           ProjectActivitySummary(
             id: "project",
             activeSessions: [
-              ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: "session-two", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(
+                sending: null,
+                id: "session-one",
+                awaitingInput: true,
+                lastUserActivityAt: null,
+                updatedAt: null,
+              ),
+              ActiveSession(
+                sending: null,
+                id: "session-two",
+                awaitingInput: true,
+                lastUserActivityAt: null,
+                updatedAt: null,
+              ),
             ],
           ),
         ];
@@ -316,7 +334,13 @@ void main() {
             ProjectActivitySummary(
               id: "project",
               activeSessions: [
-                ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  sending: null,
+                  id: "session-one",
+                  awaitingInput: true,
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ]

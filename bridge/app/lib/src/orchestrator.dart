@@ -1398,6 +1398,10 @@ class OrchestratorSession._({
           }
         })
         .addTo(_subscriptions);
+    // A send starting or ending changes its source's row on every client.
+    _sessionSendService.sendingChanges
+        .listen((_) => unawaited(_buildAndEnqueueProjectsSummaryInOrder()))
+        .addTo(_subscriptions);
     _sessionSendService.queuedRequests
         .listen(
           (queue) => _enqueueWireEvent(
@@ -2189,6 +2193,19 @@ class OrchestratorSession._({
     );
   }
 
+  /// Rebuilds and sends the projects summary for a change the bridge made
+  /// itself, outside any plugin's events.
+  Future<void> _buildAndEnqueueProjectsSummaryInOrder() {
+    return _enqueueProjectsSummaryInOrder(
+      operation: () async {
+        final summary = await _buildProjectsSummary();
+        if (summary == null) return;
+        _feedLocalObservers(summary);
+        _enqueueWireEvent(summary);
+      },
+    );
+  }
+
   Future<void> _enqueueProjectsSummaryInOrder({required Future<void> Function() operation}) {
     final previous = _projectsSummaryTail;
     final release = Completer<void>();
@@ -2233,7 +2250,7 @@ class OrchestratorSession._({
   Future<SesoriSseEvent?> _buildProjectsSummary() async {
     try {
       return _mapper.buildProjectsSummaryEvent(
-        projects: await _sessionRepository.getProjectActivitySummaries(),
+        projects: _withSends(projects: await _sessionRepository.getProjectActivitySummaries()),
       );
     } catch (e, st) {
       Log.e("[sse] error building projects summary", e, st);
@@ -2246,6 +2263,20 @@ class OrchestratorSession._({
       );
       return null;
     }
+  }
+
+  /// Marks each active session the bridge is sending into another.
+  List<ProjectActivitySummary> _withSends({required List<ProjectActivitySummary> projects}) {
+    final sending = _sessionSendService.sending;
+    if (sending.isEmpty) return projects;
+    return [
+      for (final project in projects)
+        project.copyWith(
+          activeSessions: [
+            for (final active in project.activeSessions) active.copyWith(sending: sending[active.id]),
+          ],
+        ),
+    ];
   }
 
   /// Feeds an outgoing event to the in-process observers: completion pushes

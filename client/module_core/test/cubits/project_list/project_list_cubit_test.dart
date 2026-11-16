@@ -1759,6 +1759,7 @@ void main() {
         mockSseEventTracker.emitSessionActivity({
           "A": {
             "a": const SessionActivityInfo(
+              sending: null,
               mainAgentRunning: true,
               isRunning: true,
               lastUserActivityAt: 20,
@@ -1767,6 +1768,7 @@ void main() {
           },
           "C": {
             "c": const SessionActivityInfo(
+              sending: null,
               backgroundTaskCount: 1,
               isRunning: true,
               lastUserActivityAt: 10,
@@ -1792,6 +1794,7 @@ void main() {
         mockSseEventTracker.emitSessionActivity({
           "A": {
             "a": const SessionActivityInfo(
+              sending: null,
               mainAgentRunning: true,
               isRunning: true,
               lastUserActivityAt: 20,
@@ -1800,6 +1803,7 @@ void main() {
           },
           "C": {
             "c": const SessionActivityInfo(
+              sending: null,
               backgroundTaskCount: 1,
               isRunning: true,
               lastUserActivityAt: 10,
@@ -1828,6 +1832,7 @@ void main() {
       mockSseEventTracker.emitSessionActivity({
         "A": {
           "a": const SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: 20,
@@ -1836,6 +1841,7 @@ void main() {
         },
         "B": {
           "b": const SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: 10,

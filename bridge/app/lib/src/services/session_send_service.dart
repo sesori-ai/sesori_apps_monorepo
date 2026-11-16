@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:collection" show UnmodifiableMapView;
 import "dart:convert" show utf8;
 
 import "package:clock/clock.dart";
@@ -68,6 +69,15 @@ class SessionSendService({
   /// never echoed has failed. An echoed request leaves the queue on its own.
   Stream<SessionQueuedRequest> get queuedRequests => _queuedRequests.stream;
 
+  final Map<String, ActiveSessionSending> _sending = {};
+  final StreamController<void> _sendingChanges = StreamController.broadcast(sync: true);
+
+  /// The sends running now, by source session id, for every client's list.
+  Map<String, ActiveSessionSending> get sending => UnmodifiableMapView(_sending);
+
+  /// Fires when a send starts or ends.
+  Stream<void> get sendingChanges => _sendingChanges.stream;
+
   /// Ends every send still waiting for its summary as `summaryStopped`. The
   /// orchestrator calls this before it removes event producers and drains
   /// routes.
@@ -88,6 +98,21 @@ class SessionSendService({
     if (source.parentID != null) throw _rejected(code: SendToSessionErrorCode.sourceNotRoot);
     if (await _hasNoMessages(sessionId: source.id)) throw _rejected(code: SendToSessionErrorCode.sourceEmpty);
 
+    // A second send of a source already sending is refused once it reserves
+    // the source, so it leaves the first send's entry alone.
+    final sending = ActiveSessionSending(targetTitle: _nonBlank(text: target.title));
+    if (identical(_sending.putIfAbsent(source.id, () => sending), sending)) _sendingChanges.add(null);
+    try {
+      await _handOff(source: source, target: target);
+    } finally {
+      if (identical(_sending[source.id], sending)) {
+        _sending.remove(source.id);
+        _sendingChanges.add(null);
+      }
+    }
+  }
+
+  Future<void> _handOff({required Session source, required Session target}) async {
     final promptId = SessionPromptService.generatePromptId();
     Log.i("Sending session ${source.id} to ${target.id}; requesting the summary as prompt $promptId");
     // Watching starts before the send, so the echo cannot be missed.
