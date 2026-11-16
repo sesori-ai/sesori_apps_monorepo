@@ -7282,6 +7282,29 @@ void main() {
         verify(cubit.leaveSideQuestion).called(1);
       });
 
+      for (final (name, state) in [
+        ("side question", asking),
+        (
+          "staged command",
+          () => withSideQuestions(SideQuestionAvailability.available).copyWith(stagedCommand: testCommandInfo()),
+        ),
+      ]) {
+        testWidgets("the $name chip's x keeps the keyboard up", (tester) async {
+          when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+          when(() => cubit.state).thenReturn(state());
+          await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(EditableText));
+          await tester.pump();
+          expect(composerFocus(tester).hasFocus, isTrue);
+
+          await tester.tap(find.descendant(of: find.byType(GlassChip), matching: find.byIcon(TablerRegular.x)));
+          await tester.pump();
+
+          expect(composerFocus(tester).hasFocus, isTrue);
+        });
+      }
+
       testWidgets("a normal composer has neither", (tester) async {
         when(() => cubit.state).thenReturn(withSideQuestions(SideQuestionAvailability.available));
         await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));

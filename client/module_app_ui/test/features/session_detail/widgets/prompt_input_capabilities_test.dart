@@ -1587,11 +1587,11 @@ void main() {
     expect(find.byType(GlassMaterializeTransition), findsNothing);
     expect(find.text("Picker header"), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).controller?.text, "Keep this draft");
-    // The chip sits outside the editor tap region: clearing already dismissed
-    // focus before the transition change. Staging still focuses the editor.
+    // The chip belongs to the editor's tap region: clearing it keeps the
+    // keyboard up.
     expect(
       (tester.widget<TextField>(find.byType(TextField)).focusNode ?? fail("The field has no focus node.")).hasFocus,
-      isFalse,
+      isTrue,
     );
 
     command.value = _stagedCommand;

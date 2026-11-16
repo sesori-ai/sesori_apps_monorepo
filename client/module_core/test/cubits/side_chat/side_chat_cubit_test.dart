@@ -235,6 +235,15 @@ void main() {
       );
 
       final cubit = createCubit(initialQuestion: "from btw");
+      expect(
+        cubit.state,
+        const SideChatState.ready(
+          earlierChats: [],
+          thread: SideChatThread.newChat(),
+          ask: SideQuestionAsk.waiting(question: "from btw"),
+        ),
+        reason: "the sheet opens on the question, not a spinner",
+      );
       await cubit.stream.firstWhere(
         (state) => state is SideChatReady && state.thread is SideChatExistingThread,
       );

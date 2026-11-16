@@ -1878,11 +1878,15 @@ class _PromptInputState() extends State<PromptInput> {
   static const _sideQuestionChipKey = ValueKey("side-question");
 
   /// A staged command's chip, or the side question's, where the header shows.
+  /// The staged command's or side question's chip. It belongs to the field,
+  /// unlike the pills in [composerHeader], so its ✕ keeps the keyboard up.
   Widget _buildHeaderChip({required Widget chip}) => Padding(
     padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
     child: Align(
       alignment: AlignmentDirectional.centerStart,
-      child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: chip),
+      child: TextFieldTapRegion(
+        child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: chip),
+      ),
     ),
   );
 
