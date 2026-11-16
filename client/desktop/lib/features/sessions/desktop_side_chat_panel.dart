@@ -5,6 +5,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../core/widgets/desktop_connection_pill_slot.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 
 /// Makes the cubit of one opening of a session's side-chat panel.
@@ -63,7 +64,8 @@ typedef _Opening = ({Key key, String pluginId, SideChatCubit Function() createCu
 
 class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> with SingleTickerProviderStateMixin {
   late final AnimationController _slide = AnimationController(vsync: this)..addStatusListener(_onSlideStatus);
-  late final Animation<double> _shown = CurvedAnimation(parent: _slide, curve: _curve);
+  late final Animation<double> _shown = CurvedAnimation(parent: _slide, curve: _curve)..addListener(_coverPage);
+  late final DesktopTrailingPanelCover _cover;
   final _scrollController = ScrollController();
   final _focusScope = FocusScopeNode(debugLabel: "Side chat panel");
 
@@ -75,7 +77,15 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   FocusNode? _focusBeforeOpening;
 
   @override
+  void initState() {
+    super.initState();
+    // Held, as the page sets it back to 0 while it is torn down.
+    _cover = context.read();
+  }
+
+  @override
   void dispose() {
+    _cover.width.value = 0;
     _slide.dispose();
     _scrollController.dispose();
     _focusScope.dispose();
@@ -134,6 +144,10 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
       _slide.animateBack(0, duration: _closeDuration);
     }
   }
+
+  /// Tells the shell how much of the page's edge the panel covers, so the
+  /// connection pill moves aside with it.
+  void _coverPage() => _cover.width.value = (DesktopSideChatPanelHost.width + _inset) * _shown.value;
 
   void _onSlideStatus(AnimationStatus status) {
     if (status == AnimationStatus.dismissed) setState(() => _opening = null);

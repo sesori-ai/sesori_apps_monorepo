@@ -10,17 +10,50 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/widgets/desktop_connection_pill_slot.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/core/widgets/desktop_session_signals.dart";
 import "package:sesori_desktop/core/widgets/desktop_transcript_width.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
 import "package:sesori_desktop/features/sessions/desktop_side_chat_panel.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+
+class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
+
+class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+
+class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
+
+/// The shell's record of what covers the page's trailing edge.
+RepositoryProvider<DesktopTrailingPanelCover> _panelCover() =>
+    RepositoryProvider(create: (_) => DesktopTrailingPanelCover(), dispose: (cover) => cover.dispose());
+
+/// A bridge running on this computer, as the connection pill reads it.
+const _runningBridge = BridgeControlState(
+  trayAvailability: SystemTrayAvailability.available,
+  activity: BridgeControlActivity.idle,
+  statusLabel: "Bridge status",
+  statusDetail: null,
+  processState: BridgeProcessRunning(pid: 42),
+  desiredState: BridgeProcessDesiredState.on,
+  toggleTarget: BridgeProcessDesiredState.off,
+  launchAtLoginEnabled: false,
+  controlStatus: BridgeControlStatus(
+    startup: ControlStartupState.ready,
+    helperOnline: false,
+    bridgeId: null,
+    relay: ControlRelayConnectionState.disconnected,
+    unhealthyPlugins: [],
+    activeSessionCount: 0,
+  ),
+  updateState: DesktopUpdateManagedBySystem(),
+);
 
 class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
@@ -239,8 +272,11 @@ void main() {
     var diffCalls = 0;
 
     await tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          _panelCover(),
+        ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -364,8 +400,11 @@ void main() {
     ({String projectId, String sessionId, String? sessionTitle, bool readOnly})? openedSession;
 
     await tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          _panelCover(),
+        ],
         // The desktop shell always runs under a pointer scope.
         child: PregoInteractionScope(
           mode: PregoInteractionMode.pointer,
@@ -438,6 +477,7 @@ void main() {
     late List<String> openedParents;
     late MockSideChatRepository sideChats;
     late List<SideChatCubit> createdSideChats;
+    late _MockConnectionOverlayCubit overlay;
 
     Future<void> pumpPage(
       WidgetTester tester, {
@@ -448,6 +488,7 @@ void main() {
       Stream<SessionDetailState> states = const Stream.empty(),
       Brightness brightness = Brightness.light,
       Key? pageKey,
+      ConnectionOverlayState connection = const ConnectionOverlayState.hidden(connected: true),
     }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
@@ -475,6 +516,16 @@ void main() {
         () => sideChats.listSideChats(sessionId: any(named: "sessionId")),
       ).thenAnswer((_) async => ApiResponse.success(const SideChatListResponse(sideChats: [_sideChat])));
       createdSideChats = [];
+      overlay = _MockConnectionOverlayCubit();
+      whenListen(overlay, const Stream<ConnectionOverlayState>.empty(), initialState: connection);
+      final bridge = _MockBridgeControlCubit();
+      whenListen(bridge, const Stream<BridgeControlState>.empty(), initialState: _runningBridge);
+      final startup = _MockLocalBridgeStartupCubit();
+      whenListen(
+        startup,
+        const Stream<LocalBridgeStartupState>.empty(),
+        initialState: LocalBridgeStartupState.settled,
+      );
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -483,6 +534,11 @@ void main() {
           providers: [
             BlocProvider<SessionDetailCubit>.value(value: cubit),
             BlocProvider<SessionActionsCubit>.value(value: actions),
+            // The shell's connection pill, over the page as in the cockpit.
+            BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
+            BlocProvider<BridgeControlCubit>.value(value: bridge),
+            BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
+            _panelCover(),
           ],
           // The desktop is a pointer surface: its menus draw shortcut labels.
           child: PregoInteractionScope(
@@ -495,56 +551,62 @@ void main() {
               supportedLocales: AppLocalizations.supportedLocales,
               home: _composerScope(
                 imageClipboard: _MockImageClipboard.new,
-                child: DesktopSessionDetailView(
-                  key: pageKey,
-                  onOpenHarnessSettings: () {},
-                  onOpenBridgeSettings: () {},
-                  projectId: "project-1",
-                  projectName: null,
-                  sessionId: "session-1",
-                  sessionTitle: "Desktop session",
-                  sessionActions: SessionListActionDispatcher(
-                    deleteConfirmation: SessionDeleteConfirmation.sheet,
-                    onSessionArchived: null,
-                    onSessionDeleted: null,
-                    onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
-                  ),
-                  onMarkedUnread: () => leftPage++,
-                  readOnly: readOnly,
-                  onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
-                  onShowDiffs: () {},
-                  onOpenSession: ({
-                    required projectId,
-                    required sessionId,
-                    required sessionTitle,
-                    required readOnly,
-                  }) {},
-                  messageImageRepository: _MockMessageImageRepository.new,
-                  imageSaver: _MockImageSaver.new,
-                  imageClipboard: _MockImageClipboard.new,
-                  imageSharer: _MockImageSharer.new,
-                  sessionRepository: _MockSessionRepository.new,
-                  createPendingFormCubit: ({required requestId, required sessionId}) =>
-                      throw StateError("Unused fixture form"),
-                  createFilePreviewCubit: ({required reference}) =>
-                      throw UnimplementedError("File previews are not under test"),
-                  createExternalActionCubit: ({required requestId, required sessionId}) =>
-                      throw UnimplementedError("External actions are not under test"),
-                  createSideChatCubit:
-                      ({required sessionId, required pluginId, required availability, required isArchived}) {
-                        final sideChat = SideChatCubit(
-                          repository: sideChats,
-                          productAnalyticsService: MockProductAnalyticsService(),
-                          sessionId: sessionId,
-                          pluginId: pluginId,
-                          availability: availability,
-                          isArchived: isArchived,
-                          initialQuestion: null,
-                        );
-                        createdSideChats.add(sideChat);
-                        return sideChat;
-                      },
-                  canShareImages: true,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    DesktopSessionDetailView(
+                      key: pageKey,
+                      onOpenHarnessSettings: () {},
+                      onOpenBridgeSettings: () {},
+                      projectId: "project-1",
+                      projectName: null,
+                      sessionId: "session-1",
+                      sessionTitle: "Desktop session",
+                      sessionActions: SessionListActionDispatcher(
+                        deleteConfirmation: SessionDeleteConfirmation.sheet,
+                        onSessionArchived: null,
+                        onSessionDeleted: null,
+                        onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+                      ),
+                      onMarkedUnread: () => leftPage++,
+                      readOnly: readOnly,
+                      onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
+                      onShowDiffs: () {},
+                      onOpenSession: ({
+                        required projectId,
+                        required sessionId,
+                        required sessionTitle,
+                        required readOnly,
+                      }) {},
+                      messageImageRepository: _MockMessageImageRepository.new,
+                      imageSaver: _MockImageSaver.new,
+                      imageClipboard: _MockImageClipboard.new,
+                      imageSharer: _MockImageSharer.new,
+                      sessionRepository: _MockSessionRepository.new,
+                      createPendingFormCubit: ({required requestId, required sessionId}) =>
+                          throw StateError("Unused fixture form"),
+                      createFilePreviewCubit: ({required reference}) =>
+                          throw UnimplementedError("File previews are not under test"),
+                      createExternalActionCubit: ({required requestId, required sessionId}) =>
+                          throw UnimplementedError("External actions are not under test"),
+                      createSideChatCubit:
+                          ({required sessionId, required pluginId, required availability, required isArchived}) {
+                            final sideChat = SideChatCubit(
+                              repository: sideChats,
+                              productAnalyticsService: MockProductAnalyticsService(),
+                              sessionId: sessionId,
+                              pluginId: pluginId,
+                              availability: availability,
+                              isArchived: isArchived,
+                              initialQuestion: null,
+                            );
+                            createdSideChats.add(sideChat);
+                            return sideChat;
+                          },
+                      canShareImages: true,
+                    ),
+                    const Positioned.fill(child: DesktopConnectionPillSlot()),
+                  ],
                 ),
               ),
             ),
@@ -973,6 +1035,41 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
         expect(panel, findsNothing);
         expect(createdSideChats.single.isClosed, isTrue);
+      });
+
+      testWidgets("with the connection lost, the pill moves aside with the panel and both keep their clicks", (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          session: root,
+          initialState: sideChatState(),
+          connection: const ConnectionOverlayState.connectionLost(),
+        );
+        final pill = find.byKey(const Key("desktop-connection-pill"));
+        final resting = tester.getRect(pill);
+        expect(resting.right, 1400 - PregoSpacing.xl);
+
+        await tester.tap(find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        // It moves with the panel, never under it.
+        expect(tester.getRect(pill).right, lessThan(resting.right));
+        expect(tester.getRect(pill).right, lessThan(tester.getRect(panel).left));
+
+        await tester.pump(const Duration(milliseconds: 220));
+        expect(tester.getRect(pill).right, tester.getRect(panel).left - PregoSpacing.xl);
+        expect(tester.getRect(pill).top, resting.top);
+        await tester.tap(find.text("Reconnect"));
+        verify(overlay.reconnect).called(1);
+
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        expect(tester.getRect(pill).right, lessThan(tester.getRect(panel).left));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(panel, findsNothing, reason: "the close button took the click");
+        expect(tester.getRect(pill), resting);
       });
 
       testWidgets("Escape closes the panel at once, from its field or from the page's composer", (tester) async {

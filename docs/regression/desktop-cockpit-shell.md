@@ -226,7 +226,9 @@ The main pane hosts one full-width routed page.
   out; Escape, with the focus anywhere in the session page, closes it at once, as keyboard toggles of the sidebar
   are answered, and hands the focus back to where it was. Reduced motion opens and closes it at once. Opening it
   again while it shows keeps its chat. Switching sessions closes it with the page that holds it; a page kept under
-  a pushed subtask or Changes keeps its panel for the return.
+  a pushed subtask or Changes keeps its panel for the return. While it shows, the shell's connection pill sits
+  clear of its leading edge, moving with the panel's own slide (at once under reduced motion), so neither the
+  pill nor the panel's close button loses a click.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
   else the newest session's project), so returning from a session or restarting lands on that default again, as
   `session-creation-and-options.md` details: the project holds once it lands, another filter or a header pick moves
@@ -425,7 +427,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   under the toolbar without moving the transcript, mid-slide and settled, with the question field focused and the
   page still taking clicks; the close button slides it out and ends its chat after the slide; Escape closes it at
   once from its field and from the page's composer, which keeps its focus; a session switch closes it; an archived
-  session's link opens it read-only, and Escape closes it with no field focused.
+  session's link opens it read-only, and Escape closes it with no field focused; with the connection lost, the
+  pill moves aside with the panel, never under it, and both Reconnect and the close button take their clicks.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
