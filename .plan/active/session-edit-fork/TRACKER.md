@@ -19,8 +19,8 @@
 | 12 Codex native fork | Merged | #2649 |
 | 13 Claude native fork | Merged | #2638, #2688 |
 | 14.a Fork from a message or the session menu | Merged | #2698 |
-| 14.b Forked-from link, mid-turn popup Fork, No-project wording | In review | #2711 |
-| 15 Reconcile docs, verify and retire | In progress (local, lands after 14) | |
+| 14.b Forked-from link, mid-turn popup Fork, No-project wording | Merged | #2711, #2709 |
+| 15 Reconcile docs, verify and retire | In progress: Codex 0.139.0 refusal fix pending | |
 
 Steps 2, 5, 7 and 9 depend on nothing in this plan and can run in parallel. Step 4 needs 3. Step 6 needs 3 and 5;
 step 8 needs 3 and 7. Step 9.b needs 9. Step 10 needs 2, 4 and 9 (and 6 or 8 for a
@@ -50,9 +50,10 @@ Round 2 (2026-11-15) answered the first seven. Round 4 answered the archived-wor
 
 | Cell | Result | Date (UTC) |
 | --- | --- | --- |
-| Automated (bridge, plugin and client suites in CI) | | |
-| Live plugin, Claude Code 2.1.322 and 2.1.221 | | |
-| Live plugin, Codex 0.167.2 (and refusal on 0.139.0) | | |
-| Headless iOS simulator, Claude Code and Codex | | |
-| Desktop macOS right-click menu, Claude Code and Codex | | |
-| Relay, second client | | |
+| Automated (bridge, plugin and client suites in CI) | Pass: Desktop and Mobile CI green on main 7d8a422401 (#2711's merge), Bridge CI green on 5091836459 (no bridge change after it) | 2026-11-16 |
+| Live plugin, Claude Code 2.1.325 | Pass: later-prompt edit (store matches the active branch), first-message swap (old transcript deleted, one row), every fork point, archived origin forks; project files unchanged | 2026-11-16 |
+| Live plugin, Codex 0.169.0 | Pass: later-prompt edit (store and model memory match), first-message swap (new thread, old rollouts deleted, one row), every fork point, archived origin forks; project files unchanged | 2026-11-16 |
+| Live plugin, Codex 0.139.0 refusal | **Fail**: the refusal reason is right, but a refused edit duplicates every reply in the store and live history; a fork at the latest turn gives "can't find this message" instead of the old-runtime reason. Fix in progress | 2026-11-16 |
+| Headless iOS simulator (sesori-dev-5), Claude Code and Codex | Pass: edit with fold-away, mid-turn popup Fork (whole turn kept, text in the composer), fork from a reply, own prompt and ⋯ with `… (fork)` kept on long titles, "Forked from" back and open, archived origin read-only from the first frame, delete or archive one of a pair | 2026-11-16 |
+| Desktop right-click menu | Covered by widget tests, not run live (a macOS debug build raises a keychain prompt): `transcript_message_menu_test.dart` (right-click with and without a selection), `session_detail_message_list_test.dart` (right-click Copy selected text, drag across messages), `session_tile_menu_test.dart` (right-click a row opens the anchored menu), `prego_context_menu_test.dart` (secondary click). No test asserts Fork or Edit in a right-click menu | 2026-11-16 |
+| Relay, second client (sesori-dev-7, Codex 0.169.0) | Pass: removed rows fold away, a swapped session stays one row, a fork row appears (edit, swap and fork driven through the bridge debug API) | 2026-11-16 |
