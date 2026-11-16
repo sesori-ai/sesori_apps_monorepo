@@ -565,6 +565,7 @@ Session _session({required String id, required SessionApprovalMode? approvalOver
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 /// Reads stored sessions from the test database the session fakes write.

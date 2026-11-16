@@ -9,16 +9,51 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/widgets/desktop_connection_pill_slot.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/core/widgets/desktop_session_signals.dart";
 import "package:sesori_desktop/core/widgets/desktop_transcript_width.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
+import "package:sesori_desktop/features/sessions/desktop_side_chat_panel.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+
+class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
+
+class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+
+class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
+
+/// The shell's record of what covers the page's trailing edge.
+RepositoryProvider<DesktopTrailingPanelCover> _panelCover() =>
+    RepositoryProvider(create: (_) => DesktopTrailingPanelCover(), dispose: (cover) => cover.dispose());
+
+/// A bridge running on this computer, as the connection pill reads it.
+const _runningBridge = BridgeControlState(
+  trayAvailability: SystemTrayAvailability.available,
+  activity: BridgeControlActivity.idle,
+  statusLabel: "Bridge status",
+  statusDetail: null,
+  processState: BridgeProcessRunning(pid: 42),
+  desiredState: BridgeProcessDesiredState.on,
+  toggleTarget: BridgeProcessDesiredState.off,
+  launchAtLoginEnabled: false,
+  controlStatus: BridgeControlStatus(
+    startup: ControlStartupState.ready,
+    helperOnline: false,
+    bridgeId: null,
+    relay: ControlRelayConnectionState.disconnected,
+    unhealthyPlugins: [],
+    activeSessionCount: 0,
+  ),
+  updateState: DesktopUpdateManagedBySystem(),
+);
 
 class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
@@ -70,6 +105,7 @@ const _child = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 
@@ -90,6 +126,7 @@ const _session = Session(
   // Local state can still say unseen just after opening.
   unseen: true,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 
@@ -189,6 +226,27 @@ class _StubDiffSummaryCubit() extends Cubit<DiffSummaryState> implements DiffSum
   Duration get refreshInterval => Duration.zero;
 }
 
+SideChatCubit _unusedSideChatCubit({
+  required String sessionId,
+  required String pluginId,
+  required SideQuestionAvailability availability,
+  required bool isArchived,
+}) => throw UnimplementedError("Side chats are not under test");
+
+const _sideChat = SideChat(
+  id: "chat-1",
+  exchanges: [
+    SideChatExchange(
+      id: "exchange-1",
+      question: "Which file holds the parser?",
+      answer: "The lexer file.",
+      answerNotice: null,
+      askedAt: 1,
+      answeredAt: 2,
+    ),
+  ],
+);
+
 /// The composer's labelled buttons keep their tooltip's words off the semantics
 /// tree, which is what `find.byTooltip` reads.
 Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
@@ -220,8 +278,11 @@ void main() {
     var diffCalls = 0;
 
     await tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          _panelCover(),
+        ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -267,6 +328,7 @@ void main() {
                   throw UnimplementedError("File previews are not under test"),
               createExternalActionCubit: ({required requestId, required sessionId}) =>
                   throw UnimplementedError("External actions are not under test"),
+              createSideChatCubit: _unusedSideChatCubit,
               canShareImages: true,
             ),
           ),
@@ -344,8 +406,11 @@ void main() {
     ({String projectId, String sessionId, String? sessionTitle, bool readOnly})? openedSession;
 
     await tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          _panelCover(),
+        ],
         // The desktop shell always runs under a pointer scope.
         child: PregoInteractionScope(
           mode: PregoInteractionMode.pointer,
@@ -385,6 +450,7 @@ void main() {
                     throw UnimplementedError("File previews are not under test"),
                 createExternalActionCubit: ({required requestId, required sessionId}) =>
                     throw UnimplementedError("External actions are not under test"),
+                createSideChatCubit: _unusedSideChatCubit,
                 canShareImages: true,
               ),
             ),
@@ -415,6 +481,12 @@ void main() {
     late List<Session> markedUnread;
     late int leftPage;
     late List<String> openedParents;
+    late MockSideChatRepository sideChats;
+    late List<SideChatCubit> createdSideChats;
+    late _MockConnectionOverlayCubit overlay;
+
+    /// Another session page, as a subtask pushed over the one under test.
+    late Widget Function() pushablePage;
 
     Future<void> pumpPage(
       WidgetTester tester, {
@@ -424,6 +496,8 @@ void main() {
       SessionDetailState? initialState,
       Stream<SessionDetailState> states = const Stream.empty(),
       Brightness brightness = Brightness.light,
+      Key? pageKey,
+      ConnectionOverlayState connection = const ConnectionOverlayState.hidden(connected: true),
     }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
@@ -446,6 +520,76 @@ void main() {
       markedUnread = [];
       leftPage = 0;
       openedParents = [];
+      sideChats = MockSideChatRepository();
+      when(
+        () => sideChats.listSideChats(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) async => ApiResponse.success(const SideChatListResponse(sideChats: [_sideChat])));
+      createdSideChats = [];
+      overlay = _MockConnectionOverlayCubit();
+      whenListen(overlay, const Stream<ConnectionOverlayState>.empty(), initialState: connection);
+      final bridge = _MockBridgeControlCubit();
+      whenListen(bridge, const Stream<BridgeControlState>.empty(), initialState: _runningBridge);
+      final startup = _MockLocalBridgeStartupCubit();
+      whenListen(
+        startup,
+        const Stream<LocalBridgeStartupState>.empty(),
+        initialState: LocalBridgeStartupState.settled,
+      );
+      Widget page({required Key? key}) => _composerScope(
+        imageClipboard: _MockImageClipboard.new,
+        child: DesktopSessionDetailView(
+          key: key,
+          onOpenHarnessSettings: () {},
+          onOpenBridgeSettings: () {},
+          projectId: "project-1",
+          projectName: null,
+          sessionId: "session-1",
+          sessionTitle: "Desktop session",
+          sessionActions: SessionListActionDispatcher(
+            deleteConfirmation: SessionDeleteConfirmation.sheet,
+            onSessionArchived: null,
+            onSessionDeleted: null,
+            onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+            openSession: _openNothing,
+            createSessionSearch: _searchNothing,
+          ),
+          onMarkedUnread: () => leftPage++,
+          readOnly: readOnly,
+          onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
+          onShowDiffs: () {},
+          onOpenSession: ({
+            required projectId,
+            required sessionId,
+            required sessionTitle,
+            required readOnly,
+          }) {},
+          messageImageRepository: _MockMessageImageRepository.new,
+          imageSaver: _MockImageSaver.new,
+          imageClipboard: _MockImageClipboard.new,
+          imageSharer: _MockImageSharer.new,
+          sessionRepository: _MockSessionRepository.new,
+          createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
+          createFilePreviewCubit: ({required reference}) =>
+              throw UnimplementedError("File previews are not under test"),
+          createExternalActionCubit: ({required requestId, required sessionId}) =>
+              throw UnimplementedError("External actions are not under test"),
+          createSideChatCubit: ({required sessionId, required pluginId, required availability, required isArchived}) {
+            final sideChat = SideChatCubit(
+              repository: sideChats,
+              productAnalyticsService: MockProductAnalyticsService(),
+              sessionId: sessionId,
+              pluginId: pluginId,
+              availability: availability,
+              isArchived: isArchived,
+              initialQuestion: null,
+            );
+            createdSideChats.add(sideChat);
+            return sideChat;
+          },
+          canShareImages: true,
+        ),
+      );
+      pushablePage = () => page(key: null);
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -454,6 +598,11 @@ void main() {
           providers: [
             BlocProvider<SessionDetailCubit>.value(value: cubit),
             BlocProvider<SessionActionsCubit>.value(value: actions),
+            // The shell's connection pill, over the page as in the cockpit.
+            BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
+            BlocProvider<BridgeControlCubit>.value(value: bridge),
+            BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
+            _panelCover(),
           ],
           // The desktop is a pointer surface: its menus draw shortcut labels.
           child: PregoInteractionScope(
@@ -464,47 +613,15 @@ void main() {
               ),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: _composerScope(
-                imageClipboard: _MockImageClipboard.new,
-                child: DesktopSessionDetailView(
-                  onOpenHarnessSettings: () {},
-                  onOpenBridgeSettings: () {},
-                  projectId: "project-1",
-                  projectName: null,
-                  sessionId: "session-1",
-                  sessionTitle: "Desktop session",
-                  sessionActions: SessionListActionDispatcher(
-                    deleteConfirmation: SessionDeleteConfirmation.sheet,
-                    onSessionArchived: null,
-                    onSessionDeleted: null,
-                    onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
-                    openSession: _openNothing,
-                    createSessionSearch: _searchNothing,
-                  ),
-                  onMarkedUnread: () => leftPage++,
-                  readOnly: readOnly,
-                  onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
-                  onShowDiffs: () {},
-                  onOpenSession: ({
-                    required projectId,
-                    required sessionId,
-                    required sessionTitle,
-                    required readOnly,
-                  }) {},
-                  messageImageRepository: _MockMessageImageRepository.new,
-                  imageSaver: _MockImageSaver.new,
-                  imageClipboard: _MockImageClipboard.new,
-                  imageSharer: _MockImageSharer.new,
-                  sessionRepository: _MockSessionRepository.new,
-                  createPendingFormCubit: ({required requestId, required sessionId}) =>
-                      throw StateError("Unused fixture form"),
-                  createFilePreviewCubit: ({required reference}) =>
-                      throw UnimplementedError("File previews are not under test"),
-                  createExternalActionCubit: ({required requestId, required sessionId}) =>
-                      throw UnimplementedError("External actions are not under test"),
-                  canShareImages: true,
-                ),
+              // The shell's pill floats over every page, as the cockpit's does.
+              builder: (context, child) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  ?child,
+                  const Positioned.fill(child: DesktopConnectionPillSlot()),
+                ],
               ),
+              home: page(key: pageKey),
             ),
           ),
         ),
@@ -861,6 +978,205 @@ void main() {
       expect(find.text("Delete"), findsOneWidget);
       expect(find.text("Mark as read"), findsNothing);
       expect(find.text("Mark as unread"), findsOneWidget);
+    });
+
+    group("side chats", () {
+      final root = _session.copyWith(parentID: null);
+      final panel = find.byKey(DesktopSideChatPanelHost.panelKey);
+      Rect transcript(WidgetTester tester) => tester.getRect(find.text("Desktop transcript"));
+
+      SessionDetailLoaded sideChatState({bool archived = false}) => _loadedState(session: root).copyWith(
+        sideQuestions: SideQuestionAvailability.available,
+        pendingQuestions: const [],
+        isArchived: archived,
+        archivedSideChatCount: archived ? 1 : 0,
+      );
+
+      // The panel's field takes the focus, and its blinking caret never lets
+      // the frames settle, so these tests pump past the slide instead.
+      Future<void> openFromComposer(WidgetTester tester) async {
+        await tester.tap(find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      testWidgets("the composer's button slides the panel in over the page, leaving the transcript in place", (
+        tester,
+      ) async {
+        await pumpPage(tester, session: root, initialState: sideChatState());
+        final before = transcript(tester);
+        expect(panel, findsNothing);
+
+        await tester.tap(find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        // Midway it is still partly past the window's edge, and the
+        // transcript has neither moved nor been laid out again.
+        expect(tester.getRect(panel).right, greaterThan(1400));
+        expect(transcript(tester), before);
+
+        await tester.pump(const Duration(milliseconds: 220));
+        final rect = tester.getRect(panel);
+        expect(rect.width, DesktopSideChatPanelHost.width);
+        expect(rect.top, DesktopPageToolbar.height);
+        expect(rect.right, 1400 - PregoSpacing.lg);
+        expect(rect.bottom, 800 - PregoSpacing.lg);
+        expect(transcript(tester), before);
+        expect(find.descendant(of: panel, matching: find.text("Side question")), findsOneWidget);
+        final field = tester.widget<EditableText>(
+          find.descendant(of: find.byKey(SideChatView.questionFieldKey), matching: find.byType(EditableText)),
+        );
+        expect(field.focusNode.hasFocus, isTrue);
+
+        // The page behind keeps taking clicks.
+        await tester.tap(find.byKey(const Key("desktop-session-page-more")));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text("Mark as unread"), findsOneWidget);
+      });
+
+      testWidgets("the close button slides the panel away, and its chat ends once it has gone", (tester) async {
+        await pumpPage(tester, session: root, initialState: sideChatState());
+        await openFromComposer(tester);
+
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        expect(tester.getRect(panel).right, greaterThan(1400 - PregoSpacing.lg));
+        expect(createdSideChats.single.isClosed, isFalse);
+        final leaving = find.ancestor(of: panel, matching: find.byType(IgnorePointer)).first;
+        expect(tester.widget<IgnorePointer>(leaving).ignoring, isTrue, reason: "a leaving panel takes no clicks");
+
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(panel, findsNothing);
+        expect(createdSideChats.single.isClosed, isTrue);
+      });
+
+      testWidgets("with the connection lost, the pill moves aside with the panel and both keep their clicks", (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          session: root,
+          initialState: sideChatState(),
+          connection: const ConnectionOverlayState.connectionLost(),
+        );
+        final pill = find.byKey(const Key("desktop-connection-pill"));
+        final resting = tester.getRect(pill);
+        expect(resting.right, 1400 - PregoSpacing.xl);
+
+        await tester.tap(find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        // It moves with the panel, never under it.
+        expect(tester.getRect(pill).right, lessThan(resting.right));
+        expect(tester.getRect(pill).right, lessThan(tester.getRect(panel).left));
+
+        await tester.pump(const Duration(milliseconds: 220));
+        expect(tester.getRect(pill).right, tester.getRect(panel).left - PregoSpacing.xl);
+        expect(tester.getRect(pill).top, resting.top);
+        await tester.tap(find.text("Reconnect"));
+        verify(overlay.reconnect).called(1);
+
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        expect(tester.getRect(pill).right, lessThan(tester.getRect(panel).left));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(panel, findsNothing, reason: "the close button took the click");
+        expect(tester.getRect(pill), resting);
+      });
+
+      testWidgets("a subtask pushed over the open panel takes the pill back, and returning hands it over again", (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          session: root,
+          initialState: sideChatState(),
+          connection: const ConnectionOverlayState.connectionLost(),
+        );
+        final pill = find.byKey(const Key("desktop-connection-pill"));
+        final resting = tester.getRect(pill);
+        await openFromComposer(tester);
+        final aside = tester.getRect(pill);
+        expect(aside.right, lessThan(resting.right));
+
+        final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+        navigator.push(MaterialPageRoute<void>(builder: (_) => pushablePage()));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.getRect(pill), resting, reason: "the subtask shows no panel");
+
+        navigator.pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(panel, findsOneWidget);
+        expect(tester.getRect(pill), aside, reason: "the leaving subtask keeps the parent's cover");
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(panel, findsNothing);
+      });
+
+      testWidgets("Escape closes the panel at once, from its field or from the page's composer", (tester) async {
+        await pumpPage(tester, session: root, initialState: sideChatState());
+        final before = transcript(tester);
+        await openFromComposer(tester);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(panel, findsNothing);
+        expect(transcript(tester), before);
+
+        await openFromComposer(tester);
+        final composerField = tester.widget<EditableText>(
+          find.descendant(of: find.byType(SessionDetailComposerControls), matching: find.byType(EditableText)),
+        );
+        composerField.focusNode.requestFocus();
+        await tester.pump();
+        expect(composerField.focusNode.hasFocus, isTrue);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(panel, findsNothing);
+        // The composer keeps its focus: Escape went to the panel alone.
+        expect(composerField.focusNode.hasFocus, isTrue);
+        expect(createdSideChats, hasLength(2));
+      });
+
+      testWidgets("switching sessions closes the panel", (tester) async {
+        await pumpPage(tester, session: root, initialState: sideChatState(), pageKey: const ValueKey("session-1"));
+        await openFromComposer(tester);
+        expect(panel, findsOneWidget);
+
+        await pumpPage(
+          tester,
+          session: root.copyWith(id: "session-2"),
+          initialState: sideChatState(),
+          pageKey: const ValueKey("session-2"),
+        );
+        expect(panel, findsNothing);
+      });
+
+      testWidgets("an archived session's Side chats link opens its newest chat read-only in the panel", (
+        tester,
+      ) async {
+        await pumpPage(tester, session: root, initialState: sideChatState(archived: true));
+
+        await tester.tap(find.text("Side chats (1)"));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: panel, matching: find.text("This session is archived. Its side chats are read-only.")),
+          findsOneWidget,
+        );
+        expect(find.descendant(of: panel, matching: find.byKey(SideChatView.questionFieldKey)), findsNothing);
+        expect(createdSideChats.single.canAsk, isFalse);
+
+        // With no field to hold it, the panel keeps the focus for Escape.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(panel, findsNothing);
+      });
     });
   });
 }

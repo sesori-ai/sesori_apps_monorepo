@@ -6283,6 +6283,541 @@ class ScheduledTaskRunsTableCompanion
   }
 }
 
+mixin $SessionRunningTurnsTableTableToColumns
+    implements Insertable<SessionRunningTurnDto> {
+  String get sessionId;
+
+  /// UTC milliseconds of when this bridge run last saw the turn running, or
+  /// adopted it from an earlier run. Every busy status re-stamps it.
+  int get startedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['started_at'] = Variable<int>(startedAt);
+    return map;
+  }
+}
+
+class $SessionRunningTurnsTableTable extends SessionRunningTurnsTable
+    with TableInfo<$SessionRunningTurnsTableTable, SessionRunningTurnDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionRunningTurnsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<int> startedAt = GeneratedColumn<int>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sessionId, startedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_running_turns';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionRunningTurnDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  @override
+  SessionRunningTurnDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionRunningTurnDto(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}started_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionRunningTurnsTableTable createAlias(String alias) {
+    return $SessionRunningTurnsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionRunningTurnDto extends DataClass
+    with $SessionRunningTurnsTableTableToColumns {
+  @override
+  final String sessionId;
+
+  /// UTC milliseconds of when this bridge run last saw the turn running, or
+  /// adopted it from an earlier run. Every busy status re-stamps it.
+  @override
+  final int startedAt;
+  const SessionRunningTurnDto({
+    required this.sessionId,
+    required this.startedAt,
+  });
+  SessionRunningTurnsTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionRunningTurnsTableCompanion(
+      sessionId: Value(sessionId),
+      startedAt: Value(startedAt),
+    );
+  }
+
+  factory SessionRunningTurnDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionRunningTurnDto(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      startedAt: serializer.fromJson<int>(json['startedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'startedAt': serializer.toJson<int>(startedAt),
+    };
+  }
+
+  SessionRunningTurnDto copyWith({String? sessionId, int? startedAt}) =>
+      SessionRunningTurnDto(
+        sessionId: sessionId ?? this.sessionId,
+        startedAt: startedAt ?? this.startedAt,
+      );
+  SessionRunningTurnDto copyWithCompanion(
+    SessionRunningTurnsTableCompanion data,
+  ) {
+    return SessionRunningTurnDto(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionRunningTurnDto(')
+          ..write('sessionId: $sessionId, ')
+          ..write('startedAt: $startedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, startedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionRunningTurnDto &&
+          other.sessionId == this.sessionId &&
+          other.startedAt == this.startedAt);
+}
+
+class SessionRunningTurnsTableCompanion
+    extends UpdateCompanion<SessionRunningTurnDto> {
+  final Value<String> sessionId;
+  final Value<int> startedAt;
+  const SessionRunningTurnsTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.startedAt = const Value.absent(),
+  });
+  SessionRunningTurnsTableCompanion.insert({
+    required String sessionId,
+    required int startedAt,
+  }) : sessionId = Value(sessionId),
+       startedAt = Value(startedAt);
+  static Insertable<SessionRunningTurnDto> custom({
+    Expression<String>? sessionId,
+    Expression<int>? startedAt,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (startedAt != null) 'started_at': startedAt,
+    });
+  }
+
+  SessionRunningTurnsTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<int>? startedAt,
+  }) {
+    return SessionRunningTurnsTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      startedAt: startedAt ?? this.startedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<int>(startedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionRunningTurnsTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('startedAt: $startedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $SessionInterruptionsTableTableToColumns
+    implements Insertable<SessionInterruptionDto> {
+  String get sessionId;
+
+  /// The newest stored history message when the interruption was recorded.
+  String get afterMessageId;
+
+  /// Whether the user opened the session or sent to it since.
+  bool get acknowledged;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['after_message_id'] = Variable<String>(afterMessageId);
+    map['acknowledged'] = Variable<bool>(acknowledged);
+    return map;
+  }
+}
+
+class $SessionInterruptionsTableTable extends SessionInterruptionsTable
+    with TableInfo<$SessionInterruptionsTableTable, SessionInterruptionDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionInterruptionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _afterMessageIdMeta = const VerificationMeta(
+    'afterMessageId',
+  );
+  @override
+  late final GeneratedColumn<String> afterMessageId = GeneratedColumn<String>(
+    'after_message_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _acknowledgedMeta = const VerificationMeta(
+    'acknowledged',
+  );
+  @override
+  late final GeneratedColumn<bool> acknowledged = GeneratedColumn<bool>(
+    'acknowledged',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("acknowledged" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sessionId,
+    afterMessageId,
+    acknowledged,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_interruptions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionInterruptionDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('after_message_id')) {
+      context.handle(
+        _afterMessageIdMeta,
+        afterMessageId.isAcceptableOrUnknown(
+          data['after_message_id']!,
+          _afterMessageIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_afterMessageIdMeta);
+    }
+    if (data.containsKey('acknowledged')) {
+      context.handle(
+        _acknowledgedMeta,
+        acknowledged.isAcceptableOrUnknown(
+          data['acknowledged']!,
+          _acknowledgedMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_acknowledgedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  @override
+  SessionInterruptionDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionInterruptionDto(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      afterMessageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}after_message_id'],
+      )!,
+      acknowledged: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}acknowledged'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionInterruptionsTableTable createAlias(String alias) {
+    return $SessionInterruptionsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionInterruptionDto extends DataClass
+    with $SessionInterruptionsTableTableToColumns {
+  @override
+  final String sessionId;
+
+  /// The newest stored history message when the interruption was recorded.
+  @override
+  final String afterMessageId;
+
+  /// Whether the user opened the session or sent to it since.
+  @override
+  final bool acknowledged;
+  const SessionInterruptionDto({
+    required this.sessionId,
+    required this.afterMessageId,
+    required this.acknowledged,
+  });
+  SessionInterruptionsTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionInterruptionsTableCompanion(
+      sessionId: Value(sessionId),
+      afterMessageId: Value(afterMessageId),
+      acknowledged: Value(acknowledged),
+    );
+  }
+
+  factory SessionInterruptionDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionInterruptionDto(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      afterMessageId: serializer.fromJson<String>(json['afterMessageId']),
+      acknowledged: serializer.fromJson<bool>(json['acknowledged']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'afterMessageId': serializer.toJson<String>(afterMessageId),
+      'acknowledged': serializer.toJson<bool>(acknowledged),
+    };
+  }
+
+  SessionInterruptionDto copyWith({
+    String? sessionId,
+    String? afterMessageId,
+    bool? acknowledged,
+  }) => SessionInterruptionDto(
+    sessionId: sessionId ?? this.sessionId,
+    afterMessageId: afterMessageId ?? this.afterMessageId,
+    acknowledged: acknowledged ?? this.acknowledged,
+  );
+  SessionInterruptionDto copyWithCompanion(
+    SessionInterruptionsTableCompanion data,
+  ) {
+    return SessionInterruptionDto(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      afterMessageId: data.afterMessageId.present
+          ? data.afterMessageId.value
+          : this.afterMessageId,
+      acknowledged: data.acknowledged.present
+          ? data.acknowledged.value
+          : this.acknowledged,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionInterruptionDto(')
+          ..write('sessionId: $sessionId, ')
+          ..write('afterMessageId: $afterMessageId, ')
+          ..write('acknowledged: $acknowledged')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, afterMessageId, acknowledged);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionInterruptionDto &&
+          other.sessionId == this.sessionId &&
+          other.afterMessageId == this.afterMessageId &&
+          other.acknowledged == this.acknowledged);
+}
+
+class SessionInterruptionsTableCompanion
+    extends UpdateCompanion<SessionInterruptionDto> {
+  final Value<String> sessionId;
+  final Value<String> afterMessageId;
+  final Value<bool> acknowledged;
+  const SessionInterruptionsTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.afterMessageId = const Value.absent(),
+    this.acknowledged = const Value.absent(),
+  });
+  SessionInterruptionsTableCompanion.insert({
+    required String sessionId,
+    required String afterMessageId,
+    required bool acknowledged,
+  }) : sessionId = Value(sessionId),
+       afterMessageId = Value(afterMessageId),
+       acknowledged = Value(acknowledged);
+  static Insertable<SessionInterruptionDto> custom({
+    Expression<String>? sessionId,
+    Expression<String>? afterMessageId,
+    Expression<bool>? acknowledged,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (afterMessageId != null) 'after_message_id': afterMessageId,
+      if (acknowledged != null) 'acknowledged': acknowledged,
+    });
+  }
+
+  SessionInterruptionsTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<String>? afterMessageId,
+    Value<bool>? acknowledged,
+  }) {
+    return SessionInterruptionsTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      afterMessageId: afterMessageId ?? this.afterMessageId,
+      acknowledged: acknowledged ?? this.acknowledged,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (afterMessageId.present) {
+      map['after_message_id'] = Variable<String>(afterMessageId.value);
+    }
+    if (acknowledged.present) {
+      map['acknowledged'] = Variable<bool>(acknowledged.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionInterruptionsTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('afterMessageId: $afterMessageId, ')
+          ..write('acknowledged: $acknowledged')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6306,6 +6841,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SideChatExchangesTableTable(this);
   late final $ScheduledTaskRunsTableTable scheduledTaskRunsTable =
       $ScheduledTaskRunsTableTable(this);
+  late final $SessionRunningTurnsTableTable sessionRunningTurnsTable =
+      $SessionRunningTurnsTableTable(this);
+  late final $SessionInterruptionsTableTable sessionInterruptionsTable =
+      $SessionInterruptionsTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -6363,6 +6902,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionContinuationTable,
     sideChatExchangesTable,
     scheduledTaskRunsTable,
+    sessionRunningTurnsTable,
+    sessionInterruptionsTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
@@ -6437,6 +6978,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('scheduled_task_runs', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_running_turns', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_interruptions', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -7952,6 +8507,68 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $SessionRunningTurnsTableTable,
+    List<SessionRunningTurnDto>
+  >
+  _sessionRunningTurnsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionRunningTurnsTable,
+        aliasName:
+            'sessions_table__session_id__session_running_turns__session_id',
+      );
+
+  $$SessionRunningTurnsTableTableProcessedTableManager
+  get sessionRunningTurnsTableRefs {
+    final manager =
+        $$SessionRunningTurnsTableTableTableManager(
+          $_db,
+          $_db.sessionRunningTurnsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionRunningTurnsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SessionInterruptionsTableTable,
+    List<SessionInterruptionDto>
+  >
+  _sessionInterruptionsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionInterruptionsTable,
+        aliasName:
+            'sessions_table__session_id__session_interruptions__session_id',
+      );
+
+  $$SessionInterruptionsTableTableProcessedTableManager
+  get sessionInterruptionsTableRefs {
+    final manager =
+        $$SessionInterruptionsTableTableTableManager(
+          $_db,
+          $_db.sessionInterruptionsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionInterruptionsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -8276,6 +8893,60 @@ class $$SessionTableTableFilterComposer
               }) => $$ScheduledTaskRunsTableTableFilterComposer(
                 $db: $db,
                 $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> sessionRunningTurnsTableRefs(
+    Expression<bool> Function($$SessionRunningTurnsTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SessionRunningTurnsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionRunningTurnsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionRunningTurnsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionRunningTurnsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> sessionInterruptionsTableRefs(
+    Expression<bool> Function($$SessionInterruptionsTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SessionInterruptionsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionInterruptionsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionInterruptionsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionInterruptionsTable,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -8819,6 +9490,60 @@ class $$SessionTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> sessionRunningTurnsTableRefs<T extends Object>(
+    Expression<T> Function($$SessionRunningTurnsTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SessionRunningTurnsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionRunningTurnsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionRunningTurnsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionRunningTurnsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> sessionInterruptionsTableRefs<T extends Object>(
+    Expression<T> Function($$SessionInterruptionsTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SessionInterruptionsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionInterruptionsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionInterruptionsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionInterruptionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -8843,6 +9568,8 @@ class $$SessionTableTableTableManager
             bool sessionContinuationTableRefs,
             bool sideChatExchangesTableRefs,
             bool scheduledTaskRunsTableRefs,
+            bool sessionRunningTurnsTableRefs,
+            bool sessionInterruptionsTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -8996,6 +9723,8 @@ class $$SessionTableTableTableManager
                 sessionContinuationTableRefs = false,
                 sideChatExchangesTableRefs = false,
                 scheduledTaskRunsTableRefs = false,
+                sessionRunningTurnsTableRefs = false,
+                sessionInterruptionsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -9005,6 +9734,10 @@ class $$SessionTableTableTableManager
                       db.sessionContinuationTable,
                     if (sideChatExchangesTableRefs) db.sideChatExchangesTable,
                     if (scheduledTaskRunsTableRefs) db.scheduledTaskRunsTable,
+                    if (sessionRunningTurnsTableRefs)
+                      db.sessionRunningTurnsTable,
+                    if (sessionInterruptionsTableRefs)
+                      db.sessionInterruptionsTable,
                   ],
                   addJoins:
                       <
@@ -9151,6 +9884,46 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (sessionRunningTurnsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          SessionRunningTurnDto,
+                          $SessionRunningTurnsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionRunningTurnsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionRunningTurnsTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
+                      if (sessionInterruptionsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          SessionInterruptionDto,
+                          $SessionInterruptionsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionInterruptionsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionInterruptionsTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9180,6 +9953,8 @@ typedef $$SessionTableTableProcessedTableManager =
         bool sessionContinuationTableRefs,
         bool sideChatExchangesTableRefs,
         bool scheduledTaskRunsTableRefs,
+        bool sessionRunningTurnsTableRefs,
+        bool sessionInterruptionsTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -11566,6 +12341,585 @@ typedef $$ScheduledTaskRunsTableTableProcessedTableManager =
       ScheduledTaskRunDto,
       PrefetchHooks Function({bool taskId, bool sessionId})
     >;
+typedef $$SessionRunningTurnsTableTableCreateCompanionBuilder =
+    SessionRunningTurnsTableCompanion Function({
+      required String sessionId,
+      required int startedAt,
+    });
+typedef $$SessionRunningTurnsTableTableUpdateCompanionBuilder =
+    SessionRunningTurnsTableCompanion Function({
+      Value<String> sessionId,
+      Value<int> startedAt,
+    });
+
+final class $$SessionRunningTurnsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionRunningTurnsTableTable,
+          SessionRunningTurnDto
+        > {
+  $$SessionRunningTurnsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_running_turns__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionRunningTurnsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
+  $$SessionRunningTurnsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionRunningTurnsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
+  $$SessionRunningTurnsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionRunningTurnsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
+  $$SessionRunningTurnsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionRunningTurnsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionRunningTurnsTableTable,
+          SessionRunningTurnDto,
+          $$SessionRunningTurnsTableTableFilterComposer,
+          $$SessionRunningTurnsTableTableOrderingComposer,
+          $$SessionRunningTurnsTableTableAnnotationComposer,
+          $$SessionRunningTurnsTableTableCreateCompanionBuilder,
+          $$SessionRunningTurnsTableTableUpdateCompanionBuilder,
+          (SessionRunningTurnDto, $$SessionRunningTurnsTableTableReferences),
+          SessionRunningTurnDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionRunningTurnsTableTableTableManager(
+    _$AppDatabase db,
+    $SessionRunningTurnsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionRunningTurnsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionRunningTurnsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionRunningTurnsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<int> startedAt = const Value.absent(),
+              }) => SessionRunningTurnsTableCompanion(
+                sessionId: sessionId,
+                startedAt: startedAt,
+              ),
+          createCompanionCallback:
+              ({required String sessionId, required int startedAt}) =>
+                  SessionRunningTurnsTableCompanion.insert(
+                    sessionId: sessionId,
+                    startedAt: startedAt,
+                  ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SessionRunningTurnsTableTable,
+                    SessionRunningTurnDto
+                  >(table),
+                  $$SessionRunningTurnsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$SessionRunningTurnsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionRunningTurnsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionRunningTurnsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionRunningTurnsTableTable,
+      SessionRunningTurnDto,
+      $$SessionRunningTurnsTableTableFilterComposer,
+      $$SessionRunningTurnsTableTableOrderingComposer,
+      $$SessionRunningTurnsTableTableAnnotationComposer,
+      $$SessionRunningTurnsTableTableCreateCompanionBuilder,
+      $$SessionRunningTurnsTableTableUpdateCompanionBuilder,
+      (SessionRunningTurnDto, $$SessionRunningTurnsTableTableReferences),
+      SessionRunningTurnDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
+typedef $$SessionInterruptionsTableTableCreateCompanionBuilder =
+    SessionInterruptionsTableCompanion Function({
+      required String sessionId,
+      required String afterMessageId,
+      required bool acknowledged,
+    });
+typedef $$SessionInterruptionsTableTableUpdateCompanionBuilder =
+    SessionInterruptionsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> afterMessageId,
+      Value<bool> acknowledged,
+    });
+
+final class $$SessionInterruptionsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionInterruptionsTableTable,
+          SessionInterruptionDto
+        > {
+  $$SessionInterruptionsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_interruptions__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionInterruptionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionInterruptionsTableTable> {
+  $$SessionInterruptionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get afterMessageId => $composableBuilder(
+    column: $table.afterMessageId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionInterruptionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionInterruptionsTableTable> {
+  $$SessionInterruptionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get afterMessageId => $composableBuilder(
+    column: $table.afterMessageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionInterruptionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionInterruptionsTableTable> {
+  $$SessionInterruptionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get afterMessageId => $composableBuilder(
+    column: $table.afterMessageId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get acknowledged => $composableBuilder(
+    column: $table.acknowledged,
+    builder: (column) => column,
+  );
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionInterruptionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionInterruptionsTableTable,
+          SessionInterruptionDto,
+          $$SessionInterruptionsTableTableFilterComposer,
+          $$SessionInterruptionsTableTableOrderingComposer,
+          $$SessionInterruptionsTableTableAnnotationComposer,
+          $$SessionInterruptionsTableTableCreateCompanionBuilder,
+          $$SessionInterruptionsTableTableUpdateCompanionBuilder,
+          (SessionInterruptionDto, $$SessionInterruptionsTableTableReferences),
+          SessionInterruptionDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionInterruptionsTableTableTableManager(
+    _$AppDatabase db,
+    $SessionInterruptionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionInterruptionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionInterruptionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionInterruptionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<String> afterMessageId = const Value.absent(),
+                Value<bool> acknowledged = const Value.absent(),
+              }) => SessionInterruptionsTableCompanion(
+                sessionId: sessionId,
+                afterMessageId: afterMessageId,
+                acknowledged: acknowledged,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required String afterMessageId,
+                required bool acknowledged,
+              }) => SessionInterruptionsTableCompanion.insert(
+                sessionId: sessionId,
+                afterMessageId: afterMessageId,
+                acknowledged: acknowledged,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SessionInterruptionsTableTable,
+                    SessionInterruptionDto
+                  >(table),
+                  $$SessionInterruptionsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$SessionInterruptionsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionInterruptionsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionInterruptionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionInterruptionsTableTable,
+      SessionInterruptionDto,
+      $$SessionInterruptionsTableTableFilterComposer,
+      $$SessionInterruptionsTableTableOrderingComposer,
+      $$SessionInterruptionsTableTableAnnotationComposer,
+      $$SessionInterruptionsTableTableCreateCompanionBuilder,
+      $$SessionInterruptionsTableTableUpdateCompanionBuilder,
+      (SessionInterruptionDto, $$SessionInterruptionsTableTableReferences),
+      SessionInterruptionDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11609,5 +12963,15 @@ class $AppDatabaseManager {
       $$ScheduledTaskRunsTableTableTableManager(
         _db,
         _db.scheduledTaskRunsTable,
+      );
+  $$SessionRunningTurnsTableTableTableManager get sessionRunningTurnsTable =>
+      $$SessionRunningTurnsTableTableTableManager(
+        _db,
+        _db.sessionRunningTurnsTable,
+      );
+  $$SessionInterruptionsTableTableTableManager get sessionInterruptionsTable =>
+      $$SessionInterruptionsTableTableTableManager(
+        _db,
+        _db.sessionInterruptionsTable,
       );
 }
