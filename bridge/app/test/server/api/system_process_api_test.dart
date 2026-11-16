@@ -290,5 +290,34 @@ void main() {
       expect(await api.inspectProcess(pid: -1), isNull);
       expect(runner.calls, isEmpty);
     });
+
+    test("listPosixDescendants returns every process below the pid, detached ones included", () async {
+      // 10 -> 11 -> 13, 10 -> 12; 20 is a sibling tree; 1 is init.
+      final runner = RecordingProcessRunner(
+        stdout: "    1     0\n   10     1\n   11    10\n   12    10\n   13    11\n   20     1\n   21    20\n",
+      );
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+      );
+
+      final descendants = await api.listPosixDescendants(pid: 10);
+
+      expect(descendants, unorderedEquals(<int>[11, 12, 13]));
+      expect(runner.calls.single.executable, equals("ps"));
+      expect(runner.calls.single.arguments, equals(<String>["-A", "-o", "pid=,ppid="]));
+    });
+
+    test("listPosixDescendants throws when ps fails", () async {
+      final runner = RecordingProcessRunner(exitCode: 1, stderr: "ps: unknown option");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+      );
+
+      await expectLater(api.listPosixDescendants(pid: 10), throwsA(isA<ProcessException>()));
+    });
   });
 }
