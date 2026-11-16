@@ -82,6 +82,8 @@ void main() {
     final pages = shell.routes.whereType<GoRoute>().toList();
     for (final def in [
       AppRouteDef.archivedSessions,
+      AppRouteDef.scheduledTasks,
+      AppRouteDef.scheduledTaskDetail,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
       AppRouteDef.sessionDiffs,
@@ -471,6 +473,7 @@ const _session = Session(
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 

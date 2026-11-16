@@ -26,6 +26,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_process_runner.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -96,6 +97,7 @@ void main() {
       );
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       sessionMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
       );
@@ -520,6 +522,7 @@ void main() {
       );
       final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: localRepository);
       final localMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: localRepository,
         sessionOperationDispatcher: localOperationDispatcher,
       );
@@ -1051,6 +1054,7 @@ void main() {
       );
       final orderedOperationDispatcher = SessionOperationDispatcher(sessionRepository: orderedRepository);
       final orderedMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: orderedRepository,
         sessionOperationDispatcher: orderedOperationDispatcher,
       );
@@ -1249,6 +1253,7 @@ void main() {
       );
       final throwingOperationDispatcher = SessionOperationDispatcher(sessionRepository: throwingRepository);
       final throwingDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: throwingRepository,
         sessionOperationDispatcher: throwingOperationDispatcher,
       );

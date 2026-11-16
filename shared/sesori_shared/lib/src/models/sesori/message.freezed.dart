@@ -363,7 +363,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageError extends Message {
-  const MessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, required this.time,  String? $type}): $type = $type ?? 'error',super._();
+  const MessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.errorName, required this.errorMessage, @JsonKey(unknownEnumValue: MessageErrorKind.failure) this.kind = MessageErrorKind.failure, required this.time,  String? $type}): $type = $type ?? 'error',super._();
   factory MessageError.fromJson(Map<String, dynamic> json) => _$MessageErrorFromJson(json);
 
 @override final  String id;
@@ -374,6 +374,8 @@ class MessageError extends Message {
  final  String errorName;
 /// The backend-provided error text, unchanged when the backend supplied it.
  final  String errorMessage;
+/// Whether the turn failed or the user stopped it.
+@JsonKey(unknownEnumValue: MessageErrorKind.failure) final  MessageErrorKind kind;
 @override final  MessageTime? time;
 
 @JsonKey(name: 'role')
@@ -393,18 +395,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.time, time) || other.time == time));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,errorName,errorMessage,time);
+    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,errorName,errorMessage,kind,time);
 }
 
 @override
 String toString() {
-    return 'Message.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, errorName: $errorName, errorMessage: $errorMessage, time: $time)';
+    return 'Message.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, errorName: $errorName, errorMessage: $errorMessage, kind: $kind, time: $time)';
 }
 
 
@@ -415,7 +417,7 @@ abstract mixin class $MessageErrorCopyWith<$Res> implements $MessageCopyWith<$Re
   factory $MessageErrorCopyWith(MessageError value, $Res Function(MessageError) _then) = _$MessageErrorCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, String? modelID, String? providerID, String errorName, String errorMessage, MessageTime? time
+ String id, String sessionID, String? agent, String? modelID, String? providerID, String errorName, String errorMessage,@JsonKey(unknownEnumValue: MessageErrorKind.failure) MessageErrorKind kind, MessageTime? time
 });
 
 
@@ -432,7 +434,7 @@ class _$MessageErrorCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? errorName = null,Object? errorMessage = null,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? errorName = null,Object? errorMessage = null,Object? kind = null,Object? time = freezed,}) {
   return _then(MessageError(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -441,7 +443,8 @@ as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast
 as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
 as String?,errorName: null == errorName ? _self.errorName : errorName // ignore: cast_nullable_to_non_nullable
 as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as MessageErrorKind,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as MessageTime?,
   ));
 }

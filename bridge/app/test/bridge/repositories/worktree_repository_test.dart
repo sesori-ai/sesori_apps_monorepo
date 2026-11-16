@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -230,6 +231,187 @@ void main() {
       expect(valid("/worktrees-other/blue-otter"), isFalse);
       expect(valid("/repo/.worktrees/../../elsewhere"), isFalse);
       expect(valid("/worktrees/../elsewhere"), isFalse);
+    });
+  });
+
+  group("WorktreeService recreating a removed worktree, in a real repository", () {
+    late AppDatabase db;
+    late Directory root;
+    late String repoPath;
+    late String worktreePath;
+    late String baseBranch;
+    late String baseCommit;
+    late WorktreeRepository repo;
+
+    Future<String> git({required String cwd, required List<String> args}) async {
+      final result = await Process.run(
+        "git",
+        ["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgSign=false", ...args],
+        workingDirectory: cwd,
+      );
+      if (result.exitCode != 0) fail("git ${args.join(" ")} failed: ${result.stderr}");
+      return result.stdout.toString().trim();
+    }
+
+    Future<String> head() => git(cwd: worktreePath, args: ["rev-parse", "HEAD"]);
+
+    Future<String?> headBranch() async {
+      final result = await Process.run("git", [
+        "symbolic-ref",
+        "-q",
+        "--short",
+        "HEAD",
+      ], workingDirectory: worktreePath);
+      return result.exitCode == 0 ? result.stdout.toString().trim() : null;
+    }
+
+    Future<WorktreeRecreation> recreate({required String? branchName, required bool fromBase}) =>
+        WorktreeService(worktreeRepository: repo).recreateWorktree(
+          projectId: repoPath,
+          worktreePath: worktreePath,
+          branchName: branchName,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+          fromBase: fromBase,
+        );
+
+    setUp(() async {
+      db = createTestDatabase();
+      root = await Directory.systemTemp.createTemp("worktree_recreate_test_");
+      repoPath = "${root.path}/repo";
+      // A parent folder that no longer exists, as after the last worktree of a
+      // project is removed.
+      worktreePath = "${root.path}/worktrees/project/blue-otter";
+      await git(cwd: root.path, args: ["init", "--quiet", repoPath]);
+      await git(cwd: repoPath, args: ["commit", "--quiet", "--allow-empty", "-m", "base"]);
+      baseBranch = await git(cwd: repoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"]);
+      baseCommit = await git(cwd: repoPath, args: ["rev-parse", "HEAD"]);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [repoPath]);
+      repo = singlePluginWorktreeRepository(
+        worktreesDirectory: "${root.path}/worktrees",
+        projectsDao: db.projectsDao,
+        gitApi: GitCliApi(
+          streamingProcessRunner: const StreamingProcessRunner(),
+          processRunner: ProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+        plugin: _FakeBridgePlugin(),
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+      await root.delete(recursive: true);
+    });
+
+    test("checks out the kept branch with its last commit", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "sesori/task", worktreePath, baseCommit]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "work"]);
+      final workCommit = await head();
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
+
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.recreated);
+
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isTrue);
+      expect(await headBranch(), "sesori/task");
+      expect(await head(), workCommit);
+    });
+
+    test("prunes a worktree whose folder was deleted behind git's back", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "sesori/task", worktreePath, baseCommit]);
+      await Directory(worktreePath).delete(recursive: true);
+
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.recreated);
+
+      expect(await headBranch(), "sesori/task");
+    });
+
+    test("a missing branch is reported until recreating from the base is asked for", () async {
+      expect(await recreate(branchName: "sesori/gone", fromBase: false), WorktreeRecreation.branchMissing);
+      expect(Directory(worktreePath).existsSync(), isFalse);
+
+      await git(cwd: repoPath, args: ["commit", "--quiet", "--allow-empty", "-m", "later"]);
+      expect(await recreate(branchName: "sesori/gone", fromBase: true), WorktreeRecreation.recreated);
+
+      expect(await headBranch(), "sesori/gone");
+      expect(await head(), baseCommit);
+    });
+
+    test("a detached worktree kept no branch, so it is recreated detached at the base commit", () async {
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
+
+      expect(await recreate(branchName: null, fromBase: true), WorktreeRecreation.recreated);
+
+      expect(await headBranch(), isNull);
+      expect(await head(), baseCommit);
+      expect(await git(cwd: repoPath, args: ["for-each-ref", "--format=%(refname:short)", "refs/heads"]), baseBranch);
+    });
+
+    test("a branch checked out elsewhere fails without touching the path", () async {
+      await git(cwd: repoPath, args: ["branch", "sesori/task"]);
+      await git(cwd: repoPath, args: ["checkout", "--quiet", "sesori/task"]);
+
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.failed);
+
+      expect(Directory(worktreePath).existsSync(), isFalse);
+    });
+
+    test("an archived detached worktree comes back at its kept HEAD after garbage collection", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "detached work"]);
+      final workCommit = await head();
+
+      expect(await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isNull);
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+      await git(cwd: repoPath, args: ["-c", "gc.reflogExpire=now", "reflog", "expire", "--all", "--expire=now"]);
+      await git(cwd: repoPath, args: ["gc", "--quiet", "--prune=now"]);
+
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.recreated);
+      expect(await headBranch(), isNull);
+      expect(await head(), workCommit);
+    });
+
+    test("an archived worktree on a branch reports it, and a deleted branch comes back at the kept HEAD", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "agent/feature", worktreePath, baseCommit]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "branch work"]);
+      final workCommit = await head();
+
+      expect(await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), "agent/feature");
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+      await git(cwd: repoPath, args: ["branch", "-D", "agent/feature"]);
+
+      expect(await recreate(branchName: "agent/feature", fromBase: false), WorktreeRecreation.recreated);
+      expect(await headBranch(), "agent/feature");
+      expect(await head(), workCommit);
+    });
+
+    test("a released HEAD is no longer used", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+
+      expect(await repo.keptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), baseCommit);
+      await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+      await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+
+      expect(await repo.keptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isNull);
+      expect(await git(cwd: repoPath, args: ["for-each-ref", "refs/sesori"]), isEmpty);
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
+    });
+
+    test("a plain folder at the path is not a worktree", () async {
+      Directory(worktreePath).createSync(recursive: true);
+
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
+      expect(repo.worktreePathExists(worktreePath: worktreePath), isTrue);
+    });
+
+    test("a checkout of another repository at the path is not the project's worktree", () async {
+      await git(cwd: root.path, args: ["init", "--quiet", worktreePath]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "other"]);
+
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
     });
   });
 }

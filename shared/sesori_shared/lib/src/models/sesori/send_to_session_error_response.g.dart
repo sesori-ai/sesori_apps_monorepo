@@ -31,6 +31,7 @@ const _$SendToSessionErrorCodeEnumMap = {
   SendToSessionErrorCode.sourceBusy: 'sourceBusy',
   SendToSessionErrorCode.sourceAwaitingInput: 'sourceAwaitingInput',
   SendToSessionErrorCode.sourceUnavailable: 'sourceUnavailable',
+  SendToSessionErrorCode.sourceOptionsUnavailable: 'sourceOptionsUnavailable',
   SendToSessionErrorCode.sourceEmpty: 'sourceEmpty',
   SendToSessionErrorCode.summaryStopped: 'summaryStopped',
   SendToSessionErrorCode.summaryFailed: 'summaryFailed',
@@ -38,5 +39,6 @@ const _$SendToSessionErrorCodeEnumMap = {
   SendToSessionErrorCode.summaryMissing: 'summaryMissing',
   SendToSessionErrorCode.transcriptUnavailable: 'transcriptUnavailable',
   SendToSessionErrorCode.targetRefused: 'targetRefused',
+  SendToSessionErrorCode.targetOptionsUnavailable: 'targetOptionsUnavailable',
   SendToSessionErrorCode.unknown: 'unknown',
 };

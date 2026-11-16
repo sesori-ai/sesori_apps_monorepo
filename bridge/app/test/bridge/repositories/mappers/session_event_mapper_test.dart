@@ -347,6 +347,7 @@ Map<String, dynamic> _sessionInfo({required String sessionId, required String? p
     lastUserActivityAt: null,
     branchName: null,
     scheduledTask: null,
+    interruption: null,
     forkedFrom: null,
   ).toJson();
 }

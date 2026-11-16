@@ -43,6 +43,7 @@ class const AssistantMessageMapper() {
       modelID: message.modelID,
       providerID: message.providerID,
       variant: message.variant,
+      kind: name == openCodeAbortedErrorName ? PluginErrorKind.stopped : PluginErrorKind.failure,
       errorName: name,
       errorMessage: errorMessage,
       time: time,

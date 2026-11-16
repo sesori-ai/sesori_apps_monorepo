@@ -403,6 +403,7 @@ Session _session({required String? title}) => Session(
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 

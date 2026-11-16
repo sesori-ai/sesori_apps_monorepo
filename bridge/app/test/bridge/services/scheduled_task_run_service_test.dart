@@ -214,6 +214,7 @@ void main() {
         clearTarget: false,
         now: now.add(const Duration(minutes: 1)),
       );
+      now = now.add(ScheduledTaskRunService.startupGrace);
       await service.runNow(taskId: task.id);
 
       expect(creation.calls, hasLength(1));
@@ -281,6 +282,16 @@ void main() {
       await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
       expect(prompts.sends, isEmpty);
       expect(yolo.overrides, isEmpty);
+    });
+
+    test("a Run now right after a continued run is refused before the harness reports the turn", () async {
+      final task = await firstRun();
+      await service.runDue();
+
+      // The target still reads quiet: its busy status has not arrived yet.
+      now = now.add(const Duration(seconds: 3));
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+      expect(prompts.sends, hasLength(1));
     });
 
     test("a model the harness no longer offers fails the run without prompting the target", () async {
@@ -447,9 +458,26 @@ void main() {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
       await service.runNow(taskId: task.id);
       sessions.quietness["ses_1"] = SessionQuietness.working;
+      now = now.add(const Duration(minutes: 5));
 
       await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
       expect(creation.calls, hasLength(1));
+    });
+
+    test("a second tap right after a run started is refused before the harness reports the turn", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
+      // A slow create must not use up the grace.
+      creation.onCreate = () async => now = now.add(const Duration(minutes: 1));
+      await service.runNow(taskId: task.id);
+      creation.onCreate = null;
+
+      // The session still reads quiet: its busy status has not arrived yet.
+      now = now.add(const Duration(seconds: 3));
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+
+      now = now.add(ScheduledTaskRunService.startupGrace);
+      await service.runNow(taskId: task.id);
+      expect(creation.calls, hasLength(2));
     });
 
     test("is refused for a missing task", () async {
@@ -537,6 +565,7 @@ Session _session({required String id, required SessionApprovalMode? approvalOver
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 /// Reads stored sessions from the test database the session fakes write.

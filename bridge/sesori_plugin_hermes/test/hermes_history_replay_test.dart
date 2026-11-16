@@ -1,11 +1,16 @@
+import "dart:convert";
+import "dart:io";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:hermes_plugin/src/hermes_event_mapper.dart";
+import "package:hermes_plugin/src/repositories/hermes_session_replay_collector.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "fixtures/hermes_failure_copy_fixtures.dart";
 
-const String _sessionId = "s1";
+// The recorded replay's session, given a synthetic id.
+const String _sessionId = "00000000-0000-4000-8000-00000000e001";
 
 void main() {
   group("Hermes history replay", () {
@@ -107,6 +112,31 @@ void main() {
       expect(messages.map(_textOf), ["What happened?", quoted]);
     });
 
+    test("a recorded compaction summary replays as a compaction row in its place", () {
+      // Recorded from Hermes v0.21.5 after an automatic compaction, with
+      // synthetic ids and shortened prompts.
+      final recorded =
+          jsonDecode(File("test/fixtures/replay_compaction_auto.json").readAsStringSync()) as List<dynamic>;
+      final messages = _replay(
+        frames: [
+          for (final frame in recorded)
+            if (frame case {"params": {"update": final Map<String, dynamic> update}}) update,
+        ],
+      );
+
+      expect(messages.map((message) => message.info), [
+        for (var turn = 0; turn < 4; turn++) ...[isA<PluginMessageUser>(), isA<PluginMessageAssistant>()],
+      ]);
+      final compaction = messages[1].parts.single as PluginMessagePartCompaction;
+      expect(compaction.messageID, "$_sessionId-compaction-0");
+      final state = compaction.compactionState as PluginCompactionStateCompleted;
+      expect(state.summary, startsWith("## Historical Task Snapshot"));
+      expect(state.summary, isNot(contains("REFERENCE ONLY")));
+      expect(state.summary, isNot(contains("END OF CONTEXT SUMMARY")));
+      expect((state.freedTokens, state.trigger), (null, null));
+      expect(messages.map(_textOf).where((text) => text.contains("CONTEXT COMPACTION")), isEmpty);
+    });
+
     test("a user prompt that repeats the row stays the user's prompt", () {
       final messages = _replay(frames: [_userChunk(text: failedTurnBoundary)]);
 
@@ -120,27 +150,33 @@ Matcher _notice({required String errorName, required String text}) => isA<Plugin
     .having((error) => error.errorName, "errorName", errorName)
     .having((error) => error.errorMessage, "errorMessage", text);
 
-/// Replays [frames] the way `AcpPlugin.getSessionMessages` wires Hermes: the
-/// standard collector, with Hermes's mapper as normalizer and halt classifier.
+/// Replays [frames] the way `AcpPlugin.getSessionMessages` wires Hermes:
+/// Hermes's collector around the standard one, with Hermes's mapper as
+/// normalizer and halt classifier.
 List<PluginMessageWithParts> _replay({required List<Map<String, dynamic>> frames}) {
   final mapper = HermesEventMapper(
     launchDirectory: "/repo",
     pluginId: "hermes",
     configurationTracker: AcpSessionConfigurationTracker(),
     childSessions: AcpChildSessionTracker(),
+    clock: const ServerClock(),
   );
-  final collector = AcpReplayCollector(
-    sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
-    shellCommandResolver: null,
-    toolNameResolver: null,
+  final collector = HermesSessionReplayCollector(
     sessionId: _sessionId,
-    agentId: "hermes",
-    initialUserMessage: null,
-    messageIdOverride: null,
-    messageTimeResolver: null,
-    haltClassifier: mapper.classifyHaltNotice,
-    toolPartReplacement: null,
-    toolPartSuppression: null,
+    standardCollector: AcpReplayCollector(
+      sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+      shellCommandResolver: null,
+      toolNameResolver: null,
+      sessionId: _sessionId,
+      agentId: "hermes",
+      initialUserMessage: null,
+      messageIdOverride: null,
+      messageTimeResolver: null,
+      haltClassifier: mapper.classifyHaltNotice,
+      toolPartReplacement: null,
+      toolPartSuppression: null,
+      separatesToolMessages: false,
+    ),
   );
   for (final update in frames) {
     collector.consumeNotification(

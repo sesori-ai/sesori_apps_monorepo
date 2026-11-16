@@ -28,3 +28,8 @@ ACP through a local OpenAI-compatible endpoint with a small context window: `aut
 that runs a manual `/compact`, and that compaction's `auto_compact_completed`. Field names, nesting and token counts are
 verbatim; session ids, prompt ids and timestamps are synthetic, and the failure was forced by a local proxy answering
 500.
+
+The `replay_compaction_*.json` fixtures are the `session/load` replays of those automatic and manual compactions, in
+order, from the same build: the `_x.ai/session/update` frames with `isReplay: true` and their `_meta.eventId` and
+`_meta.agentTimestampMs`, plus the standard chunks around them. Methods, field names, nesting, order and token counts
+are verbatim; ids are synthetic, timestamps are rebased, and texts and the model name are replaced.

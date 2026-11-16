@@ -146,6 +146,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
 
@@ -202,6 +203,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       var priorEventLoopTurnRan = false;
@@ -286,6 +288,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       when(
@@ -579,6 +582,7 @@ void main() {
             promptDefaults: null,
             lastUserActivityAt: null,
             scheduledTask: null,
+            interruption: null,
             forkedFrom: null,
           ),
         ),

@@ -168,6 +168,13 @@ class const BridgeRuntimeRunner._() {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.signal,
+        // Before the interrupts below, so the idles they cause keep the
+        // running rows: a stop by signal records its cut-off turns as
+        // interrupted, like a killed process.
+        action: () => runtime?.runningTurnListener.beginShutdown(),
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.signal,
         // Cancel in-flight agent work (budgeted, best-effort) so the drain
         // phase is not held open by agent-coupled requests — an in-flight
         // turn, a resume-load, a lazy agent respawn — while the agent process

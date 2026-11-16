@@ -80,6 +80,12 @@ class AcpReplayCollector({
   /// harness-specific replay entry owns its presentation. Kept separate from
   /// [toolPartReplacement] so DeepSeek's null-means-generic contract remains.
   required final AcpReplayToolPartSuppression? toolPartSuppression,
+
+  /// Gives every tool call its own message, the shape the live mapper streams,
+  /// instead of attaching it to the stamped assistant message before it. A
+  /// harness that stamps its reasoning and text chunks with a message id sets
+  /// it, so a replayed tool call still matches the row captured live.
+  required final bool separatesToolMessages,
 }) implements AcpSessionReplayCollector {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
@@ -398,6 +404,7 @@ class AcpReplayCollector({
             modelID: selection.modelId,
             providerID: selection.providerId,
             variant: selection.variant,
+            kind: PluginErrorKind.failure,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,
@@ -598,12 +605,14 @@ class AcpReplayCollector({
   );
 
   // Tool calls carry no messageId (they are not ContentChunks) and attach to
-  // the current assistant message even when its content chunks are stamped.
+  // the current assistant message even when its content chunks are stamped,
+  // unless [separatesToolMessages] asks for the live shape.
   _Draft _assistantForTool({required String toolCallId}) {
     if (_entries.isNotEmpty) {
       final entry = _entries.last;
       if (entry is _Draft && entry.role == "assistant") {
-        if (entry.acpMessageId != null || (entry.text.isEmpty && entry.reasoning.isEmpty && entry.entries.isEmpty)) {
+        if ((entry.acpMessageId != null && !separatesToolMessages) ||
+            (entry.text.isEmpty && entry.reasoning.isEmpty && entry.entries.isEmpty)) {
           return entry;
         }
       }
