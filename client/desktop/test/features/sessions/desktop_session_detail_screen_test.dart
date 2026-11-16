@@ -1010,7 +1010,16 @@ void main() {
     group("side chats", () {
       final root = _session.copyWith(parentID: null);
       final panel = find.byKey(DesktopSideChatPanelHost.panelKey);
+      final composerControls = find.byType(SessionDetailComposerControls);
+      final composerField = find.descendant(of: composerControls, matching: find.byType(EditableText));
+      final send = find.byKey(PromptInput.sendButtonKey);
       Rect transcript(WidgetTester tester) => tester.getRect(find.text("Desktop transcript"));
+
+      /// Whether a click on [target]'s centre reaches it rather than the panel.
+      bool takesClick(WidgetTester tester, Finder target) => tester
+          .hitTestOnBinding(tester.getCenter(target))
+          .path
+          .any((entry) => entry.target == tester.renderObject(target));
 
       SessionDetailLoaded sideChatState({bool archived = false}) => _loadedState(session: root).copyWith(
         sideQuestions: SideQuestionAvailability.available,
@@ -1047,7 +1056,10 @@ void main() {
         expect(rect.width, DesktopSideChatPanelHost.width);
         expect(rect.top, DesktopPageToolbar.height);
         expect(rect.right, 1400 - PregoSpacing.lg);
-        expect(rect.bottom, 800 - PregoSpacing.lg);
+        // It stops above the composer, which keeps its place and its clicks.
+        expect(rect.bottom, tester.getRect(composerControls).top - PregoSpacing.lg);
+        expect(tester.getRect(composerControls).right, greaterThan(rect.left));
+        expect(takesClick(tester, send), isTrue);
         expect(transcript(tester), before);
         expect(find.descendant(of: panel, matching: find.text("Side question")), findsOneWidget);
         final field = tester.widget<EditableText>(
@@ -1060,6 +1072,49 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.text("Mark as unread"), findsOneWidget);
+      });
+
+      testWidgets("the panel's bottom edge follows the composer as a draft grows and folds", (tester) async {
+        await pumpPage(tester, session: root, initialState: sideChatState());
+        await openFromComposer(tester);
+        final resting = tester.getRect(panel);
+
+        await tester.enterText(composerField, List.generate(4, (line) => "Line $line").join("\n"));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        final grown = tester.getRect(panel);
+        expect(grown.bottom, lessThan(resting.bottom));
+        expect(grown.bottom, tester.getRect(composerControls).top - PregoSpacing.lg);
+        expect(grown.top, resting.top, reason: "only the bottom edge moves");
+        expect(takesClick(tester, send), isTrue);
+
+        await tester.enterText(composerField, "");
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        expect(tester.getRect(panel), resting);
+      });
+
+      testWidgets("in the minimum window a tall draft keeps the panel usable and Send clear", (tester) async {
+        await pumpPage(tester, session: root, initialState: sideChatState());
+        await tester.binding.setSurfaceSize(null);
+        tester.view
+          ..physicalSize = const Size(560, 480)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpAndSettle();
+        await openFromComposer(tester);
+
+        await tester.enterText(composerField, List.generate(30, (line) => "Line $line").join("\n"));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        // Too little room above the composer: the panel keeps its shortest
+        // height over the draft's top, and the composer's Send row stays clear.
+        expect(tester.getRect(panel).height, 300);
+        expect(tester.getRect(panel).bottom, lessThan(tester.getRect(send).top));
+        expect(takesClick(tester, send), isTrue);
       });
 
       testWidgets("the close button slides the panel away, and its chat ends once it has gone", (tester) async {
@@ -1270,6 +1325,8 @@ void main() {
         );
         expect(find.descendant(of: panel, matching: find.byKey(SideChatView.questionFieldKey)), findsNothing);
         expect(createdSideChats.single.canAsk, isFalse);
+        // With no composer, the panel runs to the page's bottom.
+        expect(tester.getRect(panel).bottom, 800 - PregoSpacing.lg);
 
         // With no field to hold it, the panel keeps the focus for Escape.
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
