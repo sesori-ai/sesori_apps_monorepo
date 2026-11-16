@@ -37,7 +37,6 @@ class DeepSeekHistoryRepository({
         return replay == null ? null : subagentMapper.mapReplay(toolPart: toolPart, replay: replay);
       },
       toolPartSuppression: null,
-      separatesToolMessages: true,
     );
     int? cursor;
     final pages = <List<DeepSeekSessionUpdateEnvelopeDto>>[];

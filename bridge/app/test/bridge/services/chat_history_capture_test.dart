@@ -874,7 +874,6 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
-        separatesToolMessages: false,
       );
       final liveUpdates = [
         {
@@ -2737,7 +2736,6 @@ void main() {
         haltClassifier: mapper.classifyHaltNotice,
         toolPartReplacement: null,
         toolPartSuppression: null,
-        separatesToolMessages: false,
       );
       for (final update in [
         {

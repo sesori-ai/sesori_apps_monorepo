@@ -1179,19 +1179,20 @@ reconciliation when connected to an older bridge.
 
 ## Tool calls in replayed history
 
-The live stream gives every visible ACP tool call its own message. When a
-harness stamps its reasoning and text chunks with a message id, the shared
-replay groups the next tool call into that stamped message, which no longer
-matches the live rows, so a re-import shows the tool call twice: inside the
-replayed assistant message and as the live tool row.
+The live stream gives every visible ACP tool call its own message, and the
+shared replay does the same for every ACP harness, also after reasoning or text
+chunks stamped with a message id. Before, a replayed tool call joined the
+stamped message before it, so a re-import showed it twice: inside the replayed
+assistant message and as the live tool row. A harness that replays without
+message ids was never affected.
 
 | Harness | Status |
 |---|---|
-| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
-| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
-| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
-| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
-| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
+| Oh My Pi | ✅ Stamps its chunks. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| DeepSeek | ✅ Stamps its chunks. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids. |
+| Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
+| Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
 ## Failed-turn notices sent as text
 
