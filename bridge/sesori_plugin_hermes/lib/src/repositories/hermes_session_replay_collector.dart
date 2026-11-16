@@ -1,6 +1,8 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/hermes_replay_update_dto.dart";
+
 /// Hermes's replay: the standard ACP history, with each compaction summary
 /// shown as a compaction row.
 ///
@@ -17,30 +19,44 @@ class HermesSessionReplayCollector({
 
   @override
   void consumeNotification({required AcpNotification notification}) {
-    if (notification.params["update"]
-        case {
-          "sessionUpdate": "agent_message_chunk",
-          "_meta": {"hermes": {"compactionSummary": true}},
-          "content": {"type": "text", "text": final String text},
-        }
-        when notification.method == AcpMethods.sessionUpdate) {
-      // The replay's position names the row, so every reload keeps its id.
-      final messageId = "$sessionId-compaction-${_summaries++}";
-      standardCollector.upsertAssistantMessage(
-        messageId: messageId,
-        parts: [
-          PluginMessagePart.compaction(
-            id: "$messageId-part",
-            sessionID: sessionId,
-            messageID: messageId,
-            compactionState: .completed(summary: summaryBody(text: text), freedTokens: null, trigger: null),
-          ),
-        ],
-        time: null,
-      );
+    final text = _compactionSummaryText(notification: notification);
+    if (text == null) {
+      standardCollector.consumeNotification(notification: notification);
       return;
     }
-    standardCollector.consumeNotification(notification: notification);
+    // The replay's position names the row, so every reload keeps its id.
+    final messageId = "$sessionId-compaction-${_summaries++}";
+    standardCollector.upsertAssistantMessage(
+      messageId: messageId,
+      parts: [
+        PluginMessagePart.compaction(
+          id: "$messageId-part",
+          sessionID: sessionId,
+          messageID: messageId,
+          compactionState: .completed(summary: summaryBody(text: text), freedTokens: null, trigger: null),
+        ),
+      ],
+      time: null,
+    );
+  }
+
+  static String? _compactionSummaryText({required AcpNotification notification}) {
+    final update = notification.params["update"];
+    // Only an agent chunk can be a summary; other updates carry other content.
+    if (notification.method != AcpMethods.sessionUpdate ||
+        update is! Map<String, dynamic> ||
+        update["sessionUpdate"] != "agent_message_chunk") {
+      return null;
+    }
+    final HermesReplayUpdateDto dto;
+    try {
+      dto = HermesReplayUpdateDto.fromJson(update);
+    } on Object catch (error, stackTrace) {
+      Log.w("[hermes] read a replayed agent chunk without its compaction marker", error, stackTrace);
+      return null;
+    }
+    if (!(dto.meta?.hermes?.compactionSummary ?? false) || dto.content?.type != "text") return null;
+    return dto.content?.text;
   }
 
   @override

@@ -102,8 +102,8 @@ class HermesEventMapper({
     }
     final match = _compressed.firstMatch(text);
     if (match?.groups([1, 2]) case [final String before, final String after]) {
-      int tokens(String digits) => int.parse(digits.replaceAll(",", ""));
-      final freed = tokens(before) - tokens(after);
+      int tokens({required String digits}) => int.parse(digits.replaceAll(",", ""));
+      final freed = tokens(digits: before) - tokens(digits: after);
       // Hermes estimates both sizes, and its estimate can rise.
       return .completed(summary: null, freedTokens: freed > 0 ? freed : null, trigger: .manual);
     }
