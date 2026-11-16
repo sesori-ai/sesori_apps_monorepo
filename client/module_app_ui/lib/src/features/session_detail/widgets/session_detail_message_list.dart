@@ -363,6 +363,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The last build's newest message, to tell when one arrives.
   String? _newestMessageId;
 
+  /// Whether an edit's accepted prompt shows the working row ahead of the
+  /// busy status; see where the build sets it.
+  bool _acceptedEditWorks = false;
+
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
@@ -485,6 +489,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // its rows go at once.
     final removedMessages = refreshEnded ? const <Message>[] : _removedMessages(oldWidget: oldWidget);
     _removedRowIds = {for (final info in removedMessages) _entryIdForMessage(info: info)};
+    // An edit's removals leave an older message newest, which did not arrive:
+    // the session stays quiet, so the edit's prompt wakes it above the
+    // working row, where its echo lands.
+    final newestMessageId = widget.messages.lastOrNull?.info.id;
+    if (removedMessages.isNotEmpty && oldWidget.messages.any((message) => message.info.id == newestMessageId)) {
+      _newestMessageId = newestMessageId;
+    }
     if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1200,6 +1211,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       queuedPrompts: widget.bridgeQueuedPrompts,
     );
+    // A send the bridge accepts while removed rows fold is an edit's, and its
+    // turn is starting: its working row rises with its prompt and the fold,
+    // not a beat later with the busy status, which would push the rows above
+    // back up once the fold ended. Held until the prompt shows as a message.
+    _acceptedEditWorks =
+        widget.awaitingBridgeSubmissions.isNotEmpty &&
+        (_acceptedEditWorks || _removedRowIds.isNotEmpty || _leavingRows.isNotEmpty);
     // A summary being written, or a stopped send still ending, shows its marker
     // in place of the working row.
     final activity = handoffs.showsWork
@@ -1207,7 +1225,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         : const TranscriptActivityBuilder().build(
             transcript: transcript,
             messages: messages,
-            isBusy: isBusy,
+            isBusy: isBusy || _acceptedEditWorks,
             mainAgentRunning: mainAgentRunning,
             retryErrorMessage: retryErrorMessage,
             streamingText: streamingText,
