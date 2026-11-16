@@ -34,6 +34,8 @@ enum AnalyticsScreen({required final String wireValue}) {
   newSession(wireValue: "new_session"),
   sessionDetail(wireValue: "session_detail"),
   sessionDiffs(wireValue: "session_diffs"),
+  scheduledTasks(wireValue: "scheduled_tasks"),
+  scheduledTaskDetail(wireValue: "scheduled_task_detail"),
 }
 
 enum AnalyticsInputMode({required final String wireValue}) {
@@ -227,6 +229,26 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How the bridge answered one edit and resend of an earlier message.
+enum AnalyticsMessageEditOutcome({required final String wireValue}) {
+  /// The bridge removed the message and what followed it, and sent the edit.
+  succeeded(wireValue: "succeeded"),
+
+  /// The session was running a turn.
+  refusedBusy(wireValue: "refused_busy"),
+
+  /// The harness cannot cut the conversation at the message, such as before
+  /// Claude Code's latest compaction.
+  branchPointUnavailable(wireValue: "branch_point_unavailable"),
+
+  /// The bridge refused the edit otherwise: the selected options changed, the
+  /// harness refused the prompt, or a reason this app doesn't know.
+  refused(wireValue: "refused"),
+
+  /// The request failed or timed out, so the edit may or may not have run.
+  failed(wireValue: "failed"),
+}
+
 /// How one side question ended.
 enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
@@ -333,6 +355,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsSideQuestionOutcome outcome,
   }) = SideQuestionAskedEvent;
+  const factory sessionMessageEdited({
+    required AnalyticsHarness harness,
+    required AnalyticsMessageEditOutcome outcome,
+  }) = SessionMessageEditedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -727,6 +753,19 @@ final class const SideQuestionAskedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "side_question_asked";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered an edit and resend of an earlier message. The text,
+/// the attachments, the session and the message stay off the wire.
+final class const SessionMessageEditedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsMessageEditOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_message_edited";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

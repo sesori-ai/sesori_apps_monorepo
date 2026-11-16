@@ -81,7 +81,9 @@ sub-agent parts, plus the signal that a tool changed files.
   DeepSeek, Grok and Oh My Pi (automatic compaction only) show the live row
   below from the start, Claude from its first
   `compacting` status, OpenCode v1 from its summary's first text, and OpenCode
-  v2 once its running snapshot loads. When the
+  v2 once its running snapshot loads. Hermes shows only finished rows: from its
+  `/compress` reply, and in place of the compacted turns once its history
+  reloads, with the summary. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced

@@ -89,6 +89,10 @@ class const QueuedMessageBubble({
   /// count instead.
   required final List<ComposerAttachment> localAttachments,
   required final QueuedMessageBubblePresentation presentation,
+
+  /// What the prompt shows as while it waits, at the leading edge, when it
+  /// reads as something other than a message; null for its bubble or card.
+  required final Widget? body,
 }) extends StatefulWidget {
   @override
   State<QueuedMessageBubble> createState() => _QueuedMessageBubbleState();
@@ -180,8 +184,10 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     };
     // A card already says it is a command.
     final isCommand = widget.isCommand && card == null;
-    final edge = card == null ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final wrapEdge = card == null ? WrapAlignment.end : WrapAlignment.start;
+    final body = widget.body;
+    final leading = card != null || body != null;
+    final edge = leading ? CrossAxisAlignment.start : CrossAxisAlignment.end;
+    final wrapEdge = leading ? WrapAlignment.start : WrapAlignment.end;
     final displayText = widget.displayText;
     final attachmentCount = widget.attachmentCount;
     final localAttachments = widget.localAttachments;
@@ -315,7 +321,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
                 _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
             ],
           ),
-          if (reason != null) _FailureReason(reason: reason, textAlign: card == null ? TextAlign.end : TextAlign.start),
+          if (reason != null) _FailureReason(reason: reason, textAlign: leading ? TextAlign.start : TextAlign.end),
         ],
       ),
       DeliveredMessageBubblePresentation() => null,
@@ -333,9 +339,9 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         : KeyedSubtree(
             key: ValueKey(presentation.runtimeType),
             child: Padding(
-              padding: card == null
-                  ? const EdgeInsetsDirectional.only(end: PregoSpacing.x2l, bottom: PregoSpacing.xs)
-                  : const EdgeInsetsDirectional.only(start: PregoSpacing.x2l, bottom: PregoSpacing.xs),
+              padding: leading
+                  ? const EdgeInsetsDirectional.only(start: PregoSpacing.x2l, bottom: PregoSpacing.xs)
+                  : const EdgeInsetsDirectional.only(end: PregoSpacing.x2l, bottom: PregoSpacing.xs),
               child: status,
             ),
           );
@@ -351,10 +357,13 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       children: [
         if (presentation case DeliveredMessageBubblePresentation(:final message))
           message(outlineFade: wasOutlined ? _statusFade : null)
+        else if (body != null)
+          body
         else if (card != null)
           TranscriptMessageMenu.wrap(
             spotlight: PregoMenuSpotlight.listRow,
             text: card.arguments,
+            actions: const [],
             builder: (selectionArea) => InvocationCard(
               selectionArea: selectionArea,
               name: card.name,
@@ -369,6 +378,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           TranscriptMessageMenu.wrap(
             spotlight: PregoMenuSpotlight.listRow,
             text: displayText,
+            actions: const [],
             builder: (selectionArea) => UserMessageBubble(
               selectionArea: selectionArea,
               markdown: displayText,

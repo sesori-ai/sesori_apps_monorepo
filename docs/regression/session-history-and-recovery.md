@@ -127,6 +127,12 @@ reconnect or restart.
   turn and does not separate the replayed turns around it. Failure signals
   after a reload or forced re-import: a live prompt shown twice, or all
   replayed prompts first and the live turns repeated below them.
+- A tool call the harness replays inside the stamped assistant message before
+  it (Oh My Pi and DeepSeek stamp their reasoning and text chunks with a
+  message id) is replayed as its own message, the shape the live stream
+  captured, so a re-import or the first read after a bridge restart matches
+  the live tool row by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
+  turn shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -362,8 +368,11 @@ reconnect or restart.
   bridge's own `/compact` bubble, while distinct compactions, which never
   share a time, stay apart. A compaction row is no neighbour in any other
   row's context, so the live prompt and reply around a live-only compaction
-  row (DeepSeek, OMP, Grok) still pair with their replayed rows and the row
-  stays between them, without duplicating the turn.
+  row (DeepSeek, OMP, Hermes's `/compress`) still pair with their replayed
+  rows and the row stays between them, without duplicating the turn. Grok's
+  replay names its compaction rows as the live mapper does, so exact identity
+  keeps one row across every re-import; Hermes's replayed summary row is named
+  by its position in the replay.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
@@ -576,13 +585,29 @@ reconnect or restart.
   `toolcall_end`; a start without metadata waits for the terminal tool-call metadata.
   `message_end` remains authoritative, edit/write completion invalidates the
   diff once, and only `agent_settled` marks the session idle.
+- A turn a bridge stop cut off is recorded, for every harness. The bridge keeps a
+  durable running row for each session with a turn in flight (busy or retry
+  marks it, idle clears it). Once shutdown begins, idles no longer clear rows,
+  so a stop by signal records the same turns as `kill -9`. When a plugin becomes
+  ready, each row an earlier run left is resolved against the plugin's statuses,
+  starting the plugin for a short-lived generation when it is not running yet:
+  a turn still running is adopted, and an idle or unknown session gets an
+  unacknowledged interruption after its newest stored message, delivered as the
+  session's `interruption` with a session update. A session with no stored
+  message only loses the row. A failed status read keeps every row for the next
+  readiness or run. Conversion and adoption act only while the row still holds
+  the time they read, so a turn this run started meanwhile is left alone. A
+  re-import that replaces the anchor message moves the interruption onto its
+  replacement. Opening the session, or the bridge accepting a prompt for it,
+  acknowledges the interruption with one session update; an acknowledged one
+  stays stored. Sessions from a bridge without this report no interruption.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped, and an unsynced session's store-only read serves its stored rows flagged as awaiting harness sync without starting one. Automated client: a cold management block resolves canonical metadata, requests the transcript store-only, renders it with the block reported in the composer's place even when the store is behind the harness, and falls back to the history-unavailable state when the read fails or comes back empty and awaiting sync. |
-| L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also covers live assistant/error messages carrying the thread's model and effort variant for roots and sub-agents (activity values over `thread/read`, also when that read fails), and the provider-refused resume as a 409 with no `turn/start` (fake-transport plugin tests), trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries, and after a mid-turn socket drop reconnects without a user action, also past a second drop during the resume, and turns the session busy again when `thread/resume` reports its turn still running, or sends the final reply when the turn ended during the outage, while a drop during that reconnect's handshake starts no further attempt and a resume the live server rejects releases the work state, which stays unknown while another session's resume is pending; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, plus live/replay parity for queued follow-ups, peer messages and task outcomes, and hiding harness-generated user frames under either flag spelling while keeping peer injections, tool results and task outcomes, and following the active branch of transcripts recorded live on Claude Code 2.1.322 (terminal rewinds, including to before the first message and its fallback title, a resume at an earlier record, parallel tool calls and compaction), while Pi covers active-branch attribution and file fallback. Automated Hermes coverage maps every Hermes failure-copy family to an error notice live and on replay, replays the saved failed-turn rows (full and partial) as the turn's notice without merging adjacent prompts, and keeps replies that quote a notice and reasoning-only stops as replies; bridge-store coverage keeps one notice per failed turn across re-imports: the live reason alone over a same-kind saved row, the live reason then a saved row of another kind, an earlier appended same-kind row dropped again, and the saved row alone for turns that failed outside Sesori. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the missing-metadata fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. Automated Codex plugin: recorded revert and fork rollouts replay their kept prefix, including a base in `archived_sessions/`, a missing base, and a reverted thread whose delete removes every rollout. |
+| L2 Routine | Headless bridge, one representative plugin: stop the bridge mid-turn with `kill -9` and again with SIGTERM, restart, and confirm the session reports an unacknowledged interruption that a view declaration acknowledges. Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also covers live assistant/error messages carrying the thread's model and effort variant for roots and sub-agents (activity values over `thread/read`, also when that read fails), and the provider-refused resume as a 409 with no `turn/start` (fake-transport plugin tests), trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries, and after a mid-turn socket drop reconnects without a user action, also past a second drop during the resume, and turns the session busy again when `thread/resume` reports its turn still running, or sends the final reply when the turn ended during the outage, while a drop during that reconnect's handshake starts no further attempt and a resume the live server rejects releases the work state, which stays unknown while another session's resume is pending; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, plus live/replay parity for queued follow-ups, peer messages and task outcomes, and hiding harness-generated user frames under either flag spelling while keeping peer injections, tool results and task outcomes, and following the active branch of transcripts recorded live on Claude Code 2.1.322 (terminal rewinds, including to before the first message and its fallback title, a resume at an earlier record, parallel tool calls and compaction), while Pi covers active-branch attribution and file fallback. Automated Hermes coverage maps every Hermes failure-copy family to an error notice live and on replay, replays the saved failed-turn rows (full and partial) as the turn's notice without merging adjacent prompts, and keeps replies that quote a notice and reasoning-only stops as replies; bridge-store coverage keeps one notice per failed turn across re-imports: the live reason alone over a same-kind saved row, the live reason then a saved row of another kind, an earlier appended same-kind row dropped again, and the saved row alone for turns that failed outside Sesori. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the missing-metadata fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. Automated Codex plugin: recorded revert and fork rollouts replay their kept prefix, including a base in `archived_sessions/`, a missing base, and a reverted thread whose delete removes every rollout. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a blocked session whose store is behind the harness, and confirm a blocked session the bridge stored nothing for reports the block instead of an empty transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for the prompt index (store and archive reads, hidden and image-only prompts, empty-id validation), prompt search (store and archive reads agree, case-insensitive literal match in a prompt's text or an image-only prompt's attachment name, blank query and unknown session find nothing, empty-id validation), the load-through (store, store-only and archive reads of one range, the cursor ending at the first message, range and empty-id validation) with the app's older-only cursor and count, unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -742,6 +767,13 @@ rules where supported.
   generic spawn card and subtask tile, or fabricates a tile without a child-owned
   prompt.
 
+- A bridge stop mid-turn reports no interruption after restart (by `kill -9` or
+  by signal), a running turn the plugin still reports busy is reported
+  interrupted, a failed status read drops the rows, a turn started after the
+  restart is converted, the anchor names a message the store no longer holds, or
+  opening or sending to the session leaves it unacknowledged or announces it
+  more than once.
+
 ## Known Limitations
 
 - A run the bridge never stored has only the backend's record. With an empty
@@ -772,6 +804,10 @@ rules where supported.
   reads its prefix through `history_base`, so the fork then shows only its own
   turns. That step keeps every rollout another thread's `history_base` still
   references, so deleting an origin leaves its fork intact.
+- When a bridge stop cuts a turn off after a live row but before the bridge
+  stored the row after it, the first read after the restart shows that last
+  live row (for example an Oh My Pi reasoning row) next to its replayed copy,
+  because the replay has a following row the store lacks.
 - A Codex revert made outside Sesori is picked up at the next catalog scan;
   until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app
@@ -821,6 +857,12 @@ pagination cursor; client detail load service and cubit. Claude's active-branch 
 `claude_transcript_active_branch_test.dart` over transcripts recorded live on Claude Code 2.1.322 in
 `bridge/sesori_plugin_claude/test/fixtures/transcripts/`.
 
+Interrupted turns: `RunningTurnListener` and `InterruptedTurnListener` in `bridge/app/lib/src/listeners/`,
+`InterruptedTurnService` in `bridge/app/lib/src/services/` and `SessionInterruptionRepository` in
+`bridge/app/lib/src/repositories/`,
+with `running_turn_listener_test.dart`, `interrupted_turn_service_test.dart`,
+`session_interruption_repository_test.dart`, the anchor group in
+`chat_history_capture_test.dart` and `session_interruptions_migration_test.dart`.
 OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_message_mapper.dart`,
 `bridge/sesori_plugin_opencode/lib/src/v2/sse/v2_event_mapper.dart`,
 `bridge/sesori_plugin_opencode/lib/src/v2/services/opencode_v2_service.dart`, and

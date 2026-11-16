@@ -70,6 +70,24 @@ void main() {
       expect(error.providerID, equals("openai"));
       expect(error.variant, equals("high"));
       expect(error.time?.created, equals(100));
+      expect(error.kind, equals(PluginErrorKind.failure));
+    });
+
+    test("marks an aborted turn as stopped and keeps its native text", () {
+      final result = mapper.map(
+        _assistantMessage(
+          error: <String, dynamic>{
+            "name": "MessageAbortedError",
+            "data": <String, dynamic>{"message": "The operation was aborted."},
+          },
+        ),
+        keepsCompactionParts: false,
+      );
+
+      final error = result as PluginMessageError;
+      expect(error.kind, equals(PluginErrorKind.stopped));
+      expect(error.errorName, equals("MessageAbortedError"));
+      expect(error.errorMessage, equals("The operation was aborted."));
     });
 
     test("falls back to placeholders when the error shape is missing fields", () {

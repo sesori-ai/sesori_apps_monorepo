@@ -362,6 +362,7 @@ class AcpEventMapper({
       modelID: modelForSession(sessionId: sessionId),
       providerID: providerForSession(sessionId: sessionId),
       variant: variantForSession(sessionId: sessionId),
+      kind: PluginErrorKind.failure,
       errorName: errorName,
       errorMessage: message,
       time: null,
@@ -537,6 +538,7 @@ class AcpEventMapper({
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       ).toJson(),
     );
@@ -1101,6 +1103,7 @@ class AcpEventMapper({
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
           variant: variantForSession(sessionId: sessionId),
+          kind: PluginErrorKind.failure,
           errorName: notice.errorName,
           errorMessage: message,
           time: time,
@@ -1437,6 +1440,7 @@ class AcpEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }

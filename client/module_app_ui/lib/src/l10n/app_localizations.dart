@@ -3139,6 +3139,66 @@ abstract class AppLocalizations {
   /// **'This prompt is no longer in the session'**
   String get transcriptPromptsGone;
 
+  /// One-line marker in a session's transcript while its agent writes the summary Sesori asked for, to send the session into another one. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing a summary for {target}…'**
+  String transcriptHandoffWriting(String target);
+
+  /// One-line marker in a session's transcript once its summary was sent into another session; an Open action follows it. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary sent to {target}'**
+  String transcriptHandoffSent(String target);
+
+  /// One-line marker in a session's transcript when sending it into another session did not complete. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send to {target}'**
+  String transcriptHandoffNotSent(String target);
+
+  /// Action after transcriptHandoffSent that opens the session the summary was sent to.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get transcriptHandoffOpen;
+
+  /// Stands in for a session title in the handoff marker and card when the session had none, as in 'Summary sent to another session'.
+  ///
+  /// In en, this message translates to:
+  /// **'another session'**
+  String get transcriptHandoffAnotherSession;
+
+  /// Title of the sheet that shows the summary a session wrote to be sent into another session.
+  ///
+  /// In en, this message translates to:
+  /// **'Handoff summary'**
+  String get transcriptHandoffSummaryTitle;
+
+  /// Header of the card that shows a session sent in from another one; tapping it opens that session. source is its title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'From {source}'**
+  String transcriptHandoffFrom(String source);
+
+  /// Expands the summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get transcriptHandoffShowAll;
+
+  /// Collapses the expanded summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get transcriptHandoffShowLess;
+
+  /// Alert when a session linked from a handoff marker or card could not be read, for example because it was deleted or the computer is offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that session'**
+  String get transcriptHandoffSessionUnavailable;
+
   /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
   ///
   /// In en, this message translates to:
@@ -3907,6 +3967,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t send: “{source}” didn\'t respond.'**
   String sendSessionFailedSourceUnavailable(String source);
 
+  /// Error alert when the sent session's harness no longer offers the model, agent or variant that session last used, so it refused the summary request.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedSourceOptionsUnavailable(String source);
+
   /// Error alert when the sent session has no conversation yet.
   ///
   /// In en, this message translates to:
@@ -3954,6 +4020,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t send: {reason}'**
   String sendSessionFailedTargetRefusedReason(String reason);
+
+  /// Error alert when the receiving session's harness no longer offers the model, agent or variant that session last used, so it refused the prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{target}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedTargetOptionsUnavailable(String target);
 
   /// Extra line of the delete question when the session being deleted is pinned.
   ///
@@ -5371,6 +5443,12 @@ abstract class AppLocalizations {
   /// **'stopped'**
   String get sessionDetailCompactionCancelled;
 
+  /// Quiet line that ends an agent turn the user stopped with the Stop button. Not an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sessionDetailTurnStopped;
+
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
   /// In en, this message translates to:
@@ -5406,6 +5484,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select text'**
   String get sessionDetailSelectText;
+
+  /// Item of a user message's long-press or right-click menu that puts the message back into the composer to change and resend it.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit and resend'**
+  String get sessionDetailEditAndResend;
+
+  /// Label of the composer's send button while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get sessionDetailEditResend;
+
+  /// Title of the banner over the composer while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing your message'**
+  String get sessionDetailEditBannerTitle;
+
+  /// Title of the edit banner while the session stops so the edit can be resent.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping the session…'**
+  String get sessionDetailEditBannerStopping;
+
+  /// Title of the edit banner while the edit awaits the computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending…'**
+  String get sessionDetailEditBannerSending;
+
+  /// Explains under the edit banner's title that resending removes the edited message and the later conversation, but does not undo changes to files.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend replaces it and everything after it. Files stay as they are.'**
+  String get sessionDetailEditBannerBody;
+
+  /// Button of the edit banner that ends the edit without sending it and gives the composer back what it held.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailEditCancel;
+
+  /// Button that closes the explanation of why a message cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sessionDetailEditUnavailableOk;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a message sent while the agent was working.
+  ///
+  /// In en, this message translates to:
+  /// **'This message can\'t be edited'**
+  String get sessionDetailEditMidTurnTitle;
+
+  /// Explains why a message sent mid-turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.'**
+  String get sessionDetailEditMidTurnBody;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a command, skill or MCP prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands can\'t be edited'**
+  String get sessionDetailEditCommandTitle;
+
+  /// Explains why a command, skill or MCP prompt turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'An edit resends text and attachments only, so it can\'t run a command, skill or MCP prompt again. Run it again from the composer instead.'**
+  String get sessionDetailEditCommandBody;
+
+  /// Title of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is still working'**
+  String get sessionDetailEditBusyTitle;
+
+  /// Body of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending replaces this conversation from the edited message on, so the session has to stop first.'**
+  String get sessionDetailEditBusyBody;
+
+  /// Button that stops the running turn and then resends the edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and resend'**
+  String get sessionDetailEditStopAndResend;
+
+  /// Title of the alert shown when the computer refused an edit; nothing changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t edit this message'**
+  String get sessionDetailEditRefused;
+
+  /// Alert body for a refused edit when the agent gave no reason.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t accept the edit. Nothing changed.'**
+  String get sessionDetailEditRefusedBody;
+
+  /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'The available models or agents changed. Check your selection and resend.'**
+  String get sessionDetailEditOptionsChanged;
+
+  /// Alert shown when Stop and resend could not stop the session.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t stop, so the edit wasn\'t sent.'**
+  String get sessionDetailEditStopFailed;
+
+  /// Alert shown when the computer's answer to an edit never arrived, so it may or may not have gone through.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the edit. Resend to try again; it won\'t apply twice.'**
+  String get sessionDetailEditFailed;
+
+  /// Line of the edit banner counting the edited message's attachments the computer could no longer provide.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 attachment couldn\'t be brought back} other{{count} attachments couldn\'t be brought back}}'**
+  String sessionDetailEditBannerLeftOut(int count);
 
   /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
   ///
@@ -6972,6 +7176,348 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get mcpCancel;
+
+  /// Title of the Scheduled page, which lists the computer's scheduled tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get scheduledTasksTitle;
+
+  /// Accessibility label of the desktop Scheduled page's close button.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Scheduled'**
+  String get scheduledTasksClose;
+
+  /// Scheduled page heading over the tasks that run on repeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring'**
+  String get scheduledTasksRecurringHeading;
+
+  /// Scheduled page heading over the tasks that run one time.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get scheduledTasksOnceHeading;
+
+  /// Scheduled page text when the computer has no tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled tasks on this computer yet.'**
+  String get scheduledTasksEmpty;
+
+  /// Scheduled page and task page row when the tasks failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load scheduled tasks'**
+  String get scheduledTasksLoadFailed;
+
+  /// Button that reloads the scheduled tasks after a failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get scheduledTasksRetry;
+
+  /// Scheduled page row when the computer's bridge predates scheduled tasks; a tap opens the update steps.
+  ///
+  /// In en, this message translates to:
+  /// **'Update this computer to schedule tasks'**
+  String get scheduledTasksBridgeOutdated;
+
+  /// Alert after a task's on/off switch went back because the computer did not take the change.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t change “{name}”. Try again.'**
+  String scheduledTasksToggleFailed(String name);
+
+  /// Summary of a task that runs daily; time is a localized time of day.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day at {time}'**
+  String scheduledTaskDaily(String time);
+
+  /// Summary of a task that runs Monday to Friday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays at {time}'**
+  String scheduledTaskWeekdays(String time);
+
+  /// Summary of a task that runs on chosen days; days is a list of short weekday names.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} at {time}'**
+  String scheduledTaskWeekly(String days, String time);
+
+  /// Summary of a task that runs every few hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =1{Every hour} other{Every {hours} hours}}'**
+  String scheduledTaskEveryHours(int hours);
+
+  /// Summary of a task whose schedule this app does not know, and the task page's note that it can only be edited on a newer app.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit on a newer app'**
+  String get scheduledTaskNewerApp;
+
+  /// Subtitle or next-run value of a paused task.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get scheduledTaskPaused;
+
+  /// Day of a task time that falls today in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get scheduledTaskToday;
+
+  /// Day of a task time that falls tomorrow in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get scheduledTaskTomorrow;
+
+  /// Day of a task time that fell yesterday in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get scheduledTaskYesterday;
+
+  /// A task time: its day (Today, Tomorrow or a date) and time of day.
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {time}'**
+  String scheduledTaskDayAndTime(String day, String time);
+
+  /// A task time in a zone other than this device's, naming the zone's city.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} ({zone})'**
+  String scheduledTaskInZone(String time, String zone);
+
+  /// Task page row label for the task's schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get scheduledTaskWhen;
+
+  /// Task page row label for when the task runs next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next run'**
+  String get scheduledTaskNextRun;
+
+  /// Task page next-run value when nothing is left to run.
+  ///
+  /// In en, this message translates to:
+  /// **'Not scheduled'**
+  String get scheduledTaskNoNextRun;
+
+  /// Task page action that starts a run now without moving the schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get scheduledTaskRunNow;
+
+  /// Alert after Run now started a run.
+  ///
+  /// In en, this message translates to:
+  /// **'Run started'**
+  String get scheduledTaskRunStarted;
+
+  /// Alert after Run now failed for an unexpected reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t start the run. Try again.'**
+  String get scheduledTaskRunNowFailed;
+
+  /// Alert after Run now was refused because the previous run has not finished.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous run is still going. Try again once it finishes.'**
+  String get scheduledTaskPreviousRunActive;
+
+  /// Alert after Run now was refused because the computer's bridge does not support this task's settings.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer can’t run this task yet.'**
+  String get scheduledTaskRunNowUnsupported;
+
+  /// Task page action that stops the task from running on its schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get scheduledTaskPause;
+
+  /// Task page action that puts a paused task back on its schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get scheduledTaskResume;
+
+  /// Alert after pausing a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t pause the task. Try again.'**
+  String get scheduledTaskPauseFailed;
+
+  /// Alert after resuming a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t resume the task. Try again.'**
+  String get scheduledTaskResumeFailed;
+
+  /// Task page action that renames the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get scheduledTaskRename;
+
+  /// Title of the sheet that renames a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename task'**
+  String get scheduledTaskRenameTitle;
+
+  /// Hint of the rename sheet's field.
+  ///
+  /// In en, this message translates to:
+  /// **'Task name'**
+  String get scheduledTaskRenameHint;
+
+  /// Alert after renaming a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t rename the task'**
+  String get scheduledTaskRenameFailed;
+
+  /// Task page action that deletes the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete task'**
+  String get scheduledTaskDelete;
+
+  /// Title of the confirmation before deleting a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String scheduledTaskDeleteTitle(String name);
+
+  /// Body of the confirmation before deleting a task.
+  ///
+  /// In en, this message translates to:
+  /// **'It won’t run again. Sessions it already started stay.'**
+  String get scheduledTaskDeleteMessage;
+
+  /// Button that keeps the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get scheduledTaskDeleteCancel;
+
+  /// Destructive button that deletes the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get scheduledTaskDeleteConfirm;
+
+  /// Alert after deleting a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t delete the task. Try again.'**
+  String get scheduledTaskDeleteFailed;
+
+  /// Task page note on a task with parts from a newer app, which can still be run, paused and deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This task uses settings this app doesn’t know. Edit it on a newer app.'**
+  String get scheduledTaskReadOnly;
+
+  /// Task page text after the task was deleted or, for a one-off task, ran.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is no longer scheduled.'**
+  String get scheduledTaskGone;
+
+  /// Task page heading over the run history.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get scheduledTaskRunsHeading;
+
+  /// Task page text when the task has never run.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get scheduledTaskNoRuns;
+
+  /// Run history outcome: the run started.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran'**
+  String get scheduledTaskRunRan;
+
+  /// Run history outcome: the run started after its time, such as when the computer was off.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran late'**
+  String get scheduledTaskRunRanLate;
+
+  /// Run history outcome: the run did not start because the previous one had not finished.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped: the previous run was still going'**
+  String get scheduledTaskRunSkipped;
+
+  /// Run history outcome: the computer was off or asleep and the task waited for its next time.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: the computer was off'**
+  String get scheduledTaskRunMissed;
+
+  /// Run history outcome, and Run now's alert, when the run could not start.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t start: {reason}'**
+  String scheduledTaskRunFailed(String reason);
+
+  /// Run history outcome from a newer computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated app needed to show this run'**
+  String get scheduledTaskRunUnknown;
+
+  /// Reason a run could not start: its project no longer exists.
+  ///
+  /// In en, this message translates to:
+  /// **'the project is gone'**
+  String get scheduledTaskFailureProjectMissing;
+
+  /// Reason a run could not start: its harness is not available on the computer.
+  ///
+  /// In en, this message translates to:
+  /// **'the harness isn’t available'**
+  String get scheduledTaskFailureHarnessUnavailable;
+
+  /// Reason a run could not start: its model is no longer offered. A run never swaps in another model.
+  ///
+  /// In en, this message translates to:
+  /// **'its model isn’t offered anymore'**
+  String get scheduledTaskFailureModelUnavailable;
+
+  /// Reason a run could not start: starting the session failed.
+  ///
+  /// In en, this message translates to:
+  /// **'the session didn’t start'**
+  String get scheduledTaskFailureStartFailed;
+
+  /// Reason a run could not start, from a newer computer.
+  ///
+  /// In en, this message translates to:
+  /// **'an unknown reason'**
+  String get scheduledTaskFailureUnknown;
 
   /// Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it.
   ///

@@ -13,8 +13,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
 import "desktop_command_palette.dart";
-import "desktop_connection_pill.dart";
-import "desktop_page_toolbar.dart";
+import "desktop_connection_pill_slot.dart";
 import "desktop_sidebar.dart";
 import "desktop_sidebar_expansion.dart";
 
@@ -212,16 +211,16 @@ class const DesktopCockpitShell({
         );
         bool collapsed(BuildContext context) =>
             context.select((DesktopSidebarCubit cubit) => cubit.state.collapsed) || autoCollapsed;
-        final content = Stack(
-          fit: StackFit.expand,
-          children: [
-            child,
-            const PositionedDirectional(
-              top: DesktopPageToolbar.height + PregoSpacing.md,
-              end: PregoSpacing.xl,
-              child: DesktopConnectionPill(),
-            ),
-          ],
+        final content = RepositoryProvider(
+          create: (_) => DesktopTrailingPanelCover(),
+          dispose: (cover) => cover.dispose(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              child,
+              const Positioned.fill(child: DesktopConnectionPillSlot()),
+            ],
+          ),
         );
         // The sidebar runs the window's full height, its edge a hairline that
         // lights up under the pointer.
