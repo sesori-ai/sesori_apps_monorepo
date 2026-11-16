@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -27,7 +29,8 @@ typedef DesktopSideChatPageBuilder = Widget Function(
 });
 
 /// A session page's side chats, in a panel that floats over the page's trailing
-/// edge, full height under the toolbar.
+/// edge, from under the toolbar to just above the composer, so the composer's
+/// Send and Stop stay in reach. With no composer it runs to the page's bottom.
 ///
 /// The panel slides in from the window's edge by transform, like the sidebar,
 /// so the transcript neither moves nor reflows, and the page around it keeps
@@ -49,8 +52,18 @@ class const DesktopSideChatPanelHost({
   State<DesktopSideChatPanelHost> createState() => _DesktopSideChatPanelHostState();
 }
 
-/// The gap the panel keeps from the window's trailing and bottom edges.
+/// The gap the panel keeps from the window's trailing and bottom edges, and
+/// from the top of the controls docked at the page's bottom. The composer keeps
+/// 8 pt of clear room above its surface, so the panel's edge stands 20 pt clear
+/// of the composer itself.
 const double _inset = PregoSpacing.lg;
+
+/// The shortest the panel gets to stay above the composer. Where a short
+/// window, a tall draft or docked cards leave less room, it keeps this height
+/// and runs over the composer's top, never past the page's bottom inset; the
+/// composer's Send row, at its bottom, stays clear unless the window is shorter
+/// still.
+const double _minHeightAboveComposer = 300;
 
 /// How far the panel travels to clear the window's edge, its shadow included.
 const double _travel = DesktopSideChatPanelHost.width + _inset + 48;
@@ -72,6 +85,9 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   bool _isCurrentPage = true;
   final _scrollController = ScrollController();
   final _focusScope = FocusScopeNode(debugLabel: "Side chat panel");
+
+  /// How far the page's composer rises over its bottom; 0 with no composer.
+  final _composerExtent = ValueNotifier<double>(0);
 
   /// Null while the panel is closed.
   _Opening? _opening;
@@ -102,6 +118,7 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
     _slide.dispose();
     _scrollController.dispose();
     _focusScope.dispose();
+    _composerExtent.dispose();
     super.dispose();
   }
 
@@ -175,38 +192,63 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
     if (status == AnimationStatus.dismissed) setState(() => _opening = null);
   }
 
+  void _onComposerExtent(double extent) {
+    // A report can land after the page has gone.
+    if (mounted) _composerExtent.value = extent;
+  }
+
   @override
   Widget build(BuildContext context) {
     final opening = _opening;
     return CallbackShortcuts(
       bindings: {if (opening != null) const SingleActivator(LogicalKeyboardKey.escape): _close},
-      child: widget.builder(
-        context,
-        openSideChat: _open,
-        panel: PositionedDirectional(
-          top: DesktopPageToolbar.height,
-          bottom: _inset,
-          end: _inset,
-          width: DesktopSideChatPanelHost.width,
-          child: switch (opening) {
-            null => const SizedBox.shrink(),
-            final shown => _SlidingPanel(
-              shown: _shown,
-              child: FocusScope(
-                node: _focusScope,
-                child: BlocProvider(
-                  key: shown.key,
-                  create: (_) => shown.createCubit(),
-                  child: SideChatView(
-                    scrollController: _scrollController,
-                    harnessName: PregoBrandLogo.displayNameFor(shown.pluginId),
-                    onClose: _close,
-                    autofocusQuestion: true,
+      child: SessionComposerExtentScope(
+        onExtentChanged: _onComposerExtent,
+        child: widget.builder(
+          context,
+          openSideChat: _open,
+          panel: PositionedDirectional(
+            top: DesktopPageToolbar.height,
+            bottom: _inset,
+            end: _inset,
+            width: DesktopSideChatPanelHost.width,
+            // Only the bottom edge follows the composer as it grows and folds;
+            // the slide moves the panel sideways alone.
+            child: ValueListenableBuilder(
+              valueListenable: _composerExtent,
+              builder: (context, composerExtent, child) => LayoutBuilder(
+                builder: (context, constraints) => Align(
+                  alignment: AlignmentDirectional.topCenter,
+                  child: SizedBox(
+                    height: math.min(
+                      constraints.maxHeight,
+                      math.max(_minHeightAboveComposer, constraints.maxHeight - composerExtent),
+                    ),
+                    child: child,
                   ),
                 ),
               ),
+              child: switch (opening) {
+                null => const SizedBox.shrink(),
+                final shown => _SlidingPanel(
+                  shown: _shown,
+                  child: FocusScope(
+                    node: _focusScope,
+                    child: BlocProvider(
+                      key: shown.key,
+                      create: (_) => shown.createCubit(),
+                      child: SideChatView(
+                        scrollController: _scrollController,
+                        harnessName: PregoBrandLogo.displayNameFor(shown.pluginId),
+                        onClose: _close,
+                        autofocusQuestion: true,
+                      ),
+                    ),
+                  ),
+                ),
+              },
             ),
-          },
+          ),
         ),
       ),
     );

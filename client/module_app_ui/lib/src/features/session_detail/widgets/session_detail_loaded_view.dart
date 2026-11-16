@@ -13,6 +13,7 @@ import "edit_message_dialogs.dart";
 import "handoff_session_link.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
+import "session_composer_extent.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_fork_flow.dart";
@@ -262,8 +263,12 @@ class SessionDetailLoadedView extends StatelessWidget {
       ],
     );
     return PregoFloatingBottomControlsLayout(
-      contentBuilder: (context, bottomControlsHeight) =>
-          TranscriptBottomInset(inset: bottomControlsHeight, child: content),
+      contentBuilder: (context, bottomControlsHeight) => TranscriptBottomInset(
+        inset: bottomControlsHeight,
+        // A read-only page's controls only say what it ran with, so a surface
+        // floating over the page may cover them.
+        child: SessionComposerExtentReport(extent: readOnly ? 0 : bottomControlsHeight, child: content),
+      ),
       // Floating bottom controls: the needs-you cards docked above the
       // background-tasks bar and composer. Queued submissions are regular
       // rows in the transcript above them. Every control's halo paints in
