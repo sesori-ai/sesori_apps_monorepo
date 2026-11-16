@@ -77,6 +77,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
   );
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    title: context.loc.sessionListNewSession,
     key: const Key("home-composer-pane-prompt"),
     onProjectSelected: onProjectSelected,
     onBack: null,

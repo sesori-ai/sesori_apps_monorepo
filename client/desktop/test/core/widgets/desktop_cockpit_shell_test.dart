@@ -242,6 +242,8 @@ void main() {
                 onOpenBridgeSettings: _noOp,
                 onOpenSettings: _noOp,
                 onOpenArchived: _noOp,
+                onOpenScheduled: _noOp,
+                onNewTask: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
                   key: const Key("cockpit-content"),
@@ -445,6 +447,8 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
+          onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: SizedBox.expand(
             key: const Key("cockpit-content"),
@@ -522,6 +526,8 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
+          onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
         ),
@@ -577,6 +583,8 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
+          onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: DesktopPageToolbar(
             breadcrumb: null,
@@ -665,8 +673,11 @@ void main() {
     );
   }
 
-  testWidgets("Archived is the row under Search, not a footer button, and opens Archived", (tester) async {
+  testWidgets("Archived and Scheduled are the rows under Search, not footer buttons, and open their pages", (
+    tester,
+  ) async {
     var archivedOpens = 0;
+    var scheduledOpens = 0;
     await tester.pumpWidget(
       app(
         state: running,
@@ -680,6 +691,8 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: () => archivedOpens++,
+          onOpenScheduled: () => scheduledOpens++,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
         ),
@@ -692,12 +705,17 @@ void main() {
     expect(find.descendant(of: archived, matching: find.byIcon(TablerLight.archive)), findsOneWidget);
     expect(tester.getTopLeft(archived), tester.getBottomLeft(search));
     expect(tester.getSize(archived), tester.getSize(search));
-    expect(tester.getBottomLeft(archived).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
+    final scheduled = find.byKey(const Key("desktop-sidebar-scheduled"));
+    expect(find.descendant(of: scheduled, matching: find.text("Scheduled")), findsOneWidget);
+    expect(tester.getTopLeft(scheduled), tester.getBottomLeft(archived));
+    expect(tester.getBottomLeft(scheduled).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
     final footer = find.byKey(const Key("desktop-sidebar-footer"));
     expect(find.descendant(of: footer, matching: find.byIcon(TablerLight.archive)), findsNothing);
 
     await tester.tap(archived);
     expect(archivedOpens, 1);
+    await tester.tap(scheduled);
+    expect(scheduledOpens, 1);
   });
 
   testWidgets("Bridge opens from the footer without replacing the main pane", (tester) async {
@@ -738,6 +756,8 @@ void main() {
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenSettings: () => settingsOpens++,
           onOpenArchived: _noOp,
+          onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
@@ -1179,6 +1199,8 @@ void main() {
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
+          onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
         ),
@@ -1612,6 +1634,8 @@ void main() {
     final opened = <String>[];
     var backs = 0;
     var archivedOpens = 0;
+    var scheduledOpens = 0;
+    var newTasks = 0;
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1628,6 +1652,8 @@ void main() {
             onOpenBridgeSettings: _noOp,
             onOpenSettings: _noOp,
             onOpenArchived: () => archivedOpens++,
+            onOpenScheduled: () => scheduledOpens++,
+            onNewTask: () => newTasks++,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),
           ),
@@ -1712,6 +1738,20 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(archivedOpens, 1);
+
+    // So do Scheduled and New task.
+    await press(LogicalKeyboardKey.keyK);
+    await type("scheduled");
+    expect(inPalette("Scheduled"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(scheduledOpens, 1);
+    await press(LogicalKeyboardKey.keyK);
+    await type("new task");
+    expect(inPalette("New task"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(newTasks, 1);
 
     // A project filters the sidebar's list, and a hidden sidebar opens to show it.
     await press(LogicalKeyboardKey.keyK);

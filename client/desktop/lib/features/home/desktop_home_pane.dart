@@ -489,6 +489,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
   }
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    title: context.loc.sessionListNewSession,
     key: const Key("desktop-home-prompt"),
     onProjectSelected: onProjectSelected,
     onBack: null,

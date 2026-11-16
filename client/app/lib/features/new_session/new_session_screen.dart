@@ -24,6 +24,7 @@ class const NewSessionScreen({
     final projectId = this.projectId;
     if (projectId == null) {
       return NewSessionProjectPrompt(
+        title: context.loc.sessionListNewSession,
         onProjectSelected: ({required projectId, required projectName}) {
           context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry));
         },

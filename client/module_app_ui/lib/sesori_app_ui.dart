@@ -24,6 +24,7 @@ export "src/features/project_list/project_path_labels.dart";
 export "src/features/project_list/rename_project_dialog.dart";
 export "src/features/project_picker/project_picker.dart";
 export "src/features/scheduled_tasks/scheduled_task_detail_view.dart";
+export "src/features/scheduled_tasks/scheduled_task_editor_view.dart";
 export "src/features/scheduled_tasks/scheduled_tasks_view.dart" show ScheduledPageExit, ScheduledTasksView;
 export "src/features/session_detail/composer_presentation_scope.dart";
 export "src/features/session_detail/session_auto_continuation_menu.dart";
