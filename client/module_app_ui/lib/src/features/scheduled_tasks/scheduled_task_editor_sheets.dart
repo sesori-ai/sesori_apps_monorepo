@@ -90,7 +90,11 @@ class const _WhenSheet() extends StatelessWidget {
               ),
             ],
             TaskScheduleDaily(:final time) || TaskScheduleWeekdays(:final time) || TaskScheduleWeekly(:final time) => [
-              _TimeField(time: time, label: loc.scheduledTaskTime, valueLabel: labels.timeOfDay(time: time)),
+              _TimeField(
+                time: time,
+                label: loc.scheduledTaskTime,
+                valueLabel: labels.timeOfDay(time: time),
+              ),
             ],
             TaskScheduleEveryHours(:final hours, :final start) => [
               _HoursRow(hours: hours),
@@ -135,14 +139,13 @@ class const _WhenSheet() extends StatelessWidget {
     );
   }
 
-  static String _repeatLabel({required AppLocalizations loc, required ScheduledTaskRepeat repeat}) =>
-      switch (repeat) {
-        ScheduledTaskRepeat.once => loc.scheduledTaskRepeatOnce,
-        ScheduledTaskRepeat.daily => loc.scheduledTaskRepeatDaily,
-        ScheduledTaskRepeat.weekdays => loc.scheduledTaskRepeatWeekdays,
-        ScheduledTaskRepeat.weekly => loc.scheduledTaskRepeatWeekly,
-        ScheduledTaskRepeat.everyHours => loc.scheduledTaskRepeatEveryHours,
-      };
+  static String _repeatLabel({required AppLocalizations loc, required ScheduledTaskRepeat repeat}) => switch (repeat) {
+    ScheduledTaskRepeat.once => loc.scheduledTaskRepeatOnce,
+    ScheduledTaskRepeat.daily => loc.scheduledTaskRepeatDaily,
+    ScheduledTaskRepeat.weekdays => loc.scheduledTaskRepeatWeekdays,
+    ScheduledTaskRepeat.weekly => loc.scheduledTaskRepeatWeekly,
+    ScheduledTaskRepeat.everyHours => loc.scheduledTaskRepeatEveryHours,
+  };
 
   static DateTime _dateTimeOf(TaskLocalDateTime at) => DateTime(at.year, at.month, at.day, at.hour, at.minute);
 
@@ -155,8 +158,11 @@ class const _WhenSheet() extends StatelessWidget {
   );
 }
 
-class const _TimeField({required final TaskTimeOfDay time, required final String label, required final String valueLabel})
-    extends StatelessWidget {
+class const _TimeField({
+  required final TaskTimeOfDay time,
+  required final String label,
+  required final String valueLabel,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => PregoDateTimeField(
     key: const Key("scheduled-task-time"),
@@ -172,11 +178,8 @@ class const _TimeField({required final TaskTimeOfDay time, required final String
   );
 }
 
-/// The Every few hours interval, stepped between 1 and 12 hours.
+/// The Every few hours interval, stepped within the cubit's bounds.
 class const _HoursRow({required final int hours}) extends StatelessWidget {
-  static const int _min = 1;
-  static const int _max = 12;
-
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -195,7 +198,7 @@ class const _HoursRow({required final int hours}) extends StatelessWidget {
             semanticLabel: loc.scheduledTaskFewerHours,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.sm,
-            onPressed: hours > _min ? () => cubit.setHours(hours: hours - 1) : null,
+            onPressed: hours > ScheduledTaskEditorCubit.minHours ? () => cubit.setHours(hours: hours - 1) : null,
           ),
           PregoButtonsSolid.iconOnly(
             key: const Key("scheduled-task-more-hours"),
@@ -203,7 +206,7 @@ class const _HoursRow({required final int hours}) extends StatelessWidget {
             semanticLabel: loc.scheduledTaskMoreHours,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.sm,
-            onPressed: hours < _max ? () => cubit.setHours(hours: hours + 1) : null,
+            onPressed: hours < ScheduledTaskEditorCubit.maxHours ? () => cubit.setHours(hours: hours + 1) : null,
           ),
         ],
       ),

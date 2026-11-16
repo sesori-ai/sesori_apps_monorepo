@@ -94,7 +94,12 @@ class const _StatusFrame({
     if (topBar case final topBar?) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        body: CustomScrollView(slivers: [SliverToBoxAdapter(child: topBar), body]),
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: topBar),
+            body,
+          ],
+        ),
       );
     }
     return PregoGlassScaffold(
@@ -245,7 +250,10 @@ class _TaskComposerState() extends State<_TaskComposer> {
               banner: widget.banner,
               pageChrome: widget.chrome,
               aboveComposer: const _TaskLines(),
-              submitAction: PromptSubmitAction(label: context.loc.scheduledTaskSave, icon: TablerRegular.calendar_check),
+              submitAction: PromptSubmitAction(
+                label: context.loc.scheduledTaskSave,
+                icon: TablerRegular.calendar_check,
+              ),
             ),
           ),
         ),
@@ -371,7 +379,10 @@ class const _SaveStatus({required final ScheduledTaskEditorSave save}) extends S
       duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       alignment: AlignmentDirectional.bottomStart,
-      child: KeyedSubtree(key: const Key("scheduled-task-editor-status"), child: status ?? const SizedBox(width: double.infinity)),
+      child: KeyedSubtree(
+        key: const Key("scheduled-task-editor-status"),
+        child: status ?? const SizedBox(width: double.infinity),
+      ),
     );
   }
 
