@@ -447,6 +447,9 @@ not loaded yet.
   session.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
+- A fork's attachments still point at the origin's uploads folder, so one is
+  missing if the origin is deleted (or the 30-day sweep runs) before the
+  fork's first send; the agent then gets a note naming the missing file.
 - A removal that lands in the same frame as a refresh goes at once instead of
   folding, since the refresh replaces the transcript.
 - A message menu left open on a row another device removes stays open; its

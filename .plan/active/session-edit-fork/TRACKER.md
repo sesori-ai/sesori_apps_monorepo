@@ -20,7 +20,12 @@
 | 13 Claude native fork | Merged | #2638, #2688 |
 | 14.a Fork from a message or the session menu | Merged | #2698 |
 | 14.b Forked-from link, mid-turn popup Fork, No-project wording | Merged | #2711, #2709 |
-| 15 Reconcile docs, verify and retire | In progress: Codex 0.139.0 refusal fix pending | |
+| 15.a Keep a refused Codex 0.139 edit from changing the conversation (`[step 18/23]`) | In progress | |
+| 15.b Keep the transcript in place during a Claude first-message edit (`[step 19/23]`) | In progress | |
+| 15.c Resend shows no stale Working timer (`[step 20/23]`) | Not started | |
+| 15.d Codex later-prompt edit fold settles without rows bouncing (`[step 21/23]`, after #2721) | Not started | |
+| 15.e Relay observer keeps its anchor through an edit (`[step 22/23]`, after #2721) | Not started | |
+| 15 Reconcile docs, verify and retire (`[step 23/23]`) | In progress: waits on 15.a-15.e | |
 
 Steps 2, 5, 7 and 9 depend on nothing in this plan and can run in parallel. Step 4 needs 3. Step 6 needs 3 and 5;
 step 8 needs 3 and 7. Step 9.b needs 9. Step 10 needs 2, 4 and 9 (and 6 or 8 for a
