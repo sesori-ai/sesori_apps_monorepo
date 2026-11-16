@@ -129,22 +129,19 @@ class SessionSendService({
           // meanwhile, until the marked message replaces it.
           final request = _queuedRequest(promptId: promptId, requestText: requestText, handoff: notSent);
           _sessions.holdRequest(sessionId: source.id, request: request);
-          _announceQueue(
-            sessionId: source.id,
-            prompts: await _sessions.getQueuedPrompts(sessionId: source.id),
-          );
-          await _markUnechoedRequestNotSent(
-            sessionId: source.id,
-            promptId: promptId,
-            turn: turn,
-            requestText: requestText,
-            notSent: notSent,
-          );
-          _sessions.releaseRequest(sessionId: source.id);
-          _announceQueue(
-            sessionId: source.id,
-            prompts: await _sessions.getQueuedPrompts(sessionId: source.id),
-          );
+          try {
+            await _announceSourceQueue(sessionId: source.id);
+            await _markUnechoedRequestNotSent(
+              sessionId: source.id,
+              promptId: promptId,
+              turn: turn,
+              requestText: requestText,
+              notSent: notSent,
+            );
+          } finally {
+            _sessions.releaseRequest(sessionId: source.id);
+          }
+          await _announceSourceQueue(sessionId: source.id);
         // A refused request, or a check that failed before it, left no stamp.
         case null:
           break;
@@ -317,6 +314,21 @@ class SessionSendService({
     handoff: handoff,
     createdAt: _clock.now().millisecondsSinceEpoch,
   );
+
+  /// Announces the queue clients list for [sessionId]: its harness's own
+  /// prompts and any held request. Best-effort, so a failed read never
+  /// replaces the send's own failure; clients keep the last list until the
+  /// harness reports its queue again.
+  Future<void> _announceSourceQueue({required String sessionId}) async {
+    try {
+      _announceQueue(
+        sessionId: sessionId,
+        prompts: await _sessions.getQueuedPrompts(sessionId: sessionId),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read the queue of session $sessionId after its send failed", error, stackTrace);
+    }
+  }
 
   void _announceQueue({required String sessionId, required List<QueuedSessionPrompt> prompts}) =>
       _queuedRequests.add((sessionId: sessionId, prompts: prompts));

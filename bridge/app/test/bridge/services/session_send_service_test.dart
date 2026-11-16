@@ -447,6 +447,24 @@ void main() {
       });
     }
 
+    test("before the echo: a stop whose queue can't be read still fails as stopped and marks the request", () async {
+      prompts.onSummaryAccepted = (_) {
+        aborts.add(_source);
+        Future(() {
+          history.messages = [
+            ...history.messages,
+            _userMessage(id: "stored-unechoed", text: prompts.sends.first.text),
+          ];
+          events.add(const NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: _source)));
+        }).ignore();
+      };
+      sessions.queueReadError = StateError("fixture queue read failure");
+
+      expect(await refusalOf(send()), SendToSessionErrorCode.summaryStopped);
+      expect(history.notSentMessages, ["stored-unechoed"]);
+      expect(sessions.held, isNull);
+    });
+
     test("before the echo: a stop marks nothing when the source never stored the request", () async {
       prompts.onSummaryAccepted = (_) {
         // An earlier send to the same target asked with the same text.
@@ -958,11 +976,14 @@ final class _Sessions() implements SessionRepository {
   /// Prompts the source's harness itself still queues.
   List<QueuedSessionPrompt> harnessQueue = const [];
 
+  /// Thrown by every queue read when set.
+  Object? queueReadError;
+
   @override
-  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async => [
-    ...harnessQueue,
-    ?held,
-  ];
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async {
+    if (queueReadError case final error?) throw error;
+    return [...harnessQueue, ?held];
+  }
 
   void reparent({required String sessionId}) {
     final session = byId[sessionId];
