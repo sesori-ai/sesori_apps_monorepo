@@ -185,6 +185,8 @@ class SessionSendService({
           fastMode: settings.fastMode,
           agent: settings.agent,
           model: settings.model,
+          command: null,
+          commandSource: null,
           handoff: MessageHandoff.sent(
             targetSessionId: target.id,
             targetTitle: _nonBlank(text: target.title),
