@@ -903,6 +903,7 @@ class _ComposerHostState() extends State<_ComposerHost> {
         onDraftCleared: () {},
         onAbort: () {},
         surfaceStyleController: _surfaceStyle,
+        sideQuestion: null,
         composerHeader: null,
         composerTrailing: null,
         availableCommands: const [],

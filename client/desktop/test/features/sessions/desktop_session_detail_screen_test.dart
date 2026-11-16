@@ -70,6 +70,7 @@ const _child = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 /// A child session: the sidebar inventory never holds one, the page does.
@@ -89,6 +90,7 @@ const _session = Session(
   // Local state can still say unseen just after opening.
   unseen: true,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 const _message = MessageWithParts(

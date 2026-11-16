@@ -2873,6 +2873,8 @@ SessionDto _sessionRow({
     catalogTitle: catalogTitle,
     approvalOverride: null,
     pinned: pinned,
+    forkedFromSessionId: null,
+    forkedFromTitle: null,
     scheduledTaskId: null,
   );
 }
