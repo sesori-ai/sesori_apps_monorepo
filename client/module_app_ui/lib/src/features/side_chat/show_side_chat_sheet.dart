@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -25,28 +26,83 @@ void showSideChatSheet({
   final sessionCubit = context.read<SessionDetailCubit>();
   // ignore: no_slop_linter/avoid_navigator_of, the sheet is a transient route over the session page
   final navigator = Navigator.of(context);
-  unawaited(
-    showPregoDetentSheet<void>(
-      context: context,
-      builder: (context, scrollController) => scope.around(
-        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {
-          navigator.pop();
-          scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
-        },
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider.value(value: sessionCubit),
-            BlocProvider(create: (_) => createCubit()),
-          ],
-          child: SideChatView(
-            scrollController: scrollController,
-            harnessName: PregoBrandLogo.displayNameFor(pluginId),
-            onClose: navigator.pop,
-            // The keyboard waits for a tap, so the sheet opens on what it holds.
-            autofocusQuestion: false,
-          ),
+  final closed = showPregoDetentSheet<void>(
+    context: context,
+    builder: (context, scrollController) => scope.around(
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {
+        navigator.pop();
+        scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
+      },
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: sessionCubit),
+          BlocProvider(create: (_) => createCubit()),
+        ],
+        child: SideChatView(
+          scrollController: scrollController,
+          harnessName: PregoBrandLogo.displayNameFor(pluginId),
+          onClose: navigator.pop,
+          // The keyboard waits for a tap, so the sheet opens on what it holds.
+          autofocusQuestion: false,
         ),
       ),
     ),
+  );
+  SideChatKeyboardHold.holdUntil(context: context, closed: closed);
+}
+
+/// Keeps the session page laid out against the keyboard it had when a side
+/// chat opened, until the sheet closes. A side chat sent from the composer
+/// takes the composer's focus, so the keyboard slides down under the sheet;
+/// without the hold the transcript behind it would slide down with it.
+///
+/// On close the page eases back to the live keyboard. A composer that takes
+/// its focus back raises the keyboard again, and the page follows it up; with
+/// no keyboard coming back, the page settles down to the bottom.
+class const SideChatKeyboardHold({super.key, required final Widget child}) extends StatefulWidget {
+  /// Holds the nearest [SideChatKeyboardHold] above [context] until [closed]
+  /// completes. Without one, the page follows the keyboard as usual.
+  static void holdUntil({required BuildContext context, required Future<void> closed}) =>
+      context.findAncestorStateOfType<_SideChatKeyboardHoldState>()?._holdUntil(closed: closed);
+
+  @override
+  State<SideChatKeyboardHold> createState() => _SideChatKeyboardHoldState();
+}
+
+class _SideChatKeyboardHoldState() extends State<SideChatKeyboardHold> with SingleTickerProviderStateMixin {
+  /// 1 while held, easing to 0 once the sheet closes.
+  late final AnimationController _hold = AnimationController(vsync: this, duration: _releaseDuration);
+  double _held = 0;
+
+  static const _releaseDuration = Duration(milliseconds: 350);
+
+  void _holdUntil({required Future<void> closed}) {
+    _held = MediaQuery.viewInsetsOf(context).bottom;
+    _hold.value = 1;
+    unawaited(
+      closed.whenComplete(() {
+        if (mounted) _hold.animateBack(0, curve: Curves.easeIn);
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    _hold.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _hold,
+    child: widget.child,
+    builder: (context, child) {
+      final mediaQuery = MediaQuery.of(context);
+      final keyboard = math.max(mediaQuery.viewInsets.bottom, _held * _hold.value);
+      return MediaQuery(
+        data: mediaQuery.copyWith(viewInsets: mediaQuery.viewInsets.copyWith(bottom: keyboard)),
+        child: child ?? const SizedBox.shrink(),
+      );
+    },
   );
 }
