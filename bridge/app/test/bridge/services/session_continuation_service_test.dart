@@ -1,11 +1,13 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
@@ -48,7 +50,12 @@ void main() {
     operations = SessionOperationDispatcher(sessionRepository: sessions);
     prompts = _Prompts(records: records);
     mutations = _Mutations();
-    views = SessionViewService(sessions: sessions, continuations: records, resetBuffer: const Duration(minutes: 2));
+    views = SessionViewService(
+      sessions: sessions,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
+      continuations: records,
+      resetBuffer: const Duration(minutes: 2),
+    );
     now = observed;
     service = SessionContinuationService(
       continuations: records,

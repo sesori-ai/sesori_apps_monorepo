@@ -29,6 +29,8 @@ mirror PR state; live status is on GitHub:
 - User-visible entry points land only in step 9.
 - Run marks use the meta line, not the time slot that
   `SessionScheduledResume` already uses.
+- The push tap to a task page (step 8) ships only once the auth server passes
+  `data.taskId` through to FCM/APNs; today it strips it (PLAN P8).
 
 ## Steps
 

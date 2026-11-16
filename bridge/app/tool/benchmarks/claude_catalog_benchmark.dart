@@ -34,6 +34,7 @@ import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -148,6 +149,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
     );
     final sessionViews = SessionViewService(
       sessions: sessions,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: database)),
       continuations: SessionContinuationRepository(
         dao: SessionContinuationDao(database: database),
         runtime: runtime,

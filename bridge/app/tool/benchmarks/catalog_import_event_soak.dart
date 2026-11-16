@@ -21,6 +21,7 @@ import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -179,6 +180,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       final eventService = SessionEventService(
         sessionViews: SessionViewService(
           sessions: sessionRepository,
+          scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: database)),
           continuations: SessionContinuationRepository(
             dao: SessionContinuationDao(database: database),
             runtime: runtime,

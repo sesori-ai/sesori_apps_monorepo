@@ -471,6 +471,20 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// The unarchived, unpinned sessions [scheduledTaskId]'s runs started,
+  /// newest first.
+  Future<List<String>> listUnarchivedUnpinnedScheduledRunSessionIds({required String scheduledTaskId}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(
+        sessionTable.scheduledTaskId.equals(scheduledTaskId) &
+            sessionTable.archivedAt.isNull() &
+            sessionTable.pinned.equals(false),
+      )
+      ..orderBy([OrderingTerm.desc(sessionTable.createdAt), OrderingTerm.desc(sessionTable.sessionId)]);
+    return [for (final row in await query.get()) ?row.read(sessionTable.sessionId)];
+  }
+
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
       SessionTableCompanion(parentSessionId: Value(parentSessionId)),

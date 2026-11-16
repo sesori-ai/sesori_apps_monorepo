@@ -880,6 +880,11 @@ class SessionRepository({
             },
       );
 
+  /// The sessions [taskId]'s runs started that are neither archived nor
+  /// pinned, newest first: the candidates for archiving old runs.
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) =>
+      _sessionDao.listUnarchivedUnpinnedScheduledRunSessionIds(scheduledTaskId: taskId);
+
   /// Whether [sessionId] is between turns with nothing waiting on the user.
   /// The one owner of that question for scheduled runs.
   ///

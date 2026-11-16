@@ -2,11 +2,12 @@ import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
-
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -64,6 +65,7 @@ void main() {
         sessionOptionsService: optionsService,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       );
       await insertTestSession(
         db: db,
@@ -110,6 +112,82 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
+    });
+
+    group("scheduled runs", () {
+      late ScheduledTaskRepository tasks;
+
+      setUp(() async {
+        tasks = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
+        final task = await tasks.create(
+          definition: const ScheduledTaskDefinition(
+            name: "Morning summary",
+            prompt: ScheduledTaskPrompt.text(text: "Summarize yesterday"),
+            projectId: "/repo",
+            pluginId: "fake",
+            agent: null,
+            model: null,
+            variant: null,
+            fastMode: false,
+            dedicatedWorktree: false,
+            schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0)),
+            timeZone: "UTC",
+            missedRunPolicy: TaskMissedRunPolicy.runWhenBack,
+            runMode: TaskRunMode.newSession(),
+            approvalMode: TaskApprovalMode.ask,
+          ),
+          nextDueAt: null,
+          now: DateTime.utc(2026, 11, 15),
+        );
+        final run = await tasks.recordRun(
+          taskId: task.id,
+          scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
+          outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+          firedAt: DateTime.utc(2026, 11, 15, 9),
+        );
+        await tasks.setRunSession(runId: run.id, sessionId: "s1");
+      });
+
+      Future<void> send({required bool byUser}) {
+        const parts = [PromptPart.text(text: "Also check the tests")];
+        return byUser
+            ? service.sendPrompt(
+                sessionId: "s1",
+                promptId: "prompt-user",
+                parts: parts,
+                variant: null,
+                fastMode: false,
+                agent: null,
+                model: null,
+                command: null,
+                commandSource: null,
+                handoff: null,
+              )
+            : service.sendPromptAlreadyReserved(
+                sessionId: "s1",
+                promptId: "prompt-bridge",
+                parts: parts,
+                variant: null,
+                fastMode: false,
+                agent: null,
+                model: null,
+                command: null,
+                commandSource: null,
+                handoff: null,
+              );
+      }
+
+      test("the user's own prompt hands a scheduled run back to the user", () async {
+        await send(byUser: true);
+
+        expect(await tasks.isUnattendedRun(sessionId: "s1"), isFalse);
+      });
+
+      test("the bridge's own send leaves the run unattended", () async {
+        await send(byUser: false);
+
+        expect(await tasks.isUnattendedRun(sessionId: "s1"), isTrue);
+      });
     });
 
     test("failed durable cancellation blocks a manual prompt; a projection failure does not", () async {
@@ -534,6 +612,7 @@ void main() {
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       );
       await insertTestSession(
         db: db,

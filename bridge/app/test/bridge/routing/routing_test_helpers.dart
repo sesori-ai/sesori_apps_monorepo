@@ -465,6 +465,13 @@ class FakeSessionRepository({
   Future<SessionQuietness> getSessionQuietness({required String sessionId}) async =>
       quietness[sessionId] ?? SessionQuietness.quiet;
 
+  /// Newest first, per task, for archiving old scheduled runs.
+  final Map<String, List<String>> archivableScheduledRunSessionIds = {};
+
+  @override
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) async =>
+      archivableScheduledRunSessionIds[taskId] ?? const [];
+
   @override
   Future<Session> createSession({
     required String reservedSessionId,

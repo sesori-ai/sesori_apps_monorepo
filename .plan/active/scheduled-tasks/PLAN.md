@@ -486,6 +486,28 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   `taskId`; the client routes a tap to the task's page (step 8) through
   `NotificationOpenDispatcher`, which gains a task target. An older app opens
   its home.
+- Step 6 as built:
+  - The mark is read in `SessionViewService.enrichMany`, one join of
+    `sessions.scheduledTaskId` to the task per list, so the single-session
+    path, lists and `session.created` all carry it.
+  - Auto-archive runs after a new-session run starts, outside the run lock and
+    one pass at a time, so it never delays or fails a fire. It goes through
+    `updateArchiveStatus` with `deleteWorktree: true, force: false`.
+  - Pinned sessions are neither archived nor counted among the 5. A session
+    whose quietness reads `unknown` counts as not finished and stays.
+  - `userPromptedAt` is also written by `rewindAndSendPrompt`: an edit is the
+    user's own prompt too. The bridge's `sendPromptAlreadyReserved` never
+    writes it.
+  - The can't-start push is limited and collapsed per task
+    (`session_message-task-<taskId>`).
+- Auth-server check (2026-11-15, `sesori_auth_server` master `4987730`): an
+  unknown `eventType` passes through, because `notificationDataSchema` types
+  it as `z.string()`. `taskId` is silently stripped: the plain `z.object` in
+  `src/models/api.ts:294-301` drops unknown keys, and the flatten step in
+  `src/services/notification-service.ts:150-163` copies only the four known
+  fields. The push still arrives without it. A separate auth-server change
+  adds `taskId`; step 8's push tap to a task page must not ship until that
+  change is deployed.
 
 ### P9. Compaction on request (all harnesses)
 
