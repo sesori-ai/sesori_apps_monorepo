@@ -659,8 +659,11 @@ state.
   or tooltip beneath it. On release it glides into the gap and nothing moves
   when the bridge confirms. A refused move slides the rows back and says
   "Couldn't save the pinned order". A click still opens the row and a right
-  click its menu; touch still scrolls. Only pinned rows on screen are drop
-  targets, and the list does not scroll while a row is dragged.
+  click its menu; touch still scrolls. Holding the row within about 40 pt of
+  the list's top or bottom edge scrolls the list smoothly, faster nearer the
+  edge, and the scroll eases to a stop once Pinned's end shows; the row stays
+  under the pointer and the gap follows it through any scroll, including a
+  wheel scroll mid-drag, and through rows built on the way.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
