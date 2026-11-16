@@ -799,6 +799,34 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         .get();
   }
 
+  /// Whether a session other than [sessionId], archived or not, names
+  /// [worktreePath] in [projectId].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async {
+    final query = select(sessionTable)
+      ..where(
+        (t) =>
+            t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath),
+      )
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
+  /// Records [branchName], the branch the worktree at [worktreePath] was on
+  /// when it was removed (null for a detached HEAD), on every session of
+  /// [projectId] that names it.
+  Future<void> setWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {
+    await (update(sessionTable)..where((t) => t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath)))
+        .write(SessionTableCompanion(branchName: Value(branchName)));
+  }
+
   Future<void> deleteSession({required String sessionId}) async {
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }

@@ -66,11 +66,38 @@ class WorktreeRepository({
     return await _gitApi.isWorkTreeRoot(path: worktreePath);
   }
 
+  /// Keeps where the worktree at [worktreePath] stands before it is removed:
+  /// pins its HEAD commit under a bridge-owned ref, so garbage collection
+  /// keeps detached work, and returns the branch it is on, or null for a
+  /// detached HEAD. Uncommitted changes are not kept.
+  Future<String?> keepWorktreeHead({required String projectPath, required String worktreePath}) async {
+    final commit = await _gitApi.resolveCommit(projectPath: worktreePath, ref: "HEAD");
+    if (commit == null) {
+      throw StateError("worktree $worktreePath has no HEAD commit");
+    }
+    await _gitApi.updateRef(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+      commit: commit,
+    );
+    return await _gitApi.readHeadBranch(worktreePath: worktreePath);
+  }
+
+  /// Drops what [keepWorktreeHead] kept, once no session names the worktree.
+  Future<void> releaseWorktreeHead({required String projectPath, required String worktreePath}) {
+    return _gitApi.deleteRef(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+    );
+  }
+
   /// Adds a worktree again at [worktreePath], where a removed one was, so a
-  /// harness session that remembers that folder still finds it. It checks out
-  /// [branchName] when the branch still exists. Otherwise, only when
-  /// [fromBase], it starts a new [branchName] (or a detached HEAD when null)
-  /// at [baseCommit], or at [baseBranch] for rows that never stored the commit.
+  /// harness session that remembers that folder still finds it, with the work
+  /// committed there. In order, it checks out [branchName] when the branch
+  /// still exists, or starts at the HEAD [keepWorktreeHead] kept (on a new
+  /// [branchName], or detached when null). Without either, and only when
+  /// [fromBase], it starts at [baseCommit], or at [baseBranch] for rows that
+  /// never stored the commit.
   Future<WorktreeRecreation> recreateWorktree({
     required String projectPath,
     required String worktreePath,
@@ -90,9 +117,19 @@ class WorktreeRepository({
       );
       return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
     }
-    final startPoint = baseCommit ?? baseBranch;
-    if (startPoint == null) return WorktreeRecreation.failed;
-    if (!fromBase) return WorktreeRecreation.branchMissing;
+    final keptHead = await _gitApi.resolveCommit(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+    );
+    final String startPoint;
+    if (keptHead != null) {
+      startPoint = keptHead;
+    } else {
+      final base = baseCommit ?? baseBranch;
+      if (base == null) return WorktreeRecreation.failed;
+      if (!fromBase) return WorktreeRecreation.branchMissing;
+      startPoint = base;
+    }
     final added = branchName == null
         ? await _gitApi.createWorktree(projectPath: projectPath, worktreePath: worktreePath, startPoint: startPoint)
         : await _gitApi.addWorktreeOnNewBranch(
@@ -103,6 +140,11 @@ class WorktreeRepository({
           );
     return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
   }
+
+  /// The bridge-owned ref that pins a removed worktree's HEAD. Keyed by path,
+  /// so every session that shares the worktree finds it.
+  static String _headRef({required String worktreePath}) =>
+      "refs/sesori/worktrees/${sha256.convert(utf8.encode(worktreePath)).toString().substring(0, 16)}";
 
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.

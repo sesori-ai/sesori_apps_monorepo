@@ -400,11 +400,16 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
      phase-2 text copy. An archived origin whose dedicated worktree was removed at archive gets it recreated
      (decision 14, step 11.b): `SessionForkService` checks `WorktreeRepository.worktreeExists({path})` over
      `FilesystemApi` for an archived origin with a `worktreePath`, and when it is missing asks `WorktreeRepository` to
-     add a worktree at the same path on the kept `branchName`, so the harness session's cwd and the agent's remembered
-     paths still hold and the files are as last committed. When the branch is gone too, the fork answers a new
-     `SessionBranchErrorCode.worktreeBranchMissing`; the client offers "Create a new worktree from <base branch>", and the
-     retry (`ForkSessionRequest.recreateFromBase: true`) recreates `branchName` from `baseBranch` at the same path. A
-     path now taken by something else is refused with a plain reason. The fork row copies the recreated path like any
+     add a worktree at the same path, so the harness session's cwd and the agent's remembered paths still hold and the
+     files are as last committed. Archiving keeps that point: before it removes a dedicated worktree it records the
+     branch HEAD is on in `branchName` (null when detached) on every row naming the worktree, and pins the HEAD commit
+     under `refs/sesori/worktrees/<path hash>` so gc keeps detached work; deleting the last row naming the worktree
+     deletes the ref. Recreation checks out `branchName` when it exists, else starts at the pinned HEAD (on a new
+     `branchName`, or detached). Only a worktree that kept nothing (removed by an older bridge, branch gone) answers a
+     new `SessionBranchErrorCode.worktreeBranchMissing`; the client offers "Create a new worktree from <base branch>",
+     and the retry (`ForkSessionRequest.recreateFromBase: true`) starts it at `baseCommit` (`baseBranch` for rows
+     without one) at the same path. A path now taken by something else, or a failed add, is refused with `refused`
+     and a plain reason. The fork row copies the recreated path like any
      other; the archived origin doesn't count as a sharer, so archiving or deleting the fork removes the worktree as for
      any dedicated session;
   2. `ChatHistoryService.forkBoundary({sessionId, point})` reads the stored history (the archive audit record for an
@@ -831,10 +836,12 @@ mutation pipeline).
 `⚙️ [session-edit-fork] Recreate an archived session's worktree when it is forked [step 14/18]`
 
 - **What:** decision 14, as in "Fork flow" step 1: `WorktreeRepository.worktreeExists` and a worktree add at the
-  origin's old path on the kept branch, used by `SessionForkService` for an archived origin whose dedicated worktree is
-  missing; `SessionBranchErrorCode.worktreeBranchMissing` when the branch is gone; `ForkSessionRequest.recreateFromBase`
-  to recreate the branch from `baseBranch` on the retry; a plain refusal when the old path is now taken by something
-  else. The client's "Create a new worktree from <base branch>" prompt lands in step 14.
+  origin's old path on the kept branch or at the HEAD archiving pinned (archive records the branch and pins the HEAD
+  under `refs/sesori/worktrees/…`; the last session's deletion releases it), used by `SessionForkService` for an
+  archived origin whose dedicated worktree is missing; `SessionBranchErrorCode.worktreeBranchMissing` when nothing was
+  kept; `ForkSessionRequest.recreateFromBase` to start from `baseCommit` on the retry; a plain refusal when the old
+  path is now taken by something else. The client's "Create a new worktree from <base branch>" prompt lands in step
+  14. Delivered in #2636 (~1,040 lines with the archive-time pin).
 - **Why:** the user chose recreation over refusal (round 4), so archived forks keep the agent's remembered paths.
 - **Risk and test focus:** git worktree add on an existing branch versus a recreated one; the path taken by another
   directory; the fork's later archive or delete removing the recreated worktree while the archived origin doesn't
@@ -894,7 +901,10 @@ mutation pipeline).
   `ComposerDraftRepository.handOverForSession` before navigating; the view navigates through `SessionDetailPresentationScope.openSession` and the new
   `returnToSession` callback each shell implements; the "Forked from" row at the oldest edge with its back-or-open
   behaviour; the mid-turn follow-up popup's Fork action; the "Create a new worktree from <base branch>" prompt for
-  `worktreeBranchMissing` (step 11.b), which retries with `recreateFromBase`; the "No project" delete warning wording.
+  `worktreeBranchMissing` (step 11.b), which retries with `recreateFromBase`. It shows only for sessions archived
+  before the archive-time HEAD pin whose branch is gone, so the copy says the session's earlier work can't be
+  restored and the new worktree starts where the session started (its base commit), without claiming a branch was
+  deleted; the "No project" delete warning wording.
 - **Risk and test focus:** navigation stack on phone (origin → fork → origin must not pile up); desktop selection; the
   row only once the oldest page is loaded; the composer draft present on the fork's first frame (no text popping in);
   forking an archived session from its ⋯ menu; feel of the transition. Headless iOS simulator recording in the PR body.

@@ -447,7 +447,16 @@ void main() {
       );
     });
 
-    test("whose branch is gone answers worktreeBranchMissing and creates nothing", () async {
+    test("whose branch is gone gets it back at the HEAD archiving kept", () async {
+      git.keptHead = "work123";
+
+      await fork(const ForkPoint.latest());
+
+      expect(git.added, ["$_worktree on new feature from work123"]);
+      expect(plugin.forks, hasLength(1));
+    });
+
+    test("that kept nothing answers worktreeBranchMissing and creates nothing", () async {
       await expectLater(
         fork(const ForkPoint.latest()),
         refusedWith(SessionBranchErrorCode.worktreeBranchMissing),
@@ -457,7 +466,7 @@ void main() {
       expect(plugin.forks, isEmpty);
     });
 
-    test("whose branch is gone gets the branch again from its base commit on the retry", () async {
+    test("that kept nothing gets the branch again from its base commit on the retry", () async {
       await forkFromBase(const ForkPoint.latest());
 
       expect(git.added, ["$_worktree on new feature from abc123"]);
@@ -666,6 +675,13 @@ class _FakeWorktreeGit() extends FakeGitCliApi {
   final branches = <String>{};
   final added = <String>[];
   bool addSucceeds = true;
+
+  /// The HEAD that archiving kept for a removed worktree.
+  String? keptHead;
+
+  @override
+  Future<String?> resolveCommit({required String projectPath, required String ref}) async =>
+      ref.startsWith("refs/sesori/") ? keptHead : null;
 
   @override
   Future<bool> isWorkTreeRoot({required String path}) async => worktrees.contains(path);

@@ -257,6 +257,37 @@ class GitCliApi({
     return result.exitCode == 0 && result.stdout.toString().trim().isEmpty;
   }
 
+  /// The branch checked out in the working tree at [worktreePath], or null
+  /// for a detached HEAD.
+  Future<String?> readHeadBranch({required String worktreePath}) async {
+    const arguments = ["symbolic-ref", "-q", "--short", "HEAD"];
+    final result = await runGit(projectPath: worktreePath, arguments: arguments);
+    // Exit 1 with -q means HEAD is detached.
+    if (result.exitCode == 1) return null;
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout.toString().trim();
+  }
+
+  /// Points [ref] at [commit], creating it when missing.
+  Future<void> updateRef({required String projectPath, required String ref, required String commit}) async {
+    final arguments = ["update-ref", ref, commit];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+  }
+
+  /// Deletes [ref]. Git treats a missing ref as already deleted.
+  Future<void> deleteRef({required String projectPath, required String ref}) async {
+    final arguments = ["update-ref", "-d", ref];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+  }
+
   Future<String?> resolveCommit({required String projectPath, required String ref}) async {
     final result = await runGit(projectPath: projectPath, arguments: ["rev-parse", ref]);
     if (result.exitCode != 0) {

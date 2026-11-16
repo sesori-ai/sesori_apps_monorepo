@@ -355,6 +355,47 @@ void main() {
       expect(Directory(worktreePath).existsSync(), isFalse);
     });
 
+    test("an archived detached worktree comes back at its kept HEAD after garbage collection", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "detached work"]);
+      final workCommit = await head();
+
+      expect(await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isNull);
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+      await git(cwd: repoPath, args: ["-c", "gc.reflogExpire=now", "reflog", "expire", "--all", "--expire=now"]);
+      await git(cwd: repoPath, args: ["gc", "--quiet", "--prune=now"]);
+
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.recreated);
+      expect(await headBranch(), isNull);
+      expect(await head(), workCommit);
+    });
+
+    test("an archived worktree on a branch reports it, and a deleted branch comes back at the kept HEAD", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "agent/feature", worktreePath, baseCommit]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "branch work"]);
+      final workCommit = await head();
+
+      expect(await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), "agent/feature");
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+      await git(cwd: repoPath, args: ["branch", "-D", "agent/feature"]);
+
+      expect(await recreate(branchName: "agent/feature", fromBase: false), WorktreeRecreation.recreated);
+      expect(await headBranch(), "agent/feature");
+      expect(await head(), workCommit);
+    });
+
+    test("a released HEAD is no longer used", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+      await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
+
+      await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+      await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
+
+      expect(await git(cwd: repoPath, args: ["for-each-ref", "refs/sesori"]), isEmpty);
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
+    });
+
     test("a plain folder at the path is not a worktree", () async {
       Directory(worktreePath).createSync(recursive: true);
 

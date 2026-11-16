@@ -298,6 +298,22 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     );
   }
 
+  /// See [WorktreeRepository.keepWorktreeHead].
+  Future<String?> keepWorktreeHead({required String projectId, required String worktreePath}) async {
+    return await _worktreeRepository.keepWorktreeHead(
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// See [WorktreeRepository.releaseWorktreeHead].
+  Future<void> releaseWorktreeHead({required String projectId, required String worktreePath}) async {
+    await _worktreeRepository.releaseWorktreeHead(
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+      worktreePath: worktreePath,
+    );
+  }
+
   Future<bool> removeWorktree({
     required String pluginId,
     required String projectId,

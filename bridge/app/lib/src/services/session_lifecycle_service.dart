@@ -20,6 +20,12 @@ enum SessionCleanupOperation() {
   removeWorktree,
 }
 
+/// Which workflow runs a session's cleanup.
+enum SessionCleanupPurpose() {
+  archive,
+  deletion,
+}
+
 class SessionCleanupFailedException({
   required final String sessionId,
   required final SessionCleanupOperation operation,
@@ -58,13 +64,14 @@ class SessionLifecycleService({
   required final Duration _stopDeadline,
 }) {
   /// Runs cleanup inside a session-family operation already reserved by the
-  /// archive or deletion workflow.
+  /// archive or deletion workflow, named by [purpose].
   ///
   /// Worktree removal is git-only, so this path deliberately skips the
   /// routability requirement: deleting a session must still work when its
   /// backend is uninstalled or cannot start.
   Future<CleanupResult> cleanupAlreadyReserved({
     required String sessionId,
+    required SessionCleanupPurpose purpose,
     required bool deleteWorktree,
     required bool force,
   }) async {
@@ -73,28 +80,75 @@ class SessionLifecycleService({
       operation: SessionOperation.cleanupSession,
     );
     final worktreePath = storedSession.worktreePath;
-    if (!deleteWorktree || worktreePath == null) {
+    if (worktreePath == null) {
       return CleanupSuccess();
     }
 
-    if (await _cleanupRejection(storedSession: storedSession, force: force) case final rejection?) {
-      return CleanupRejected(rejection: rejection);
+    if (deleteWorktree) {
+      if (await _cleanupRejection(storedSession: storedSession, force: force) case final rejection?) {
+        return CleanupRejected(rejection: rejection);
+      }
+      if (purpose == SessionCleanupPurpose.archive) {
+        await _keepWorktreeHead(storedSession: storedSession, worktreePath: worktreePath);
+      }
+      final removed = await _worktreeService.removeWorktree(
+        pluginId: storedSession.pluginId,
+        projectId: storedSession.projectId,
+        worktreePath: worktreePath,
+        force: force,
+      );
+      if (!removed && _filesystemRepository.classifyPath(path: worktreePath) != FilesystemEntityKind.notFound) {
+        throw SessionCleanupFailedException(
+          sessionId: sessionId,
+          operation: SessionCleanupOperation.removeWorktree,
+        );
+      }
     }
 
-    final removed = await _worktreeService.removeWorktree(
-      pluginId: storedSession.pluginId,
-      projectId: storedSession.projectId,
-      worktreePath: worktreePath,
-      force: force,
-    );
-    if (!removed && _filesystemRepository.classifyPath(path: worktreePath) != FilesystemEntityKind.notFound) {
-      throw SessionCleanupFailedException(
-        sessionId: sessionId,
-        operation: SessionCleanupOperation.removeWorktree,
+    if (purpose == SessionCleanupPurpose.deletion) {
+      await _releaseWorktreeHead(storedSession: storedSession, worktreePath: worktreePath);
+    }
+    return CleanupSuccess();
+  }
+
+  /// Keeps where an archived session's worktree stands before it is removed,
+  /// so a fork can recreate it with the work committed there. The user asked
+  /// to archive, so a failure is logged and the archive goes on.
+  Future<void> _keepWorktreeHead({required StoredSession storedSession, required String worktreePath}) async {
+    try {
+      final branchName = await _worktreeService.keepWorktreeHead(
+        projectId: storedSession.projectId,
+        worktreePath: worktreePath,
+      );
+      await _sessionRepository.recordWorktreeBranch(
+        projectId: storedSession.projectId,
+        worktreePath: worktreePath,
+        branchName: branchName,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[archive] could not keep the HEAD of worktree $worktreePath of session ${storedSession.id}",
+        error,
+        stackTrace,
       );
     }
+  }
 
-    return CleanupSuccess();
+  /// Drops the kept HEAD once the last session naming the worktree goes. The
+  /// deletion goes on regardless; a failure leaves only a bridge-owned ref.
+  Future<void> _releaseWorktreeHead({required StoredSession storedSession, required String worktreePath}) async {
+    try {
+      if (await _sessionRepository.hasOtherSessionsNamingWorktree(
+        sessionId: storedSession.id,
+        projectId: storedSession.projectId,
+        worktreePath: worktreePath,
+      )) {
+        return;
+      }
+      await _worktreeService.releaseWorktreeHead(projectId: storedSession.projectId, worktreePath: worktreePath);
+    } on Object catch (error, stackTrace) {
+      Log.w("[delete] could not release the kept HEAD of worktree $worktreePath", error, stackTrace);
+    }
   }
 
   /// Why removing the session's worktree would be refused; changes nothing.
@@ -317,6 +371,7 @@ class SessionLifecycleService({
     }
     final cleanupResult = await cleanupAlreadyReserved(
       sessionId: storedSession.id,
+      purpose: SessionCleanupPurpose.archive,
       deleteWorktree: deleteWorktree,
       force: force,
     );

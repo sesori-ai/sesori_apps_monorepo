@@ -23,10 +23,11 @@ enum SessionBranchErrorCode() {
   /// selection.
   staleSessionOptions,
 
-  /// An archived origin's worktree was removed and the branch it was on is
-  /// gone too, or it ran on a detached HEAD that kept no branch. The client
-  /// offers a new worktree from the session's base branch and retries the
-  /// fork with `ForkSessionRequest.recreateFromBase`.
+  /// An archived origin's worktree was removed and nothing kept where it
+  /// stood: its branch is gone, and it was removed before the bridge pinned
+  /// a removed worktree's HEAD. The client offers a new worktree from the
+  /// session's base branch and retries the fork with
+  /// `ForkSessionRequest.recreateFromBase`.
   worktreeBranchMissing,
 
   /// The bridge or the harness refused for a reason written for the user.

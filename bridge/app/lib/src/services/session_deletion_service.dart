@@ -31,6 +31,7 @@ class SessionDeletionService({
       sessionId: sessionId,
       cleanup: () => _sessionLifecycleService.cleanupAlreadyReserved(
         sessionId: sessionId,
+        purpose: SessionCleanupPurpose.deletion,
         deleteWorktree: deleteWorktree,
         force: force,
       ),

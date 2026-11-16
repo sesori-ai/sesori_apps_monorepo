@@ -1872,6 +1872,30 @@ class SessionRepository({
     return sessions.isNotEmpty;
   }
 
+  /// Whether a session other than [sessionId], archived or not, still names
+  /// [worktreePath].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _sessionDao.hasOtherSessionsNamingWorktree(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// Records the branch a removed worktree was on, or null for a detached
+  /// HEAD, on every session that names it, so a fork can check it out again.
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) {
+    return _sessionDao.setWorktreeBranch(projectId: projectId, worktreePath: worktreePath, branchName: branchName);
+  }
+
   /// The project's recorded live directory, suitable as a git/CLI working
   /// directory. Unknown ids are rejected: an id is not a directory.
   Future<String> resolveProjectDirectory({required String projectId}) async {
