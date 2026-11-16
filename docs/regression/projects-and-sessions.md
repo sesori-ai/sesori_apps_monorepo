@@ -535,9 +535,9 @@ state.
 - `PATCH /session/pin-position` moves a pinned session directly below another
   pinned one, or to the top with no anchor. It rewrites the pin order of the
   rows from the top down to the moved one, all above the current highest, and
-  answers and announces each, top first, so a surface applying them one by one
-  never shows a row out of place; a session already there rewrites nothing.
-  A missing, unpinned or self anchor is a 404. The app moves the row at once
+  answers and announces each, top first; a session already there rewrites
+  nothing. A missing or unpinned session or anchor, or a self anchor, is a
+  404. The app moves the row at once
   and keeps it there through loads and live updates until the bridge answers;
   a refused move puts the rows back.
 - The phone's project picker and Settings › Projects show a project's path cut

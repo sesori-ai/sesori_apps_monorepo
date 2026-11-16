@@ -12,9 +12,8 @@ class const SessionPinOrderCalculator() {
   /// whole group in list order, highest [PinnedSessionOrder.pinOrder] first.
   ///
   /// Only the new order's rows from the top down to the moved one are
-  /// rewritten, each above every current value and top first, so the rows
-  /// below keep theirs and a list that applies the rewrites one at a time,
-  /// top first, never shows a row out of place. Empty when [sessionId]
+  /// rewritten, top first and each above every current value, so the rows
+  /// below keep theirs. Empty when [sessionId]
   /// already stands there; null when either session is not in [pinned] or
   /// they are the same session.
   List<PinnedSessionOrder>? move({

@@ -19,12 +19,15 @@ class MoveSessionPinHandler({
     required MoveSessionPinRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
+    if (body.afterSessionId case final afterSessionId?) {
+      requireNonEmpty(request: request, value: afterSessionId, label: "after session id");
+    }
     final moved = await _sessionMutationDispatcher.movePin(
       sessionId: body.sessionId,
       afterSessionId: body.afterSessionId,
     );
     return MoveSessionPinResponse(
-      sessions: [for (final session in moved) await _sessionViews.enrich(session: session)],
+      sessions: await _sessionViews.enrichMany(sessions: moved),
     );
   }
 }
