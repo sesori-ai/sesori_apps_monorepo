@@ -318,7 +318,7 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before the latest compaction is 🚫 and refused with a reason, as for edit. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
 | Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
 
@@ -338,6 +338,14 @@ directory, 2026-11-15):
   before answering `initialize`. A CLI that does not know the flag exits with
   `error: unknown option`, which Sesori reports as "This Claude Code version
   can't edit messages from Sesori."
+- `--resume=<id> --fork-session --session-id=<new> --resume-session-at=<entry>`
+  writes nothing until the first prompt, then copies the kept chain with the
+  same `uuid`s, rewrites only `sessionId`, and drops metadata records such as
+  `last-prompt`. It does not copy `<id>/subagents/`. Sesori therefore writes
+  that copy itself when the fork is created, so the fork has history before its
+  first prompt and needs no fork flags. A plain `--resume=<new>` of the written
+  file reports the new id and parents the next prompt to the kept turn's last
+  record.
 
 ## Explicit shell-command presentation
 

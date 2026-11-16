@@ -12,9 +12,9 @@ route accepts it on every harness.
 
 The bridge can also fork: `POST /session/fork` creates a new root session whose
 conversation is the origin's up to a turn boundary, in the same directory or
-worktree, and leaves the origin unchanged. No harness declares `fork` yet, so
-only a fork that keeps nothing (before the first turn) succeeds today. Clients
-offer no Fork yet.
+worktree, and leaves the origin unchanged. Claude Code declares `fork`; on
+other harnesses only a fork that keeps nothing (before the first turn)
+succeeds today. Clients offer no Fork yet.
 
 ## Required Behavior
 
@@ -127,13 +127,30 @@ offer no Fork yet.
 - Archiving or deleting either session protects the shared worktree like any
   other sharing sessions.
 
+### Claude Code fork
+
+- The plugin writes the origin's active branch, through the last record of the
+  turn that holds the message (parallel tool results included, rewound
+  branches left out), to `<new id>.jsonl` beside the origin under the fork's
+  id. The origin's file is only read and its process is never touched, so a
+  later turn may be running; its records stay out of the fork.
+- The fork has history at once and its first prompt resumes it with
+  `--resume=<new id>`. The catalog lists it once, without the origin's
+  sub-agents, and deleting it removes only its own transcript.
+- Refused with a plain reason before anything is written: a point before the
+  latest compaction, a message off the active branch, and an origin without a
+  transcript.
+- An empty fork has no transcript until its first prompt. After a bridge
+  restart the bridge's directory hint marks it unstarted again, so its history
+  reads empty and its first prompt starts it under its own id.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
 | L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
-| L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; a migration test covers the fork columns and their `ON DELETE SET NULL`. |
+| L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; a migration test covers the fork columns and their `ON DELETE SET NULL`. Claude Code plugin tests against recorded transcripts: the copied prefix for a linear, rewound and parallel-tool transcript, a running later turn left out, the compaction, off-branch and missing-transcript refusals, a single catalog listing, a fork-only delete; against a fake CLI: the untitled created event, a `--resume` of the fork, and a restarted empty fork starting with `--session-id`. |
 | L3 Release | Not included until clients offer Edit or Fork. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -153,14 +170,18 @@ offer no Fork yet.
 - An edit reaches the plugin while the session runs or after it was archived.
 - A fork changes its origin, includes part of a running turn, or loses the
   worktree its origin uses.
+- A Claude Code fork shows the origin's later or rewound messages, is listed
+  twice, deletes the origin's transcript or sub-agents, or answers "not found"
+  for an empty fork after a bridge restart.
 
 ## Known Limitations
 
 - Only Claude Code and Codex implement rewind; every other harness refuses an
   edit after the first turn.
 - Claude Code cannot edit a prompt from before the latest compaction.
-- No harness implements native fork yet; only a fork that keeps nothing
-  succeeds.
+- Only Claude Code implements native fork; on every other harness only a fork
+  that keeps nothing succeeds.
+- Claude Code cannot fork from before the latest compaction.
 - An archived origin whose worktree was removed is not handled yet.
 - A fork of an untitled origin that was later deleted reads as an ordinary
   session.
@@ -181,6 +202,7 @@ offer no Fork yet.
 - `bridge/app/lib/src/services/chat_history_service.dart`
 - `bridge/sesori_plugin_claude/lib/src/services/claude_session_service.dart`
 - `bridge/sesori_plugin_claude/lib/src/repositories/claude_transcript_catalog_repository.dart`
+- `bridge/sesori_plugin_claude/lib/src/claude_plugin_impl.dart`
 - `bridge/sesori_plugin_codex/lib/src/services/codex_session_service.dart`
 - `bridge/sesori_plugin_codex/lib/src/repositories/codex_message_repository.dart`
 - `shared/sesori_shared/lib/src/models/sesori/session_branch_error_response.dart`

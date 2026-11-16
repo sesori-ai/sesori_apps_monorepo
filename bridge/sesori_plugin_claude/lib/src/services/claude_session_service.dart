@@ -16,6 +16,7 @@ import "../repositories/claude_session_process_repository.dart";
 import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
 import "../repositories/mappers/claude_quota_interruption_mapper.dart";
+import "../repositories/models/claude_fork_result.dart";
 import "../repositories/models/claude_rewind_point.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
@@ -440,6 +441,43 @@ final class ClaudeSessionService({
       rethrow;
     }
   }
+
+  /// Creates root session [forkSessionId] whose conversation is
+  /// [sessionId]'s through the turn whose last shown message is
+  /// [throughMessageId], by writing its transcript. The fork then resumes like
+  /// any session on its first prompt.
+  ///
+  /// The origin's process and queue are never touched, so a later turn may run
+  /// meanwhile. A point the transcript cannot cut at, or an origin with no
+  /// transcript, throws [PluginBranchPointUnavailableException] before
+  /// anything is written.
+  Future<void> forkSession({
+    required String sessionId,
+    required String throughMessageId,
+    required String forkSessionId,
+  }) async {
+    if (_disposed) throw StateError("Claude session service is disposed");
+    final result = await _transcripts.forkTranscript(
+      sessionId: sessionId,
+      throughMessageId: throughMessageId,
+      forkSessionId: forkSessionId,
+    );
+    if (result case ClaudeForkUnavailable(:final reason)) {
+      throw PluginBranchPointUnavailableException(
+        operation: "forkSession",
+        userFacingReason: switch (reason) {
+          ClaudeForkRefusal.transcriptMissing => ClaudeSessionService.forkTranscriptMissingReason,
+          ClaudeForkRefusal.notOnActiveBranch => "This message is no longer in the Claude Code conversation.",
+          ClaudeForkRefusal.beforeCompaction =>
+            "Claude Code compacted the conversation after this message, so it can't be forked from here.",
+        },
+        cause: null,
+      );
+    }
+  }
+
+  /// Why a session whose conversation Claude Code no longer has cannot fork.
+  static const String forkTranscriptMissingReason = "Claude Code no longer has this conversation.";
 
   void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {
     _retryStatuses.remove(sessionId);
