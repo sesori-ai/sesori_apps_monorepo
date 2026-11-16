@@ -193,7 +193,7 @@ The bridge answers a send that did not happen with 409 and a
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated bridge tests: `session_send_service_test` (refusals before anything is sent, readiness, the summary split and earlier summary exchanges left out, stop, error, timeout and shutdown failures, the not-sent stamp before and after the echo, stale source and target options, a failed transcript write, no text in the log), `session_prompt_service_test` (the stale-option correction), `omp_session_options_service_test` and `omp_plugin_test` (OMP refusing a stale model, mode or thinking level before accepting the send), `cursor_plugin_test` (Cursor refusing the same before accepting the send), `send_to_session_handler_test`, `session_transcript_markdown_builder_test`, `prompt_stamp_tracker_test` and `message_handoff_test`. Automated client tests: `session_send_flow_test` (the archive switch, Open and Undo, the pinned question, leaving the page mid-send), `send_session_sheet_test` and `session_search_cubit_test` (the source excluded, Running labels, same-named projects), `transcript_handoffs_test` and `handoff_rows_test` (marker height and Open, folding, card Show all and Show less without moving the rows above), `pending_archive_alerts_test` and `archive_after_send_preference_storage_test`. |
+| L2 Routine | Automated bridge tests: `session_send_service_test` (refusals before anything is sent, readiness, the summary split and earlier summary exchanges left out, stop, error, timeout and shutdown failures, the not-sent stamp before and after the echo, stale source and target options, a failed transcript write, no text in the log), `session_prompt_service_test` (the stale-option correction), `omp_session_options_service_test` and `omp_plugin_test` (OMP refusing a stale model, mode or thinking level before accepting the send), `cursor_plugin_test` (Cursor refusing the same before accepting the send, and failing the turn when it rejects an option it still lists), `send_to_session_handler_test`, `session_transcript_markdown_builder_test`, `prompt_stamp_tracker_test` and `message_handoff_test`. Automated client tests: `session_send_flow_test` (the archive switch, Open and Undo, the pinned question, leaving the page mid-send), `send_session_sheet_test` and `session_search_cubit_test` (the source excluded, Running labels, same-named projects), `transcript_handoffs_test` and `handoff_rows_test` (marker height and Open, folding, card Show all and Show less without moving the rows above), `pending_archive_alerts_test` and `archive_after_send_preference_storage_test`. |
 | L3 Release | On a headless iOS simulator against a local bridge: send from a session's menu into a session of another harness; check the loading and Sent alerts, Open, the source marker without a jump when the turn ends, the summary sheet, and the target card with Show all. Repeat with the archive switch on and use Undo. |
 | L4 Extended | Every installed harness as a target, through `POST /session/send-to-session`: ask the target for a detail only the transcript file holds, in Ask mode, and record whether it reads the file and whether it asks (see `docs/HARNESS_CAPABILITIES.md`). A busy source and Stop; Stop during the summary; a running steer target and a running stopTurn target; a pinned source with the switch on; a bridge without the route. |
 | L5 Full | No additional coverage. |
@@ -238,9 +238,10 @@ flight.
 - The summary request stays in the harness's own transcript and terminal UI;
   only Sesori folds it.
 - Hermes and DeepSeek learn that a saved model or reasoning level is gone
-  only when the turn asks the harness to apply it. That rejection fails the
-  target's turn after the send reported Sent; the target shows a session
-  error and keeps no handoff.
+  only when the turn asks the harness to apply it, and so does Cursor for an
+  option its catalog still lists. That rejection fails the target's turn
+  after the send reported Sent; the target shows a session error and keeps no
+  handoff.
 - Whether the target's agent reads the file, and whether it asks first, is
   the harness's behaviour; `docs/HARNESS_CAPABILITIES.md` records it per
   harness, with the runtimes not yet checked.

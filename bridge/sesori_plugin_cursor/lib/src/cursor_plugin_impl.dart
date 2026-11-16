@@ -20,9 +20,9 @@ import "trackers/cursor_catalog_tracker.dart";
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 ///
 /// Cursor uses standard ACP cancellation to stop an active turn before a
-/// same-session follow-up dispatches. Its selection writes are best-effort
-/// (`_setConfig` never throws), so the base fail-closed selection policy never
-/// drops a Cursor turn.
+/// same-session follow-up dispatches. A selection write Cursor rejects fails
+/// the turn through the base fail-closed selection policy, so a turn never runs
+/// on options the user did not pick.
 class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -251,26 +251,21 @@ class CursorPlugin._({
         targetModel.isNotEmpty &&
         modelConfigId != null &&
         _catalogTracker.hasModel(modelId: targetModel)) {
-      var applied = true;
       if (targetModel != _appliedModelId) {
-        applied = await _setConfig(
+        await _setConfig(
           configRepository: configRepository,
           sessionId: sessionId,
           configId: modelConfigId,
           value: targetModel,
         );
-        if (applied) {
-          _appliedModelId = targetModel;
-          _appliedThoughtLevelId = null;
-        }
+        _appliedModelId = targetModel;
+        _appliedThoughtLevelId = null;
       }
-      if (applied) {
-        _configurationTracker.setSessionOverride(
-          sessionId: sessionId,
-          modelId: targetModel,
-          providerId: _providerId,
-        );
-      }
+      _configurationTracker.setSessionOverride(
+        sessionId: sessionId,
+        modelId: targetModel,
+        providerId: _providerId,
+      );
     }
 
     final requestedMode = _catalogTracker.resolveModeId(agent: agent) ?? _catalogTracker.defaultModeId;
@@ -279,14 +274,13 @@ class CursorPlugin._({
         modeConfigId != null &&
         _catalogTracker.hasModeOption(modeId: requestedMode) &&
         requestedMode != _appliedModeId) {
-      if (await _setConfig(
+      await _setConfig(
         configRepository: configRepository,
         sessionId: sessionId,
         configId: modeConfigId,
         value: requestedMode,
-      )) {
-        _appliedModeId = requestedMode;
-      }
+      );
+      _appliedModeId = requestedMode;
     }
 
     final thoughtLevelModelId =
@@ -299,18 +293,17 @@ class CursorPlugin._({
         thoughtLevel != null &&
         requestedThoughtLevel != _appliedThoughtLevelId &&
         thoughtLevel.variants.contains(requestedThoughtLevel)) {
-      if (await _setConfig(
+      await _setConfig(
         configRepository: configRepository,
         sessionId: sessionId,
         configId: thoughtLevel.configId,
         value: requestedThoughtLevel,
-      )) {
-        _appliedThoughtLevelId = requestedThoughtLevel;
-      }
+      );
+      _appliedThoughtLevelId = requestedThoughtLevel;
     }
   }
 
-  Future<bool> _setConfig({
+  Future<void> _setConfig({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required String configId,
@@ -331,14 +324,15 @@ class CursorPlugin._({
         );
         _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
       }
-      return true;
-    } catch (error, stack) {
-      Log.w(
-        "[cursor] set_config_option($configId=$value) rejected",
-        error,
+    } on Object catch (error, stack) {
+      Error.throwWithStackTrace(
+        PluginStaleOptionsException(
+          operation: "session/set_config_option",
+          message: "Cursor rejected $configId=$value",
+          cause: error,
+        ),
         stack,
       );
-      return false;
     }
   }
 

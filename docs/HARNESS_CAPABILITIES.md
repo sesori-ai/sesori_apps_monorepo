@@ -1306,7 +1306,7 @@ no longer lists:
 | Harness | When the stale option is caught |
 |---|---|
 | OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
-| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. |
+| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. An option the catalog still lists but Cursor rejects when the turn applies it fails that turn with a session error, instead of running on the previous settings. |
 | Hermes, DeepSeek (ACP) | ❌ Not implemented: caught only when the turn applies it. The target shows a session error after the send reported Sent. |
 
 ## Sub-agents
