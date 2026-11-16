@@ -343,6 +343,7 @@ void main() {
                 id: "project-from-summary",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],

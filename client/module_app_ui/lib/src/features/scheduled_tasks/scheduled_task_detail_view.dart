@@ -93,7 +93,7 @@ class const ScheduledTaskDetailView({
                         ),
                       _Summary(task: task, deviceTimeZone: deviceTimeZone),
                       _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
-                      SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false),
+                      SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false, action: null),
                       _History(task: task, runs: runs),
                     ],
                   ),

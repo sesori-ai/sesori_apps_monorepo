@@ -2176,6 +2176,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListPinMoveFailed => 'Couldn\'t save the pinned order';
 
   @override
+  String get sessionListPinnedEdit => 'Edit';
+
+  @override
+  String get sessionListPinnedEditDone => 'Done';
+
+  @override
   String get sessionListSendToSession => 'Send to another session…';
 
   @override

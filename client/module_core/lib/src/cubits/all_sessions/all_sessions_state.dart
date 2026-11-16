@@ -25,7 +25,8 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     required bool isInterrupted,
     required int backgroundTaskCount,
 
-    /// This app's send of the session into another, while it lasts.
+    /// A send of the session into another, while it lasts: this app's own,
+    /// or one the bridge reports from any device.
     required SessionSending? sending,
   }) = _AllSessionsRow;
 }

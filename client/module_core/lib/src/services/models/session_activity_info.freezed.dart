@@ -17,7 +17,9 @@ mixin _$SessionActivityInfo {
 
  bool get mainAgentRunning; bool get awaitingInput; int get backgroundTaskCount; bool get isRetrying;/// The shared [ActiveSessionRunningCalculator] rule, applied once where
 /// this info is built.
- bool get isRunning; int? get lastUserActivityAt; int? get updatedAt;
+ bool get isRunning; int? get lastUserActivityAt; int? get updatedAt;/// The bridge's send of this session into another, from any device; null
+/// when it sends none.
+ SessionSending? get sending;
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,20 +31,20 @@ $SessionActivityInfoCopyWith<SessionActivityInfo> get copyWith => _$SessionActiv
 @override
 bool operator ==(Object other) {
   final _this = this as SessionActivityInfo;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.awaitingInput, _this.awaitingInput) || other.awaitingInput == _this.awaitingInput)&&(identical(other.backgroundTaskCount, _this.backgroundTaskCount) || other.backgroundTaskCount == _this.backgroundTaskCount)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.isRunning, _this.isRunning) || other.isRunning == _this.isRunning)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionActivityInfo&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.awaitingInput, _this.awaitingInput) || other.awaitingInput == _this.awaitingInput)&&(identical(other.backgroundTaskCount, _this.backgroundTaskCount) || other.backgroundTaskCount == _this.backgroundTaskCount)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.isRunning, _this.isRunning) || other.isRunning == _this.isRunning)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt)&&(identical(other.sending, _this.sending) || other.sending == _this.sending));
 }
 
 
 @override
 int get hashCode {
   final _this = this as SessionActivityInfo;
-  return Object.hash(runtimeType,_this.mainAgentRunning,_this.awaitingInput,_this.backgroundTaskCount,_this.isRetrying,_this.isRunning,_this.lastUserActivityAt,_this.updatedAt);
+  return Object.hash(runtimeType,_this.mainAgentRunning,_this.awaitingInput,_this.backgroundTaskCount,_this.isRetrying,_this.isRunning,_this.lastUserActivityAt,_this.updatedAt,_this.sending);
 }
 
 @override
 String toString() {
   final _this = this as SessionActivityInfo;
-  return 'SessionActivityInfo(mainAgentRunning: ${_this.mainAgentRunning}, awaitingInput: ${_this.awaitingInput}, backgroundTaskCount: ${_this.backgroundTaskCount}, isRetrying: ${_this.isRetrying}, isRunning: ${_this.isRunning}, lastUserActivityAt: ${_this.lastUserActivityAt}, updatedAt: ${_this.updatedAt})';
+  return 'SessionActivityInfo(mainAgentRunning: ${_this.mainAgentRunning}, awaitingInput: ${_this.awaitingInput}, backgroundTaskCount: ${_this.backgroundTaskCount}, isRetrying: ${_this.isRetrying}, isRunning: ${_this.isRunning}, lastUserActivityAt: ${_this.lastUserActivityAt}, updatedAt: ${_this.updatedAt}, sending: ${_this.sending})';
 }
 
 
@@ -53,7 +55,7 @@ abstract mixin class $SessionActivityInfoCopyWith<$Res>  {
   factory $SessionActivityInfoCopyWith(SessionActivityInfo value, $Res Function(SessionActivityInfo) _then) = _$SessionActivityInfoCopyWithImpl;
 @useResult
 $Res call({
- bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount, bool isRetrying, bool isRunning, int? lastUserActivityAt, int? updatedAt
+ bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount, bool isRetrying, bool isRunning, int? lastUserActivityAt, int? updatedAt, SessionSending? sending
 });
 
 
@@ -70,7 +72,7 @@ class _$SessionActivityInfoCopyWithImpl<$Res>
 
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,Object? isRetrying = null,Object? isRunning = null,Object? lastUserActivityAt = freezed,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,Object? isRetrying = null,Object? isRunning = null,Object? lastUserActivityAt = freezed,Object? updatedAt = freezed,Object? sending = freezed,}) {
   return _then(SessionActivityInfo(
 mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
 as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
@@ -79,7 +81,8 @@ as int,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore:
 as bool,isRunning: null == isRunning ? _self.isRunning : isRunning // ignore: cast_nullable_to_non_nullable
 as bool,lastUserActivityAt: freezed == lastUserActivityAt ? _self.lastUserActivityAt : lastUserActivityAt // ignore: cast_nullable_to_non_nullable
 as int?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,sending: freezed == sending ? _self.sending : sending // ignore: cast_nullable_to_non_nullable
+as SessionSending?,
   ));
 }
 
@@ -91,7 +94,7 @@ as int?,
 
 
 class _SessionActivityInfo implements SessionActivityInfo {
-  const _SessionActivityInfo({this.mainAgentRunning = false, this.awaitingInput = false, this.backgroundTaskCount = 0, this.isRetrying = false, required this.isRunning, required this.lastUserActivityAt, required this.updatedAt});
+  const _SessionActivityInfo({this.mainAgentRunning = false, this.awaitingInput = false, this.backgroundTaskCount = 0, this.isRetrying = false, required this.isRunning, required this.lastUserActivityAt, required this.updatedAt, required this.sending});
   
 
 @override@JsonKey() final  bool mainAgentRunning;
@@ -103,6 +106,9 @@ class _SessionActivityInfo implements SessionActivityInfo {
 @override final  bool isRunning;
 @override final  int? lastUserActivityAt;
 @override final  int? updatedAt;
+/// The bridge's send of this session into another, from any device; null
+/// when it sends none.
+@override final  SessionSending? sending;
 
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -114,18 +120,18 @@ _$SessionActivityInfoCopyWith<_SessionActivityInfo> get copyWith => __$SessionAc
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.isRunning, isRunning) || other.isRunning == isRunning)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionActivityInfo&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.isRunning, isRunning) || other.isRunning == isRunning)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.sending, sending) || other.sending == sending));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount,isRetrying,isRunning,lastUserActivityAt,updatedAt);
+    return Object.hash(runtimeType,mainAgentRunning,awaitingInput,backgroundTaskCount,isRetrying,isRunning,lastUserActivityAt,updatedAt,sending);
 }
 
 @override
 String toString() {
-    return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount, isRetrying: $isRetrying, isRunning: $isRunning, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
+    return 'SessionActivityInfo(mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, backgroundTaskCount: $backgroundTaskCount, isRetrying: $isRetrying, isRunning: $isRunning, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt, sending: $sending)';
 }
 
 
@@ -136,7 +142,7 @@ abstract mixin class _$SessionActivityInfoCopyWith<$Res> implements $SessionActi
   factory _$SessionActivityInfoCopyWith(_SessionActivityInfo value, $Res Function(_SessionActivityInfo) _then) = __$SessionActivityInfoCopyWithImpl;
 @override @useResult
 $Res call({
- bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount, bool isRetrying, bool isRunning, int? lastUserActivityAt, int? updatedAt
+ bool mainAgentRunning, bool awaitingInput, int backgroundTaskCount, bool isRetrying, bool isRunning, int? lastUserActivityAt, int? updatedAt, SessionSending? sending
 });
 
 
@@ -153,7 +159,7 @@ class __$SessionActivityInfoCopyWithImpl<$Res>
 
 /// Create a copy of SessionActivityInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,Object? isRetrying = null,Object? isRunning = null,Object? lastUserActivityAt = freezed,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mainAgentRunning = null,Object? awaitingInput = null,Object? backgroundTaskCount = null,Object? isRetrying = null,Object? isRunning = null,Object? lastUserActivityAt = freezed,Object? updatedAt = freezed,Object? sending = freezed,}) {
   return _then(_SessionActivityInfo(
 mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
 as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
@@ -162,7 +168,8 @@ as int,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore:
 as bool,isRunning: null == isRunning ? _self.isRunning : isRunning // ignore: cast_nullable_to_non_nullable
 as bool,lastUserActivityAt: freezed == lastUserActivityAt ? _self.lastUserActivityAt : lastUserActivityAt // ignore: cast_nullable_to_non_nullable
 as int?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,sending: freezed == sending ? _self.sending : sending // ignore: cast_nullable_to_non_nullable
+as SessionSending?,
   ));
 }
 
