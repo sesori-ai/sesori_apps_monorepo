@@ -235,6 +235,27 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Writes what a fork takes beyond [insertSession]: its origin, its own
+  /// [title], and the origin's [branchName]. A fork never inherits the
+  /// origin's approval override, so the row follows the bridge setting.
+  Future<void> setForkOrigin({
+    required String sessionId,
+    required String forkedFromSessionId,
+    required String? forkedFromTitle,
+    required String? title,
+    required String? branchName,
+  }) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(
+        forkedFromSessionId: Value(forkedFromSessionId),
+        forkedFromTitle: Value(forkedFromTitle),
+        title: Value(title),
+        branchName: Value(branchName),
+        approvalOverride: const Value(null),
+      ),
+    );
+  }
+
   /// Returns the updated row, or null when [sessionId] has none.
   Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
@@ -457,6 +478,24 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         catalogTitle: Value(catalogTitle),
       ),
     );
+  }
+
+  /// Marks [sessionId] as started by [scheduledTaskId]'s run, with the task's
+  /// approval mode as its override. A task deleted while its run was creating
+  /// the session leaves it an ordinary session, instead of failing the
+  /// binding of a session the harness already created.
+  Future<void> setScheduledRun({
+    required String sessionId,
+    required String scheduledTaskId,
+    required SessionApprovalMode approvalOverride,
+  }) {
+    return transaction(() async {
+      final tasks = attachedDatabase.scheduledTasksTable;
+      final task = await (select(tasks)..where((row) => row.id.equals(scheduledTaskId))).getSingleOrNull();
+      await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+        SessionTableCompanion(scheduledTaskId: Value(task?.id), approvalOverride: Value(approvalOverride)),
+      );
+    });
   }
 
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
