@@ -53,6 +53,18 @@ class PromptUploadRepository({
     }
   }
 
+  /// Deletes the file at [path], which [save] returned, with its folder.
+  /// Best-effort: a folder left here goes with its session's folder.
+  Future<void> deleteSaved({required String path}) async {
+    final fileFolder = p.dirname(path);
+    try {
+      if (!p.isWithin(_uploadsRoot, fileFolder)) throw StateError("$path is not a saved upload");
+      await _filesystemApi.deleteDirectoryRecursivelyAsync(path: fileFolder);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not remove the folder $fileFolder of a saved upload", error, stackTrace);
+    }
+  }
+
   /// Deletes the folders of [sessionIds] with every file in them. A session
   /// that has no folder is skipped.
   ///
