@@ -112,6 +112,11 @@ class HermesPlugin({
   @override
   String get compactionCommandName => "compress";
 
+  /// Hermes' `cache_ttl` defaults to 5 minutes; Sesori does not read the
+  /// user's Hermes config, so a longer setting still reads as the default.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
+
   @override
   Future<AcpSessionReplayCollector> createSessionReplayCollector({
     required String sessionId,

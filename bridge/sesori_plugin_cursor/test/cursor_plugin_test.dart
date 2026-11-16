@@ -630,6 +630,14 @@ void main() {
       expect(agents.every((a) => a.model == null), isTrue);
     });
 
+    test("an Anthropic model caches for 5 minutes and any other model is unknown", () async {
+      capture(catalogResult(), fromNewSession: true);
+      expect(await plugin.getPromptCacheLife(sessionId: "s1"), isNull);
+
+      capture({...effortModelSelectionResult(modelId: "sonnet-4.6"), "sessionId": "s1"}, fromNewSession: true);
+      expect(await plugin.getPromptCacheLife(sessionId: "s1"), const Duration(minutes: 5));
+    });
+
     test("getSessionOptions delegates one plugin-scoped tracker snapshot", () async {
       capture(catalogResult(), fromNewSession: true);
 
