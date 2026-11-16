@@ -630,6 +630,7 @@ class Orchestrator({
     final sessionForkService = SessionForkService(
       sessionRepository: sessionRepository,
       chatHistory: chatHistoryService,
+      worktrees: worktreeService,
       views: sessionViews,
       dispatcher: sessionOperationDispatcher,
     );

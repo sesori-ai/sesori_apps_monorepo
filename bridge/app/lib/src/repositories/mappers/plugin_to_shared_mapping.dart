@@ -267,6 +267,7 @@ extension PluginQueuedPromptMapping on PluginQueuedPrompt {
     // Plugins don't know where a command came from; SessionRepository
     // fills this from the sends the bridge registered.
     commandSource: null,
+    handoff: null,
     attachmentCount: attachmentCount,
     createdAt: createdAt,
   );

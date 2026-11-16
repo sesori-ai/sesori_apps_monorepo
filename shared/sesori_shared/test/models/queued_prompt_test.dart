@@ -6,6 +6,7 @@ void main() {
     test("round-trips all fields through JSON", () {
       const prompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_1234",
         dispatchState: QueuedPromptDispatchState.dispatched,
         text: "fix the tests",
@@ -22,6 +23,7 @@ void main() {
     test("round-trips a command entry with null text", () {
       const prompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_5678",
         text: null,
         command: "review",
@@ -39,6 +41,7 @@ void main() {
     test("round-trips a command source and decodes an unknown one to unknown", () {
       const prompt = QueuedSessionPrompt(
         commandSource: CommandSource.skill,
+        handoff: null,
         id: "prm_skill",
         text: null,
         command: "review",
@@ -74,6 +77,33 @@ void main() {
       expect(decoded.text, isNull);
       expect(decoded.command, isNull);
     });
+
+    test("round-trips a handoff stamp, omits it when null, and decodes an old payload to null", () {
+      const prompt = QueuedSessionPrompt(
+        id: "prm_handoff",
+        text: "Sesori is sending this conversation",
+        command: null,
+        commandSource: null,
+        handoff: MessageHandoff.sent(targetSessionId: "ses_target", targetTitle: "Fix login"),
+        createdAt: 1,
+      );
+
+      final json = prompt.toJson();
+      expect(json["handoff"], {"kind": "sent", "targetSessionId": "ses_target", "targetTitle": "Fix login"});
+      expect(QueuedSessionPrompt.fromJson(json), prompt);
+      expect(prompt.copyWith(handoff: null).toJson().containsKey("handoff"), isFalse);
+      expect(QueuedSessionPrompt.fromJson({"id": "legacy", "createdAt": 1}).handoff, isNull);
+    });
+
+    test("decodes a handoff kind it does not know to unknown", () {
+      final decoded = QueuedSessionPrompt.fromJson({
+        "id": "prm_future",
+        "createdAt": 1,
+        "handoff": {"kind": "future-kind"},
+      });
+
+      expect(decoded.handoff, const MessageHandoff.unknown());
+    });
   });
 
   group("QueuedPromptResponse", () {
@@ -82,6 +112,7 @@ void main() {
         data: [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "a",
             command: null,
@@ -90,6 +121,7 @@ void main() {
           ),
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_2",
             text: null,
             command: "compact",
@@ -170,6 +202,7 @@ void main() {
         prompts: [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "queued text",
             command: null,

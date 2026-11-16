@@ -120,7 +120,14 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
-typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+/// [projectId] and [worktreePath] are the deleted root's stored keys, for
+/// cleanup that must wait until its row is gone.
+typedef DeletedSessionSubtree = ({
+  Session session,
+  List<String> sessionIds,
+  String projectId,
+  String? worktreePath,
+});
 
 typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
 
@@ -680,21 +687,21 @@ class SessionRepository({
     }
   }
 
-  /// [prompts] with the source of each command this bridge sent to [sessionId].
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  /// [prompts] with the stamps this bridge recorded for its sends to
+  /// [sessionId]: the source of each command, and the handoff of each prompt
+  /// that sends one session into another, so a client never shows a handoff
+  /// prompt as a plain message while it waits for its echo.
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => [
     for (final prompt in prompts)
-      if (prompt.command != null && prompt.commandSource == null)
-        prompt.copyWith(
-          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
-            PromptStampCommand(:final invocation) => invocation.source,
-            PromptStampHandoff() || null => null,
-          },
-        )
-      else
-        prompt,
+      switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null =>
+          prompt.copyWith(commandSource: invocation.source),
+        PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
+        PromptStampCommand() || null => prompt,
+      },
   ];
 
   /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
@@ -902,7 +909,7 @@ class SessionRepository({
       body: (plugin, _) async =>
           (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
     );
-    return stampQueuedCommandSources(sessionId: sessionId, prompts: prompts ?? const []);
+    return stampQueuedPrompts(sessionId: sessionId, prompts: prompts ?? const []);
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
@@ -1283,7 +1290,12 @@ class SessionRepository({
         return [for (final binding in subtree) binding.sessionId];
       },
     );
-    return (session: deletionSnapshot, sessionIds: sessionIds);
+    return (
+      session: deletionSnapshot,
+      sessionIds: sessionIds,
+      projectId: binding.projectId,
+      worktreePath: binding.worktreePath,
+    );
   }
 
   /// Tombstones the harness session of every row in [root]'s subtree, so
@@ -1956,6 +1968,30 @@ class SessionRepository({
       worktreePath: worktreePath,
     );
     return sessions.isNotEmpty;
+  }
+
+  /// Whether a session other than [sessionId], archived or not, still names
+  /// [worktreePath].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _sessionDao.hasOtherSessionsNamingWorktree(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// Records the branch a removed worktree was on, or null for a detached
+  /// HEAD, on every session that names it, so a fork can check it out again.
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) {
+    return _sessionDao.setWorktreeBranch(projectId: projectId, worktreePath: worktreePath, branchName: branchName);
   }
 
   /// The project's recorded live directory, suitable as a git/CLI working
