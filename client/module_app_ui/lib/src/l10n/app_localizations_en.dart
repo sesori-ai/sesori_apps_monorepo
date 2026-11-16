@@ -1782,6 +1782,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptPromptsGone => 'This prompt is no longer in the session';
 
   @override
+  String transcriptHandoffWriting(String target) {
+    return 'Writing a summary for $target…';
+  }
+
+  @override
+  String transcriptHandoffSent(String target) {
+    return 'Summary sent to $target';
+  }
+
+  @override
+  String transcriptHandoffNotSent(String target) {
+    return 'Couldn\'t send to $target';
+  }
+
+  @override
+  String get transcriptHandoffOpen => 'Open';
+
+  @override
+  String get transcriptHandoffAnotherSession => 'another session';
+
+  @override
+  String get transcriptHandoffSummaryTitle => 'Handoff summary';
+
+  @override
+  String transcriptHandoffFrom(String source) {
+    return 'From $source';
+  }
+
+  @override
+  String get transcriptHandoffShowAll => 'Show all';
+
+  @override
+  String get transcriptHandoffShowLess => 'Show less';
+
+  @override
+  String get transcriptHandoffSessionUnavailable => 'Couldn\'t open that session';
+
+  @override
   String get transcriptPromptsRefreshed => 'The session just refreshed. Tap the prompt again.';
 
   @override
@@ -3091,6 +3129,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailCompactionCancelled => 'stopped';
+
+  @override
+  String get sessionDetailTurnStopped => 'Stopped';
 
   @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';

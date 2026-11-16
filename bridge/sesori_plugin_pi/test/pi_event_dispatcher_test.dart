@@ -723,6 +723,10 @@ void main() {
           .single;
 
       expect((live.single as BridgeSseMessageUpdated).info, replay.info);
+      expect(
+        ((live.single as BridgeSseMessageUpdated).info as PluginMessageError).kind,
+        reason == "error" ? PluginErrorKind.failure : PluginErrorKind.stopped,
+      );
       if (reason == "error") {
         expect(
           ((live.single as BridgeSseMessageUpdated).info as PluginMessageError).errorMessage,
