@@ -355,6 +355,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           TranscriptMessageMenu.wrap(
             spotlight: PregoMenuSpotlight.listRow,
             text: card.arguments,
+            actions: const [],
             builder: (selectionArea) => InvocationCard(
               selectionArea: selectionArea,
               name: card.name,
@@ -369,6 +370,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           TranscriptMessageMenu.wrap(
             spotlight: PregoMenuSpotlight.listRow,
             text: displayText,
+            actions: const [],
             builder: (selectionArea) => UserMessageBubble(
               selectionArea: selectionArea,
               markdown: displayText,

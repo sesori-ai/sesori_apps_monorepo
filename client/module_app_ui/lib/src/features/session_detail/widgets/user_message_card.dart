@@ -12,10 +12,11 @@ import "attachment_collection_widget.dart";
 import "invocation_card.dart";
 import "sent_bubble_landing.dart";
 import "transcript_message_menu.dart";
+import "transcript_motion.dart";
 import "user_prompt_markdown_image.dart";
 
 /// A user message in the transcript, as a bubble or an invocation card, with
-/// its [TranscriptMessageMenu] when it has text.
+/// its [TranscriptMessageMenu] when it has text or can be edited.
 class const UserMessageCard({
   super.key,
   required final MessageWithParts message,
@@ -26,6 +27,12 @@ class const UserMessageCard({
   /// How long to fade the outline this message's bubble had while it waited, or
   /// null when it had none.
   required final Duration? outlineFade,
+
+  /// Whether the composer is editing this message, which keeps it outlined.
+  required final bool editing,
+
+  /// The menu's Edit and resend, or null when the session offers no edit.
+  required final VoidCallback? onEdit,
 }) extends StatefulWidget {
   @override
   State<UserMessageCard> createState() => _UserMessageCardState();
@@ -69,20 +76,47 @@ class _UserMessageCardState() extends State<UserMessageCard> {
     });
   }
 
+  /// Whether this build starts or ends the edit's outline.
+  bool _editingChanged = false;
+
+  @override
+  void didUpdateWidget(covariant UserMessageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _editingChanged = oldWidget.editing != widget.editing;
+  }
+
   @override
   Widget build(BuildContext context) {
     final message = widget.message;
+    final actions = [
+      if (widget.onEdit case final onEdit?)
+        PregoMenuItem(
+          leadingIcon: TablerRegular.pencil,
+          title: context.loc.sessionDetailEditAndResend,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: onEdit,
+        ),
+    ];
+    final outlined = _outlined || widget.editing;
+    // The edit's outline comes and goes in the transcript's motion, only in
+    // the build that changes it, so nothing else about the bubble animates.
+    final transitionDuration = _editingChanged && !context.isReducedMotion
+        ? transcriptMotionDuration
+        : _transitionDuration;
     if (widget.shape case InvocationPromptTurnShape(:final name, :final source, :final arguments)) {
       return TranscriptMessageMenu.wrap(
         spotlight: PregoMenuSpotlight.listRow,
         text: arguments,
+        actions: actions,
         builder: (selectionArea) => InvocationCard(
           name: name,
           source: source,
           arguments: arguments,
           attachments: UserMessageCard.cardAttachmentsOf(message: message),
-          outlined: _outlined,
-          transitionDuration: _transitionDuration,
+          outlined: outlined,
+          transitionDuration: transitionDuration,
           selectionArea: selectionArea,
         ),
       );
@@ -91,11 +125,12 @@ class _UserMessageCardState() extends State<UserMessageCard> {
     return TranscriptMessageMenu.wrap(
       spotlight: PregoMenuSpotlight.listRow,
       text: markdown,
+      actions: actions,
       builder: (selectionArea) => UserMessageBubble(
         markdown: markdown,
         attachments: [UserMessageCard.attachmentsOf(message: message)],
-        outlined: _outlined,
-        transitionDuration: _transitionDuration,
+        outlined: outlined,
+        transitionDuration: transitionDuration,
         selectionArea: selectionArea,
       ),
     );

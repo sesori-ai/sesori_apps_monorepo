@@ -283,6 +283,7 @@ void main() {
             isArchived: isArchived,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         );
       });
@@ -319,6 +320,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         );
       });
@@ -372,6 +374,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         );
       });
@@ -402,6 +405,7 @@ void main() {
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
+        composerRestore: MockMessageComposerRestoreService(),
         window: idleSessionWindow(),
         sessionLaunchService:
             sessionLaunchService ??
