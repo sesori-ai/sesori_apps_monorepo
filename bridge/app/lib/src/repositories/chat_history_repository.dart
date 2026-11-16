@@ -731,7 +731,8 @@ class ChatHistoryRepository({
   /// additional identical messages. Exact identities consume replay capacity
   /// first and anchor neighboring context by ID even when their payload changes;
   /// stale rows due for removal do not shape semantic context, a compaction
-  /// row matches by its creation time instead of its neighbors, and a
+  /// row matches by its creation time instead of its neighbors and is no
+  /// neighbor itself, and a
   /// repeated run matches only occurrences with equal creation times. A unique
   /// exact standalone-tool identity can additionally anchor one adjacent
   /// assistant/tool/assistant replay window when replay strictly completes the
@@ -1744,11 +1745,16 @@ class ChatHistoryRepository({
     required List<_SemanticMessageFingerprints?> fingerprints,
     required List<String?> anchorOverrides,
   }) {
+    // A compaction row anchors no neighbour: several harnesses show it live
+    // only, so a neighbour beside it in the live transcript sits directly
+    // beside the same neighbours in replay.
+    String? anchor(int index) =>
+        fingerprints[index]?.isCompaction ?? false ? null : anchorOverrides[index] ?? fingerprints[index]?.context;
     final previousDistinct = List<String?>.filled(fingerprints.length, null);
     String? currentRun;
     String? beforeRun;
     for (var index = 0; index < fingerprints.length; index++) {
-      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
+      final fingerprint = anchor(index);
       if (fingerprint == null) continue;
       if (fingerprint != currentRun) {
         beforeRun = currentRun;
@@ -1761,7 +1767,7 @@ class ChatHistoryRepository({
     currentRun = null;
     String? afterRun;
     for (var index = fingerprints.length - 1; index >= 0; index--) {
-      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
+      final fingerprint = anchor(index);
       if (fingerprint == null) continue;
       if (fingerprint != currentRun) {
         afterRun = currentRun;

@@ -571,6 +571,50 @@ void main() {
       );
     });
 
+    test("a first replay drops live rows around a live-only compaction row and keeps the row", () async {
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Name three colors", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-response", text: "Red", reasoning: null, createdAt: null),
+            _messageWithText(id: "replay-compact", text: "/compact", createdAt: null, promptId: null),
+          ],
+        ),
+      );
+      Future<void> capture(MessageWithParts message) => _captureMessageWithParts(history: history, message: message);
+      MessageWithParts compaction({required String id, required int createdAt}) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "ses_a",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.agent,
+          time: MessageTime(created: createdAt, completed: null),
+        ),
+        parts: [
+          MessagePart.compaction(
+            id: "$id-part",
+            sessionID: "ses_a",
+            messageID: id,
+            state: const CompactionState.completed(summary: null, freedTokens: null, trigger: null),
+          ),
+        ],
+      );
+      await capture(_messageWithText(id: "live-prompt", text: "Name three colors", createdAt: 100, promptId: "p1"));
+      await capture(compaction(id: "live-auto", createdAt: 150));
+      await capture(_assistantMessageWithText(id: "live-response", text: "Red", reasoning: null, createdAt: 200));
+      await capture(_messageWithText(id: "live-compact", text: "/compact", createdAt: 300, promptId: "p2"));
+      await capture(compaction(id: "live-manual", createdAt: 350));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "live-auto", "replay-response", "replay-compact", "live-manual"],
+      );
+    });
+
     test("a replay keeps one row per Claude compaction behind its /compact run", () async {
       const claudeSessionId = "11111111-2222-4333-8444-555555555555";
       final temp = Directory.systemTemp.createTempSync("claude-compaction-replay-");

@@ -346,7 +346,10 @@ reconnect or restart.
   live compaction row
   pairs with its replayed row even beside a live-only row such as the
   bridge's own `/compact` bubble, while distinct compactions, which never
-  share a time, stay apart.
+  share a time, stay apart. A compaction row is no neighbour in any other
+  row's context, so the live prompt and reply around a live-only compaction
+  row (DeepSeek, OMP, Grok) still pair with their replayed rows and the row
+  stays between them, without duplicating the turn.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
