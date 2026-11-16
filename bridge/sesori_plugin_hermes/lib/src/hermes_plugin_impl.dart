@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "hermes_event_mapper.dart";
 import "hermes_identity.dart";
+import "repositories/hermes_session_replay_collector.dart";
 import "services/hermes_session_options_service.dart";
 
 /// Hermes Agent backend over ACP.
@@ -87,6 +88,15 @@ class HermesPlugin({
   /// Hermes advertises its compaction as `/compress` (verified v0.21.5).
   @override
   String get compactionCommandName => "compress";
+
+  @override
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async => HermesSessionReplayCollector(
+    sessionId: sessionId,
+    standardCollector: collectorFactory(toolPartSuppression: null),
+  );
 
   @override
   Future<void> dispose() async {

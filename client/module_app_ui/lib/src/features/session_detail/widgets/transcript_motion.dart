@@ -243,3 +243,56 @@ class _TranscriptPresenceColumnState() extends State<TranscriptPresenceColumn> {
     );
   }
 }
+
+/// Reduced motion's place for what a switcher fades: the page changes once, with
+/// the state, so what arrives has its room at once and what leaves gives its room
+/// up at once and fades where it stood.
+class const RoomAtOnce({super.key, required final Animation<double> animation, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => Align(
+        alignment: Alignment.topCenter,
+        heightFactor: animation.status.isForwardOrCompleted ? 1 : 0,
+        child: child,
+      ),
+      child: child,
+    );
+  }
+}
+
+/// A banner over the composer: its room opens as it fades in and folds away
+/// as it fades out, so what sits above it glides rather than jumps as the
+/// banner comes or clears.
+/// Another banner while one shows takes its place without fading, its room
+/// easing to the new text's height. Reduced motion keeps only the fade, in a
+/// [RoomAtOnce].
+class const AnimatedBanner({super.key, required final Widget? banner}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = context.isReducedMotion;
+    return AnimatedSwitcher(
+      duration: transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      transitionBuilder: (child, animation) {
+        final fade = FadeTransition(opacity: animation, child: child);
+        return reducedMotion
+            ? RoomAtOnce(animation: animation, child: fade)
+            : SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: fade);
+      },
+      child: switch (banner) {
+        null => null,
+        final banner when reducedMotion => banner,
+        final banner => AnimatedSize(
+          duration: transcriptMotionDuration,
+          curve: transcriptMotionCurve,
+          alignment: Alignment.topCenter,
+          child: banner,
+        ),
+      },
+    );
+  }
+}

@@ -314,6 +314,18 @@ void main() {
           "side_question_asked",
           {"harness": "claude_code", "outcome": wireValue},
         ),
+      for (final (outcome, wireValue) in [
+        (AnalyticsMessageEditOutcome.succeeded, "succeeded"),
+        (AnalyticsMessageEditOutcome.refusedBusy, "refused_busy"),
+        (AnalyticsMessageEditOutcome.branchPointUnavailable, "branch_point_unavailable"),
+        (AnalyticsMessageEditOutcome.refused, "refused"),
+        (AnalyticsMessageEditOutcome.failed, "failed"),
+      ])
+        (
+          ProductAnalyticsEvent.sessionMessageEdited(harness: AnalyticsHarness.codex, outcome: outcome),
+          "session_message_edited",
+          {"harness": "codex", "outcome": wireValue},
+        ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

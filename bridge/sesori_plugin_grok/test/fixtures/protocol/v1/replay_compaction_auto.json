@@ -1,0 +1,143 @@
+[
+  {
+    "method": "session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "user_message_chunk",
+        "content": {
+          "type": "text",
+          "text": "Repeat the paragraph back."
+        },
+        "_meta": {
+          "modelId": "probe",
+          "promptIndex": 1
+        }
+      },
+      "_meta": {
+        "eventId": "01a00000-0000-7000-8000-000000000001-11",
+        "agentTimestampMs": 1789999999851,
+        "isReplay": true
+      }
+    }
+  },
+  {
+    "method": "_x.ai/session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "auto_compact_started",
+        "tokens_used": 21022,
+        "context_window": 23000,
+        "percentage": 91,
+        "reason": "Context window 91% full"
+      },
+      "_meta": {
+        "eventId": "01a00000-0000-7000-8000-000000000001-13",
+        "agentTimestampMs": 1790000000000,
+        "isReplay": true
+      }
+    }
+  },
+  {
+    "method": "_x.ai/session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "compaction_checkpoint",
+        "checkpoint_id": "00000000-0000-4000-8000-0000000000d1",
+        "prompt_index_at_compaction": 2,
+        "checkpoint_file": "compaction_checkpoints/00000000-0000-4000-8000-0000000000d1.json",
+        "schema_version": 1,
+        "created_at": "2026-09-21T00:00:00.000000+00:00"
+      },
+      "_meta": {
+        "eventId": "01a00000-0000-7000-8000-000000000001-14",
+        "agentTimestampMs": 1790000014781,
+        "isReplay": true
+      }
+    }
+  },
+  {
+    "method": "_x.ai/session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "auto_compact_completed",
+        "tokens_before": 21022,
+        "tokens_after": 18671,
+        "elapsed_ms": 14780,
+        "summary_preview": null
+      },
+      "_meta": {
+        "eventId": "01a00000-0000-7000-8000-000000000001-15",
+        "agentTimestampMs": 1790000014781,
+        "isReplay": true
+      }
+    }
+  },
+  {
+    "method": "session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "agent_message_chunk",
+        "content": {
+          "type": "text",
+          "text": "The paragraph, repeated. Done."
+        }
+      },
+      "_meta": {
+        "totalTokens": 18671,
+        "eventId": "01a00000-0000-7000-8000-000000000001-1968",
+        "agentTimestampMs": 1790000051828,
+        "promptId": "0c73e384-3f10-4564-8111-662afe74469f",
+        "streamStartMs": 1794784629302,
+        "turnStartMs": 1794784612422,
+        "updateType": "AgentMessageChunk",
+        "chunkId": 1953,
+        "isReplay": true
+      }
+    }
+  },
+  {
+    "method": "_x.ai/session/update",
+    "params": {
+      "sessionId": "01a00000-0000-7000-8000-000000000001",
+      "update": {
+        "sessionUpdate": "turn_completed",
+        "prompt_id": "00000000-0000-4000-8000-0000000000a1",
+        "stop_reason": "end_turn",
+        "usage": {
+          "inputTokens": 21080,
+          "outputTokens": 1993,
+          "totalTokens": 23073,
+          "cachedReadTokens": 8064,
+          "cacheCreationTokens": 0,
+          "reasoningTokens": 0,
+          "modelCalls": 1,
+          "apiDurationMs": 37273,
+          "modelUsage": {
+            "probe": {
+              "inputTokens": 21080,
+              "outputTokens": 1993,
+              "totalTokens": 23073,
+              "cachedReadTokens": 8064,
+              "cacheCreationTokens": 0,
+              "reasoningTokens": 0,
+              "modelCalls": 1,
+              "apiDurationMs": 37273
+            }
+          },
+          "numTurns": 1
+        },
+        "elapsed_ms": 52272
+      },
+      "_meta": {
+        "eventId": "01a00000-0000-7000-8000-000000000001-1972",
+        "agentTimestampMs": 1790000052116,
+        "isReplay": true
+      }
+    }
+  }
+]
