@@ -12,7 +12,9 @@ import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_rewind_refusal.dart";
+import "../models/codex_user_agent.dart";
 import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
@@ -46,8 +48,13 @@ final class const _CodexPromptAttachmentException({required final String message
 }
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
-class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+/// [userAgent] is the connected app-server's `initialize` answer.
+class CodexThreadRepository({required final CodexAppServerApi _appServerApi, required String? userAgent}) {
   static const _sideAnswerMapper = CodexSideAnswerMapper();
+
+  /// `thread/fork {lastTurnId}` arrived in 0.143.0; older app-servers ignore
+  /// the field and fork the whole thread.
+  final bool _forksThroughTurn = codexUserAgentIsAtLeast(userAgent: userAgent, minimum: "0.143.0");
 
   static const _supportedImageMimes = {
     "image/bmp",
@@ -193,6 +200,41 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     if (message.contains("only supports paginated threads")) return CodexRewindRefusal.legacySession;
     if (message.contains("ephemeral threads")) return CodexRewindRefusal.temporarySession;
     if (message.startsWith("turn not found")) return CodexRewindRefusal.unknownMessage;
+    return null;
+  }
+
+  /// Forks [threadId] through its finished turn [lastTurnId] into a new
+  /// persisted thread in the same directory, leaving the source untouched.
+  /// The refusals Codex answers before creating the fork, and a runtime too
+  /// old to fork at a turn, become [PluginBranchPointUnavailableException].
+  Future<CodexThreadRecord> forkThread({
+    required String threadId,
+    required String lastTurnId,
+    required String developerInstructions,
+  }) async {
+    if (!_forksThroughTurn) throw CodexForkRefusal.runtimeTooOld.toException(cause: null);
+    const operation = "thread/fork";
+    try {
+      final dto = await _appServerApi.forkThread(
+        threadId: threadId,
+        lastTurnId: lastTurnId,
+        developerInstructions: developerInstructions,
+      );
+      return _mapRequired(dto: dto, operation: operation);
+    } on CodexRpcException catch (error, stackTrace) {
+      final refusal = _forkRefusal(error: error);
+      if (refusal != null) Error.throwWithStackTrace(refusal.toException(cause: error), stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// The answers of the 0.167.2 thread store's fork preparation.
+  CodexForkRefusal? _forkRefusal({required CodexRpcException error}) {
+    final message = error.message;
+    if (error.code != -32600) return null;
+    if (message.contains("identifies an in-progress turn")) return CodexForkRefusal.turnRunning;
+    if (message.startsWith("turn not found")) return CodexForkRefusal.unknownMessage;
+    if (message.startsWith("no rollout found for thread id")) return CodexForkRefusal.missingSession;
     return null;
   }
 

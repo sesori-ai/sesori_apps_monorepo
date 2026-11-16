@@ -1,8 +1,8 @@
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/codex_apps_dto.dart";
 import "../../api/models/codex_mcp_status_dto.dart";
+import "../../models/codex_user_agent.dart";
 
 /// Native presentation metadata only; configuration and execution stay native.
 class CodexMcpMapper({required String? userAgent}) {
@@ -127,11 +127,7 @@ class CodexMcpMapper({required String? userAgent}) {
   }
 }
 
-bool _hasThreadAuthentication({required String? userAgent}) {
-  if (userAgent == null) return false;
-  final value = RegExp(r"^[^/]+/([^\s]+)").firstMatch(userAgent)?.group(1);
-  final version = value == null ? null : SemanticVersion.tryParse(value: value);
-  // The minimum ignores login.threadId and can select a same-name harness
-  // server instead of the requested project server. The target is verified.
-  return version != null && version.compareTo(SemanticVersion.parse(value: "0.160.1")) >= 0;
-}
+// The minimum ignores login.threadId and can select a same-name harness
+// server instead of the requested project server. The target is verified.
+bool _hasThreadAuthentication({required String? userAgent}) =>
+    codexUserAgentIsAtLeast(userAgent: userAgent, minimum: "0.160.1");

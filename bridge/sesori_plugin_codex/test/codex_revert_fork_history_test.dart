@@ -198,11 +198,34 @@ void main() {
     );
   });
 
-  test("deleting a reverted thread deletes every rollout it owns", () async {
+  List<String> rolloutFiles() => [for (final file in sessionDay.listSync()) p.basename(file.path)]..sort();
+
+  // An origin delete and a first-message swap's delete of the replaced
+  // session both land here.
+  test("deleting a forked thread keeps the rollout its fork builds on", () async {
     expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
 
-    expect(sessionDay.listSync().map((file) => p.basename(file.path)), [_forkRollout]);
-    final records = await catalogRepository.listSessionRecords();
-    expect(records.map((record) => record.id), [_forkId]);
+    expect(rolloutFiles(), [_originalRollout, _forkRollout]);
+    expect(texts(messages: await readMessages(sessionId: _forkId)), hasLength(4));
+    // A bridge restart starts from a fresh catalog.
+    catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+    expect(texts(messages: await readMessages(sessionId: _forkId)), hasLength(4));
+  });
+
+  test("a thread no fork builds on deletes every rollout it owns", () async {
+    expect(await catalogRepository.deleteSession(sessionId: _forkId), isTrue);
+    expect(rolloutFiles(), [_originalRollout, _revertRollout]);
+
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
+    expect(rolloutFiles(), isEmpty);
+    expect(await catalogRepository.listSessionRecords(), isEmpty);
+  });
+
+  test("a thread kept for a fork deletes its last rollout once the fork is gone", () async {
+    await catalogRepository.deleteSession(sessionId: _sourceId);
+    await catalogRepository.deleteSession(sessionId: _forkId);
+
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
+    expect(rolloutFiles(), isEmpty);
   });
 }

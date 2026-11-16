@@ -778,6 +778,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
+        userAgent: null,
       );
 
   int resumeCount = 0;

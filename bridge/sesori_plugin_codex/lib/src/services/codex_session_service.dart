@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "../models/codex_rewind_refusal.dart";
 import "../repositories/codex_catalog_repository.dart";
@@ -634,6 +635,37 @@ class CodexSessionService({
       Log.w("[codex] rollout catalog refresh after reverting $threadId failed", error, stackTrace);
     }
     return resumed;
+  }
+
+  /// Forks [threadId] through the native turn holding [throughMessageId]
+  /// into a new persisted thread in the same directory, without loading or
+  /// disturbing the source, which may be running a later turn. Every refusal
+  /// comes before Codex creates anything.
+  Future<CodexThreadRecord> forkThread({
+    required String threadId,
+    required String throughMessageId,
+  }) async {
+    final source = await _catalogRepository.findSessionById(sessionId: threadId);
+    if (source == null) throw CodexForkRefusal.missingSession.toException(cause: null);
+    final lastTurnId = _messageRepository.forkTurnId(
+      read: _messageRepository.prepareMessageRead(rolloutPath: source.rolloutPath, sessionId: threadId),
+      messageId: throughMessageId,
+    );
+    final fork = await _connectedThreadRepository.forkThread(
+      threadId: threadId,
+      lastTurnId: lastTurnId,
+      developerInstructions: await _developerInstructions(cwd: source.cwd),
+    );
+    _loadedThreads.add(fork.id);
+    _rememberThreadModel(threadId: fork.id, model: fork.model);
+    // The fork wrote its rollout; history reads must find it before the next
+    // scan.
+    try {
+      await _catalogRepository.refresh();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] rollout catalog refresh after forking $threadId failed", error, stackTrace);
+    }
+    return fork;
   }
 
   /// Answers [question] on the loaded [threadId] from a throwaway copy of the

@@ -16,13 +16,16 @@ const _fixtureDay = "test/fixtures/codex_revert_fork/sessions/2026/11/15";
 const _sourceId = "01a1e0e9-81f9-7b81-81c6-a835c1d98756";
 const _originalRollout = "rollout-2026-11-15T12-32-41-$_sourceId.jsonl";
 const _userItemTwo = "01a1e0e9-8709-7a71-b289-6b15d15c677c";
+const _turnOne = "01a1e0e9-8256-7362-a741-a53243e4d744";
 const _turnTwo = "01a1e0e9-8704-78f0-9883-d16895f63c89";
+const _replyOne = "msg_05d1ece2878d9bf5016afa16eb144087d0821be1548ac63907";
+const _forkId = "01a1e0f0-0000-7000-8000-0000000000f0";
 
 void main() {
-  test("the descriptor declares rewind and the plugin implements it", () {
+  test("the descriptor declares rewind and fork and the plugin implements them", () {
     expect(
       const CodexPluginDescriptor(desktopAppCliCandidates: null).sessionBranching,
-      {PluginSessionBranching.rewind},
+      {PluginSessionBranching.rewind, PluginSessionBranching.fork},
     );
     final plugin = createInjectedCodexPlugin(
       serverUrl: "ws://127.0.0.1:0",
@@ -35,6 +38,7 @@ void main() {
     );
     addTearDown(plugin.dispose);
     expect(plugin, isA<SessionRewindPluginApi>());
+    expect(plugin, isA<SessionForkPluginApi>());
   });
 
   test("a rewind loads the thread, reverts before the message's turn, then starts the turn", () async {
@@ -125,6 +129,96 @@ void main() {
       expect(server.methods, isNot(contains("turn/start")));
     });
   }
+
+  group("fork", () {
+    test("forks through the turn the message ends, leaving the source alone", () async {
+      final server = await _AppServer.start(revertError: null);
+
+      final fork = await server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _replyOne);
+
+      expect(fork.id, _forkId);
+      expect(fork.directory, "/workspace/demo");
+      expect(fork.title, isNull);
+      expect(server.methods, isNot(contains("thread/resume")));
+      expect(server.paramsOf("thread/fork"), {
+        "threadId": _sourceId,
+        "lastTurnId": _turnOne,
+        "developerInstructions": isA<String>(),
+        "excludeTurns": true,
+      });
+      expect(await server.texts(sessionId: _forkId), ["Reply with exactly the word: one", "one"]);
+      expect(await server.texts(sessionId: _sourceId), hasLength(6));
+      final listed = await server.plugin.listAllSessions(knownDirectories: const {"/workspace/demo"});
+      expect(listed.where((session) => session.id == _forkId), hasLength(1));
+    });
+
+    test("a user message maps to its own turn", () async {
+      final server = await _AppServer.start(revertError: null);
+
+      await server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _userItemTwo);
+
+      expect(server.paramsOf("thread/fork")?["lastTurnId"], _turnTwo);
+    });
+
+    test("an unknown message or session is refused before anything is created", () async {
+      final server = await _AppServer.start(revertError: null);
+
+      await expectLater(
+        server.plugin.forkSession(sessionId: _sourceId, throughMessageId: "m-3"),
+        throwsA(_refusal(reason: "Codex can't find this message to fork from it.")),
+      );
+      await expectLater(
+        server.plugin.forkSession(sessionId: _steeredId, throughMessageId: "m-3"),
+        throwsA(_refusal(reason: "Codex no longer has this session.")),
+      );
+      expect(server.methods, isNot(contains("thread/fork")));
+    });
+
+    test("a turn that went on after a steered follow-up is refused at the earlier reply", () async {
+      final server = await _AppServer.start(revertError: null, steeredRollout: true);
+
+      await expectLater(
+        server.plugin.forkSession(sessionId: _steeredId, throughMessageId: "msg_reply_user-opening"),
+        throwsA(
+          _refusal(
+            reason: "Codex can only fork at the end of a turn, and this turn went on after a later message.",
+          ),
+        ),
+      );
+      expect(server.methods, isNot(contains("thread/fork")));
+
+      await server.plugin.forkSession(sessionId: _steeredId, throughMessageId: "msg_reply_user-steered");
+      expect(server.paramsOf("thread/fork")?["lastTurnId"], "turn-2");
+    });
+
+    test("a runtime that ignores lastTurnId is refused without a request", () async {
+      final server = await _AppServer.start(revertError: null, userAgent: "codex-cli/0.142.0 (Mac OS 15.0; arm64)");
+
+      await expectLater(
+        server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _replyOne),
+        throwsA(_refusal(reason: "Update Codex to fork sessions.")),
+      );
+      expect(server.methods, isNot(contains("thread/fork")));
+    });
+
+    for (final (:message, :reason) in const [
+      (
+        message: "lastTurnId '$_turnOne' identifies an in-progress turn",
+        reason: "Codex can't fork from a turn that is still running.",
+      ),
+      (message: "turn not found: $_turnOne", reason: "Codex can't find this message to fork from it."),
+      (message: "no rollout found for thread id $_sourceId", reason: "Codex no longer has this session."),
+    ]) {
+      test("thread/fork answering '$message' is refused", () async {
+        final server = await _AppServer.start(revertError: null, forkError: (code: -32600, message: message));
+
+        await expectLater(
+          server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _replyOne),
+          throwsA(_refusal(reason: reason)),
+        );
+      });
+    }
+  });
 }
 
 const _text = [PluginPromptPart.text(text: "edited")];
@@ -147,6 +241,12 @@ class _AppServer({
 }) {
   Map<String, dynamic>? paramsOf(String method) => _params[method];
 
+  Future<List<String>> texts({required String sessionId}) async => [
+    for (final message in await plugin.getSessionMessages(sessionId))
+      for (final part in message.parts)
+        if (part case PluginMessagePartText(:final text)) text,
+  ];
+
   Future<void> rewind({
     required String sessionId,
     required String beforeMessageId,
@@ -164,6 +264,8 @@ class _AppServer({
 
   static Future<_AppServer> start({
     required ({int code, String message})? revertError,
+    ({int code, String message})? forkError,
+    String userAgent = "codex-cli/0.167.2",
     bool steeredRollout = false,
   }) async {
     final codexHome = Directory.systemTemp.createTempSync("codex-home-rewind-");
@@ -187,24 +289,35 @@ class _AppServer({
         methods.add(method);
         final requestParams = (decoded["params"] as Map<String, dynamic>?) ?? const <String, dynamic>{};
         params[method] = requestParams;
-        if (method == "thread/revert" && revertError != null) {
+        final error = switch (method) {
+          "thread/revert" => revertError,
+          "thread/fork" => forkError,
+          _ => null,
+        };
+        if (error != null) {
           webSocket.add(
             jsonEncode({
               "jsonrpc": "2.0",
               "id": decoded["id"],
-              "error": {"code": revertError.code, "message": revertError.message},
+              "error": {"code": error.code, "message": error.message},
             }),
           );
           return;
+        }
+        if (method == "thread/fork" && requestParams["lastTurnId"] == _turnOne) {
+          _writeForkRollout(sessionDay: sessionDay);
         }
         if (method == "thread/revert" && requestParams["threadId"] == _sourceId) {
           _writeRevertRollout(sessionDay: sessionDay);
         }
         final Object result = switch (method) {
-          "initialize" => const {"userAgent": "codex-cli/0.167.2"},
+          "initialize" => {"userAgent": userAgent},
           "config/read" => const {"config": <String, Object?>{}},
           "thread/resume" => {
             "thread": {"id": requestParams["threadId"], "cwd": "/workspace/demo", "turns": const <Object>[]},
+          },
+          "thread/fork" => const {
+            "thread": {"id": _forkId, "cwd": "/workspace/demo", "turns": <Object>[]},
           },
           "turn/start" => const {
             "turn": {"id": "turn-edited"},
@@ -230,14 +343,28 @@ class _AppServer({
 
   /// Keeps the original rollout's first turn, as `thread/revert {beforeTurnId:
   /// two}` does: a new rollout whose `history_base` is that turn's bytes.
-  static void _writeRevertRollout({required Directory sessionDay}) {
+  static void _writeRevertRollout({required Directory sessionDay}) => _writeTurnOneRollout(
+    sessionDay: sessionDay,
+    id: _sourceId,
+    fileName: "rollout-2026-11-15T12-40-00-${_sourceId}_01a1e0f0-0000-7000-8000-00000000000a.jsonl",
+  );
+
+  /// The rollout `thread/fork {lastTurnId: one}` writes: a new thread whose
+  /// `history_base` is the source's first turn.
+  static void _writeForkRollout({required Directory sessionDay}) => _writeTurnOneRollout(
+    sessionDay: sessionDay,
+    id: _forkId,
+    fileName: "rollout-2026-11-15T12-50-00-$_forkId.jsonl",
+  );
+
+  static void _writeTurnOneRollout({required Directory sessionDay, required String id, required String fileName}) {
     final lines = File(p.join(sessionDay.path, _originalRollout)).readAsLinesSync();
     final kept = lines.takeWhile((line) => !(line.contains('"task_started"') && line.contains(_turnTwo))).toList();
     final meta = {
       "timestamp": "2026-11-15T20:40:00.000Z",
       "type": "session_meta",
       "payload": {
-        "id": _sourceId,
+        "id": id,
         "timestamp": "2026-11-15T20:40:00.000Z",
         "cwd": "/workspace/demo",
         "history_mode": "paginated",
@@ -248,9 +375,7 @@ class _AppServer({
         },
       },
     };
-    File(
-      p.join(sessionDay.path, "rollout-2026-11-15T12-40-00-${_sourceId}_01a1e0f0-0000-7000-8000-00000000000a.jsonl"),
-    ).writeAsStringSync("${jsonEncode(meta)}\n");
+    File(p.join(sessionDay.path, fileName)).writeAsStringSync("${jsonEncode(meta)}\n");
   }
 }
 
