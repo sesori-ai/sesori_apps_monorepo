@@ -350,12 +350,11 @@ void main() {
       expect(handoffs.writing, isFalse);
     });
 
-    test("a queued prompt whose message has arrived, or one with no handoff, adds nothing", () {
+    test("a queued prompt with no handoff adds nothing", () {
       final handoffs = _build(
-        messages: [_user(id: "request-message", handoff: _sent, promptId: "request")],
+        messages: const [],
         isBusy: false,
         queuedPrompts: [
-          _queued(id: "request", handoff: _sent),
           _queued(id: "plain", handoff: null),
           _queued(id: "later", handoff: const MessageHandoff.unknown()),
         ],
@@ -363,8 +362,18 @@ void main() {
 
       expect(handoffs.queuedMarkers, isEmpty);
       expect(handoffs.queuedCards, isEmpty);
-      expect(handoffs.markers.keys, ["request-message"]);
       expect(handoffs.writing, isFalse);
+    });
+
+    test("a queued request keeps its marker while its message has no parts to show yet", () {
+      final handoffs = _build(
+        messages: [_user(id: "request-message", handoff: _sent, promptId: "request")],
+        isBusy: true,
+        queuedPrompts: [_queued(id: "request", handoff: _sent)],
+      );
+
+      expect(handoffs.queuedMarkers["request"]?.status, TranscriptHandoffMarkerStatus.writing);
+      expect(handoffs.markers.keys, ["request-message"]);
     });
   });
 }

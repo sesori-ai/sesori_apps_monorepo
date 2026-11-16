@@ -861,6 +861,11 @@ including l10n output.
   - The transcript builder turns a queued `sent` or `notSent` prompt into a marker and a queued `received` prompt into
     a card, keyed by prompt id. The message list shows them in the queued prompt's own row, so the row keeps its
     place and its element when the echo arrives. A queued handoff has no Cancel; stopping the source covers it.
+    The queued marker stays while the bridge still lists the prompt, because a user message can arrive before its
+    parts, and a row with nothing to render falls back to the queue.
+  - The Claude Code, Pi and ACP plugins now list a new queued prompt before they report the session busy. The
+    projects-summary rebuild that follows busy held the queue update back by about 150 ms, so "Working…" showed
+    before the marker.
   - `ChatHistoryService.markHandoffNotSent` adds a history refresh when it marked a stored row. Clients already reload
     on that event, so no new event type was needed.
   - The stamp carries no project id. Open already reads the session to learn whether it is archived, and that read

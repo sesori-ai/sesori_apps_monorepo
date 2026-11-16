@@ -58,12 +58,11 @@ final class const TranscriptHandoffs({
   /// Cards by the id of the handoff prompt they replace.
   required final Map<String, TranscriptHandoffCard> cards,
 
-  /// Markers by the id of a bridge-queued summary request whose user message
-  /// has yet to arrive, so the request never shows as a plain prompt first.
+  /// Markers by the id of a summary request the bridge still lists as queued,
+  /// so the request never shows as a plain prompt before its message renders.
   required final Map<String, TranscriptHandoffMarker> queuedMarkers,
 
-  /// Cards by the id of a bridge-queued handoff prompt whose user message has
-  /// yet to arrive.
+  /// Cards by the id of a handoff prompt the bridge still lists as queued.
   required final Map<String, TranscriptHandoffCard> queuedCards,
 }) {
   /// Whether the newest turn is a summary still being written, or a request
@@ -150,14 +149,11 @@ class const TranscriptHandoffBuilder() {
         if (message.info case MessageUser(:final id, :final MessageHandoffReceived handoff) when !folded.contains(id))
           id: _cardOf(handoff: handoff),
     };
-    final deliveredPromptIds = {
-      for (final message in messages)
-        if (message.info case MessageUser(promptId: final promptId?)) promptId,
-    };
+    // A prompt whose user message arrived before its parts still shows from
+    // the queue, so its row keeps the handoff until the message can take over.
     final queuedMarkers = <String, TranscriptHandoffMarker>{};
     final queuedCards = <String, TranscriptHandoffCard>{};
     for (final prompt in queuedPrompts) {
-      if (deliveredPromptIds.contains(prompt.id)) continue;
       switch (prompt.handoff) {
         // Not answered yet, so the summary is still to be written.
         case MessageHandoffSent(:final targetSessionId, :final targetTitle):

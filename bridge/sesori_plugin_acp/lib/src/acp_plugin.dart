@@ -1605,6 +1605,9 @@ abstract class AcpPlugin({
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
       state.queue.add(queuedPrompt);
+      // The queue goes out ahead of busy, so a client never shows the session
+      // working before the prompt that started it.
+      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     state.pending++;
     if (state.pending == 1) {
@@ -1617,9 +1620,6 @@ abstract class AcpPlugin({
         ),
       );
       _eventBuffer.add(const BridgeSseProjectUpdated());
-    }
-    if (turn is _QueuedAcpTurn) {
-      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one

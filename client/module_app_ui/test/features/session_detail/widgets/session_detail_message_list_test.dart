@@ -2410,15 +2410,20 @@ void main() {
     final markerRow = tester.element(marker);
 
     final request = _message(messageId: "request", role: "user", text: requestText, promptId: "prm_request");
+    final requestInfo = switch (request.info) {
+      final MessageUser user => user.copyWith(handoff: handoff),
+      final other => other,
+    };
+    // The user message can land before its parts, while the bridge still lists the prompt.
+    harness.appendNewestMessage(MessageWithParts(info: requestInfo, parts: const []));
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "partless frame $frame");
+    }
+    harness.removeMessage("request");
     harness.deliverBridgePrompt(
       promptId: "prm_request",
-      message: MessageWithParts(
-        info: switch (request.info) {
-          final MessageUser user => user.copyWith(handoff: handoff),
-          final other => other,
-        },
-        parts: request.parts,
-      ),
+      message: MessageWithParts(info: requestInfo, parts: request.parts),
       insertionIndex: 2,
     );
     for (var frame = 0; frame < 12; frame++) {

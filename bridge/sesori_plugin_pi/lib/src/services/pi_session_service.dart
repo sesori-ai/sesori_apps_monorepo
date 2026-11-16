@@ -475,6 +475,9 @@ final class PiSessionService({
     // A stop that began idle counts as work without publishing busy.
     final wasIdle = state.status == const PluginSessionStatus.idle();
     state.queue.add(turn);
+    // The queue goes out ahead of busy, so a client never shows the session
+    // working before the prompt that started it.
+    if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
     if (wasIdle) {
       state.status = const PluginSessionStatus.busy();
       _emit(
@@ -486,7 +489,6 @@ final class PiSessionService({
       _emit(const BridgeSseProjectUpdated());
     }
     _syncWorkState();
-    if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
     _startNext(sessionId: sessionId, state: state);
   }
 
