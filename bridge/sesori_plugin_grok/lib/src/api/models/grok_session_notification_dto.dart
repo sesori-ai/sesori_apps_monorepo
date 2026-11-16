@@ -13,6 +13,16 @@ abstract final class GrokSessionProtocol() {
   static const String queueChangedMethod = "_x.ai/queue/changed";
   static const String _compactCommand = "/compact";
 
+  /// The tokens a compaction freed. One that freed nothing (an empty session
+  /// reports equal counts) has no count.
+  static int? freedTokens({required int? tokensBefore, required int? tokensAfter}) =>
+      tokensBefore != null && tokensAfter != null && tokensBefore > tokensAfter ? tokensBefore - tokensAfter : null;
+
+  /// The message of a compaction row, shared by the live row and its replay
+  /// so a history import keeps the row the user saw: an automatic compaction
+  /// is keyed by its start event, a manual one by the `/compact` prompt.
+  static String compactionMessageId({required String sessionId, required String key}) => "$sessionId-compaction-$key";
+
   /// Whether a running prompt's [text] is Grok's built-in `/compact`, with or
   /// without its optional instructions. A skill named `compact` is invoked
   /// under another name, so the bare command is always the built-in one.
@@ -46,6 +56,7 @@ sealed class GrokSessionNotificationDto with _$GrokSessionNotificationDto {
   const factory({
     required String sessionId,
     required GrokSubagentUpdate update,
+    @JsonKey(name: "_meta") required GrokEventMetaDto? meta,
   }) = _GrokSessionNotificationDto;
 
   factory fromJson(Map<String, dynamic> json) => _$GrokSessionNotificationDtoFromJson(json);
@@ -118,10 +129,24 @@ sealed class GrokSubagentUpdate with _$GrokSubagentUpdate {
 sealed class GrokQueueChangedDto with _$GrokQueueChangedDto {
   const factory({
     required String sessionId,
+    required String? runningPromptId,
     required String? runningText,
   }) = _GrokQueueChangedDto;
 
   factory fromJson(Map<String, dynamic> json) => _$GrokQueueChangedDtoFromJson(json);
+}
+
+/// A session notification's `_meta`: Grok's id for the event and when the
+/// agent recorded it. Both are the same live and in `session/load` replay
+/// (verified 1.0.30).
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokEventMetaDto with _$GrokEventMetaDto {
+  const factory({
+    required String? eventId,
+    required int? agentTimestampMs,
+  }) = _GrokEventMetaDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokEventMetaDtoFromJson(json);
 }
 
 /// Grok's `_meta` on a standard `tool_call`: the tool identity behind the

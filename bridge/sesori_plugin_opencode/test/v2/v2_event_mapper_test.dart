@@ -134,7 +134,7 @@ void main() {
                   )
                   .single
               as BridgeSseMessagePartUpdated;
-      expect(start.part.id, "m:2");
+      expect(start.part.id, "m:$kind:2");
       expect(delta.partID, start.part.id);
       expect(delta.field, "text");
       expect(end.part.id, start.part.id);
@@ -142,6 +142,27 @@ void main() {
       expect(end.part, kind == "text" ? isA<PluginMessagePartText>() : isA<PluginMessagePartReasoning>());
     });
   }
+
+  test("text and reasoning with the same ordinal stay separate parts", () {
+    // OpenCode numbers each kind on its own, so a reply's first text and first
+    // reasoning both carry ordinal 0; a late reasoning end must not replace the text.
+    final base = <String, dynamic>{"sessionID": "s", "assistantMessageID": "m", "ordinal": 0};
+    final text =
+        mapper
+                .map(
+                  envelope: frame(type: "session.text.ended", data: {...base, "text": "Fixture"}),
+                )
+                .single
+            as BridgeSseMessagePartUpdated;
+    final reasoning =
+        mapper
+                .map(
+                  envelope: frame(type: "session.reasoning.ended", data: {...base, "text": "Thought"}),
+                )
+                .single
+            as BridgeSseMessagePartUpdated;
+    expect(reasoning.part.id, isNot(text.part.id));
+  });
 
   test("agent, command, provider and model catalog announcements refresh session options", () {
     for (final type in ["agent.updated", "command.updated", "provider.updated", "model.updated", "skill.updated"]) {

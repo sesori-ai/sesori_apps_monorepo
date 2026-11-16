@@ -29,6 +29,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_process_runner.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -85,6 +86,7 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       mutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
       );
@@ -156,6 +158,7 @@ void main() {
       );
       final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       final localMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
       );
@@ -317,6 +320,7 @@ void main() {
       );
       final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       final localMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
       );

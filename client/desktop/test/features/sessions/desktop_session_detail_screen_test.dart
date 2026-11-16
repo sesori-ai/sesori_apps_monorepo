@@ -105,6 +105,7 @@ const _child = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 
@@ -125,6 +126,7 @@ const _session = Session(
   // Local state can still say unseen just after opening.
   unseen: true,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 

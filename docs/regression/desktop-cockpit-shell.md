@@ -229,7 +229,8 @@ The main pane hosts one full-width routed page.
   a pushed subtask or Changes keeps its panel for the return. While it shows, the shell's connection pill sits
   clear of its leading edge, moving with the panel's own slide (at once under reduced motion), so neither the
   pill nor the panel's close button loses a click. Where the window leaves the pill no room beside the panel, it
-  heads for the page's middle instead, over the panel's top and clear of its buttons, so it stays fully on screen. A subtask or Changes page pushed over it takes the pill back
+  heads for the page's middle instead, over the panel's top and clear of its buttons, so it stays fully on screen.
+  A subtask or Changes page pushed over it takes the pill back
   to its place, and popping back hands it to the panel again.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
   else the newest session's project), so returning from a session or restarting lands on that default again, as

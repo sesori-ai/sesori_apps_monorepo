@@ -30,3 +30,22 @@ final class const SessionDetailAutoContinuationAlreadySubmitted() extends Sessio
 
 /// The bridge did not acknowledge a change to the session's approval mode.
 final class const SessionDetailApprovalUpdateFailed() extends SessionDetailNotice;
+
+/// An edit's Resend found the session running a turn. The shell offers to
+/// stop it first; see `SessionDetailCubit.stopAndResendEdit`.
+final class const SessionDetailEditBusy() extends SessionDetailNotice;
+
+/// The bridge refused an edit and nothing changed. [reason] is the harness's
+/// explanation, safe to show, or null when it gave none.
+final class const SessionDetailEditRefused({required final String? reason}) extends SessionDetailNotice;
+
+/// The edit named an agent, model or variant the harness no longer offers.
+/// The options were refreshed; the edit waits for the user to resend.
+final class const SessionDetailEditOptionsChanged() extends SessionDetailNotice;
+
+/// The session did not stop, so the edit was not sent.
+final class const SessionDetailEditStopFailed() extends SessionDetailNotice;
+
+/// The bridge's answer never arrived, so the edit may or may not have run.
+/// Resending is safe: the bridge never applies one edit twice.
+final class const SessionDetailEditFailed() extends SessionDetailNotice;

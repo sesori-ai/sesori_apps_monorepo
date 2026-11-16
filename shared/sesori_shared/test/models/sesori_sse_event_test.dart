@@ -346,6 +346,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionCreated(info: session);
@@ -382,6 +383,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionUpdated(info: session);
@@ -416,6 +418,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionDeleted(info: session);
@@ -706,6 +709,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       );
@@ -728,6 +732,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       );
@@ -750,6 +755,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       );
@@ -999,6 +1005,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       ).toJson();
@@ -1021,6 +1028,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       ).toJson();
@@ -1043,6 +1051,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       ).toJson();

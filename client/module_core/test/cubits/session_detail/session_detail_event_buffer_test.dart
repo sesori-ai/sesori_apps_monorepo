@@ -109,6 +109,7 @@ void main() {
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
+        composerRestore: MockMessageComposerRestoreService(),
         window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
@@ -175,6 +176,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -239,6 +241,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -296,6 +299,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       globalEvents.add(
@@ -334,6 +338,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -410,6 +415,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -471,6 +477,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -549,6 +556,7 @@ void main() {
           isArchived: false,
           cannotContinueMessage: null,
           namesCommandInvocations: false,
+          supportsRewind: false,
         );
       }
 
@@ -623,6 +631,7 @@ void main() {
           isArchived: false,
           cannotContinueMessage: null,
           namesCommandInvocations: false,
+          supportsRewind: false,
         );
       }
 
@@ -694,6 +703,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -820,6 +830,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -892,6 +903,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -987,6 +999,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
@@ -1013,6 +1026,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -1147,6 +1161,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -1280,6 +1295,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1365,6 +1381,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1410,6 +1427,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1488,6 +1506,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
 
       when(
@@ -2003,6 +2022,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2074,6 +2094,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2169,6 +2190,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2253,6 +2275,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2339,6 +2362,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2416,6 +2440,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2541,6 +2566,7 @@ SessionDetailSnapshot _snapshot({
   isArchived: isArchived,
   cannotContinueMessage: null,
   namesCommandInvocations: false,
+  supportsRewind: false,
 );
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {

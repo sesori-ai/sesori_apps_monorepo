@@ -353,7 +353,9 @@ void main() {
       final started = row(mapper.map(_fixture("compaction_auto_started.json")));
       expect(started.message, isA<PluginMessageAssistant>());
       expect(started.message.sessionID, _root);
-      expect(started.message.time?.created, 5000);
+      // The start event's id and time, which its history replay repeats.
+      expect(started.message.id, GrokSessionProtocol.compactionMessageId(sessionId: _root, key: "$_root-13"));
+      expect(started.message.time?.created, 1790000000000);
       expect(started.part.messageID, started.message.id);
       expect(started.part.compactionState, const PluginCompactionState.running(summary: null));
 
@@ -361,7 +363,7 @@ void main() {
       final completedEvents = mapper.map(_fixture("compaction_auto_completed.json"));
       final completed = row(completedEvents);
       expect(completed.message.id, started.message.id);
-      expect(completed.message.time?.created, 5000, reason: "the row keeps its place and timer start");
+      expect(completed.message.time?.created, 1790000000000, reason: "the row keeps its place and timer start");
       expect(completed.part.id, started.part.id);
       expect(
         completed.part.compactionState,
@@ -373,6 +375,13 @@ void main() {
     test("a manual /compact runs from its queue entry, once, and settles with the freed tokens", () {
       final started = row(mapper.map(_fixture("compaction_manual_running.json")));
       expect(started.part.compactionState, const PluginCompactionState.running(summary: null));
+      // The `/compact` prompt's id, which its replay's turn end repeats; the
+      // queue entry has no time, so the bridge stamps it.
+      expect(
+        started.message.id,
+        GrokSessionProtocol.compactionMessageId(sessionId: _root, key: "00000000-0000-4000-8000-0000000000c1"),
+      );
+      expect(started.message.time?.created, 5000);
       // Every queue change while it runs repeats the running entry.
       expect(row(mapper.map(_fixture("compaction_manual_running.json"))).message.id, started.message.id);
 
@@ -409,7 +418,18 @@ void main() {
       expect(failed.message.id, started.message.id);
       expect(failed.part.compactionState, const PluginCompactionState.failed(reason: null));
 
-      final retried = row(mapper.map(_fixture("compaction_auto_started.json")));
+      final retry = _fixture("compaction_auto_started.json");
+      final retried = row(
+        mapper.map(
+          AcpNotification(
+            method: retry.method,
+            params: {
+              ...retry.params,
+              "_meta": {"eventId": "$_root-16", "agentTimestampMs": 1790000000100},
+            },
+          ),
+        ),
+      );
       expect(retried.message.id, isNot(started.message.id));
       expect(retried.part.compactionState, const PluginCompactionState.running(summary: null));
     });
