@@ -26,7 +26,7 @@
 | 15.d Codex later-prompt edit fold settles without rows bouncing (`[step 21/24]`) | Merged | #2727 |
 | 15.e Relay observer keeps its anchor through an edit (`[step 22/24]`) | In review | #2728 |
 | 15.f No Working row flash between a streamed reply and idle (`[step 23/24]`) | Not started | |
-| 15 Reconcile docs, verify and retire (`[step 23/24]`) | In progress: waits on 15.a-15.e | |
+| 15 Reconcile docs, verify and retire (`[step 24/24]`) | In progress: waits on 15.e-15.f | |
 
 Steps 2, 5, 7 and 9 depend on nothing in this plan and can run in parallel. Step 4 needs 3. Step 6 needs 3 and 5;
 step 8 needs 3 and 7. Step 9.b needs 9. Step 10 needs 2, 4 and 9 (and 6 or 8 for a
