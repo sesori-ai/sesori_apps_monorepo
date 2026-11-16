@@ -104,7 +104,7 @@ harness declares `fork`.
   stop that fails or does not finish keeps the edit and says so.
 - While the edit is Stopping or Sending, the composer dims to 60 % opacity and takes
   no input: typing, paste, drops, adding or removing attachments, voice and the
-  expanded editor all answer with "Sending your edit. You can type again in a
+  expanded editor all answer with "Your edit is on its way. You can type again in a
   moment." instead, and so does a tap anywhere on it. A focused field keeps the
   keyboard up, so nothing moves. The dimming fades in and out over about
   200 ms, at once under reduced motion. Phone and desktop share this through

@@ -155,10 +155,19 @@ class SessionActionService({
     required String targetSessionId,
   }) async {
     final computer = await _selectedComputerService.targetBridgeId();
-    final result = await _sessionRepository.sendToSession(
+    final result = switch (await _sessionRepository.sendToSession(
       sourceSessionId: sourceSessionId,
       targetSessionId: targetSessionId,
-    );
+    )) {
+      final SendToSessionUnconfirmed unconfirmed =>
+        await _recoverLostOutcome(
+              sourceSessionId: sourceSessionId,
+              targetSessionId: targetSessionId,
+              computer: computer,
+            ) ??
+            unconfirmed,
+      final answered => answered,
+    };
     // Reported even after a computer switch: the send still ran on the computer the app left.
     _reportSendOutcome(sourcePluginId: sourcePluginId, result: result);
     final description = "session $sourceSessionId to $targetSessionId";
@@ -173,12 +182,115 @@ class SessionActionService({
         logw("[SessionActions] could not send $description: the bridge predates sending sessions");
       case SendToSessionRefused(:final code):
         logd("[SessionActions] did not send $description: ${code.name}");
+      case SendToSessionNotSent():
+        logd("[SessionActions] did not send $description: its request is marked not sent");
       case SendToSessionFailed(:final error):
         loge("Failed to send $description", error);
       case SendToSessionUnconfirmed(:final error):
         logw("Could not confirm sending $description", error);
     }
     return result;
+  }
+
+  /// How often a send whose answer was lost reads the two transcripts.
+  static const Duration _lostOutcomeCheckInterval = Duration(seconds: 10);
+
+  /// How long it keeps reading: the bridge waits as long for the summary, so
+  /// an outcome missing by then is not coming.
+  static const int _lostOutcomeChecks = 90;
+
+  /// The newest messages read from each session, enough to hold the summary
+  /// request with its reply, or the handoff prompt behind the target's reply.
+  static const int _lostOutcomeMessageLimit = 30;
+
+  /// Finds the outcome of a send whose answer never arrived, typically
+  /// because a phone in the background lost its connection while the source
+  /// wrote. The bridge finishes the send regardless and records it: the
+  /// source's summary request is marked not sent when the send fails, and the
+  /// target holds the handoff prompt once it accepted. Reads fail while the
+  /// app is offline, so the next check tries again. Null when the outcome
+  /// does not show in time, or the app moved to another computer.
+  Future<SendToSessionResult?> _recoverLostOutcome({
+    required String sourceSessionId,
+    required String targetSessionId,
+    required String? computer,
+  }) async {
+    for (var check = 0; check < _lostOutcomeChecks; check++) {
+      await Future<void>.delayed(_lostOutcomeCheckInterval);
+      if (await _selectedComputerService.targetBridgeId() != computer) return null;
+      final request = await _newestSummaryRequest(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+      switch (request) {
+        case (stamp: MessageHandoffNotSent(), created: _):
+          return const SendToSessionNotSent();
+        case (stamp: MessageHandoffSent(), :final created):
+          final accepted = await _targetHoldsHandoff(
+            sourceSessionId: sourceSessionId,
+            targetSessionId: targetSessionId,
+            notBefore: created,
+          );
+          if (accepted) return const SendToSessionSent();
+        case (stamp: MessageHandoffReceived() || MessageHandoffUnknown(), created: _) || null:
+          break;
+      }
+    }
+    return null;
+  }
+
+  /// The stamp on the source's newest summary request for the target, with
+  /// when the bridge wrote it, or null when the read failed or holds none
+  /// with a time yet.
+  Future<({MessageHandoff stamp, int created})?> _newestSummaryRequest({
+    required String sourceSessionId,
+    required String targetSessionId,
+  }) async {
+    final messages = await _newestMessages(sessionId: sourceSessionId);
+    for (final message in messages.reversed) {
+      if (message.info
+          case MessageUser(
+            handoff: final stamp? &&
+                (MessageHandoffSent(targetSessionId: final to) || MessageHandoffNotSent(targetSessionId: final to)),
+            time: MessageTime(:final created),
+          )
+          when to == targetSessionId) {
+        return (stamp: stamp, created: created);
+      }
+    }
+    return null;
+  }
+
+  /// Whether the target holds a handoff prompt from the source written no
+  /// earlier than [notBefore], so one left by an earlier send of the same
+  /// source does not count.
+  Future<bool> _targetHoldsHandoff({
+    required String sourceSessionId,
+    required String targetSessionId,
+    required int notBefore,
+  }) async {
+    final messages = await _newestMessages(sessionId: targetSessionId);
+    return messages.any(
+      (message) => switch (message.info) {
+        MessageUser(
+          handoff: MessageHandoffReceived(sourceSessionId: final from),
+          time: MessageTime(:final created),
+        ) =>
+          from == sourceSessionId && created >= notBefore,
+        MessageUser() || MessageAssistant() || MessageError() => false,
+      },
+    );
+  }
+
+  Future<List<MessageWithParts>> _newestMessages({required String sessionId}) async {
+    final response = await _sessionRepository.getMessages(
+      sessionId: sessionId,
+      limit: _lostOutcomeMessageLimit,
+      before: null,
+      storedOnly: false,
+    );
+    return switch (response) {
+      SuccessResponse(:final data) => data.messages,
+      // Offline until the app reconnects; the next check reads again.
+      ErrorResponse() => const [],
+    };
   }
 
   void _reportSendOutcome({required String sourcePluginId, required SendToSessionResult result}) {
@@ -206,6 +318,9 @@ class SessionActionService({
           SendToSessionErrorCode.targetRefused ||
           SendToSessionErrorCode.unknown => AnalyticsSessionSendOutcome.refusedOther,
         };
+      // The bridge declined it; only the answer saying why was lost.
+      case SendToSessionNotSent():
+        outcome = AnalyticsSessionSendOutcome.refusedOther;
       case SendToSessionFailed():
         outcome = AnalyticsSessionSendOutcome.failed;
       case SendToSessionUnsupported():
