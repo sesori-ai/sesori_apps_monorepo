@@ -1413,7 +1413,7 @@ prompt does to a target that is running, from each plugin's
 | OMP 18.20.2 (ACP) | ✅ | ✅ | ✅ Read it when asked, but kept working on its own todo instead of answering. | No. | Steers into the running turn.¹ |
 | Grok Build 1.0.30 | ✅ | ✅ | ✅ Read it when asked, with read. | No, with `permission_mode` both `always-approve` and `ask`. | Stops the running turn. |
 | Hermes 0.21.5 (ACP) | ✅ | ✅ | ✅ Read it when asked.² | No. | Stops the running turn. |
-| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime needs a DeepSeek account, and live checks run only on the test proxy. | Unverified. | Stops the running turn. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime offers a fixed DeepSeek model list, so it can't be pointed at the test proxy that live checks use. | Unverified. | Stops the running turn. |
 | Cursor (ACP) | ✅ | ✅ | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. | Stops the running turn. |
 | Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 | Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
@@ -1441,6 +1441,13 @@ with no permission request for the read. On a headless iOS simulator, the Pi
 source showed "Summary sent to … · Open" and "Couldn't send to …" markers and
 the "Handoff summary" sheet. The Codex target showed the "From …" card, which
 Show all expanded.
+Later the same day, on a headless iOS simulator with Claude and Codex as
+source and target in both directions, the send from the session menu and a
+list row, the "Writing a summary…" marker, the archive switch with Undo, the
+pinned-source confirmation, a busy source with Stop, and the update alert from
+a bridge older than session sending all passed. An OMP target whose saved agent
+OMP no longer offers is now refused before acceptance and corrected, instead of
+dropping the handoff.
 
 Stale saved options on the target, a model, mode or reasoning level the harness
 no longer lists:

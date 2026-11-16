@@ -15,7 +15,7 @@
 | 9 Archive the source after sending | Done | #2669 |
 | 10 Analytics | Done | #2661 |
 | 11 Reconcile docs and harness rows | Done | #2682 |
-| 12 Verify and retire | In PR | |
+| 12 Verify and retire | Done | this PR |
 
 Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
 9←7.a; 10←7; 11←5,8,8.a,9,10; 12←11.
