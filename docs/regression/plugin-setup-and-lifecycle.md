@@ -455,8 +455,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   reports dormant, not failed, while and after the generation is torn down, so an open
   chat stays usable and the next request starts a fresh app-server. A nonzero exit, a
   clean exit before startup completes, a terminal plugin failure, a failed teardown,
-  or a failed start still reports failed. A connect the exited app-server refuses
-  fails only that connect attempt and is logged; it never crashes the bridge.
+  or a failed start still reports failed. A connection refused because the app-server
+  exited fails only that connection attempt and is logged; it never crashes the bridge.
   A root remains busy for lifecycle and safe-stop purposes while any tracked
   child turn runs, even after the root's own turn completes. Lifecycle-wide
   interruption snapshots active roots, children, pending turn admissions, and
