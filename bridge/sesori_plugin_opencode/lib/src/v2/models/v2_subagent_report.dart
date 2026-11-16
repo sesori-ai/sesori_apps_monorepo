@@ -57,15 +57,16 @@ final class const V2SubagentReport({
     return null;
   }
 
-  /// The text between the opening tag and the closing one. The opening tag
-  /// ends at its last attribute's closing quote, whether or not attribute
-  /// values are escaped.
+  /// The text between the opening tag and the closing one. OpenCode puts the
+  /// body on the line after the opening tag, so the tag ends at the first
+  /// closing quote followed by a newline. That holds whether or not attribute
+  /// values are escaped, and when a single-line description contains `">`.
   static String? _envelopeBody({required String text}) {
     final trimmed = text.trim();
     if (!trimmed.startsWith(_openTag) || !trimmed.endsWith(_closeTag)) return null;
-    final openEnd = trimmed.indexOf('">');
+    final openEnd = trimmed.indexOf('">\n');
     if (openEnd < 0) return null;
-    final bodyStart = openEnd + 2;
+    final bodyStart = openEnd + 3;
     final bodyEnd = trimmed.length - _closeTag.length;
     if (bodyStart > bodyEnd) return null;
     return trimmed.substring(bodyStart, bodyEnd).trim();

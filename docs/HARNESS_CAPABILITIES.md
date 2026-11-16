@@ -49,7 +49,8 @@ comes from `metadata.state` (`completed`, `error`, `cancelled`; anything else
 shows as finished and is logged at debug), and its output is the envelope's
 body, or the error on failure. An envelope that does not parse keeps the whole
 text as output. A report missing its agent or description, and any other
-synthetic message, stays a plain Automation text row showing its description.
+synthetic message, stays a plain Automation text row showing its description
+when present, otherwise its full text.
 
 Verified on **2026-09-25** with native Claude Code **2.1.281**, an isolated MCP
 socket sender and a loopback model fixture: idle wake-up, live stdout provenance

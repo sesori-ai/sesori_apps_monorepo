@@ -297,6 +297,16 @@ void main() {
       expect((part.taskState ?? fail("expected a task state")).output, "Line one\n\nLine two");
     });
 
+    test("reads the body when an unescaped description contains a closing quote and bracket", () {
+      final part = subtask(
+        json: report(
+          text: '<subagent sessionID="ses_child" state="completed" description="rename "a">b"">\nRenamed\n</subagent>',
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, "Renamed");
+    });
+
     test("keeps the still-running list a report appends to its answer", () {
       const body = "Answer\n\nBackground work still running:\n- shell (sh_1): sleep 5";
       final part = subtask(

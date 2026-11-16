@@ -615,10 +615,11 @@ defaults and queued client sends coherent.
 - An OpenCode 2.3.0 background sub-agent's report (a synthetic parent
   message with `metadata.source: subagent`) renders as an Automation row
   holding one finished sub-agent step: agent and description, a link to the
-  child session, failed when the report's state is `error`, and the child's
-  answer (or error) from the `<subagent>` envelope carried as its output. An
-  envelope that does not parse keeps the whole text. Live delivery and history
-  reload produce the same message id and part.
+  child session, failed when the report's state is `error`, and the
+  `<subagent>` envelope's body carried as its output, or as its error detail
+  on failure. An envelope that does not parse keeps the whole text. A report
+  missing its agent or description keeps the plain Automation text row. Live
+  delivery and history reload produce the same message id and part.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
