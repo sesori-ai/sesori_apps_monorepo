@@ -95,8 +95,8 @@ declaration into a `SideQuestionAvailability`: `available`,
   replaces an open panel's chat with a new one asking it. See
   [desktop-cockpit-shell.md](desktop-cockpit-shell.md) for focus, the
   connection pill and pushed pages.
-- It runs from under the toolbar to 12 pt above the controls docked at the
-  page's bottom (the composer, and any card or notice above it), so the
+- It runs from 12 pt under the toolbar to 12 pt above the controls docked at
+  the page's bottom (the composer, and any card or notice above it), so the
   composer's Send and Stop stay clickable. Its bottom edge follows the
   composer as a draft grows or folds, after a frame. Where that leaves it
   shorter than 300 pt, it keeps 300 pt and runs over the composer's top, by

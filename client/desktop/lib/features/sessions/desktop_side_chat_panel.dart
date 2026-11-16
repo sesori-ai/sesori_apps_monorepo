@@ -29,8 +29,9 @@ typedef DesktopSideChatPageBuilder = Widget Function(
 });
 
 /// A session page's side chats, in a panel that floats over the page's trailing
-/// edge, from under the toolbar to just above the composer, so the composer's
-/// Send and Stop stay in reach. With no composer it runs to the page's bottom.
+/// edge, from just under the toolbar to just above the composer, so the
+/// composer's Send and Stop stay in reach. With no composer it runs to the
+/// page's bottom.
 ///
 /// The panel slides in from the window's edge by transform, like the sidebar,
 /// so the transcript neither moves nor reflows, and the page around it keeps
@@ -52,10 +53,10 @@ class const DesktopSideChatPanelHost({
   State<DesktopSideChatPanelHost> createState() => _DesktopSideChatPanelHostState();
 }
 
-/// The gap the panel keeps from the window's trailing and bottom edges, and
-/// from the top of the controls docked at the page's bottom. The composer keeps
-/// 8 pt of clear room above its surface, so the panel's edge stands 20 pt clear
-/// of the composer itself.
+/// The gap the panel keeps from the toolbar, the window's trailing and bottom
+/// edges, and the top of the controls docked at the page's bottom. The composer
+/// keeps 8 pt of clear room above its surface, so the panel's edge stands 20 pt
+/// clear of the composer itself.
 const double _inset = PregoSpacing.lg;
 
 /// The shortest the panel gets to stay above the composer. Where a short
@@ -208,7 +209,7 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
           context,
           openSideChat: _open,
           panel: PositionedDirectional(
-            top: DesktopPageToolbar.height,
+            top: DesktopPageToolbar.height + _inset,
             bottom: _inset,
             end: _inset,
             width: DesktopSideChatPanelHost.width,

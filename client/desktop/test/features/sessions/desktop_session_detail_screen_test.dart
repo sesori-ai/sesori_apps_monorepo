@@ -1054,7 +1054,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 220));
         final rect = tester.getRect(panel);
         expect(rect.width, DesktopSideChatPanelHost.width);
-        expect(rect.top, DesktopPageToolbar.height);
+        expect(rect.top, DesktopPageToolbar.height + PregoSpacing.lg);
         expect(rect.right, 1400 - PregoSpacing.lg);
         // It stops above the composer, which keeps its place and its clicks.
         expect(rect.bottom, tester.getRect(composerControls).top - PregoSpacing.lg);
