@@ -338,11 +338,6 @@ class OpenCodeV2Plugin._({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
-  /// OpenCode sends Anthropic no cache lifetime, so it gets Anthropic's
-  /// 5-minute default. Other providers' lives are unknown.
   @override
-  Future<Duration?> getPromptCacheLife({required String sessionId}) async =>
-      (await _service.sessionModel(sessionId: sessionId))?.providerID == "anthropic"
-      ? const Duration(minutes: 5)
-      : null;
+  Future<Duration?> getPromptCacheLife({required String sessionId}) => _service.promptCacheLife(sessionId: sessionId);
 }

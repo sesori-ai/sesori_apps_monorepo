@@ -1162,7 +1162,7 @@ scheduled-task session while the cache is still warm. Null means unknown.
 
 | Harness | Prompt-cache life |
 |---|---|
-| Claude | 1 hour on a subscription or an unknown route, 5 minutes on an API key, Bedrock or Vertex, read from the init handshake's account. |
+| Claude | Read from the init handshake's account: 1 hour when it reports `subscriptionType` (even with `apiProvider`), 5 minutes when it reports `apiProvider` without one (API key, Bedrock or Vertex), and 1 hour when it reports neither. |
 | Codex | 30 minutes. |
 | OpenCode v2 | 5 minutes for an Anthropic model (OpenCode sends no cache lifetime); unknown for other providers. |
 | OpenCode v1 | Unknown; v1 does not compact on request. |

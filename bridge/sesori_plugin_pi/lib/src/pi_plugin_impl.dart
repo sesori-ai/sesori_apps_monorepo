@@ -296,7 +296,9 @@ final class PiPlugin._({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) =>
       _sessionService.getSessionReadiness(sessionId: sessionId);
 
-  /// Pi's default "short" cache retention: 5 minutes on Anthropic.
+  /// Pi's default "short" cache retention, 5 minutes on Anthropic, taken for
+  /// every provider: a life guessed too short only compacts while the cache
+  /// may still be warm.
   @override
   Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
 

@@ -838,7 +838,7 @@ consecutive-failure auto-pause, a new push category.
 ## Delivery Rules
 
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
-  `<emoji> [scheduled-tasks] <description> [step x/18]`.
+  `<emoji> [scheduled-tasks] <description> [step x/20]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4.b, 5, 11). Drift
   and Freezed output can push steps 2 and 3.a over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
