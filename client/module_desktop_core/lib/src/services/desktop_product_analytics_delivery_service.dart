@@ -114,19 +114,13 @@ class DesktopProductAnalyticsDeliveryService({
   /// allow. Listing every event makes a new one fail to compile until someone
   /// decides whether it reaches the warehouse.
   Map<String, String>? _wireParams({required ProductAnalyticsEvent event}) => switch (event) {
-    HarnessInstallFinishedEvent() ||
-    TranscriptPromptsOpenedEvent() ||
     // Phone-only: the desktop download link is offered on the phone's
     // connect onboarding, never by the desktop app itself.
     DesktopLinkCopiedEvent() ||
     DesktopLinkSharedEvent() ||
-    ComputerSwitchedEvent() ||
-    ComputerManagedEvent() ||
-    SessionPinChangedEvent() ||
     FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() ||
-    SideQuestionAskedEvent() ||
     SessionMessageEditedEvent() ||
     SessionSentToSessionEvent() => null,
     // The warehouse has no `finish` or `mode` column, and a server enum would
@@ -154,6 +148,12 @@ class DesktopProductAnalyticsDeliveryService({
     InstallCommandSharedEvent() ||
     RunCommandCopiedEvent() ||
     RunCommandSharedEvent() ||
-    ProductScreenViewedEvent() => event.parameters,
+    ProductScreenViewedEvent() ||
+    HarnessInstallFinishedEvent() ||
+    TranscriptPromptsOpenedEvent() ||
+    ComputerSwitchedEvent() ||
+    ComputerManagedEvent() ||
+    SessionPinChangedEvent() ||
+    SideQuestionAskedEvent() => event.parameters,
   };
 }
