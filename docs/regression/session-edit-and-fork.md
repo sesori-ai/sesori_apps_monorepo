@@ -208,9 +208,10 @@ harness declares `fork`.
   directory with the edited prompt as its first prompt (with the worktree
   context, for a dedicated worktree) and moves the same Sesori session onto
   it in one transaction. The new harness session's events reach clients under
-  the unchanged session id, with no `session.created`. The edited prompt
-  reaches clients no later than the removal of the old rows, so the transcript
-  never shows only Working between them. Claude Code shows a new session's
+  the unchanged session id, with no `session.created`. On Claude Code and
+  Codex the edited prompt reaches clients no later than the removal of the old
+  rows, so the transcript never shows only Working between them: Codex's
+  running app-server echoes it at once, and Claude Code shows a new session's
   first prompt as soon as it is written, without waiting the seconds a new
   CLI process takes to echo it.
 - The old harness session is deleted the way a session delete does it: it and
