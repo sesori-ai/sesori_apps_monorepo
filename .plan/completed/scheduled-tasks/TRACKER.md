@@ -62,3 +62,41 @@ of 13; 3.a, 7 and 10 merged before step 4 split and keep 14.
 3.b, 4.a and 4.b keep the /15 in their published titles; 5 and 8.a.1 merged
 at /17 before step 9 split, and keep it.
 6, 8.a.2, 8.b, 9.a and 9.b merged at /18 before step 11 split, and keep it.
+
+## L3 Regression Result (2026-11-16)
+
+**Result: Partial, plan retired.** Every executable L3 cell passed, apart from the Blocked cells below. The findings
+were fixed in their own PRs before retirement. Run on main `75984230e8`, with re-checks on the fixes. Live harnesses
+ran only through the local 9router proxy, and the client cells ran on a headless iOS simulator (iPhone 17).
+
+| Cell | Result | Evidence |
+|---|---|---|
+| CRUD, validation and pause through the routes | Passed | Create, edit, pause, resume and delete. Every refusal code was hit. A paused task stays paused after an edit (`scheduled_task_service_test.dart`) |
+| One-off a few minutes ahead | Passed | Fired on time and left the list. No completion push |
+| Missed runs across a bridge stop | Passed | Run when it's back fired once, marked late. Wait for the next time recorded missed, no fire |
+| Overlap skip | Passed | Waiting on a permission: skipped. The working variant is covered by the run-service suite |
+| Run now refusal and failure push | Passed after #2719 | Refused while a run works or waits. A Run now failure sends no push; a scheduled one pushes. A deleted project folder read `startFailed` until #2719 (F2) |
+| At-most-once after a forced crash | Passed | SIGKILL 50 ms after the run row was written: no harness start and no second send after restart |
+| Auto-archive | Passed | Pinned, busy and uncommitted-work sessions kept, five kept. The repository test covers pinned sessions never being counted |
+| Completion suppression and can't-start push dispatch | Passed | No completion push for unattended runs or compactions. A user prompt pushes. Failure pushes collapse per task |
+| Run firing, Claude Code 2.1.325 and Codex 0.169.0 | Passed after #2717 | New and same session, and an archived target replaced, on both. Codex first crashed the bridge when its app-server, having exited while idle, refused the next connect (F1). The re-check against `2796e0f564` passed: after an idle code-0 exit Codex went dormant, and Run now and a scheduled one-off each started a fresh app-server and got a reply, across 4 generations with no unhandled error. The refused-connect race never happened live; #2717's unit test covers it |
+| Compaction on request | Partial | Passed: OpenCode v2 2.3.0, Pi 1.5.2, Hermes 0.21.5, Claude, Codex. OMP 18.20.2 answers "Nothing to compact" on a small session (known limitation). Blocked, needs a real account: Grok 1.0.30, DeepSeek 0.2.2, Cursor 2026.07.23. Blocked, not installed: Copilot, Antigravity, OpenCode v1. The plugin suites cover them |
+| Auto-compact policy, Claude and Codex | Passed | One compaction after the window (Claude after 3 min, Codex after 25 min), a due run compacted first and held, a user prompt cancels |
+| Scheduled page | Passed | Both headings and switches, pause and resume persisted |
+| New task screen and its sheets | Passed | Nothing behind the sheets moved across 9 preset and 5 run-mode switches. Rows fold with size and fade |
+| Save and edit | Passed | Stored values and the task page match |
+| Run now on the phone | Passed | "Run started", then the "previous run is still going" refusal |
+| Run marks | Passed | Repeat glyph and clock with the task name, plus screen-reader labels |
+| Inert Auto-compact switch | Blocked | Every installed harness can compact. Antigravity was not installed, because that means accepting Google's terms. The 11.c widget tests cover the switch and its explanation |
+| Update row against a v1.13.1 bridge | Passed | The Scheduled page, task page and editor show it, and a tap opens the update steps |
+
+### Findings and their fixes
+
+- **F1:** a refused Codex app-server connection crashed the bridge. Fixed in #2717 (`2796e0f564`).
+- **F2:** a deleted project folder was reported as `startFailed`. Fixed in #2719 (`77b440c240`).
+- **Zone label:** a paused task that never ran always named its zone, even in the device's zone. **Editor:** the update row had doubled padding and the title wasn't centred. Both fixed in #2718 (`7aff573534`).
+- **F4, Hermes:** the reply showed twice. Fixed in #2720 (`d48566f823`).
+- **OMP:** "Nothing to compact" counts as accepted. Spending one run's ask is low damage, so it is recorded as a known limitation in the regression doc.
+- **Decisions for the next scheduled-tasks review page:**
+  - whether "Every few hours" should show its start time;
+  - whether Run now should be refused for 30 seconds after a short run.
