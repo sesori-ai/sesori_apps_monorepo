@@ -6855,6 +6855,30 @@ void main() {
       expect(messageArea(tester, first).selectedText, isNull);
       expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
     });
+
+    testWidgets(
+      "after Select text, the start handle runs into the message above",
+      (tester) async {
+        await _pumpTurns(tester, messages: replies);
+        await tester.longPress(find.text(second));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Select text"));
+        await tester.pumpAndSettle();
+
+        // The start handle stands on the selection's first character.
+        final handle = await tester.startGesture(tester.getTopLeft(find.text(second)) + const Offset(0, 4));
+        await tester.pump();
+        await handle.moveTo(tester.getCenter(find.text(second)) - const Offset(0, 20));
+        await tester.pump();
+        await handle.moveTo(tester.getTopLeft(find.text(first)) + const Offset(1, 5));
+        await tester.pump();
+        await handle.up();
+        await tester.pumpAndSettle();
+
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   });
 }
 

@@ -77,17 +77,17 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
   }
 
   /// Selects all of [nested]'s text and nothing else. Selecting everything
-  /// first shows the handles and toolbar, then a paragraph selection at
-  /// [nested]'s text narrows it to that area. A scrollable between them takes
-  /// a paragraph selection as a triple-click, and a select-all only as
-  /// selecting all it holds.
+  /// first shows the handles and toolbar, then a word selection at [nested]'s
+  /// text narrows it to that area. A scrollable between them takes a
+  /// select-all only as selecting all it holds, and records the edges of a
+  /// word selection, which a handle dragged into another area needs.
   void _selectOnly({required _ReadableSelectionContainerDelegate nested}) {
     final anchor = nested.textAnchor;
     if (anchor == null) return;
     selectAll();
     _selectionDelegate.only = nested;
     try {
-      _selectionDelegate.dispatchSelectionEvent(SelectParagraphSelectionEvent(globalPosition: anchor));
+      _selectionDelegate.dispatchSelectionEvent(SelectWordSelectionEvent(globalPosition: anchor));
     } finally {
       _selectionDelegate.only = null;
     }
@@ -211,7 +211,7 @@ class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) ex
   /// The outer area's delegate, while this one's area is nested in it.
   _ReadableSelectionContainerDelegate? outer;
 
-  /// The nested delegate a paragraph selection selects all of, while it runs.
+  /// The nested delegate a word selection selects all of, while it runs.
   _ReadableSelectionContainerDelegate? only;
 
   /// A point on this area's first text, in global coordinates, or null when
@@ -232,7 +232,7 @@ class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) ex
   }
 
   @override
-  SelectionResult handleSelectParagraph(SelectParagraphSelectionEvent event) {
+  SelectionResult handleSelectWord(SelectWordSelectionEvent event) {
     if (only != null) {
       // Cleared within the same event, the region never sees the selection
       // empty, which would drop its handles and toolbar.
@@ -241,7 +241,7 @@ class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) ex
       handleSelectAll(const SelectAllSelectionEvent());
       return SelectionResult.end;
     }
-    return super.handleSelectParagraph(event);
+    return super.handleSelectWord(event);
   }
 
   @override
