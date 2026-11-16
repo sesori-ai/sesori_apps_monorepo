@@ -88,11 +88,11 @@ class WorktreeRepository({
         worktreePath: worktreePath,
         branchName: branchName,
       );
-      return added ? WorktreeRecreated() : WorktreeRecreationFailed();
+      return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
     }
     final startPoint = baseCommit ?? baseBranch;
-    if (startPoint == null) return WorktreeRecreationFailed();
-    if (!fromBase) return WorktreeRecreationBranchMissing();
+    if (startPoint == null) return WorktreeRecreation.failed;
+    if (!fromBase) return WorktreeRecreation.branchMissing;
     final added = branchName == null
         ? await _gitApi.createWorktree(projectPath: projectPath, worktreePath: worktreePath, startPoint: startPoint)
         : await _gitApi.addWorktreeOnNewBranch(
@@ -101,7 +101,7 @@ class WorktreeRepository({
             branchName: branchName,
             startPoint: startPoint,
           );
-    return added ? WorktreeRecreated() : WorktreeRecreationFailed();
+    return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
   }
 
   /// The live directory for [projectId] — where git operations for the

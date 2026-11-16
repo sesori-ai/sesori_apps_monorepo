@@ -17,8 +17,9 @@ T _$identity<T>(T value) => value;
 mixin _$ForkSessionRequest {
 
  String get sessionId; ForkPoint get point;/// Whether an archived origin whose worktree and branch are both gone
-/// gets a new worktree from its base branch, at the same path. Sent only
-/// on the retry after a `worktreeBranchMissing` refusal.
+/// gets a new worktree at the same path, starting at the commit of its
+/// base branch it began from. Sent only on the retry after a
+/// `worktreeBranchMissing` refusal.
  bool get recreateFromBase;
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -106,8 +107,9 @@ class _ForkSessionRequest implements ForkSessionRequest {
 @override final  String sessionId;
 @override final  ForkPoint point;
 /// Whether an archived origin whose worktree and branch are both gone
-/// gets a new worktree from its base branch, at the same path. Sent only
-/// on the retry after a `worktreeBranchMissing` refusal.
+/// gets a new worktree at the same path, starting at the commit of its
+/// base branch it began from. Sent only on the retry after a
+/// `worktreeBranchMissing` refusal.
 @override final  bool recreateFromBase;
 
 /// Create a copy of ForkSessionRequest

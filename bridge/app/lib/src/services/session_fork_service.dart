@@ -127,11 +127,11 @@ class SessionForkService({
         fromBase: recreateFromBase,
       );
       switch (recreation) {
-        case WorktreeRecreated():
+        case WorktreeRecreation.recreated:
           Log.i("Recreated worktree $worktreePath of archived session $sessionId to fork it");
-        case WorktreeRecreationBranchMissing():
+        case WorktreeRecreation.branchMissing:
           throw _refusal(code: SessionBranchErrorCode.worktreeBranchMissing, message: null);
-        case WorktreeRecreationFailed():
+        case WorktreeRecreation.failed:
           throw _refusal(
             code: SessionBranchErrorCode.refused,
             message: "This session's worktree was removed and could not be recreated.",

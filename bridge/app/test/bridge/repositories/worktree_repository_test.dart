@@ -309,7 +309,7 @@ void main() {
       await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
       expect(await repo.worktreeExists(worktreePath: worktreePath), isFalse);
 
-      expect(await recreate(branchName: "sesori/task", fromBase: false), isA<WorktreeRecreated>());
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.recreated);
 
       expect(await repo.worktreeExists(worktreePath: worktreePath), isTrue);
       expect(await headBranch(), "sesori/task");
@@ -320,26 +320,26 @@ void main() {
       await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "sesori/task", worktreePath, baseCommit]);
       await Directory(worktreePath).delete(recursive: true);
 
-      expect(await recreate(branchName: "sesori/task", fromBase: false), isA<WorktreeRecreated>());
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.recreated);
 
       expect(await headBranch(), "sesori/task");
     });
 
     test("a missing branch is reported until recreating from the base is asked for", () async {
-      expect(await recreate(branchName: "sesori/gone", fromBase: false), isA<WorktreeRecreationBranchMissing>());
+      expect(await recreate(branchName: "sesori/gone", fromBase: false), WorktreeRecreation.branchMissing);
       expect(Directory(worktreePath).existsSync(), isFalse);
 
       await git(cwd: repoPath, args: ["commit", "--quiet", "--allow-empty", "-m", "later"]);
-      expect(await recreate(branchName: "sesori/gone", fromBase: true), isA<WorktreeRecreated>());
+      expect(await recreate(branchName: "sesori/gone", fromBase: true), WorktreeRecreation.recreated);
 
       expect(await headBranch(), "sesori/gone");
       expect(await head(), baseCommit);
     });
 
     test("a detached worktree kept no branch, so it is recreated detached at the base commit", () async {
-      expect(await recreate(branchName: null, fromBase: false), isA<WorktreeRecreationBranchMissing>());
+      expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
 
-      expect(await recreate(branchName: null, fromBase: true), isA<WorktreeRecreated>());
+      expect(await recreate(branchName: null, fromBase: true), WorktreeRecreation.recreated);
 
       expect(await headBranch(), isNull);
       expect(await head(), baseCommit);
@@ -350,7 +350,7 @@ void main() {
       await git(cwd: repoPath, args: ["branch", "sesori/task"]);
       await git(cwd: repoPath, args: ["checkout", "--quiet", "sesori/task"]);
 
-      expect(await recreate(branchName: "sesori/task", fromBase: false), isA<WorktreeRecreationFailed>());
+      expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.failed);
 
       expect(Directory(worktreePath).existsSync(), isFalse);
     });

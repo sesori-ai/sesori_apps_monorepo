@@ -21,13 +21,13 @@ class WorktreeSuccess({
 class WorktreeFallback({required final String originalPath, required final String reason}) extends WorktreeResult;
 
 /// What recreating a removed worktree at its old path did.
-sealed class WorktreeRecreation();
+enum WorktreeRecreation() {
+  recreated,
 
-class WorktreeRecreated() extends WorktreeRecreation;
+  /// The branch the worktree was on is gone, or it kept none (a detached
+  /// HEAD), and recreating from the base was not asked for.
+  branchMissing,
 
-/// The branch the worktree was on is gone, or it kept none (a detached HEAD),
-/// and recreating from the base was not asked for.
-class WorktreeRecreationBranchMissing() extends WorktreeRecreation;
-
-/// Git could not add the worktree, or there is no base to start it from.
-class WorktreeRecreationFailed() extends WorktreeRecreation;
+  /// Git could not add the worktree, or there is no base to start it from.
+  failed,
+}

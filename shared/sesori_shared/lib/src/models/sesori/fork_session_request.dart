@@ -14,8 +14,9 @@ sealed class ForkSessionRequest with _$ForkSessionRequest {
     required ForkPoint point,
 
     /// Whether an archived origin whose worktree and branch are both gone
-    /// gets a new worktree from its base branch, at the same path. Sent only
-    /// on the retry after a `worktreeBranchMissing` refusal.
+    /// gets a new worktree at the same path, starting at the commit of its
+    /// base branch it began from. Sent only on the retry after a
+    /// `worktreeBranchMissing` refusal.
     required bool recreateFromBase,
   }) = _ForkSessionRequest;
 
