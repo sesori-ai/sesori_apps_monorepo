@@ -43,5 +43,10 @@ class ScheduledTaskApi({required final RelayHttpApiClient _client}) {
     "/scheduled-task/run-now",
     body: ScheduledTaskIdRequest(taskId: taskId),
     fromJson: ScheduledTaskRunResponse.fromJson,
+    // The bridge answers once the run's session has started, which can mean a
+    // cold harness or a new worktree, like creating a session.
+    timeout: _runNowTimeout,
   );
+
+  static const Duration _runNowTimeout = Duration(seconds: 180);
 }

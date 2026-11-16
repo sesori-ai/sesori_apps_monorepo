@@ -25,7 +25,9 @@ class ScheduledTaskDetailCubit({
   ({ScheduledTask task, List<ScheduledTaskRun> runs})? _shown;
 
   /// The pause or resume sent but not yet answered, shown over the task.
-  bool? _pendingEnabled;
+  /// Its [request] number tells each answer whether a newer tap followed.
+  ({bool enabled, int request})? _pendingEnabled;
+  int _switchRequests = 0;
 
   this : super(const ScheduledTaskDetailLoading()) {
     _signals = scheduledTaskRefreshSignals(connectionService: _connectionService).listen((_) => unawaited(refresh()));
@@ -52,14 +54,17 @@ class ScheduledTaskDetailCubit({
   /// Pauses or resumes the task. The page shows the change at once and
   /// reverts it when the bridge does not take it, returning false.
   Future<bool> setEnabled({required bool enabled}) async {
-    _pendingEnabled = enabled;
+    final pending = (enabled: enabled, request: ++_switchRequests);
+    _pendingEnabled = pending;
     _emitShown();
     final result = await _repository.setEnabled(taskId: taskId, enabled: enabled);
     if (isClosed) return false;
     logScheduledTaskFailure(message: "Failed to pause or resume scheduled task $taskId", result: result);
+    // A newer tap owns the page until its own answer settles it, so this
+    // older answer, whichever order it arrives in, changes nothing.
+    if (_pendingEnabled != pending) return result is ScheduledTaskSuccess;
+    _pendingEnabled = null;
     if (result case ScheduledTaskSuccess(:final value)) _replaceTask(task: value);
-    // A newer tap owns the page until its own answer settles it.
-    if (_pendingEnabled == enabled) _pendingEnabled = null;
     _emitShown();
     return result is ScheduledTaskSuccess;
   }
@@ -93,7 +98,8 @@ class ScheduledTaskDetailCubit({
     return false;
   }
 
-  Future<void> _refresh() async {
+  /// Whether a snapshot was applied; false keeps the page stale for a retry.
+  Future<bool> _refresh() async {
     final ScheduledTaskResult<List<ScheduledTask>> tasks;
     final ScheduledTaskResult<List<ScheduledTaskRun>> runs;
     try {
@@ -101,9 +107,9 @@ class ScheduledTaskDetailCubit({
     } on Object catch (error, stackTrace) {
       logw("Failed to load scheduled task $taskId", error, stackTrace);
       if (!isClosed && state is ScheduledTaskDetailLoading) emit(const ScheduledTaskDetailFailed());
-      return;
+      return false;
     }
-    if (isClosed) return;
+    if (isClosed) return true;
     switch ((tasks, runs)) {
       case (ScheduledTaskSuccess(value: final tasks), ScheduledTaskSuccess(value: final runs)):
         final task = tasks.where((task) => task.id == taskId).firstOrNull;
@@ -114,16 +120,20 @@ class ScheduledTaskDetailCubit({
           _shown = (task: task, runs: runs);
           _emitShown();
         }
+        return true;
       case (ScheduledTaskBridgeOutdated(), _) || (_, ScheduledTaskBridgeOutdated()):
         emit(const ScheduledTaskDetailBridgeOutdated());
+        return true;
       case (_, ScheduledTaskRefused(code: ScheduledTaskErrorCode.taskNotFound)):
         _shown = null;
         emit(const ScheduledTaskDetailGone());
+        return true;
       case _:
         logScheduledTaskFailure(message: "Failed to load scheduled task $taskId", result: tasks);
         logScheduledTaskFailure(message: "Failed to load runs of scheduled task $taskId", result: runs);
-        // What is already shown stays; the next signal refreshes it.
+        // What is already shown stays until a retry or the next signal.
         if (state is ScheduledTaskDetailLoading) emit(const ScheduledTaskDetailFailed());
+        return false;
     }
   }
 
@@ -138,7 +148,7 @@ class ScheduledTaskDetailCubit({
     final pending = _pendingEnabled;
     emit(
       ScheduledTaskDetailLoaded(
-        task: pending == null ? shown.task : shown.task.copyWith(enabled: pending),
+        task: pending == null ? shown.task : shown.task.copyWith(enabled: pending.enabled),
         runs: shown.runs,
         editable: shown.task.definition.isEditableHere,
       ),
@@ -147,6 +157,7 @@ class ScheduledTaskDetailCubit({
 
   @override
   Future<void> close() async {
+    _queue.dispose();
     await _signals.cancel();
     return await super.close();
   }

@@ -24,7 +24,9 @@ class ScheduledTasksCubit({
 
   /// Switch positions sent but not yet answered, by task id. They override
   /// [_tasks], so a refresh that lands meanwhile does not flick a switch back.
-  final Map<String, bool> _pendingEnabled = {};
+  /// Each tap's [request] number tells its answer whether a newer tap followed.
+  final Map<String, ({bool enabled, int request})> _pendingEnabled = {};
+  int _switchRequests = 0;
 
   this : super(const ScheduledTasksLoading()) {
     _signals = scheduledTaskRefreshSignals(connectionService: _connectionService).listen((_) => unawaited(refresh()));
@@ -42,41 +44,47 @@ class ScheduledTasksCubit({
   /// Turns the task's schedule on or off. The switch moves at once; the
   /// bridge's answer decides where it ends, and false means it went back.
   Future<bool> setEnabled({required String taskId, required bool enabled}) async {
-    _pendingEnabled[taskId] = enabled;
+    final pending = (enabled: enabled, request: ++_switchRequests);
+    _pendingEnabled[taskId] = pending;
     _emitLoaded();
     final result = await _repository.setEnabled(taskId: taskId, enabled: enabled);
     if (isClosed) return false;
+    logScheduledTaskFailure(message: "Failed to turn scheduled task $taskId on or off", result: result);
+    // A newer tap owns the switch until its own answer settles it, so this
+    // older answer, whichever order it arrives in, changes nothing.
+    if (_pendingEnabled[taskId] != pending) return result is ScheduledTaskSuccess;
+    _pendingEnabled.remove(taskId);
     if (result case ScheduledTaskSuccess(:final value)) {
       _tasks = [for (final task in _tasks) task.id == value.id ? value : task];
-    } else {
-      logScheduledTaskFailure(message: "Failed to turn scheduled task $taskId on or off", result: result);
     }
-    // A newer tap owns the switch until its own answer settles it.
-    if (_pendingEnabled[taskId] == enabled) _pendingEnabled.remove(taskId);
     _emitLoaded();
     return result is ScheduledTaskSuccess;
   }
 
-  Future<void> _refresh() async {
+  /// Whether a snapshot was applied; false keeps the tasks stale for a retry.
+  Future<bool> _refresh() async {
     final ScheduledTaskResult<List<ScheduledTask>> result;
     try {
       result = await _repository.listTasks();
     } on Object catch (error, stackTrace) {
       logw("Failed to load scheduled tasks", error, stackTrace);
       if (!isClosed && state is ScheduledTasksLoading) emit(const ScheduledTasksFailed());
-      return;
+      return false;
     }
-    if (isClosed) return;
+    if (isClosed) return true;
     switch (result) {
       case ScheduledTaskSuccess(:final value):
         _tasks = value;
         _emitLoaded();
+        return true;
       case ScheduledTaskBridgeOutdated():
         emit(const ScheduledTasksBridgeOutdated());
+        return true;
       case ScheduledTaskRefused() || ScheduledTaskFailure():
         logScheduledTaskFailure(message: "Failed to load scheduled tasks", result: result);
-        // Tasks already shown stay; the next signal refreshes them.
+        // Tasks already shown stay until a retry or the next signal.
         if (state is ScheduledTasksLoading) emit(const ScheduledTasksFailed());
+        return false;
     }
   }
 
@@ -85,7 +93,7 @@ class ScheduledTasksCubit({
     final tasks = [
       for (final task in _tasks)
         switch (_pendingEnabled[task.id]) {
-          final enabled? => task.copyWith(enabled: enabled),
+          (:final enabled, request: _) => task.copyWith(enabled: enabled),
           null => task,
         },
     ];
@@ -113,6 +121,7 @@ class ScheduledTasksCubit({
 
   @override
   Future<void> close() async {
+    _queue.dispose();
     await _signals.cancel();
     return await super.close();
   }

@@ -56,4 +56,4 @@ Step 2 and 3.a targets count authored lines; their Freezed and Drift output is
 reported separately in the PR body (AGENTS.md generated-churn rule).
 Steps 1 and 2 merged before step 3 split, so their titles keep the old total
 of 13; 3.a, 7 and 10 merged before step 4 split and keep 14.
-3.b, 4.a and 4.b merged before step 8 split twice and keep 15.
+3.b, 4.a and 4.b keep the /15 in their published titles.
