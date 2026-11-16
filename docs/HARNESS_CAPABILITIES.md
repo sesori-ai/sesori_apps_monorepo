@@ -316,15 +316,21 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   2.1.323 and 2.1.325 alike. That answer took as long as the main reply, so it
   looked as if the ask had waited for the turn. The request is built inside
   the CLI, so Sesori can't shape it.
-- Mid-turn asks with a real Claude model (haiku, 2.1.325, 2026-11-16) also
-  fail occasionally: 1 of 5 asks, the one sent earliest in the stream, came
-  back only after the main turn's `result`, holding the main turn's whole
-  reply with `synthetic: false`. Later asks answered in 2 to 4 s. Through a
-  proxied model it happened more often. Filed upstream as
+
+Claude Code (live probe against 2.1.325 with haiku, 2026-11-16):
+
+- Mid-turn asks with a real Claude model also fail occasionally: 1 of 5 asks,
+  the one sent earliest in the stream, came back only after the main turn's
+  `result`, holding the main turn's whole reply with `synthetic: false`.
+  Later asks answered in 2 to 4 s. Through a proxied model it happened more
+  often. Filed upstream as
   [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490).
-  Sesori catches it: an answer equal to the final reply of a turn that ended
-  while the ask was out is refused as `repeatedRunningReply`, and the app
-  says Claude Code answered with its running reply, with Retry.
+- Sesori catches only this exact echo: an answer equal, after trimming, to
+  the final reply of a turn that ended while the ask was out is refused as
+  `repeatedRunningReply`, and the app says Claude Code answered with its
+  running reply, with Retry. A real answer that happens to equal such a reply
+  is refused too, which costs only a re-ask. An answer to the running turn's
+  prompt in other words (the proxy case above) is not caught.
 
 Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
 
