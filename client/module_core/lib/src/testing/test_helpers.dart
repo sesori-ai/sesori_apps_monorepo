@@ -40,6 +40,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_launch_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/side_chat_repository.dart";
 import "../routing/app_routes.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
@@ -770,8 +771,11 @@ class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
 
 class MockAuthSession() extends Mock implements AuthSession;
 
+class MockSideChatRepository() extends Mock implements SideChatRepository;
+
 class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
   this {
+    when(() => countSideChats(sessionId: any(named: "sessionId"))).thenAnswer((_) async => 0);
     when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
       (invocation) async => SessionDetailMetadataLoadResult.found(
         session: testSession(
