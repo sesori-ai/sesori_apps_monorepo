@@ -139,6 +139,9 @@ class ChatHistoryService({
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
   final StreamController<SessionHistoryRefresh> _historyRefreshes = StreamController<SessionHistoryRefresh>.broadcast();
+  // Synchronous, so a marked request goes out before the send announces its
+  // queue empty and its marker never drops out in between.
+  final StreamController<MessageWithParts> _notSentRequests = StreamController<MessageWithParts>.broadcast(sync: true);
 
   /// The plugin's explanation for each session a background re-read found it
   /// cannot restore, served with its stored pages until a re-read succeeds.
@@ -148,9 +151,12 @@ class ChatHistoryService({
   /// Each session re-read in the background after a read served it behind its
   /// harness, once its stored pages changed: the re-read transcript landed,
   /// the backend newly reported it cannot restore the session, or dead tool
-  /// parts were finalized; and each session whose handoff request was marked
-  /// not sent.
+  /// parts were finalized.
   Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
+
+  /// Each summary request [markHandoffNotSent] stamped, as stored, so open
+  /// chats turn its marker at once instead of after a history reload.
+  Stream<MessageWithParts> get notSentRequests => _notSentRequests.stream;
 
   /// The [window] of the session's messages, served from the store whenever
   /// it is known to be current and falling back to the backend otherwise.
@@ -393,7 +399,10 @@ class ChatHistoryService({
   /// Waits for the background re-reads, which never throw, during shutdown.
   Future<void> drain() => Future.wait(_backgroundRefreshes.toList());
 
-  Future<void> dispose() => _historyRefreshes.close();
+  Future<void> dispose() async {
+    await _historyRefreshes.close();
+    await _notSentRequests.close();
+  }
 
   /// Re-reads a session a read served behind its harness, then announces it
   /// on [historyRefreshes]. A failure leaves the stored transcript, still
@@ -1271,8 +1280,7 @@ class ChatHistoryService({
 
   /// Stamps the user message [messageId] with [notSent] in place of its
   /// stored `sent` handoff, or of none, after the session's pending captures,
-  /// and announces the change on [historyRefreshes], so an open chat shows
-  /// the marker's new state without waiting for its next history load.
+  /// and announces the marked message on [notSentRequests].
   Future<void> markHandoffNotSent({
     required String sessionId,
     required String messageId,
@@ -1287,9 +1295,7 @@ class ChatHistoryService({
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       ),
     );
-    if (marked && !_historyRefreshes.isClosed) {
-      _historyRefreshes.add((sessionId: sessionId, replayedPromptDefaults: null));
-    }
+    if (marked != null && !_notSentRequests.isClosed) _notSentRequests.add(marked);
   }
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {

@@ -39,6 +39,7 @@ import "package:sesori_shared/sesori_shared.dart"
         CommandSource,
         Message,
         MessageHandoff,
+        MessageHandoffNotSent,
         MessageHandoffSent,
         MessagePartSubtask,
         MessageUser,
@@ -158,6 +159,7 @@ class SessionRepository({
   final Set<String> _tombstonesLoaded = <String>{};
   final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
   final PromptStampTracker _stamps = PromptStampTracker();
+  final Map<String, QueuedSessionPrompt> _heldRequests = <String, QueuedSessionPrompt>{};
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -672,6 +674,30 @@ class SessionRepository({
     return message;
   }
 
+  /// Records the summary request [messageId] of [sessionId] as [notSent],
+  /// for [stampNotSentRequest]. A harness stopped before it echoed the
+  /// request can still report it afterwards, naming no prompt, so
+  /// [markHandoffNotSent] cannot reach that update.
+  void markRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) => _stamps.recordNotSentRequest(sessionId: sessionId, messageId: messageId, notSent: notSent);
+
+  /// [message] stamped as not sent when it is a summary request
+  /// [markRequestNotSent] recorded. Applied as the update leaves the bridge,
+  /// not when it is normalized: the harness can report the request before the
+  /// send marks it, and the update can wait behind the stop until after, even
+  /// an echo already stamped sent.
+  Message stampNotSentRequest({required Message message}) {
+    if (message case MessageUser(:final sessionID, :final id, handoff: MessageHandoffSent() || null)) {
+      if (_stamps.notSentRequestFor(sessionId: sessionID, messageId: id) case final notSent?) {
+        return message.copyWith(handoff: notSent);
+      }
+    }
+    return message;
+  }
+
   /// Turns the `sent` handoff recorded for the prompt [promptId] to
   /// [sessionId] into its not-sent form, so an echo that has yet to arrive,
   /// or a later live update of one that has, is stamped as not sent.
@@ -693,6 +719,8 @@ class SessionRepository({
   /// [sessionId]: the source of each command, and the handoff of each prompt
   /// that sends one session into another, so a client never shows a handoff
   /// prompt as a plain message while it waits for its echo.
+  ///
+  /// A request [holdRequest] keeps is listed too, when [prompts] lacks it.
   List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
@@ -704,7 +732,17 @@ class SessionRepository({
         PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
         PromptStampCommand() || null => prompt,
       },
+    if (_heldRequests[sessionId] case final held? when prompts.every((prompt) => prompt.id != held.id)) held,
   ];
+
+  /// Keeps [request] in [sessionId]'s queue until [releaseRequest]: a stopped
+  /// harness drops a send's summary request from its own queue before the
+  /// bridge has marked the message that takes its place.
+  void holdRequest({required String sessionId, required QueuedSessionPrompt request}) =>
+      _heldRequests[sessionId] = request;
+
+  /// Stops listing the request [holdRequest] kept for [sessionId].
+  void releaseRequest({required String sessionId}) => _heldRequests.remove(sessionId);
 
   /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
   /// [promptId], so the user message that fulfils it is stamped by

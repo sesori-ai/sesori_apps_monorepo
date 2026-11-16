@@ -4396,6 +4396,8 @@ class SessionDetailCubit(
   /// and those still staged. A dispatched prompt counts
   /// too: until the harness echoes it, as Claude steering the stop interrupts
   /// before the CLI reads it, nothing says it will ever reach the transcript.
+  /// A prompt the bridge sent to send one session into another is the
+  /// bridge's own, never the user's draft, so it is left out.
   List<ReturnedPrompt> _unsentQueuedPrompts() {
     final bridgePrompts = switch (state) {
       SessionDetailLoaded(:final bridgeQueuedPrompts) => bridgeQueuedPrompts,
@@ -4406,11 +4408,12 @@ class SessionDetailCubit(
     final bridgeAttachments = _promptQueue.bridgePromptAttachments;
     return [
       for (final prompt in bridgePrompts)
-        (
-          promptId: prompt.id,
-          draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
-          attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
-        ),
+        if (prompt.handoff == null)
+          (
+            promptId: prompt.id,
+            draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
+            attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
+          ),
       for (final submission in [
         for (final entry in _promptQueue.awaitingBridge) entry.submission,
         // Typed before the session existed, so ahead of all sent from here.

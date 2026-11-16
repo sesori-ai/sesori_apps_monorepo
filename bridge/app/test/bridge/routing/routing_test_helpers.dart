@@ -790,7 +790,23 @@ class FakeSessionRepository({
   Message stampLiveMessage({required Message message}) => message;
 
   @override
+  Message stampNotSentRequest({required Message message}) => message;
+
+  @override
+  void holdRequest({required String sessionId, required QueuedSessionPrompt request}) {}
+
+  @override
+  void releaseRequest({required String sessionId}) {}
+
+  @override
   void markHandoffNotSent({required String sessionId, required String promptId}) {}
+
+  @override
+  void markRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) {}
 
   @override
   List<QueuedSessionPrompt> stampQueuedPrompts({

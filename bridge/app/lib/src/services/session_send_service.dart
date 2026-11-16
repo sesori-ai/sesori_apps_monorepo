@@ -60,6 +60,14 @@ class SessionSendService({
   final Set<void Function()> _shutdownHooks = {};
   bool _shuttingDown = false;
 
+  final StreamController<SessionQueuedRequest> _queuedRequests = StreamController.broadcast(sync: true);
+
+  /// The source's queue as a send changes it, for every client: the summary
+  /// request just before the source is prompted, so its marker shows before
+  /// the source turns busy, and an empty queue once a send whose request
+  /// never echoed has failed. An echoed request leaves the queue on its own.
+  Stream<SessionQueuedRequest> get queuedRequests => _queuedRequests.stream;
+
   /// Ends every send still waiting for its summary as `summaryStopped`. The
   /// orchestrator calls this before it removes event producers and drains
   /// routes.
@@ -91,7 +99,15 @@ class SessionSendService({
     final turn = _watchSummaryTurn(sessionId: source.id, promptId: promptId);
     var summaryRequested = false;
     try {
-      await _requestSummary(source: source, target: target, promptId: promptId, requestText: requestText);
+      await _requestSummary(
+        source: source,
+        promptId: promptId,
+        requestText: requestText,
+        sent: MessageHandoffSent(
+          targetSessionId: target.id,
+          targetTitle: _nonBlank(text: target.title),
+        ),
+      );
       summaryRequested = true;
       await _finishAfterSummaryRequest(
         source: source,
@@ -109,13 +125,23 @@ class SessionSendService({
         case final messageId?:
           await _markStoredRequestNotSent(sessionId: source.id, messageId: messageId, notSent: notSent);
         case null when summaryRequested:
-          await _markUnechoedRequestNotSent(
-            sessionId: source.id,
-            promptId: promptId,
-            turn: turn,
-            requestText: requestText,
-            notSent: notSent,
-          );
+          // Its marker stays listed, beside any prompt the user queued
+          // meanwhile, until the marked message replaces it.
+          final request = _queuedRequest(promptId: promptId, requestText: requestText, handoff: notSent);
+          _sessions.holdRequest(sessionId: source.id, request: request);
+          try {
+            await _announceSourceQueue(sessionId: source.id);
+            await _markUnechoedRequestNotSent(
+              sessionId: source.id,
+              promptId: promptId,
+              turn: turn,
+              requestText: requestText,
+              notSent: notSent,
+            );
+          } finally {
+            _sessions.releaseRequest(sessionId: source.id);
+          }
+          await _announceSourceQueue(sessionId: source.id);
         // A refused request, or a check that failed before it, left no stamp.
         case null:
           break;
@@ -200,6 +226,7 @@ class SessionSendService({
     required String messageId,
     required MessageHandoffNotSent notSent,
   }) async {
+    _sessions.markRequestNotSent(sessionId: sessionId, messageId: messageId, notSent: notSent);
     try {
       await _history.markHandoffNotSent(sessionId: sessionId, messageId: messageId, notSent: notSent);
     } on Object catch (error, stackTrace) {
@@ -225,9 +252,9 @@ class SessionSendService({
   /// answer its questions while the summary is written.
   Future<void> _requestSummary({
     required Session source,
-    required Session target,
     required String promptId,
     required String requestText,
+    required MessageHandoffSent sent,
   }) => _operations.dispatch(
     sessionId: source.id,
     operation: SessionOperation.sendToSession,
@@ -237,6 +264,12 @@ class SessionSendService({
       if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
         throw _rejected(code: code);
       }
+      // A harness without its own queue turns busy before it echoes the
+      // request, so clients would show a plain working row in between.
+      _announceQueue(
+        sessionId: source.id,
+        prompts: [_queuedRequest(promptId: promptId, requestText: requestText, handoff: sent)],
+      );
       try {
         await _prompts.sendWithDefaults(
           sessionId: source.id,
@@ -251,13 +284,11 @@ class SessionSendService({
             model: settings.model,
             command: null,
             commandSource: null,
-            handoff: MessageHandoff.sent(
-              targetSessionId: target.id,
-              targetTitle: _nonBlank(text: target.title),
-            ),
+            handoff: sent,
           ),
         );
       } on Object catch (error, stackTrace) {
+        _announceQueue(sessionId: source.id, prompts: const []);
         throw SessionSendRejectedException(
           code: error is StaleSessionPromptOptionsException
               ? SendToSessionErrorCode.sourceOptionsUnavailable
@@ -269,6 +300,38 @@ class SessionSendService({
       }
     },
   );
+
+  QueuedSessionPrompt _queuedRequest({
+    required String promptId,
+    required String requestText,
+    required MessageHandoff handoff,
+  }) => QueuedSessionPrompt(
+    id: promptId,
+    dispatchState: QueuedPromptDispatchState.dispatched,
+    text: requestText,
+    command: null,
+    commandSource: null,
+    handoff: handoff,
+    createdAt: _clock.now().millisecondsSinceEpoch,
+  );
+
+  /// Announces the queue clients list for [sessionId]: its harness's own
+  /// prompts and any held request. Best-effort, so a failed read never
+  /// replaces the send's own failure; clients keep the last list until the
+  /// harness reports its queue again.
+  Future<void> _announceSourceQueue({required String sessionId}) async {
+    try {
+      _announceQueue(
+        sessionId: sessionId,
+        prompts: await _sessions.getQueuedPrompts(sessionId: sessionId),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read the queue of session $sessionId after its send failed", error, stackTrace);
+    }
+  }
+
+  void _announceQueue({required String sessionId, required List<QueuedSessionPrompt> prompts}) =>
+      _queuedRequests.add((sessionId: sessionId, prompts: prompts));
 
   /// Why the source cannot write a summary now, or null when it is ready.
   ///
@@ -615,3 +678,6 @@ typedef _SummaryTurn = ({
   String? Function() requestMessageId,
   Future<void> Function() stop,
 });
+
+/// A source's queue as a send lists it.
+typedef SessionQueuedRequest = ({String sessionId, List<QueuedSessionPrompt> prompts});
