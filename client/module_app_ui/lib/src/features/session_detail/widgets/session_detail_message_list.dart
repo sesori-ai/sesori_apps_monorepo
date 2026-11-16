@@ -383,6 +383,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// busy status; see where the build sets it.
   bool _acceptedEditWorks = false;
 
+  /// How long the working row stays away once streamed text ends with the
+  /// session still busy. A harness can report idle some 50 ms after its reply's
+  /// last part, and the row folding in and out again in between moves the
+  /// rows above. A real gap before the next step outlasts this, and the next
+  /// step's own row takes over sooner anyway.
+  static const _kStreamEndGrace = Duration(milliseconds: 250);
+
+  /// Whether the last build had streaming text.
+  bool _streamed = false;
+
+  /// Runs from a stream's end, while busy alone would bring back the working
+  /// row, until [_kStreamEndGrace] ends or the session goes idle.
+  Timer? _streamEndGrace;
+
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
@@ -485,6 +499,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _stickyOpenerIds.dispose();
     _pinLoadSpinner?.cancel();
     _foldWait?.cancel();
+    _streamEndGrace?.cancel();
     super.dispose();
   }
 
@@ -1267,9 +1282,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _acceptedEditWorks =
         widget.awaitingBridgeSubmissions.isNotEmpty &&
         (_acceptedEditWorks || _removedRowIds.isNotEmpty || _leavingRows.isNotEmpty);
+    // A stream that ends while the session still works is often the turn's
+    // last word, its idle a moment behind, so the working row does not come
+    // back on busy alone until the grace ends. Whatever starts next shows its
+    // own row meanwhile as usual.
+    final streams = streamingText.isNotEmpty;
+    if (!isBusy || _acceptedEditWorks) {
+      _streamEndGrace?.cancel();
+      _streamEndGrace = null;
+    } else if (_streamed && !streams && !_liveRowShown) {
+      _streamEndGrace?.cancel();
+      _streamEndGrace = Timer(_kStreamEndGrace, () {
+        _streamEndGrace = null;
+        if (mounted) setState(() {});
+      });
+    }
+    _streamed = streams;
     // A summary being written, or a stopped send still ending, shows its marker
     // in place of the working row.
-    final activity = handoffs.showsWork
+    final activity = handoffs.showsWork || _streamEndGrace != null
         ? const TranscriptActivityIdle()
         : const TranscriptActivityBuilder().build(
             transcript: transcript,
