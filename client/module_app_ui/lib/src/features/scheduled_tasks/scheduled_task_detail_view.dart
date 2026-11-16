@@ -365,7 +365,7 @@ class const _History({
               title: Text(labels.runOutcome(outcome: run.outcome)),
               subtitle: Text(labels.instant(task: task, instant: run.scheduledFor)),
               trailing: switch (run.outcome) {
-                ScheduledTaskRunStarted(sessionId: _?) || ScheduledTaskRunFailed() => const Icon(
+                ScheduledTaskRunStarted(session: _?) || ScheduledTaskRunFailed() => const Icon(
                   TablerRegular.chevron_right,
                 ),
                 _ => null,
@@ -384,19 +384,14 @@ class const _History({
     required ScheduledTaskFormatter labels,
     required ScheduledTaskRunOutcome outcome,
   }) => switch (outcome) {
-    ScheduledTaskRunStarted(:final sessionId?, :final projectId) => () {
-      // A bridge that predates the session's project names none; the session
-      // is then in the task's project unless the task moved since.
-      final sessionProjectId = projectId ?? task.definition.projectId;
-      onOpenSession(
-        projectId: sessionProjectId,
-        projectName: switch (_listedProject(context: context, projectId: sessionProjectId)) {
-          final project? => projectDisplayName(loc: context.loc, project: project),
-          null => null,
-        },
-        sessionId: sessionId,
-      );
-    },
+    ScheduledTaskRunStarted(session: ScheduledTaskRunSession(:final id, :final projectId)) => () => onOpenSession(
+      projectId: projectId,
+      projectName: switch (_listedProject(context: context, projectId: projectId)) {
+        final project? => projectDisplayName(loc: context.loc, project: project),
+        null => null,
+      },
+      sessionId: id,
+    ),
     ScheduledTaskRunStarted() => () => PregoPopupAlertPresenter.of(
       context,
     ).show(title: context.loc.scheduledTaskRunSessionDeleted, variant: PregoPopupAlertsNotificationsVariant.info),

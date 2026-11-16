@@ -144,7 +144,7 @@ void main() {
         final run = await tasks.recordRun(
           taskId: task.id,
           scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
-          outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+          outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
           firedAt: DateTime.utc(2026, 11, 15, 9),
         );
         await tasks.setRunSession(runId: run.id, sessionId: "s1");

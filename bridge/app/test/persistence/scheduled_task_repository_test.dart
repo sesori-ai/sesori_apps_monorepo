@@ -110,13 +110,13 @@ void main() {
     );
     await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: true),
+      outcome: const ScheduledTaskRunOutcome.started(session: null, late: true),
       minute: 2,
     );
 
     final runs = await repository.listRuns(taskId: task.id);
     expect(runs.map((run) => run.outcome), [
-      const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: true),
+      const ScheduledTaskRunOutcome.started(session: null, late: true),
       failed,
     ]);
     expect(runs.first.scheduledFor, const ScheduledTaskInstant(at: 2, offsetMinutes: 120));
@@ -127,7 +127,7 @@ void main() {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
     final startedId = await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
       minute: 0,
     );
     final skippedIds = [
@@ -143,7 +143,7 @@ void main() {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
     final olderStartedId = await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
       minute: 0,
     );
     for (var minute = 1; minute <= 20; minute++) {
@@ -151,7 +151,7 @@ void main() {
     }
     await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
       minute: 21,
     );
 
@@ -186,7 +186,7 @@ void main() {
       nextDueAt: dueAt.add(const Duration(days: 3)),
       completedAt: null,
       scheduledFor: ScheduledTaskInstant(at: dueAt.millisecondsSinceEpoch, offsetMinutes: 120),
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
       firedAt: dueAt,
     );
 
@@ -221,7 +221,7 @@ void main() {
     Future<String> startedRun({required String taskId, required String sessionId, required int minute}) async {
       final runId = await recordRun(
         taskId: taskId,
-        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+        outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
         minute: minute,
       );
       await repository.setRunSession(runId: runId, sessionId: sessionId);
@@ -260,14 +260,17 @@ void main() {
       await startedRun(taskId: task.id, sessionId: "ses_1", minute: 1);
       await recordRun(
         taskId: task.id,
-        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+        outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
         minute: 2,
       );
 
       final runs = await repository.listRuns(taskId: task.id);
       expect(runs.map((run) => run.outcome), [
-        const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
-        const ScheduledTaskRunOutcome.started(sessionId: "ses_1", projectId: "/elsewhere", late: false),
+        const ScheduledTaskRunOutcome.started(session: null, late: false),
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/elsewhere"),
+          late: false,
+        ),
       ]);
     });
 

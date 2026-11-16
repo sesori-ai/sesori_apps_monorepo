@@ -147,7 +147,7 @@ class ScheduledTaskRunService({
       taskId: task.id,
       scheduledFor: _instant(at: now, timeZone: task.definition.timeZone),
       outcome: blocker == null
-          ? const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false)
+          ? const ScheduledTaskRunOutcome.started(session: null, late: false)
           : ScheduledTaskRunOutcome.failed(
               reason: blocker,
               attempt: await _attempt(task: task),
@@ -161,7 +161,7 @@ class ScheduledTaskRunService({
     if (await _isPreviousRunActive(taskId: task.id)) return const ScheduledTaskRunOutcome.skipped();
     final blocker = await _startBlocker(task: task);
     return blocker == null
-        ? ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: late)
+        ? ScheduledTaskRunOutcome.started(session: null, late: late)
         : ScheduledTaskRunOutcome.failed(
             reason: blocker,
             attempt: await _attempt(task: task),
@@ -315,7 +315,10 @@ class ScheduledTaskRunService({
     return run.copyWith(
       // A task's session is always in its project: moving the task drops the
       // session it continued in.
-      outcome: ScheduledTaskRunOutcome.started(sessionId: sessionId, projectId: definition.projectId, late: late),
+      outcome: ScheduledTaskRunOutcome.started(
+        session: ScheduledTaskRunSession(id: sessionId, projectId: definition.projectId),
+        late: late,
+      ),
     );
   }
 

@@ -220,7 +220,7 @@ void main() {
       matching: find.byIcon(TablerRegular.chevron_right),
     );
 
-    testWidgets("a run opens its session in the session's project after the task moved away", (tester) async {
+    testWidgets("a run opens its session in the project it is in, even after the task moved away", (tester) async {
       final opened = <(String, String?, String)>[];
       await pumpTask(
         tester: tester,
@@ -228,7 +228,10 @@ void main() {
         runs: [
           _run(
             id: "ran",
-            outcome: const ScheduledTaskRunOutcome.started(sessionId: "s1", projectId: "old-project", late: false),
+            outcome: const ScheduledTaskRunOutcome.started(
+              session: ScheduledTaskRunSession(id: "s1", projectId: "old-project"),
+              late: false,
+            ),
           ),
         ],
         projects: const [
@@ -238,28 +241,9 @@ void main() {
         onOpenSession: ({required projectId, required projectName, required sessionId}) =>
             opened.add((projectId, projectName, sessionId)),
       );
-      await tester.tap(runRow(id: "ran"));
-      expect(opened, [("old-project", "Website", "s1")]);
-    });
-
-    testWidgets("a run that names no project opens its session in the task's project", (tester) async {
-      final opened = <(String, String?, String)>[];
-      await pumpTask(
-        tester: tester,
-        task: _recurring,
-        runs: [
-          _run(
-            id: "ran",
-            outcome: const ScheduledTaskRunOutcome.started(sessionId: "s1", projectId: null, late: false),
-          ),
-        ],
-        projects: const [ProjectSummary(id: "fixture-project", name: "Sesori", path: "/code/sesori", time: null)],
-        onOpenSession: ({required projectId, required projectName, required sessionId}) =>
-            opened.add((projectId, projectName, sessionId)),
-      );
       expect(arrowIn(id: "ran"), findsOneWidget);
       await tester.tap(runRow(id: "ran"));
-      expect(opened, [("fixture-project", "Sesori", "s1")]);
+      expect(opened, [("old-project", "Website", "s1")]);
     });
 
     testWidgets("a run whose session was deleted has no arrow and says so when tapped", (tester) async {
@@ -270,7 +254,7 @@ void main() {
         runs: [
           _run(
             id: "gone",
-            outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+            outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
           ),
         ],
         onOpenSession: ({required projectId, required projectName, required sessionId}) => opened++,

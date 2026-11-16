@@ -15,7 +15,10 @@ const _connected = ConnectionStatus.connected(
 const _run = ScheduledTaskRun(
   id: "run-1",
   scheduledFor: ScheduledTaskInstant(at: 1000, offsetMinutes: 0),
-  outcome: ScheduledTaskRunOutcome.started(sessionId: "session-1", projectId: null, late: false),
+  outcome: ScheduledTaskRunOutcome.started(
+    session: ScheduledTaskRunSession(id: "session-1", projectId: "fixture-project"),
+    late: false,
+  ),
 );
 
 class _FixedTimeZoneSource() implements DeviceTimeZoneSource {

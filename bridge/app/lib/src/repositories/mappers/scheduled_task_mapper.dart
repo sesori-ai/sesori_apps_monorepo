@@ -93,8 +93,10 @@ class const ScheduledTaskMapper() {
         scheduledFor: ScheduledTaskInstant(at: row.scheduledFor, offsetMinutes: row.scheduledForOffsetMinutes),
         outcome: switch (row.outcome) {
           ScheduledTaskRunOutcomeKind.started => ScheduledTaskRunOutcome.started(
-            sessionId: row.sessionId,
-            projectId: sessionProjectId,
+            session: switch ((row.sessionId, sessionProjectId)) {
+              (final id?, final projectId?) => ScheduledTaskRunSession(id: id, projectId: projectId),
+              _ => null,
+            },
             late: row.late,
           ),
           ScheduledTaskRunOutcomeKind.skipped => const ScheduledTaskRunOutcome.skipped(),
@@ -117,9 +119,9 @@ class const ScheduledTaskMapper() {
     required DateTime firedAt,
   }) {
     final (kind, sessionId, late, reason, attempt) = switch (outcome) {
-      ScheduledTaskRunStarted(:final sessionId, :final late) => (
+      ScheduledTaskRunStarted(:final session, :final late) => (
         ScheduledTaskRunOutcomeKind.started,
-        sessionId,
+        session?.id,
         late,
         null,
         null,
