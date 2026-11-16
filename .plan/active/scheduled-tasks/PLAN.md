@@ -448,7 +448,11 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   harness's current option list when one is readable; a missing model fails
   the run with `modelUnavailable` rather than letting a harness fall back
   (D15). If the list can't be read, the run proceeds and any harness error
-  surfaces in the session as usual.
+  surfaces in the session as usual. When the harness refuses the task's
+  options as stale, the run's prompt (new session or continued one) goes
+  through `SessionPromptService.sendWithSettingsIn`: the agent, variant and
+  fast mode are corrected against the rediscovered catalog and sent once
+  more. A model the catalog no longer offers still fails `modelUnavailable`.
 - A failure to start writes `failed(reason)`, logs the original error locally
   with task and project context (no prompt text), and emits a
   `ScheduledTaskRunFailure` on the run service's failure stream (P8). A
