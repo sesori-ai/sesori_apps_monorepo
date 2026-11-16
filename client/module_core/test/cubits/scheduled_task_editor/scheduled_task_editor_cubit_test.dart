@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -80,7 +82,10 @@ void main() {
           as ScheduledTaskDefinition;
 
   List<ProductAnalyticsEvent> reportedEvents() => verify(
-    () => analytics.logEvent(event: captureAny(named: "event"), occurredAtUtc: any(named: "occurredAtUtc")),
+    () => analytics.logEvent(
+      event: captureAny(named: "event"),
+      occurredAtUtc: any(named: "occurredAtUtc"),
+    ),
   ).captured.cast<ProductAnalyticsEvent>();
 
   group("new task", () {
@@ -170,7 +175,9 @@ void main() {
         subtask: null,
       );
 
-      await cubit.save(submission: _submission(prompt: "", command: command));
+      await cubit.save(
+        submission: _submission(prompt: "", command: command),
+      );
 
       final definition = createdDefinition();
       expect(
@@ -189,7 +196,12 @@ void main() {
 
       expect(current(cubit).save, isA<ScheduledTaskEditorRefused>());
       expect((current(cubit).save as ScheduledTaskEditorRefused).code, ScheduledTaskErrorCode.unknownHarness);
-      verifyNever(() => analytics.logEvent(event: any(named: "event"), occurredAtUtc: any(named: "occurredAtUtc")));
+      verifyNever(
+        () => analytics.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
     });
 
     test("says when the computer's bridge predates scheduled tasks", () async {
@@ -200,6 +212,20 @@ void main() {
       await cubit.save(submission: _submission());
 
       expect(current(cubit).save, isA<ScheduledTaskEditorSaveBridgeOutdated>());
+    });
+
+    test("reports a save the bridge confirmed after the screen closed", () async {
+      final reply = Completer<ScheduledTaskResult<ScheduledTask>>();
+      when(() => repository.create(definition: any(named: "definition"))).thenAnswer((_) => reply.future);
+      final cubit = createCubit();
+      await ready(cubit);
+
+      final saving = cubit.save(submission: _submission());
+      await cubit.close();
+      reply.complete(ScheduledTaskSuccess(value: scheduledTaskFixture(id: "task")));
+      await saving;
+
+      expect(reportedEvents(), hasLength(1));
     });
 
     test("a changed choice clears the refusal", () async {
@@ -322,6 +348,27 @@ void main() {
       expect(state.timeZone, "UTC");
     });
 
+    test("Once lands on the next time the clock time comes round in the task's zone", () async {
+      // The task's zone is two hours behind this device: 08:30 there, so
+      // 09:00 is still ahead today, though it has passed here.
+      final offsetMinutes = _now.timeZoneOffset.inMinutes - 120;
+      answerList([
+        scheduledTaskFixture(
+          id: "task",
+          nextRunAt: ScheduledTaskInstant(at: _now.millisecondsSinceEpoch, offsetMinutes: offsetMinutes),
+        ),
+      ]);
+      final cubit = createCubit(taskId: "task");
+      await ready(cubit);
+
+      cubit.selectRepeat(repeat: ScheduledTaskRepeat.once);
+
+      expect(
+        current(cubit).schedule,
+        const TaskSchedule.once(at: TaskLocalDateTime(year: 2026, month: 11, day: 16, hour: 9, minute: 0)),
+      );
+    });
+
     test("a task that left the list, or has parts from a newer app, cannot be edited", () async {
       answerList([scheduledTaskFixture(id: "task", schedule: const TaskSchedule.unknown())]);
 
@@ -339,7 +386,10 @@ void main() {
       final task = scheduledTaskFixture(id: "task", name: "Morning summary");
       answerList([task]);
       when(
-        () => repository.update(taskId: "task", definition: any(named: "definition")),
+        () => repository.update(
+          taskId: "task",
+          definition: any(named: "definition"),
+        ),
       ).thenAnswer((_) async => ScheduledTaskSuccess(value: task));
       final cubit = createCubit(taskId: "task");
       await ready(cubit);
@@ -348,7 +398,10 @@ void main() {
 
       final definition =
           verify(
-                () => repository.update(taskId: "task", definition: captureAny(named: "definition")),
+                () => repository.update(
+                  taskId: "task",
+                  definition: captureAny(named: "definition"),
+                ),
               ).captured.single
               as ScheduledTaskDefinition;
       expect(definition.name, "Morning summary");
@@ -359,7 +412,10 @@ void main() {
     test("a name taken from the prompt follows the new prompt", () async {
       answerList([scheduledTaskFixture(id: "task", name: "Summarize yesterday")]);
       when(
-        () => repository.update(taskId: "task", definition: any(named: "definition")),
+        () => repository.update(
+          taskId: "task",
+          definition: any(named: "definition"),
+        ),
       ).thenAnswer((_) async => ScheduledTaskSuccess(value: scheduledTaskFixture(id: "task")));
       final cubit = createCubit(taskId: "task");
       await ready(cubit);
@@ -368,7 +424,10 @@ void main() {
 
       final definition =
           verify(
-                () => repository.update(taskId: "task", definition: captureAny(named: "definition")),
+                () => repository.update(
+                  taskId: "task",
+                  definition: captureAny(named: "definition"),
+                ),
               ).captured.single
               as ScheduledTaskDefinition;
       expect(definition.name, "Summarize the week");

@@ -27,6 +27,9 @@ class const PregoDateTimeField({
 
   /// [value] as the caller words it, such as "9:00 AM" or "Tue, 17 Nov, 9:00 AM".
   required final String valueLabel,
+
+  /// A wall-clock time, never a UTC one, as are [minimum] and what
+  /// [onChanged] reports.
   required final DateTime value,
   required final PregoDateTimeFieldMode mode,
 

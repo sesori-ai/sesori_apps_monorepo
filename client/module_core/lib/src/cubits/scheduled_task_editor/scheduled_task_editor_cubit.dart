@@ -27,7 +27,7 @@ class ScheduledTaskEditorCubit({
   required final BridgeSettingsService _bridgeSettingsService,
   required final ProductAnalyticsService _productAnalyticsService,
 
-  /// The device's wall clock, for the next free time and the past check.
+  /// The device's clock, for the next free time and the past check.
   required final DateTime Function() _now,
 
   /// The task to edit; null sets up a new one.
@@ -52,9 +52,9 @@ class ScheduledTaskEditorCubit({
     return _load();
   }
 
-  /// Switches the repeat preset, keeping the time of day, the weekly days and
-  /// the interval where the new preset has them. A one-off or interval start
-  /// lands on the next time that clock time comes round.
+  /// Switches the repeat preset, keeping the time of day. A one-off or
+  /// interval start lands on the next time that clock time comes round,
+  /// Weekly starts on today, and Every few hours on [defaultHours].
   void selectRepeat({required ScheduledTaskRepeat repeat}) {
     final ready = _ready;
     if (ready == null || ready.repeat == repeat) return;
@@ -192,14 +192,15 @@ class ScheduledTaskEditorCubit({
     final result = editing == null
         ? await _repository.create(definition: definition)
         : await _repository.update(taskId: editing.id, definition: definition);
-    if (isClosed) return;
     logScheduledTaskFailure(message: "Failed to save a scheduled task", result: result);
+    // Logged even when the screen has gone meanwhile: the task is saved.
     if (result is ScheduledTaskSuccess) {
       _logSaved(
         definition: definition,
         action: editing == null ? AnalyticsScheduledTaskAction.created : AnalyticsScheduledTaskAction.edited,
       );
     }
+    if (isClosed) return;
     final latest = _ready;
     if (latest == null) return;
     emit(
@@ -361,16 +362,33 @@ class ScheduledTaskEditorCubit({
     TaskScheduleUnknown() => defaultTime,
   };
 
-  /// The next time [time] comes round on this device's clock: today when it
-  /// is still ahead, else tomorrow.
-  TaskLocalDateTime _nextOccurrence({required TaskTimeOfDay time}) {
+  /// The wall clock in the editor's zone now. A new task is in this device's
+  /// zone. An edited task's zone may be another: its next or last run's
+  /// offset, as the bridge reported it, converts this device's clock.
+  // ponytail: a task that never ran and has no next run falls back to this
+  // device's clock, and a DST change since the reported run can be an hour
+  // off; the bridge would need to send the zone's current offset to fix that.
+  DateTime get zoneNow {
     final now = _now();
+    final known = switch (_ready?.editing) {
+      final task? => task.nextRunAt ?? task.lastRun?.scheduledFor,
+      null => null,
+    };
+    if (known == null) return now;
+    final wall = now.toUtc().add(Duration(minutes: known.offsetMinutes));
+    return DateTime(wall.year, wall.month, wall.day, wall.hour, wall.minute, wall.second);
+  }
+
+  /// The next time [time] comes round in the editor's zone: today when it is
+  /// still ahead, else tomorrow.
+  TaskLocalDateTime _nextOccurrence({required TaskTimeOfDay time}) {
+    final now = zoneNow;
     final today = DateTime(now.year, now.month, now.day, time.hour, time.minute);
     final next = today.isAfter(now) ? today : DateTime(now.year, now.month, now.day + 1, time.hour, time.minute);
     return TaskLocalDateTime(year: next.year, month: next.month, day: next.day, hour: next.hour, minute: next.minute);
   }
 
-  TaskWeekday _today() => TaskWeekday.values.firstWhere((day) => day.isoWeekday == _now().weekday);
+  TaskWeekday _today() => TaskWeekday.values.firstWhere((day) => day.isoWeekday == zoneNow.weekday);
 
   static DateTime _localDateTime({required TaskLocalDateTime at}) =>
       DateTime(at.year, at.month, at.day, at.hour, at.minute);
