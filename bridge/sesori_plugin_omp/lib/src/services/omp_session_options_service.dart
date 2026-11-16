@@ -174,17 +174,20 @@ class OmpSessionOptionsService({
   /// Refuses a send whose [model], [agent] or [variant] OMP no longer offers,
   /// by the rules [applyTurnSelection] applies, so the send fails before it
   /// is accepted rather than as a dropped turn. It checks what OMP last
-  /// reported for [sessionId], else [projectId]'s catalog. An option kind OMP
-  /// has reported nothing for is left for the turn to check.
+  /// reported for [sessionId], else the catalog of [projectId], the session's
+  /// known directory (null while unknown, so no other project's catalog is
+  /// used). An option kind OMP has reported nothing for is left for the turn
+  /// to check.
   void validateTurnSelection({
+    required String operation,
     required String sessionId,
-    required String projectId,
+    required String? projectId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) {
     final session = _sessionConfigs[sessionId];
-    final catalog = _tracker.snapshotFor(projectId: projectId);
+    final catalog = projectId == null ? null : _tracker.snapshotFor(projectId: projectId);
     if (session == null && catalog == null) return;
     final requestedModel = model?.modelID;
     if (requestedModel != null && requestedModel.isNotEmpty) {
@@ -193,8 +196,8 @@ class OmpSessionOptionsService({
         _ => catalog?.models ?? const [],
       };
       if (models.isNotEmpty && !models.any((entry) => entry.value == requestedModel)) {
-        throw const PluginStaleOptionsException(
-          operation: "session/set_config_option",
+        throw PluginStaleOptionsException(
+          operation: operation,
           message: "OMP no longer offers the selected model",
         );
       }
@@ -204,8 +207,8 @@ class OmpSessionOptionsService({
         agent.isNotEmpty &&
         hasModes &&
         _resolveMode(agent: agent, snapshot: session, catalog: catalog) == null) {
-      throw const PluginStaleOptionsException(
-        operation: "session/set_config_option",
+      throw PluginStaleOptionsException(
+        operation: operation,
         message: "OMP no longer offers the selected mode",
       );
     }
@@ -217,8 +220,8 @@ class OmpSessionOptionsService({
         ? session?.thinking ?? catalog?.thinkingByModel[selectedModel]
         : catalog?.thinkingByModel[selectedModel];
     if (thinking != null && !thinking.variants.contains(requestedVariant)) {
-      throw const PluginStaleOptionsException(
-        operation: "session/set_config_option",
+      throw PluginStaleOptionsException(
+        operation: operation,
         message: "OMP no longer offers the selected thinking level",
       );
     }
