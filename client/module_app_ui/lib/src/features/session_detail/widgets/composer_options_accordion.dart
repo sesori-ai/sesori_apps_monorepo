@@ -287,8 +287,8 @@ final class const ComposerSideQuestionOpen({
   required final VoidCallback onOpen,
 
   /// Switches the composer to a side question, as the command picker's /btw
-  /// row does.
-  required final VoidCallback onAskInComposer,
+  /// row does; null while the composer edits a message.
+  required final VoidCallback? onAskInComposer,
 }) extends ComposerSideQuestion;
 
 /// The composer holds a side question: Send asks it in a new side chat.

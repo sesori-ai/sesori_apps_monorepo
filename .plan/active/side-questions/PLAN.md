@@ -67,7 +67,9 @@ seams:
 - **Composer mode.** The edit-and-fork plan's edit mode also takes over the
   composer header. Whichever plan lands first adds one sealed composer mode in
   `SessionDetailCubit` (normal, editing, side question), so the two modes can't
-  overlap; entering one leaves the other.
+  overlap. Starting an edit leaves a side question, its words kept as plain
+  text. A side question can't start while editing (Cancel the edit first), so
+  it never silently discards an edit in progress.
 
 ## Verified facts (pinned versions, 2026-11-14)
 

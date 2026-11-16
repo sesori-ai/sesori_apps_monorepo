@@ -7346,6 +7346,24 @@ void main() {
 
         expect(picker.onSideQuestion, isNull);
       });
+
+      testWidgets("the / picker offers no /btw while editing a message", (tester) async {
+        await pumpComposer(
+          tester,
+          state: withSideQuestions(SideQuestionAvailability.available).copyWith(
+            composerMode: const SessionComposerMode.editing(
+              messageId: "m1",
+              phase: SessionEditPhase.composing,
+              leftOutCount: 0,
+            ),
+          ),
+        );
+        await tester.tap(find.byIcon(TablerRegular.slash));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(tester.widget<CommandPicker>(find.byType(CommandPicker)).onSideQuestion, isNull);
+      });
     });
 
     group("archived", () {

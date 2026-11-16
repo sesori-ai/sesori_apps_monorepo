@@ -2974,7 +2974,7 @@ class _PromptInputState() extends State<PromptInput> {
         // A side question takes no command or images; the cubit refuses them
         // too, so the row only hides what wouldn't work.
         onSideQuestion: switch (widget.sideQuestion) {
-          ComposerSideQuestionOpen(:final onAskInComposer) when widget.stagedCommand == null && _attachments.isEmpty =>
+          ComposerSideQuestionOpen(:final onAskInComposer?) when widget.stagedCommand == null && _attachments.isEmpty =>
             () {
               close();
               if (!mounted) return;

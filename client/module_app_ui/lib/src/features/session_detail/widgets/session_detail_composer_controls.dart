@@ -179,9 +179,14 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           onOpen: () => open(pluginId: pluginId),
           onLeave: cubit.leaveSideQuestion,
         ),
-        SessionComposerNormal() || SessionComposerEditing() => ComposerSideQuestionOpen(
+        SessionComposerNormal() => ComposerSideQuestionOpen(
           onOpen: () => open(pluginId: pluginId),
           onAskInComposer: cubit.startSideQuestion,
+        ),
+        // A side question never discards an edit: Cancel it first.
+        SessionComposerEditing() => ComposerSideQuestionOpen(
+          onOpen: () => open(pluginId: pluginId),
+          onAskInComposer: null,
         ),
       },
       (SideQuestionAvailability.bridgeUpdateRequired, _) => ComposerSideQuestionBlocked(
