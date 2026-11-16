@@ -483,7 +483,10 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     echo or a later live update of the echo is stamped `notSent`. Once the echo has arrived it also calls
     `ChatHistoryService.markHandoffNotSent({sessionId, messageId})`, which runs on the session's history write lane
     and replaces the stored `sent` stamp; when the refresh before the split replaced the echo with a replayed message
-    under another id, that id is marked too. A definite 4xx refusal of the summarise prompt still forgets the
+    under another id, that id is marked too. A harness can also store the request without ever echoing it live
+    (a Claude source stopped before its echo). For a failure before the echo, `SessionSendService` waits up to ten
+    seconds for the source's next idle. It then refreshes the history and marks the last user message with the exact
+    request text, which the store stamps `notSent` even though it had no stamp. A definite 4xx refusal of the summarise prompt still forgets the
     stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live
     keeps the `sent` state until its next history load; the requesting client gets the failure alert.
   - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id

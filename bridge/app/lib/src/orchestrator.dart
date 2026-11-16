@@ -707,6 +707,7 @@ class Orchestrator({
       plugins: _pluginLifecycleService,
       clock: clock,
       summaryTimeout: const Duration(minutes: 15),
+      settleTimeout: const Duration(seconds: 10),
     );
     final sessionMutationListener = SessionMutationListener(
       source: sessionMutationDispatcher.mutations.asyncMap(

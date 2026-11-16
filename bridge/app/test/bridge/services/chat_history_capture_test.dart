@@ -2060,6 +2060,7 @@ void main() {
 
     group("handoff stamps", () {
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
       MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
         final message = _messageWithText(id: id, text: "Fixture request", createdAt: 100, promptId: null);
         return switch (message.info) {
@@ -2111,7 +2112,7 @@ void main() {
         }
       });
 
-      test("marking a send as not sent turns only a sent stamp", () async {
+      test("marking a send as not sent replaces a sent stamp or stamps an unstamped request", () async {
         final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
         const received = MessageHandoff.received(
           sourceSessionId: "source",
@@ -2133,7 +2134,7 @@ void main() {
         );
 
         for (final messageId in ["m1", "m2", "m3", "missing"]) {
-          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
+          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId, notSent: notSent);
         }
         // A later update of the turn keeps the replaced stamp.
         await _captureMessageWithParts(
@@ -2141,11 +2142,8 @@ void main() {
           message: stamped(id: "m1", handoff: null),
         );
 
-        expect(await storedHandoffs(history: history), [
-          const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
-          received,
-          null,
-        ]);
+        // The harness stored m3 without the echo that would have stamped it.
+        expect(await storedHandoffs(history: history), [notSent, received, notSent]);
       });
     });
 

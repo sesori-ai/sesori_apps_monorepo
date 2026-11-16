@@ -59,6 +59,7 @@ void main() {
     plugins: const _Plugins(),
     clock: Clock.fixed(DateTime.utc(2026, 11, 15, 12)),
     summaryTimeout: summaryTimeout,
+    settleTimeout: const Duration(milliseconds: 20),
   );
 
   setUp(() {
@@ -352,6 +353,47 @@ void main() {
         expect(history.notSentMessages, isEmpty);
       });
     }
+
+    // Claude records a request it was stopped before echoing, under an id no
+    // prompt id names, and the store holds it only once the stop has settled.
+    final unechoed = <String, (SendToSessionErrorCode, void Function())>{
+      "a stop": (SendToSessionErrorCode.summaryStopped, () => aborts.add(_source)),
+      "a session error": (
+        SendToSessionErrorCode.summaryFailed,
+        () => events.add(const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source))),
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, interrupt)) in unechoed.entries) {
+      test("before the echo: $name marks the request the source stored once it settles", () async {
+        prompts.onSummaryAccepted = (_) {
+          interrupt();
+          Future(() {
+            history.messages = [
+              ...history.messages,
+              _userMessage(id: "stored-unechoed", text: prompts.sends.first.text),
+            ];
+            events.add(const NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: _source)));
+          }).ignore();
+        };
+
+        expect(await refusalOf(send()), code);
+        expect(sessions.notSentPrompts, [prompts.sends.first.promptId]);
+        expect(history.backfilled, [_source]);
+        expect(history.notSentMessages, ["stored-unechoed"]);
+      });
+    }
+
+    test("before the echo: a stop marks nothing when the source never stored the request", () async {
+      prompts.onSummaryAccepted = (_) {
+        aborts.add(_source);
+        Future(() => events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle())))
+            .ignore();
+      };
+
+      expect(await refusalOf(send()), SendToSessionErrorCode.summaryStopped);
+      expect(history.backfilled, [_source]);
+      expect(history.notSentMessages, isEmpty);
+    });
   });
 
   group("refuses before sending anything", () {
@@ -989,8 +1031,13 @@ final class _History() implements ChatHistoryService {
   final List<String> notSentMessages = [];
 
   @override
-  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) async {
+  Future<void> markHandoffNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) async {
     expect(sessionId, _source);
+    expect(notSent, const MessageHandoff.notSent(targetSessionId: _target, targetTitle: "Target title"));
     notSentMessages.add(messageId);
   }
 

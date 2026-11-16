@@ -272,21 +272,21 @@ class ChatHistoryRepository({
     );
   }
 
-  /// Turns the stored `sent` handoff of the user message [messageId] into its
-  /// not-sent form, as an update at [updatedAt] so a later replay still pairs
-  /// the row with its replayed turn. Anything else stored for it is left as it is.
+  /// Stamps the user message [messageId] with [notSent] in place of its stored
+  /// `sent` handoff, or of none when the harness stored the request without
+  /// its live echo. It is an update at [updatedAt], so a later replay still
+  /// pairs the row with its replayed turn. Any other stored stamp is left as it is.
   Future<void> markHandoffNotSent({
     required String sessionId,
     required String messageId,
+    required MessageHandoffNotSent notSent,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
     if (existing == null) return;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
-    if (stored case MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle))) {
-      final marked = stored.copyWith(
-        handoff: MessageHandoff.notSent(targetSessionId: targetSessionId, targetTitle: targetTitle),
-      );
+    if (stored case MessageUser(handoff: MessageHandoffSent() || null)) {
+      final marked = stored.copyWith(handoff: notSent);
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
