@@ -49,6 +49,10 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// session stays busy until it lands, and turns sent meanwhile wait here
   /// before establishing fresh residency.
   Completer<void>? aborting;
+
+  /// The process generation a stop is aborting. Its turn has ended, but Pi
+  /// still closes the stopped response with an aborted message end.
+  int? abortingGeneration;
   PluginSessionStatus status = const PluginSessionStatus.idle();
 
   /// The current resident whose frames may outlive a bridge-admitted prompt.
@@ -739,6 +743,14 @@ final class PiSessionService({
   void _handleFrame(PiSessionProcessFrame processFrame) {
     final state = _sessions[processFrame.sessionId];
     if (state == null) return;
+    if (processFrame.generation == state.abortingGeneration) {
+      // Only the stopped response's end still matters: it turns that response
+      // into the turn's stopped row.
+      if (processFrame.frame case PiEventFrame(:final PiMessageEndEvent event)) {
+        _dispatcher.map(sessionId: processFrame.sessionId, event: event, now: _clock.now()).forEach(_emit);
+      }
+      return;
+    }
     final residentGeneration = state.residentGeneration;
     if (residentGeneration != null && residentGeneration != processFrame.generation) return;
     if (residentGeneration == null) {
@@ -1176,6 +1188,8 @@ final class PiSessionService({
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
+    // A repeated stop has no connection left and keeps the first stop's.
+    if (connection != null) state.abortingGeneration = connection.generation;
     var forceTeardown = false;
     try {
       final idleReap = state.idleReap;
@@ -1211,7 +1225,11 @@ final class PiSessionService({
           await _processes.teardown(sessionId: sessionId);
         }
       } finally {
-        if (identical(state.aborting, aborting)) state.aborting = null;
+        if (identical(state.aborting, aborting)) {
+          state
+            ..aborting = null
+            ..abortingGeneration = null;
+        }
         aborting.complete();
         // A prompt sent during the stop keeps the session busy.
         _settleStatus(sessionId: sessionId, state: state);
