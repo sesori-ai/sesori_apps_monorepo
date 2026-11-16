@@ -1336,13 +1336,15 @@ source showed "Summary sent to … · Open" and "Couldn't send to …" markers a
 the "Handoff summary" sheet. The Codex target showed the "From …" card, which
 Show all expanded.
 
-On the ACP plugin, a target whose saved agent or mode the harness rejects when
-the turn starts accepts the handoff and then drops the turn
-(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
-reports Sent while the target receives nothing. This was seen on an OMP session
-whose saved agent OMP did not offer, and it applies to every ACP harness,
-because the plugin fails closed after accepting the prompt rather than refusing
-it as stale.
+Stale saved options on the target, a model, mode or reasoning level the harness
+no longer lists:
+
+| Harness | When the stale option is caught |
+|---|---|
+| Copilot, Grok, Antigravity (ACP) | ✅ Refused before the prompt is accepted, against the options each harness last reported. |
+| OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
+| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. |
+| Hermes, DeepSeek (ACP) | ❌ Not implemented: caught only when the turn applies it. The target shows a session error after the send reported Sent. |
 
 ## Sub-agents
 

@@ -196,6 +196,44 @@ class CursorPlugin._({
     }
   }
 
+  /// Refuses a send whose model, mode or reasoning level Cursor's catalog no
+  /// longer lists. [applyTurnSelection] skips an unlisted option, so the turn
+  /// would otherwise run on whatever Cursor last had. An option kind the
+  /// catalog has not reported yet is not checked.
+  @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async {
+    final requestedModel = model?.modelID;
+    final hasRequestedModel = requestedModel != null && requestedModel.isNotEmpty;
+    if (hasRequestedModel && _catalogTracker.models.isNotEmpty && !_catalogTracker.hasModel(modelId: requestedModel)) {
+      throw PluginStaleOptionsException(operation: operation, message: "Cursor no longer offers the selected model");
+    }
+    if (agent != null &&
+        agent.isNotEmpty &&
+        _catalogTracker.modes.isNotEmpty &&
+        _catalogTracker.resolveModeId(agent: agent) == null) {
+      throw PluginStaleOptionsException(operation: operation, message: "Cursor no longer offers the selected mode");
+    }
+    final requestedVariant = variant?.id;
+    if (requestedVariant == null || requestedVariant.isEmpty) return;
+    final modelId = hasRequestedModel
+        ? requestedModel
+        : _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
+    // The variants the picker offers: the model's own, else the provisional set.
+    final variants = modelId == null ? const <String>[] : _catalogTracker.variantsForModel(modelId: modelId);
+    if (variants.isNotEmpty && !variants.contains(requestedVariant)) {
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "Cursor no longer offers the selected reasoning level",
+      );
+    }
+  }
+
   @override
   Future<void> applyTurnSelection({
     required AcpSessionConfigRepository configRepository,
