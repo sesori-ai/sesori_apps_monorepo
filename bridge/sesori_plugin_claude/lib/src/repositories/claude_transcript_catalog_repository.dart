@@ -700,7 +700,9 @@ final class const _ForkRefused({required final ClaudeForkRefusal reason}) extend
 /// [messageId] keeps: the active branch in file order through that turn's last
 /// chain record. That is the record before the chain's next prompt or
 /// compaction, which is usually the turn's `turn_duration`, else the leaf, so
-/// a turn still running after it stays behind.
+/// a turn still running after it stays behind. A later compaction stays
+/// behind with the turns after it, so a fork from before one continues from
+/// the whole conversation it summarised.
 ///
 /// Records the branch keeps beside the chain, such as parallel tool results,
 /// come along. Records without an id carry metadata rather than turns, and stay
@@ -718,9 +720,6 @@ _ForkPrefix _forkPrefix({required List<ClaudeTranscriptEntry> entries, required 
   var last = target;
   while (last + 1 < chain.length && !_startsBranch(chain[last + 1])) {
     last++;
-  }
-  if (chain.skip(last + 1).any(_isCompactBoundary)) {
-    return const _ForkRefused(reason: ClaudeForkRefusal.beforeCompaction);
   }
   final boundary = chain[last];
   final branch = Set<ClaudeTranscriptRecordDto>.identity()..addAll(_activeBranch(records: records));
