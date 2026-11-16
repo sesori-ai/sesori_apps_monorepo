@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../bridge/routing/routing_test_helpers.dart";
 import "../helpers/test_database.dart";
 
 void main() {
@@ -188,5 +189,101 @@ void main() {
     final current = await repository.get(taskId: read.id);
     expect(await reserve(task: current ?? fail("task is gone")), isNotNull);
     expect((await repository.get(taskId: read.id))?.nextDueAt, dueAt.add(const Duration(days: 3)));
+  });
+
+  group("scheduled run sessions", () {
+    Future<void> runSession({required String sessionId, required String? taskId}) async {
+      await recordSessionBinding(
+        database: db,
+        sessionId: sessionId,
+        backendSessionId: "backend_$sessionId",
+        pluginId: "fake",
+        projectId: "/repo",
+        parentSessionId: null,
+      );
+      if (taskId != null) {
+        await db.sessionDao.setScheduledRun(
+          sessionId: sessionId,
+          scheduledTaskId: taskId,
+          approvalOverride: SessionApprovalMode.ask,
+        );
+      }
+    }
+
+    Future<String> startedRun({required String taskId, required String sessionId, required int minute}) async {
+      final runId = await recordRun(
+        taskId: taskId,
+        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+        minute: minute,
+      );
+      await repository.setRunSession(runId: runId, sessionId: sessionId);
+      return runId;
+    }
+
+    test("marks name each run session's task and whether it repeats, in one read", () async {
+      final recurring = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final once = await repository.create(
+        definition: definition.copyWith(
+          name: "Release notes",
+          schedule: const TaskSchedule.once(
+            at: TaskLocalDateTime(year: 2026, month: 11, day: 20, hour: 9, minute: 0),
+          ),
+        ),
+        nextDueAt: null,
+        now: now,
+      );
+      await runSession(sessionId: "ses_recurring", taskId: recurring.id);
+      await runSession(sessionId: "ses_once", taskId: once.id);
+      await runSession(sessionId: "ses_plain", taskId: null);
+
+      expect(await repository.marksOfSessions(sessionIds: {"ses_recurring", "ses_once", "ses_plain", "ses_gone"}), {
+        "ses_recurring": SessionScheduledTaskMark(
+          taskId: recurring.id,
+          name: "Nightly review",
+          kind: ScheduledTaskKind.recurring,
+        ),
+        "ses_once": SessionScheduledTaskMark(taskId: once.id, name: "Release notes", kind: ScheduledTaskKind.once),
+      });
+    });
+
+    test("a run is unattended until the user prompts its session, and each new run starts unattended", () async {
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+      await runSession(sessionId: "ses_1", taskId: task.id);
+      expect(await repository.isUnattendedRun(sessionId: "ses_1"), isFalse, reason: "no run went to it yet");
+
+      await startedRun(taskId: task.id, sessionId: "ses_1", minute: 1);
+      expect(await repository.isUnattendedRun(sessionId: "ses_1"), isTrue);
+
+      await repository.recordUserPrompted(sessionId: "ses_1", at: now);
+      expect(await repository.isUnattendedRun(sessionId: "ses_1"), isFalse);
+
+      final nextRunId = await startedRun(taskId: task.id, sessionId: "ses_1", minute: 2);
+      expect(await repository.isUnattendedRun(sessionId: "ses_1"), isTrue);
+
+      await repository.recordUserPrompted(sessionId: "ses_1", at: now.add(const Duration(minutes: 3)));
+      await repository.recordUserPrompted(sessionId: "ses_1", at: now.add(const Duration(minutes: 9)));
+      final runs = await ScheduledTaskDao(database: db).listRunsForTasks(taskIds: {task.id});
+      expect(
+        {for (final run in runs) run.id: run.userPromptedAt},
+        containsPair(nextRunId, now.add(const Duration(minutes: 3)).millisecondsSinceEpoch),
+        reason: "the first prompt of the user's own is kept",
+      );
+    });
+
+    test("archive candidates are only a task's unarchived, unpinned sessions", () async {
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final other = await repository.create(definition: definition, nextDueAt: null, now: now);
+      for (final sessionId in ["ses_1", "ses_2", "ses_3", "ses_4"]) {
+        await runSession(sessionId: sessionId, taskId: task.id);
+      }
+      await runSession(sessionId: "ses_other", taskId: other.id);
+      await db.sessionDao.setPinned(sessionId: "ses_2", pinned: true);
+      await db.sessionDao.setArchived(sessionId: "ses_3", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
+
+      expect(await db.sessionDao.listUnarchivedUnpinnedScheduledRunSessionIds(scheduledTaskId: task.id), [
+        "ses_4",
+        "ses_1",
+      ]);
+    });
   });
 }

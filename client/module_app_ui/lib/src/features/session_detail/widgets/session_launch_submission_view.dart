@@ -61,6 +61,7 @@ class const SessionLaunchSubmissionView({
       required List<ComposerAttachment> attachments,
       required QueuedMessageBubblePresentation presentation,
     }) => QueuedMessageBubble(
+      body: null,
       key: key,
       displayText: displayText,
       isCommand: isCommand,

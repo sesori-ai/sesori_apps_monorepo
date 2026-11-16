@@ -58,7 +58,11 @@ void _sendToAnother({
       title: loc.sendSessionSending(sourceName, targetName),
       variant: PregoPopupAlertsNotificationsVariant.loading,
     );
-    final result = await actions.sendToSession(sourceSessionId: source.id, targetSessionId: target.session.id);
+    final result = await actions.sendToSession(
+      sourceSessionId: source.id,
+      sourcePluginId: source.pluginId,
+      targetSessionId: target.session.id,
+    );
     final open = PregoPopupAlertsNotificationsAction(
       label: loc.sendSessionOpen,
       onPressed: () {

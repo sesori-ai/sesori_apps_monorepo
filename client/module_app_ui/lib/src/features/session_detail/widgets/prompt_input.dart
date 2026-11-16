@@ -184,6 +184,10 @@ class const PromptInput({
   /// Whether a send may go out now. Typing stays open either way; while this
   /// is false the draft simply waits in the field.
   required final bool canSend,
+
+  /// While set, the composer takes no input: it dims, and typing, a tap,
+  /// paste, a drop, attaching or voice answer with this note instead.
+  required final String? lockedNote,
   required final PromptSubmitCallback onSend,
 
   /// Null for Send with its arrow, which empties the composer once it goes.
@@ -696,7 +700,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// Enter and the send button. While a pointer shell listens, Enter finishes
   /// the dictation.
   void _handleSend() {
-    if (_isAwaitingDictatedWords) return;
+    if (_isAwaitingDictatedWords || _refuseWhileLocked()) return;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (_isListening && ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
       unawaited(_endRecording(finish: _VoiceFinish.send));
@@ -889,6 +893,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<void> _handleRecordStart({required _RecordingPointer? pointer}) async {
+    if (_refuseWhileLocked()) return;
     if (_voiceInteraction is! _VoiceIdle || _voiceCubit.state is! VoiceInputIdle) return;
     // Fire before recorder startup or rebuilding so touch-down feels immediate.
     unawaited(_playHapticFeedback(play: HapticFeedback.lightImpact));
@@ -1445,7 +1450,31 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// Answers input a locked composer refuses with its note.
+  bool _refuseWhileLocked() {
+    final note = widget.lockedNote;
+    if (note == null) return false;
+    _showComposerNotice(note);
+    return true;
+  }
+
+  /// Dims a locked composer and answers a tap anywhere on it with its note.
+  Widget _lockable({required Widget child}) {
+    final locked = widget.lockedNote != null;
+    return GestureDetector(
+      behavior: locked ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+      onTap: locked ? _refuseWhileLocked : null,
+      child: AnimatedOpacity(
+        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        opacity: locked ? 0.6 : 1,
+        child: IgnorePointer(ignoring: locked, child: child),
+      ),
+    );
+  }
+
   Future<void> _openEditorSheet() async {
+    if (_refuseWhileLocked()) return;
     await PromptEditorSheet.show(
       context,
       controller: _controller,
@@ -1677,42 +1706,44 @@ class _PromptInputState() extends State<PromptInput> {
             // The composer's halo runs on to the bottom edge, so nothing
             // shows below it. It follows the animated size rather than one
             // layout's surface, so it stays put while layouts cross-fade.
-            child: _withLiveWords(
-              context: context,
-              body: PregoPageHalo(
-                radius: PregoRadius.x3l,
-                reachesLayerBottom: true,
-                // Only a layout a send left stands above the closing box: it is cut
-                // along the top of the surface it is fading from.
-                child: ClipRRect(
-                  clipBehavior: _closesWithSend ? Clip.antiAlias : Clip.none,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
-                  child: _morphSize(
-                    alignment: Alignment.bottomCenter,
-                    duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
-                    curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
-                    clipBehavior: Clip.hardEdge,
-                    child: AnimatedSwitcher(
-                      key: _composerBodyKey,
-                      duration: _morphDuration,
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      layoutBuilder: (currentChild, previousChildren) =>
-                          _layoutComposerBody(currentChild: currentChild, previousChildren: previousChildren),
-                      child: KeyedSubtree(
-                        // Layout changes cross-fade; voice interactions pin
-                        // [_layout], so a switch never happens mid-hold.
-                        key: ValueKey(_layout),
-                        child: switch (_layout) {
-                          ComposerSurfaceLayout.typing => _buildTypingComposer(context),
-                          ComposerSurfaceLayout.compact => _buildCompactComposer(context),
-                          ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
-                            context,
-                            hint: context.loc.sessionDetailHoldToTalk,
-                            extraTrailingWidth: widget.isBusy ? _stopRoom : 0,
-                            trailing: _buildRestingActions(context),
-                          ),
-                        },
+            child: _lockable(
+              child: _withLiveWords(
+                context: context,
+                body: PregoPageHalo(
+                  radius: PregoRadius.x3l,
+                  reachesLayerBottom: true,
+                  // Only a layout a send left stands above the closing box: it is cut
+                  // along the top of the surface it is fading from.
+                  child: ClipRRect(
+                    clipBehavior: _closesWithSend ? Clip.antiAlias : Clip.none,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
+                    child: _morphSize(
+                      alignment: Alignment.bottomCenter,
+                      duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
+                      curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
+                      clipBehavior: Clip.hardEdge,
+                      child: AnimatedSwitcher(
+                        key: _composerBodyKey,
+                        duration: _morphDuration,
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        layoutBuilder: (currentChild, previousChildren) =>
+                            _layoutComposerBody(currentChild: currentChild, previousChildren: previousChildren),
+                        child: KeyedSubtree(
+                          // Layout changes cross-fade; voice interactions pin
+                          // [_layout], so a switch never happens mid-hold.
+                          key: ValueKey(_layout),
+                          child: switch (_layout) {
+                            ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                            ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                            ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
+                              context,
+                              hint: context.loc.sessionDetailHoldToTalk,
+                              extraTrailingWidth: widget.isBusy ? _stopRoom : 0,
+                              trailing: _buildRestingActions(context),
+                            ),
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -2554,6 +2585,12 @@ class _PromptInputState() extends State<PromptInput> {
                       maxLines: growsInPlace ? 16 : 6,
                       keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
+                      // Keeps the keyboard up while locked, so nothing moves.
+                      inputFormatters: [
+                        TextInputFormatter.withFunction(
+                          (previous, next) => previous.text != next.text && _refuseWhileLocked() ? previous : next,
+                        ),
+                      ],
                       contextMenuBuilder: (_, editableTextState) =>
                           _buildComposerContextMenu(editableTextState: editableTextState),
                       // Material's default keeps focus on mobile touch taps;
@@ -2680,6 +2717,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _removeAttachment({required int index}) {
+    if (_refuseWhileLocked()) return;
     setState(() => _attachments.removeAt(index));
     _reportAttachments();
   }
@@ -3008,14 +3046,17 @@ class _PromptInputState() extends State<PromptInput> {
   /// Opens the shell's picker for [source]. Adding an attachment switches the
   /// composer to the typing layout (via [_showsTypingLayout]) so the preview
   /// strip is visible, without raising the keyboard.
-  Future<void> _handleAttach({required ComposerPickSource source}) => _attach(
-    outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
-      source: source,
-      attachmentsSupported: _knownAttachmentsSupported,
-      fileUploadsSupported: _knownFileUploadsSupported,
-      stagedAttachmentBytes: stagedAttachmentBytes,
-    ),
-  );
+  Future<void> _handleAttach({required ComposerPickSource source}) async {
+    if (_refuseWhileLocked()) return;
+    await _attach(
+      outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
+        source: source,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
+        stagedAttachmentBytes: stagedAttachmentBytes,
+      ),
+    );
+  }
 
   /// Recording and transcription own the field, so the composer pauses its
   /// drops meanwhile: the pane then shows no drop hint and answers a drop with
@@ -3033,6 +3074,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _handleDroppedPaths(List<String> paths) {
+    // A locked composer keeps listening, so a drop hears its own note.
+    if (_refuseWhileLocked()) return;
     // A drop delivered just before recording paused the subscription still
     // waits out recording and transcription, like the attach action.
     if (_voicePresentation != _VoicePresentation.idle) {
@@ -3281,6 +3324,7 @@ class _PromptInputState() extends State<PromptInput> {
     required FutureOr<void> Function() onTextPaste,
     required VoidCallback? onAttachmentPasted,
   }) async {
+    if (_refuseWhileLocked()) return;
     // The text fallback reads the clipboard too, so the paste is busy until
     // whichever lands has landed.
     final turn = _startInsert();

@@ -517,7 +517,12 @@ class SessionRepository({
           SessionBranchErrorResponse(code: SessionBranchErrorCode.refused, :final message) => SessionRewindRejected(
             reason: message,
           ),
-          SessionBranchErrorResponse(code: SessionBranchErrorCode.nothingToFork || SessionBranchErrorCode.unknown) =>
+          // Fork-only codes never answer an edit.
+          SessionBranchErrorResponse(
+            code: SessionBranchErrorCode.nothingToFork ||
+                SessionBranchErrorCode.worktreeBranchMissing ||
+                SessionBranchErrorCode.unknown,
+          ) =>
             const SessionRewindRejected(reason: null),
           // Without a refusal the bridge may have rewound before failing, so
           // this stays a failure the same prompt id can retry.

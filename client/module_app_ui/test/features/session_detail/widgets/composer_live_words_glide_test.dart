@@ -590,6 +590,7 @@ void main() {
               bridgeQueuedPrompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_sent",
                   text: wrapDictatedText(text: "spoken words"),
                   command: null,
@@ -1272,6 +1273,7 @@ class _ScreenState() extends State<_Screen> {
                 isBusy: false,
                 hasMessages: true,
                 canSend: true,
+                lockedNote: null,
                 submitAction: null,
                 onSend: ({required draft, required command, required attachments}) {
                   if (widget.buildsRows) setState(() => _rows.add(draft.text));

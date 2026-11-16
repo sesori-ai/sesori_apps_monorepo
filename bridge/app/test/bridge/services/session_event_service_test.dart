@@ -3,6 +3,7 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -10,6 +11,7 @@ import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart"
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
@@ -72,6 +74,7 @@ void main() {
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: database)),
       );
       service = SessionEventService(
         sessionViews: const PassThroughSessionViews(),

@@ -246,7 +246,7 @@ class SessionEventService({
       case NormalizedQueuedPromptsEvent(:final sessionId, :final prompts):
         return NormalizedQueuedPromptsEvent(
           sessionId: sessionId,
-          prompts: _sessionRepository.stampQueuedCommandSources(sessionId: sessionId, prompts: prompts),
+          prompts: _sessionRepository.stampQueuedPrompts(sessionId: sessionId, prompts: prompts),
         );
       case NormalizedQuotaInterruptionEvent() || NormalizedOtherEvent():
         return payload;

@@ -282,6 +282,11 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               fileUploadsSupported: fileUploadsSupported,
               isBusy: isBusy,
               canSend: editing == null || editing.phase == SessionEditPhase.composing,
+              // A sent edit holds the composer until the bridge answers.
+              lockedNote: switch (editing?.phase) {
+                SessionEditPhase.stopping || SessionEditPhase.sending => context.loc.sessionDetailEditSendingLock,
+                _ => null,
+              },
               // An edit stays in the composer until the bridge takes it.
               submitAction: editing == null
                   ? null
