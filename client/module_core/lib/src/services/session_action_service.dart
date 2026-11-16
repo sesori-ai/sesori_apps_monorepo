@@ -4,12 +4,15 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
+import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/send_to_session_result.dart";
 import "../repositories/models/session_cleanup_rejection.dart";
 import "../repositories/session_repository.dart";
 import "models/session_cleanup_outcome.dart";
 import "models/session_delete_result.dart";
+import "product_analytics_service.dart";
 import "selected_computer_service.dart";
 import "session_cleanup_service.dart";
 import "session_unseen_tracker.dart";
@@ -24,6 +27,7 @@ class SessionActionService({
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final FailureReporter _failureReporter,
   required final SelectedComputerService _selectedComputerService,
+  required final ProductAnalyticsService _productAnalyticsService,
 }) {
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
@@ -65,13 +69,20 @@ class SessionActionService({
 
   /// Sends [sourceSessionId] into [targetSessionId]: the source writes a
   /// summary, then the target receives it with the source's transcript. This
-  /// can take minutes, while the source writes.
-  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) async {
+  /// can take minutes, while the source writes. [sourcePluginId] is the
+  /// source's harness, for analytics.
+  Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+  }) async {
     final computer = await _selectedComputerService.targetBridgeId();
     final result = await _sessionRepository.sendToSession(
       sourceSessionId: sourceSessionId,
       targetSessionId: targetSessionId,
     );
+    // Reported even after a computer switch: the send still ran on the computer the app left.
+    _reportSendOutcome(sourcePluginId: sourcePluginId, result: result);
     final description = "session $sourceSessionId to $targetSessionId";
     if (await _selectedComputerService.targetBridgeId() != computer) {
       logw("[SessionActions] sending $description ended after a computer switch: ${result.runtimeType}");
@@ -90,6 +101,57 @@ class SessionActionService({
         logw("Could not confirm sending $description", error);
     }
     return result;
+  }
+
+  void _reportSendOutcome({required String sourcePluginId, required SendToSessionResult result}) {
+    final AnalyticsSessionSendOutcome outcome;
+    switch (result) {
+      case SendToSessionSent():
+        outcome = AnalyticsSessionSendOutcome.sent;
+      case SendToSessionRefused(:final code):
+        outcome = switch (code) {
+          SendToSessionErrorCode.sourceBusy ||
+          SendToSessionErrorCode.sourceAwaitingInput => AnalyticsSessionSendOutcome.refusedBusy,
+          SendToSessionErrorCode.sameSession ||
+          SendToSessionErrorCode.sourceArchived ||
+          SendToSessionErrorCode.targetArchived ||
+          SendToSessionErrorCode.sourceNotRoot ||
+          SendToSessionErrorCode.sourceUnavailable ||
+          SendToSessionErrorCode.sourceEmpty ||
+          SendToSessionErrorCode.summaryStopped ||
+          SendToSessionErrorCode.summaryFailed ||
+          SendToSessionErrorCode.summaryTimedOut ||
+          SendToSessionErrorCode.summaryMissing ||
+          SendToSessionErrorCode.transcriptUnavailable ||
+          SendToSessionErrorCode.targetRefused ||
+          SendToSessionErrorCode.unknown => AnalyticsSessionSendOutcome.refusedOther,
+        };
+      case SendToSessionFailed():
+        outcome = AnalyticsSessionSendOutcome.failed;
+      case SendToSessionUnsupported():
+        outcome = AnalyticsSessionSendOutcome.unsupported;
+      case SendToSessionUnconfirmed():
+        outcome = AnalyticsSessionSendOutcome.unconfirmed;
+      // Only this service hides an outcome after a switch; the repository never answers with it.
+      case SendToSessionComputerSwitched():
+        return;
+    }
+    final event = ProductAnalyticsEvent.sessionSentToSession(
+      harness: AnalyticsHarness.fromPluginId(pluginId: sourcePluginId),
+      outcome: outcome,
+    );
+    unawaited(
+      _productAnalyticsService
+          .logEvent(event: event, occurredAtUtc: DateTime.now().toUtc())
+          .then<void>((delivery) {
+            if (delivery == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver session-send analytics event");
+            }
+          })
+          .catchError((Object error, StackTrace stackTrace) {
+            logw("Failed to report session-send analytics event", error, stackTrace);
+          }),
+    );
   }
 
   /// Deletes a session permanently. [deleteSessionFolder] also removes a
