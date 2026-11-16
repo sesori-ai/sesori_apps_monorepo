@@ -83,6 +83,7 @@ void main() {
         launchDirectory: "/repo",
         environment: const {},
         processFactory: (_) async => fake,
+        clock: const ServerClock(),
       );
     });
 
@@ -282,6 +283,7 @@ void main() {
         launchDirectory: "/repo",
         environment: {"HOME": home.path},
         processFactory: (_) async => fake,
+        clock: const ServerClock(),
       );
       addTearDown(restarted.dispose);
       restarted.childSessionTracker.spawn(
@@ -314,6 +316,7 @@ void main() {
         launchDirectory: "/repo",
         environment: {"HOME": home.path},
         processFactory: (_) async => fake,
+        clock: const ServerClock(),
       );
       const outside = "/outside-launch-directory";
       final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent(outside)}/root")
@@ -1356,6 +1359,7 @@ void main() {
         launchDirectory: "/fallback",
         environment: {"HOME": home.path},
         processFactory: (_) async => fake,
+        clock: const ServerClock(),
       );
       final project = "${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}";
       final rootDirectory = Directory("$project/root")..createSync(recursive: true);
