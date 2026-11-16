@@ -45,7 +45,16 @@ class const PregoKeptSuffixText({
         mainAxisAlignment: textAlign == TextAlign.center ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           Flexible(
-            child: Text(parts.base, style: style, maxLines: 1, softWrap: softWrap, overflow: overflow),
+            // As wide as the cut text, not the room it was given, so the cut
+            // line sits flush against the suffix and centres as a whole.
+            child: Text(
+              parts.base,
+              style: style,
+              maxLines: 1,
+              softWrap: softWrap,
+              overflow: overflow,
+              textWidthBasis: TextWidthBasis.longestLine,
+            ),
           ),
           Text(parts.suffix, style: style, maxLines: 1, softWrap: false),
         ],

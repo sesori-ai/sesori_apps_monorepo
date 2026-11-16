@@ -41,6 +41,41 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets("a cut centred line is only as wide as its text, so it centres as one line", (tester) async {
+    const base = "Math Utilities Summary of every helper";
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: SizedBox(
+            key: boundsKey,
+            width: 200,
+            child: PregoKeptSuffixText(
+              text: "$base$suffix",
+              keptSuffix: suffix,
+              style: style,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final cut = TextPainter(
+      text: const TextSpan(text: base, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: "\u2026",
+      textWidthBasis: TextWidthBasis.longestLine,
+    )..layout(maxWidth: 200 - tester.getSize(find.text(suffix)).width);
+    addTearDown(cut.dispose);
+    expect(tester.getSize(find.text(base)).width, moreOrLessEquals(cut.width, epsilon: 0.5));
+    final bounds = tester.getRect(find.byKey(boundsKey));
+    expect(
+      tester.getTopLeft(find.text(base)).dx - bounds.left,
+      moreOrLessEquals(bounds.right - tester.getTopRight(find.text(suffix)).dx, epsilon: 0.5),
+    );
+  });
+
   testWidgets("a short suffixed text shows whole, as wide as the plain text", (tester) async {
     const text = "Math$suffix";
     await tester.pumpWidget(app(text: text, width: 200));

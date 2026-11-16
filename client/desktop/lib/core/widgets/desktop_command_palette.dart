@@ -280,6 +280,8 @@ class const _PaletteRow({
                       titleSpan(from: 0, to: base.length),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      // As wide as the cut text, so the suffix follows the ellipsis directly.
+                      textWidthBasis: TextWidthBasis.longestLine,
                     ),
                   ),
                   Text.rich(titleSpan(from: base.length, to: title.length), maxLines: 1),
