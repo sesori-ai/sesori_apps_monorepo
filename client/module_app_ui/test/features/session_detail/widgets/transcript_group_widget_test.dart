@@ -61,6 +61,7 @@ Widget _app({
   PregoInteractionMode mode = PregoInteractionMode.touch,
   String? projectId,
   SessionDetailSessionOpener? openSession,
+  bool showsLoneStep = false,
   // A fresh router per pump would drop widget state, so only a test that
   // pumps once and pops a sheet through go_router asks for one.
   bool routed = false,
@@ -91,7 +92,12 @@ Widget _app({
             alignment: Alignment.topLeft,
             child: SizedBox(
               width: width,
-              child: TranscriptGroupWidget(key: ValueKey(group.id), projectId: projectId, group: group),
+              child: TranscriptGroupWidget(
+                key: ValueKey(group.id),
+                projectId: projectId,
+                group: group,
+                showsLoneStep: showsLoneStep,
+              ),
             ),
           ),
         ),
@@ -276,6 +282,64 @@ void main() {
 
     expect(find.text("1 step"), findsOneWidget);
     expect(find.text("Read"), findsNothing);
+    expect(find.byType(ToolPartWidget), findsNothing);
+  });
+
+  testWidgets("a group that shows its lone step puts that step's row in place of the summary", (tester) async {
+    final opened = <String>[];
+    await tester.pumpWidget(
+      _app(
+        group: _group(
+          parts: [_subAgent(id: "k1", status: ToolStatus.completed, childSessionID: "child")],
+        ),
+        projectId: "p",
+        showsLoneStep: true,
+        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+            opened.add(sessionId),
+      ),
+    );
+
+    expect(find.text("1 step"), findsNothing);
+    expect(find.byKey(const ValueKey("transcriptGroup.toggle.k1")), findsNothing);
+    expect(find.text("Agent Explore the repo"), findsOneWidget);
+
+    await tester.tap(find.text("Agent Explore the repo"));
+    await tester.pumpAndSettle();
+    expect(opened, ["child"]);
+    expect(find.byType(PregoBottomSheet), findsNothing);
+  });
+
+  testWidgets("a lone running step settles in place when its group shows lone steps", (tester) async {
+    Widget app({required ToolStatus status}) => _app(
+      group: _group(
+        parts: [_tool(id: "t1", name: "read", status: status)],
+      ),
+      showsLoneStep: true,
+    );
+    await tester.pumpWidget(app(status: ToolStatus.running));
+    final row = tester.element(find.byType(ToolPartWidget));
+
+    await tester.pumpWidget(app(status: ToolStatus.completed));
+    await tester.pumpAndSettle();
+    expect(find.text("1 step"), findsNothing);
+    expect(tester.element(find.byType(ToolPartWidget)), same(row));
+  });
+
+  testWidgets("a group that shows lone steps still counts two or more", (tester) async {
+    await tester.pumpWidget(
+      _app(
+        group: _group(
+          parts: [
+            _subAgent(id: "k1", status: ToolStatus.completed),
+            _tool(id: "t1", name: "read", status: ToolStatus.completed),
+          ],
+        ),
+        showsLoneStep: true,
+      ),
+    );
+
+    expect(find.text("2 steps"), findsOneWidget);
+    expect(find.byType(SubtaskPartWidget), findsNothing);
     expect(find.byType(ToolPartWidget), findsNothing);
   });
 

@@ -93,6 +93,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
               createdAtMs: widget.message.info.time?.created,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               selectionArea: null,
+              showsLoneStep: false,
             ),
           ),
         ),

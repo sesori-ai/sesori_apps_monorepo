@@ -30,6 +30,10 @@ class const AssistantMessageCard({
   /// The key of the card's selection area, through which a message menu
   /// selects its text; null where no menu does.
   required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
+
+  /// Whether a group of one step shows that step's row in place of a
+  /// one-step summary; see [TranscriptGroupWidget.showsLoneStep].
+  required final bool showsLoneStep,
 }) extends StatelessWidget {
   /// The reply's text as Markdown, its paragraphs as they stream, or null when
   /// it has none yet.
@@ -61,7 +65,12 @@ class const AssistantMessageCard({
               ...switch (block) {
                 TranscriptPartsBlock(:final parts) => _buildParts(context: context, parts: parts),
                 TranscriptGroupBlock() => [
-                  TranscriptGroupWidget(key: ValueKey(block.id), projectId: projectId, group: block),
+                  TranscriptGroupWidget(
+                    key: ValueKey(block.id),
+                    projectId: projectId,
+                    group: block,
+                    showsLoneStep: showsLoneStep,
+                  ),
                 ],
               },
           ],
