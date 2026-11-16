@@ -1,4 +1,5 @@
 import "package:sesori_dart_core/src/cubits/session_detail/interrupted_turn.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_composer_mode.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/turn_end_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -43,6 +44,7 @@ InterruptedTurnView _view({
   required String? afterMessageId,
   SessionStatus sessionStatus = const SessionStatus.idle(),
   bool hasPendingPrompts = false,
+  SessionEditPhase? editPhase,
 }) => const TurnEndCalculator().interruptedTurn(
   messages: messages,
   interruption: afterMessageId == null
@@ -50,6 +52,7 @@ InterruptedTurnView _view({
       : SessionInterruption(afterMessageId: afterMessageId, unacknowledged: false),
   sessionStatus: sessionStatus,
   hasPendingPrompts: hasPendingPrompts,
+  editPhase: editPhase,
 );
 
 InterruptedTurnView _shown({
@@ -68,35 +71,63 @@ void main() {
   group("TurnEndCalculator", () {
     test("shows nothing without an interruption", () {
       expect(
-        _view(messages: [_prompt(id: "u1"), _reply(id: "a1")], afterMessageId: null),
+        _view(
+          messages: [
+            _prompt(id: "u1"),
+            _reply(id: "a1"),
+          ],
+          afterMessageId: null,
+        ),
         const InterruptedTurnView.absent(),
       );
     });
 
     test("shows nothing while the interrupted message is not loaded", () {
       expect(
-        _view(messages: [_prompt(id: "u2"), _reply(id: "a2")], afterMessageId: "a1"),
+        _view(
+          messages: [
+            _prompt(id: "u2"),
+            _reply(id: "a2"),
+          ],
+          afterMessageId: "a1",
+        ),
         const InterruptedTurnView.absent(),
       );
     });
 
     test("ends the cut-off turn after its last message and offers Continue", () {
       expect(
-        _view(messages: [_prompt(id: "u1"), _reply(id: "a1"), _reply(id: "a2")], afterMessageId: "a1"),
+        _view(
+          messages: [
+            _prompt(id: "u1"),
+            _reply(id: "a1"),
+            _reply(id: "a2"),
+          ],
+          afterMessageId: "a1",
+        ),
         _shown(afterMessageId: "a1", lineAfterMessageId: "a2", continueRefusal: null),
       );
     });
 
     test("a turn cut off before any reply ends under its prompt, and Continue's prompt opens a new turn", () {
       expect(
-        _view(messages: [_prompt(id: "u1")], afterMessageId: "u1"),
+        _view(
+          messages: [_prompt(id: "u1")],
+          afterMessageId: "u1",
+        ),
         _shown(afterMessageId: "u1", lineAfterMessageId: "u1", continueRefusal: null),
       );
 
       // Continue's prompt follows with no reply between, yet the line stays
       // under the first prompt and the new turn takes Continue away.
       expect(
-        _view(messages: [_prompt(id: "u1"), _prompt(id: "u2")], afterMessageId: "u1"),
+        _view(
+          messages: [
+            _prompt(id: "u1"),
+            _prompt(id: "u2"),
+          ],
+          afterMessageId: "u1",
+        ),
         _shown(
           afterMessageId: "u1",
           lineAfterMessageId: "u1",
@@ -109,7 +140,14 @@ void main() {
       // Claude Code and Codex record the stop after the interrupted message,
       // so the row is the turn's last and the Interrupted line follows it.
       expect(
-        _view(messages: [_prompt(id: "u1"), _reply(id: "a1"), _stopped(id: "e1")], afterMessageId: "a1"),
+        _view(
+          messages: [
+            _prompt(id: "u1"),
+            _reply(id: "a1"),
+            _stopped(id: "e1"),
+          ],
+          afterMessageId: "a1",
+        ),
         _shown(
           afterMessageId: "a1",
           lineAfterMessageId: "e1",
@@ -122,7 +160,12 @@ void main() {
     test("a Stopped row in another turn keeps its own line", () {
       expect(
         _view(
-          messages: [_prompt(id: "u1"), _stopped(id: "e1"), _prompt(id: "u2"), _reply(id: "a2")],
+          messages: [
+            _prompt(id: "u1"),
+            _stopped(id: "e1"),
+            _prompt(id: "u2"),
+            _reply(id: "a2"),
+          ],
           afterMessageId: "a2",
         ),
         _shown(afterMessageId: "a2", lineAfterMessageId: "a2", continueRefusal: null),
@@ -158,6 +201,32 @@ void main() {
           lineAfterMessageId: "a1",
           continueRefusal: InterruptedTurnContinueRefusal.promptPending,
         ),
+      );
+    });
+
+    test("an open or sending edit locks Continue, and a working session still wins", () {
+      final messages = [_prompt(id: "u1"), _reply(id: "a1")];
+      InterruptedTurnContinueRefusal? refusal({
+        required SessionEditPhase editPhase,
+        SessionStatus sessionStatus = const SessionStatus.idle(),
+      }) => switch (_view(
+        messages: messages,
+        afterMessageId: "a1",
+        sessionStatus: sessionStatus,
+        hasPendingPrompts: true,
+        editPhase: editPhase,
+      )) {
+        InterruptedTurnShown(:final continueRefusal) => continueRefusal,
+        InterruptedTurnAbsent() => fail("the line should show"),
+      };
+
+      expect(refusal(editPhase: SessionEditPhase.restoring), InterruptedTurnContinueRefusal.editOpen);
+      expect(refusal(editPhase: SessionEditPhase.composing), InterruptedTurnContinueRefusal.editOpen);
+      expect(refusal(editPhase: SessionEditPhase.stopping), InterruptedTurnContinueRefusal.editSending);
+      expect(refusal(editPhase: SessionEditPhase.sending), InterruptedTurnContinueRefusal.editSending);
+      expect(
+        refusal(editPhase: SessionEditPhase.composing, sessionStatus: const SessionStatus.busy(since: null)),
+        InterruptedTurnContinueRefusal.sessionWorking,
       );
     });
   });

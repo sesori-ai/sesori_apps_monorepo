@@ -341,7 +341,11 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           interruptedTurn: _interruptedTurn,
           onContinueInterruptedTurn: () async {
             continueTaps++;
-            return null;
+            // Answers as the cubit does: the shown line's refusal, if any.
+            return switch (_interruptedTurn) {
+              InterruptedTurnShown(:final continueRefusal) => continueRefusal,
+              InterruptedTurnAbsent() => InterruptedTurnContinueRefusal.noInterruptedTurn,
+            };
           },
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
@@ -7392,6 +7396,41 @@ void main() {
       for (var i = 1; i < drops.length; i++) {
         expect(drops[i] - drops[i - 1], lessThan(buttonHeight / 3), reason: "frame $i moves a fraction of the button");
       }
+    });
+
+    testWidgets("an open edit dims Continue, and each tap says why it waits", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.editOpen));
+      await tester.pumpAndSettle();
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.ancestor(of: continueButton, matching: find.byType(AnimatedOpacity)).first,
+      );
+      expect(opacity.opacity, 0.6);
+      for (var tap = 1; tap <= 2; tap++) {
+        await tester.tap(continueButton);
+        await tester.pump();
+        expect(harness.continueTaps, tap);
+        expect(find.text("Finish or cancel your edit first."), findsOneWidget, reason: "tap $tap");
+        await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+      }
+    });
+
+    testWidgets("a tap on Continue while it folds away says why", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(continueButton, warnIfMissed: false);
+      await tester.pump();
+
+      expect(harness.continueTaps, 1);
+      expect(find.text("Your message is already on its way."), findsOneWidget);
+      await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
     });
 
     testWidgets("offers no Continue once a later turn follows", (tester) async {

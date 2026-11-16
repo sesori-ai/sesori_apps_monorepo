@@ -399,12 +399,17 @@ class SessionDetailCubit(
       :final bridgeQueuedPrompts,
       :final awaitingBridgeSubmissions,
       :final launchFollowUps,
+      :final composerMode,
     ) =>
       state.copyWith(
         interruptedTurn: _turnEnds.interruptedTurn(
           messages: messages,
           interruption: session.interruption,
           sessionStatus: sessionStatus,
+          editPhase: switch (composerMode) {
+            SessionComposerEditing(:final phase) => phase,
+            SessionComposerNormal() => null,
+          },
           hasPendingPrompts:
               launchHandoff != null ||
               localSend is! LocalSendIdle ||

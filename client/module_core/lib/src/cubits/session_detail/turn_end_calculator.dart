@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "interrupted_turn.dart";
+import "session_composer_mode.dart";
 
 /// Decides how the transcript ends the turn a bridge stop cut off: where the
 /// Interrupted line goes, which Stopped lines it replaces, and whether it
@@ -13,6 +14,9 @@ class const TurnEndCalculator() {
     required List<MessageWithParts> messages,
     required SessionInterruption? interruption,
     required SessionStatus sessionStatus,
+
+    /// The open edit's phase, or null while no message is being edited.
+    required SessionEditPhase? editPhase,
 
     /// Whether a prompt is on its way: sending, failed, queued here or on
     /// the bridge, or a launch follow-up not yet answered.
@@ -31,11 +35,15 @@ class const TurnEndCalculator() {
         for (final message in turn.messages)
           if (message.info case MessageError(kind: MessageErrorKind.stopped, :final id)) id,
       },
-      continueRefusal: switch ((index == turns.length - 1, sessionStatus, hasPendingPrompts)) {
-        (false, _, _) => InterruptedTurnContinueRefusal.laterTurn,
-        (true, SessionStatusBusy() || SessionStatusRetry(), _) => InterruptedTurnContinueRefusal.sessionWorking,
-        (true, SessionStatusIdle(), true) => InterruptedTurnContinueRefusal.promptPending,
-        (true, SessionStatusIdle(), false) => null,
+      continueRefusal: switch ((index == turns.length - 1, sessionStatus, editPhase, hasPendingPrompts)) {
+        (false, _, _, _) => InterruptedTurnContinueRefusal.laterTurn,
+        (true, SessionStatusBusy() || SessionStatusRetry(), _, _) => InterruptedTurnContinueRefusal.sessionWorking,
+        (true, SessionStatusIdle(), SessionEditPhase.restoring || SessionEditPhase.composing, _) =>
+          InterruptedTurnContinueRefusal.editOpen,
+        (true, SessionStatusIdle(), SessionEditPhase.stopping || SessionEditPhase.sending, _) =>
+          InterruptedTurnContinueRefusal.editSending,
+        (true, SessionStatusIdle(), null, true) => InterruptedTurnContinueRefusal.promptPending,
+        (true, SessionStatusIdle(), null, false) => null,
       },
     );
   }

@@ -3156,6 +3156,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailContinueInterruptedTurn => 'Continue';
 
   @override
+  String get sessionDetailContinueEditOpen => 'Finish or cancel your edit first.';
+
+  @override
+  String get sessionDetailContinueEditSending => 'Sending your edit. Continue in a moment.';
+
+  @override
+  String get sessionDetailContinueSessionWorking => 'The agent is already working.';
+
+  @override
+  String get sessionDetailContinuePromptPending => 'Your message is already on its way.';
+
+  @override
+  String get sessionDetailContinueAlreadyContinued => 'This turn already continued.';
+
+  @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';
 
   @override

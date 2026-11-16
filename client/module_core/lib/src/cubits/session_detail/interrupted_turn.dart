@@ -35,16 +35,26 @@ sealed class const InterruptedTurnView._() with _$InterruptedTurnView {
 }
 
 /// Why Continue cannot pick an interrupted turn back up.
-enum InterruptedTurnContinueRefusal() {
+enum InterruptedTurnContinueRefusal({
+  /// Whether Continue stays under the line, locked, rather than folding away:
+  /// an edit holds it only until the edit ends.
+  required final bool locksContinue,
+}) {
   /// The transcript shows no interrupted turn.
-  noInterruptedTurn,
+  noInterruptedTurn(locksContinue: false),
 
   /// A later turn follows the interrupted one.
-  laterTurn,
+  laterTurn(locksContinue: false),
 
   /// The session is working.
-  sessionWorking,
+  sessionWorking(locksContinue: false),
+
+  /// The user is editing a message.
+  editOpen(locksContinue: true),
+
+  /// An edited message is stopping the session or being sent.
+  editSending(locksContinue: true),
 
   /// A prompt is waiting to be sent or answered.
-  promptPending,
+  promptPending(locksContinue: false),
 }

@@ -5473,6 +5473,36 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get sessionDetailContinueInterruptedTurn;
 
+  /// Alert shown when the user taps Continue under an interrupted turn while a message edit is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish or cancel your edit first.'**
+  String get sessionDetailContinueEditOpen;
+
+  /// Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your edit. Continue in a moment.'**
+  String get sessionDetailContinueEditSending;
+
+  /// Alert shown when the user taps Continue under an interrupted turn just as the session started working.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is already working.'**
+  String get sessionDetailContinueSessionWorking;
+
+  /// Alert shown when the user taps Continue under an interrupted turn while a message is already being sent, such as after a second tap on Continue.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message is already on its way.'**
+  String get sessionDetailContinuePromptPending;
+
+  /// Alert shown when the user taps Continue under an interrupted turn that a later turn has already followed.
+  ///
+  /// In en, this message translates to:
+  /// **'This turn already continued.'**
+  String get sessionDetailContinueAlreadyContinued;
+
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
   /// In en, this message translates to:

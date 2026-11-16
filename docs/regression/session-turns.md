@@ -132,8 +132,9 @@ defaults and queued client sends coherent.
   Code and Codex, which record a bridge shutdown like a user Stop, show only the Interrupted line, never both. While
   the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
   line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
-  above moves. A detached reader's frozen view that taps a stale Continue sends nothing and returns to the newest
-  rows. An open session view that receives a new unacknowledged interruption declares its view again, so the list's
+  above moves. While an edit is open or sending, Continue stays but dims like the locked composer, and a tap sends
+  nothing and says why in a popup alert. Every refused tap answers with an alert saying why, including one on a
+  Continue folding away; a tap on a detached reader's frozen view also returns to the newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the list's
   label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
@@ -1086,7 +1087,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
 - A turn a bridge stop cut off shows no Interrupted line, shows it beside a Stopped line, or offers Continue while
-  the session works, a prompt is queued or a later turn follows; Continue sends nothing or sends twice; the prompt
+  the session works, a prompt is queued or a later turn follows; Continue sends during an open edit, or a refused tap
+  shows no alert; Continue sends nothing or sends twice; the prompt
   after a turn cut off before any output joins that turn; or the list keeps "Interrupted" after the session is opened.
 - A Claude compaction shows two rows, a row that stays running after its
   turn, a failure with no note or with the error repeated as a reply, or

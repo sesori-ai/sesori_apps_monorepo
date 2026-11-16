@@ -1798,24 +1798,43 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (_interruptedTurn case InterruptedTurnShown(:final lineAfterMessageId, :final continueRefusal)
         when lineAfterMessageId == messageId) {
       final onContinue = widget.onContinueInterruptedTurn;
+      final locked = continueRefusal?.locksContinue ?? false;
       return SizedBox(
         key: const ValueKey("interrupted"),
         width: double.infinity,
         child: InterruptedTurnLine(
           followsReply: followsReply,
-          onContinue: onContinue == null || continueRefusal != null ? null : () => _continue(onContinue: onContinue),
+          onContinue: onContinue == null || (continueRefusal != null && !locked)
+              ? null
+              : () => _continue(onContinue: onContinue),
+          continueLocked: locked,
         ),
       );
     }
     return null;
   }
 
-  /// Continues the interrupted turn. A refusal comes from a line that no
-  /// longer matches the session, frozen while the reader is detached, so the
-  /// list returns to the newest rows, which show why.
+  /// Continues the interrupted turn, or says why it can't: an edit holds a
+  /// locked Continue, and a tap on one folding away, or on a line frozen
+  /// while the reader is detached, finds the turn already moved on. A reader
+  /// who is detached is taken to the newest rows, which show where it went.
   Future<void> _continue({required Future<InterruptedTurnContinueRefusal?> Function() onContinue}) async {
     final refusal = await onContinue();
-    if (refusal != null && mounted && !_follow.following) await _follow.animateToEdge();
+    if (refusal == null || !mounted) return;
+    final loc = context.loc;
+    PregoPopupAlertPresenter.of(context).show(
+      title: switch (refusal) {
+        InterruptedTurnContinueRefusal.editOpen => loc.sessionDetailContinueEditOpen,
+        InterruptedTurnContinueRefusal.editSending => loc.sessionDetailContinueEditSending,
+        InterruptedTurnContinueRefusal.sessionWorking => loc.sessionDetailContinueSessionWorking,
+        InterruptedTurnContinueRefusal.promptPending => loc.sessionDetailContinuePromptPending,
+        InterruptedTurnContinueRefusal.laterTurn ||
+        InterruptedTurnContinueRefusal.noInterruptedTurn => loc.sessionDetailContinueAlreadyContinued,
+      },
+      variant: PregoPopupAlertsNotificationsVariant.warning,
+      duration: PregoPopupAlertPresenter.defaultDuration,
+    );
+    if (!refusal.locksContinue && !_follow.following) await _follow.animateToEdge();
   }
 
   /// An agent reply's card, with its message menu.
@@ -1870,7 +1889,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   Widget? _handoffRow({required MessageWithParts message}) {
     final id = message.info.id;
     if (_handoffs.markers[id] case final marker?) {
-      return _endingInterruptedTurn(messageId: id, child: HandoffMarkerRow(marker: marker));
+      return _endingInterruptedTurn(
+        messageId: id,
+        child: HandoffMarkerRow(marker: marker),
+      );
     }
     if (_handoffs.cards[id] case final card?) {
       return _animatedPromptRow(

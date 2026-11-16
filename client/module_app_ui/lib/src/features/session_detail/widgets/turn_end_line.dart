@@ -10,9 +10,10 @@ import "transcript_motion.dart";
 /// as one the user stopped. It is not an error: it looks like a settled step
 /// row, as the compaction row does, with the reply's inset around it.
 ///
-/// It stands exactly as tall as the [TranscriptWorkingRow] it replaces: under
-/// a shown reply it joins the reply's inset, as the working row does there, so
-/// when it grows in as the working row folds away the transcript holds still.
+/// On one line it stands exactly as tall as the [TranscriptWorkingRow] it
+/// replaces: under a shown reply it joins the reply's inset, as the working
+/// row does there, so when it grows in as the working row folds away the
+/// transcript holds still. A detail that wraps grows it to two lines.
 class const TurnEndLine({
   super.key,
   required final IconData icon,
@@ -64,6 +65,10 @@ class const InterruptedTurnLine({
 
   /// Sends the prompt that continues the turn; null hides Continue.
   required final VoidCallback? onContinue,
+
+  /// Dims Continue while something holds it, as an edit does. A tap still
+  /// reaches [onContinue], which answers with the reason.
+  required final bool continueLocked,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -86,11 +91,17 @@ class const InterruptedTurnLine({
               start: TurnEndLine.labelStart(context: context),
               bottom: TranscriptStepRow.stepGap,
             ),
-            child: PregoButtonsSolid(
-              label: loc.sessionDetailContinueInterruptedTurn,
-              hierarchy: PregoButtonsSolidHierarchy.link,
-              size: PregoButtonsSolidSize.sm,
-              onPressed: onContinue,
+            // Dims like the composer an edit locks.
+            child: AnimatedOpacity(
+              duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              opacity: continueLocked ? 0.6 : 1,
+              child: PregoButtonsSolid(
+                label: loc.sessionDetailContinueInterruptedTurn,
+                hierarchy: PregoButtonsSolidHierarchy.link,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onContinue,
+              ),
             ),
           ),
       ],
