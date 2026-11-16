@@ -2241,7 +2241,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sendSessionFailedSourceOptionsUnavailable(String source) {
-    return 'Couldn\'t send: “$source”\'s model or settings aren\'t available anymore. Send it a message with another model, then try again.';
+    return 'Couldn\'t send: “$source” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.';
   }
 
   @override
@@ -2278,7 +2278,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sendSessionFailedTargetOptionsUnavailable(String target) {
-    return 'Couldn\'t send: “$target”\'s model or settings aren\'t available anymore. Send it a message with another model, then try again.';
+    return 'Couldn\'t send: “$target” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.';
   }
 
   @override

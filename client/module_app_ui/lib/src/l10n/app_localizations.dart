@@ -3910,7 +3910,7 @@ abstract class AppLocalizations {
   /// Error alert when the sent session's harness no longer offers the model, agent or variant that session last used, so it refused the summary request.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t send: “{source}”\'s model or settings aren\'t available anymore. Send it a message with another model, then try again.'**
+  /// **'Couldn\'t send: “{source}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
   String sendSessionFailedSourceOptionsUnavailable(String source);
 
   /// Error alert when the sent session has no conversation yet.
@@ -3964,7 +3964,7 @@ abstract class AppLocalizations {
   /// Error alert when the receiving session's harness no longer offers the model, agent or variant that session last used, so it refused the prompt.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t send: “{target}”\'s model or settings aren\'t available anymore. Send it a message with another model, then try again.'**
+  /// **'Couldn\'t send: “{target}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
   String sendSessionFailedTargetOptionsUnavailable(String target);
 
   /// Extra line of the delete question when the session being deleted is pinned.
