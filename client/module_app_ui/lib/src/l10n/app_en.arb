@@ -1646,6 +1646,8 @@
   "@sendSessionSending": {"description": "Alert while a send runs. {source} is the sent session's title, {target} the receiving session's.", "placeholders": {"source": {"type": "String"}, "target": {"type": "String"}}},
   "sendSessionSent": "Sent to “{target}”",
   "@sendSessionSent": {"description": "Alert when a send succeeded. {target} is the receiving session's title.", "placeholders": {"target": {"type": "String"}}},
+  "sendSessionSentArchived": "Sent to “{target}”. Archived “{source}”.",
+  "@sendSessionSentArchived": {"description": "Alert when a send succeeded and the sent session was archived, as the send sheet's switch asked. {target} is the receiving session's title, {source} the sent session's.", "placeholders": {"target": {"type": "String"}, "source": {"type": "String"}}},
   "sendSessionOpen": "Open",
   "@sendSessionOpen": {"description": "Action on the sent alert that opens the receiving session."},
   "sendSessionUnsupported": "Update Sesori on this computer to send sessions.",

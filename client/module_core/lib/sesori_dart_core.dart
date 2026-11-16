@@ -256,6 +256,7 @@ export "src/platform/voice_capture.dart";
 export "src/repositories/analytics_release_cutoff_repository.dart";
 export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
+export "src/repositories/archive_after_send_preference_storage.dart";
 export "src/repositories/attribution_repository.dart";
 export "src/repositories/bridge_repository.dart";
 export "src/repositories/bridge_settings_repository.dart";

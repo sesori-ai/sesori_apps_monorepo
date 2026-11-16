@@ -3901,6 +3901,12 @@ abstract class AppLocalizations {
   /// **'Sent to “{target}”'**
   String sendSessionSent(String target);
 
+  /// Alert when a send succeeded and the sent session was archived, as the send sheet's switch asked. {target} is the receiving session's title, {source} the sent session's.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to “{target}”. Archived “{source}”.'**
+  String sendSessionSentArchived(String target, String source);
+
   /// Action on the sent alert that opens the receiving session.
   ///
   /// In en, this message translates to:
