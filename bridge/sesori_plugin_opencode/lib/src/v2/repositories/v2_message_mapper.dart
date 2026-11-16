@@ -34,6 +34,7 @@ import "../models/openapi/tool_file_content.g.dart";
 import "../models/openapi/tool_text_content.g.dart";
 import "../models/v2_agent_names.dart";
 import "../models/v2_decode_exception.dart";
+import "../models/v2_subagent_report.dart";
 import "../models/v2_tool_presentation_fields.dart";
 
 /// Stateless transcript projection. These same part identities and tool-state
@@ -170,12 +171,20 @@ class const V2MessageMapper() {
           completed: message.time.created,
         );
         parts = [
-          PluginMessagePart.text(
-            id: partId(messageId: message.id, ordinal: 0),
-            sessionID: sessionId,
-            messageID: message.id,
-            text: message.description ?? message.text,
-          ),
+          switch (V2SubagentReport.fromSynthetic(message: message)) {
+            final report? => _subagentReport(
+              sessionId: sessionId,
+              messageId: message.id,
+              report: report,
+              agentNames: agentNames,
+            ),
+            null => PluginMessagePart.text(
+              id: partId(messageId: message.id, ordinal: 0),
+              sessionID: sessionId,
+              messageID: message.id,
+              text: message.description ?? message.text,
+            ),
+          },
         ];
       case SessionMessageCompactionCompleted():
         info = _ownMessage(
@@ -365,6 +374,40 @@ class const V2MessageMapper() {
   }
 
   static bool _isShellTool({required String name}) => name == "bash" || name == "shell";
+
+  /// A background sub-agent's outcome as a finished sub-agent step that opens
+  /// the child session. The report carries no prompt, so its description
+  /// stands in for one.
+  PluginMessagePart _subagentReport({
+    required String sessionId,
+    required String messageId,
+    required V2SubagentReport report,
+    required V2AgentNames agentNames,
+  }) {
+    final failed = report.state == V2SubagentState.error;
+    return PluginMessagePart.subtask(
+      id: partId(messageId: messageId, ordinal: 0),
+      sessionID: sessionId,
+      messageID: messageId,
+      prompt: report.description,
+      description: report.description,
+      agent: agentNames.displayName(id: report.agent),
+      taskState: PluginToolState(
+        status: switch (report.state) {
+          V2SubagentState.completed => PluginToolStatus.completed,
+          V2SubagentState.error => PluginToolStatus.error,
+          V2SubagentState.cancelled => PluginToolStatus.cancelled,
+          V2SubagentState.unknown => PluginToolStatus.unknown,
+        },
+        title: null,
+        shellCommand: null,
+        output: failed ? null : _truncate(text: report.body),
+        error: failed ? _truncate(text: report.body) : null,
+        attachments: const [],
+      ),
+      childSessionID: report.childSessionId,
+    );
+  }
 
   /// One part per compaction message, so the row keeps its ID as it settles.
   PluginMessagePart _compaction({

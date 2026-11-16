@@ -216,6 +216,25 @@ void main() {
     );
   });
 
+  test("shows a delivered sub-agent report as the same finished sub-agent step live and in history", () async {
+    await plugin.initialize();
+    server.message = {
+      "type": "synthetic",
+      "id": "msg_report",
+      "time": {"created": 3},
+      "text": '<subagent sessionID="ses_child" state="completed" description="probe child">\nCHILD-DONE\n</subagent>',
+      "description": "probe child",
+      "metadata": {"source": "subagent", "childID": "ses_child", "agent": "General", "state": "completed"},
+    };
+    final live = _next<BridgeSseMessagePartUpdated>(plugin: plugin);
+    await server.emit(type: "session.inbox.delivered", data: {"inboxID": "msg_report"});
+    final part = (await live).part as PluginMessagePartSubtask;
+    expect(part.childSessionID, "ses_child");
+    expect((part.taskState ?? fail("expected a task state")).output, "CHILD-DONE");
+    final history = await plugin.getSessionMessages(_sessionId);
+    expect(history.single.parts.single, part);
+  });
+
   test("compactSession compacts a quiet session natively and refuses a running one", () async {
     await plugin.initialize();
     expect(
@@ -392,6 +411,8 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   Map<String, dynamic>? replyBody;
   Map<String, dynamic>? createBody;
   Map<String, dynamic>? compactBody;
+  // A stored message other than the prompt echo, served by the message routes.
+  Map<String, Object?>? message;
 
   this {
     _subscription = server.listen(_handle);
@@ -559,10 +580,15 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           "/api/form" => {"data": forms},
           "/api/permission/request" => {"data": permissions},
           "/api/session/$_sessionId/message" => {
-            "data": [if (promptBody != null && !request.uri.queryParameters.containsKey("type")) user],
+            "data": [
+              if (!request.uri.queryParameters.containsKey("type")) ...[
+                if (promptBody != null) user,
+                ?message,
+              ],
+            ],
             "cursor": {"next": null},
           },
-          _ when path.startsWith("/api/session/$_sessionId/message/") => {"data": user},
+          _ when path.startsWith("/api/session/$_sessionId/message/") => {"data": message ?? user},
           _ => {"data": <Object?>[]},
         };
         request.response.write(jsonEncode(body));
