@@ -757,6 +757,47 @@ void main() {
       await client.dispose();
     });
 
+    group("validateTurnSelection", () {
+      Future<void> validate({
+        ({String providerID, String modelID})? model,
+        String? variant,
+        String? agent,
+      }) => plugin.validateTurnSelection(
+        operation: "sendPrompt",
+        sessionId: "s1",
+        model: model,
+        variant: variant == null ? null : PluginSessionVariant(id: variant),
+        agent: agent,
+      );
+
+      test("refuses a model Cursor no longer lists before the prompt is accepted", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "retired-model")),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
+      test("refuses a mode Cursor no longer lists", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(validate(agent: "retired-mode"), throwsA(isA<PluginStaleOptionsException>()));
+      });
+
+      test("refuses a reasoning level the selected model no longer lists", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "gpt-5.4"), variant: "max"),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
+      test("accepts listed options and skips checks before the catalog is known", () async {
+        await validate(model: (providerID: "cursor", modelID: "anything"), variant: "max", agent: "whatever");
+        capture(catalogResult(), fromNewSession: true);
+        await validate(model: (providerID: "cursor", modelID: "sonnet-4.6"), variant: "high", agent: "Plan");
+      });
+    });
+
     test("applyTurnSelection resolves mode from display name agent", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
