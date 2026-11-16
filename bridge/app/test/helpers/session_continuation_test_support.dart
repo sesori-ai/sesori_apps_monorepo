@@ -48,6 +48,10 @@ final class const UnusedContinuationMutations() implements SessionMutationDispat
   @override
   void sessionArchived({required Session session}) {}
 
+  // Fixture sessions have no interruption to acknowledge.
+  @override
+  Future<void> acknowledgeInterruption({required String sessionId}) async {}
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

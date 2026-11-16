@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "command_info.dart";
+import "message_handoff.dart";
 
 part "queued_prompt.freezed.dart";
 
@@ -43,6 +44,11 @@ sealed class QueuedSessionPrompt with _$QueuedSessionPrompt {
     /// Source of [command] when the bridge knows it. Null for a plain prompt
     /// and from bridges that cannot name invocations.
     @JsonKey(unknownEnumValue: CommandSource.unknown) required CommandSource? commandSource,
+
+    /// The handoff stamp the prompt's user message will carry when the bridge
+    /// sent it to send one session into another; null for every other prompt.
+    /// Clients that predate it ignore the key.
+    required MessageHandoff? handoff,
 
     /// Number of file attachments carried by the prompt.
     @Default(0) int attachmentCount,

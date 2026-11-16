@@ -897,6 +897,7 @@ class CodexEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }
@@ -949,6 +950,7 @@ class CodexEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }

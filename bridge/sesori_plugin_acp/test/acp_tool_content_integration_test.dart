@@ -624,6 +624,7 @@ AcpReplayCollector _collector() => AcpReplayCollector(
   haltClassifier: null,
   toolPartReplacement: null,
   toolPartSuppression: null,
+  separatesToolMessages: false,
 );
 
 PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state;

@@ -258,6 +258,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: toolPartSuppression,
+            separatesToolMessages: false,
           );
         },
       );

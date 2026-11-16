@@ -1331,6 +1331,7 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       lastUserActivityAt: null,
       branchName: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     ).toJson(),
     titleChanged: true,

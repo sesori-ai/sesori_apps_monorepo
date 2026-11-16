@@ -264,8 +264,10 @@ final class ClaudeSessionService({
       createdAt: _clock.now().millisecondsSinceEpoch,
     );
     state.queue.add(entry);
-    _beginTurnAccounting(sessionId: sessionId, state: state);
+    // The queue goes out ahead of busy, so a client never shows the session
+    // working before the prompt that started it.
     _emitQueueUpdate(sessionId: sessionId, state: state);
+    _beginTurnAccounting(sessionId: sessionId, state: state);
     final generation = state.generation;
     state.dispatchTail = state.dispatchTail.then(
       (_) => _dispatchTurn(
