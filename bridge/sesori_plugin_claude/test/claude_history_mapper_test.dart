@@ -218,6 +218,59 @@ void main() {
       expect(messages.first.info.time?.created, DateTime.parse("2026-08-09T10:00:00Z").millisecondsSinceEpoch);
     });
 
+    test("hides the /model breadcrumb a set_model request leaves, but keeps a /model the user sent", () async {
+      // Record shapes as CLI 2.1.325 writes them: the breadcrumb has a fresh
+      // uuid and no turn attribution; a sent command keeps its stdin uuid in both.
+      const caveat =
+          "<local-command-caveat>The command below was run directly in Claude Code, not sent to you as a "
+          "request, and its output goes straight to the user.</local-command-caveat>";
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(type: "user", uuid: "breadcrumb-caveat", content: caveat, isMeta: true),
+          _messageRecord(
+            type: "user",
+            uuid: "breadcrumb-envelope",
+            content:
+                "<command-name>/model</command-name>\n            <command-message>model</command-message>\n"
+                "            <command-args>sonnet</command-args>",
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "breadcrumb-output",
+            content: "<local-command-stdout>Set model to `sonnet`</local-command-stdout>",
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "prompt",
+            content: "Reply only with OK.",
+            turnAttributionKey: "prompt",
+          ),
+          _messageRecord(type: "user", uuid: "typed-caveat", content: caveat, isMeta: true),
+          _messageRecord(
+            type: "user",
+            uuid: "typed-model",
+            content:
+                "<command-name>/model</command-name>\n            <command-message>model</command-message>\n"
+                "            <command-args>opus</command-args>",
+            turnAttributionKey: "typed-model",
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.map((message) => message.info.id), ["prompt", "typed-model"]);
+      expect(messages.map((message) => message.parts.single.text), ["Reply only with OK.", "/model opus"]);
+    });
+
     test("maps the transcript-only compaction summary to one compaction row with its boundary's details", () async {
       _writeTranscript(
         temp: temp,
@@ -594,11 +647,13 @@ Map<String, Object?> _messageRecord({
   bool? isApiErrorMessage,
   int? apiErrorStatus,
   String? error,
+  String? turnAttributionKey,
 }) => {
   "type": type,
   "sessionId": _sessionId,
   "uuid": uuid,
   "timestamp": timestamp,
+  "turnAttributionKey": ?turnAttributionKey,
   "isSidechain": ?isSidechain,
   "isMeta": ?isMeta,
   "isVisibleInTranscriptOnly": ?isVisibleInTranscriptOnly,

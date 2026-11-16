@@ -779,6 +779,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
         isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
         originKind: dto.originKind,
+        isHostSubmitted: dto.turnAttributionKey != null,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
