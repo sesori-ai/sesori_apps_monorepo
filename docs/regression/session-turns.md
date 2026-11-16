@@ -121,7 +121,8 @@ defaults and queued client sends coherent.
   interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble;
   the other harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
-  stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
+  stay, with the line under them where the reply ended (after a reload Codex keeps only the steps, because its rollout
+  records none of the reply text it was streaming); a failed turn likewise keeps them above its red error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
   away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up

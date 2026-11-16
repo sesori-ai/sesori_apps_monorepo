@@ -502,8 +502,14 @@ final class ClaudeSessionProcessRepository({
   /// [_interruptSettleTimeout], for the running turn to end: the CLI
   /// acknowledges the interrupt before it writes the turn's interrupt record
   /// and result, so a teardown right after the acknowledgement would drop the
-  /// record a user Stop's stopped row comes from.
-  Future<void> interrupt({required String sessionId, required bool awaitTurnEnd}) async {
+  /// record a user Stop's stopped row comes from. A turn the CLI started on
+  /// its own (a wakeup, a task report) has no pending turn here, so the caller
+  /// passes its end as [selfStartedTurnEnd].
+  Future<void> interrupt({
+    required String sessionId,
+    required bool awaitTurnEnd,
+    required Future<void>? selfStartedTurnEnd,
+  }) async {
     final process = _resident[sessionId];
     if (process == null) return;
     process.interrupted = true;
@@ -512,6 +518,7 @@ final class ClaudeSessionProcessRepository({
     final running = [
       for (final pending in process.pendingTurns)
         if (pending.started && !pending.settled) pending.outcome.future,
+      ?selfStartedTurnEnd,
     ];
     if (running.isEmpty) return;
     await Future.wait(running).timeout(_interruptSettleTimeout, onTimeout: () => const []);
