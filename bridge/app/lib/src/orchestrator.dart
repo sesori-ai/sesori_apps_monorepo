@@ -542,20 +542,6 @@ class Orchestrator({
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
     );
-    final sessionCreationService = SessionCreationService(
-      sessionMetadataRepository: SessionMetadataRepository(
-        api: sesoriServerApi,
-        bridgeIdProvider: _bridgeRegistrationService,
-      ),
-      worktreeService: worktreeService,
-      sessionRepository: sessionRepository,
-      newSessionDefaultsRepository: newSessionDefaultsRepository,
-      sessionMutationDispatcher: sessionMutationDispatcher,
-      sessionOptionsService: sessionOptionsService,
-      scratchRepository: scratchRepository,
-      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
-      promptPartDelivery: promptPartDeliveryService,
-    );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
       filesystemRepository: filesystemRepository,
@@ -680,6 +666,21 @@ class Orchestrator({
       scratchRepository: scratchRepository,
       promptUploadRepository: promptUploadRepository,
       transcriptRepository: transcriptRepository,
+    );
+    final sessionCreationService = SessionCreationService(
+      sessionMetadataRepository: SessionMetadataRepository(
+        api: sesoriServerApi,
+        bridgeIdProvider: _bridgeRegistrationService,
+      ),
+      worktreeService: worktreeService,
+      sessionRepository: sessionRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
+      sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionOptionsService: sessionOptionsService,
+      scratchRepository: scratchRepository,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      promptPartDelivery: promptPartDeliveryService,
+      sessionDeletionService: sessionDeletionService,
     );
     final sessionDiffService = SessionDiffService(
       sessionRepository: sessionRepository,

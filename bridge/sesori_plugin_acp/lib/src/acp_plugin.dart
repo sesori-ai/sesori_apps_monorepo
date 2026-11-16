@@ -97,6 +97,10 @@ abstract class AcpPlugin({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
+  /// Unknown, unless a harness knows its cache life and says so.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => null;
+
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
   }

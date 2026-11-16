@@ -232,6 +232,16 @@ void main() {
     expect(server.compactBody, isNull);
   });
 
+  test("an Anthropic session caches for 5 minutes and another provider is unknown", () async {
+    await plugin.initialize();
+    expect(await plugin.getPromptCacheLife(sessionId: _sessionId), isNull);
+    server.session = {
+      ...v2SessionFixture,
+      "model": {"id": "claude-sonnet-4-6", "providerID": "anthropic", "variant": "default"},
+    };
+    expect(await plugin.getPromptCacheLife(sessionId: _sessionId), const Duration(minutes: 5));
+  });
+
   test("compactSession refuses a session waiting for an answer", () async {
     server.forms = [_form];
     await plugin.initialize();
@@ -349,6 +359,7 @@ void main() {
 }
 
 class _ServerFixture({required final HttpServer server, required final Map<String, dynamic> native}) {
+  Map<String, dynamic> session = v2SessionFixture;
   late final StreamSubscription<HttpRequest> _subscription;
   final streams = <HttpResponse>[];
   final snapshotEntered = Completer<void>();
@@ -534,7 +545,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
               for (final id in active) id: {"type": "busy"},
             },
           },
-          "/api/session/$_sessionId" => {"data": v2SessionFixture},
+          "/api/session/$_sessionId" => {"data": session},
           "/api/agent" => {
             "data": [if (folderLoaded) native["agent"]],
           },

@@ -20,9 +20,9 @@ import "trackers/cursor_catalog_tracker.dart";
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 ///
 /// Cursor uses standard ACP cancellation to stop an active turn before a
-/// same-session follow-up dispatches. Its selection writes are best-effort
-/// (`_setConfig` never throws), so the base fail-closed selection policy never
-/// drops a Cursor turn.
+/// same-session follow-up dispatches. A selection write Cursor rejects fails
+/// the turn through the base fail-closed selection policy, so a turn never runs
+/// on options the user did not pick.
 class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -132,6 +132,20 @@ class CursorPlugin._({
 
   @override
   String? get authMethodId => CursorBinary.acpAuthMethodId;
+
+  /// Cursor caches Anthropic models for 5 minutes. Its other models cache
+  /// for 30 minutes or longer, which Sesori treats as unknown.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async {
+    final modelId =
+        _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
+    if (modelId == null) return null;
+    final family = modelId.split(RegExp("[-.]")).first;
+    return _anthropicFamilies.contains(family) ? const Duration(minutes: 5) : null;
+  }
+
+  /// The first word of Cursor's ids for Anthropic models, such as `sonnet-4.6`.
+  static const Set<String> _anthropicFamilies = {"claude", "sonnet", "opus", "haiku", "fable"};
 
   @override
   Future<AcpSessionReplayCollector> createSessionReplayCollector({
@@ -252,26 +266,21 @@ class CursorPlugin._({
         targetModel.isNotEmpty &&
         modelConfigId != null &&
         _catalogTracker.hasModel(modelId: targetModel)) {
-      var applied = true;
       if (targetModel != _appliedModelId) {
-        applied = await _setConfig(
+        await _setConfig(
           configRepository: configRepository,
           sessionId: sessionId,
           configId: modelConfigId,
           value: targetModel,
         );
-        if (applied) {
-          _appliedModelId = targetModel;
-          _appliedThoughtLevelId = null;
-        }
+        _appliedModelId = targetModel;
+        _appliedThoughtLevelId = null;
       }
-      if (applied) {
-        _configurationTracker.setSessionOverride(
-          sessionId: sessionId,
-          modelId: targetModel,
-          providerId: _providerId,
-        );
-      }
+      _configurationTracker.setSessionOverride(
+        sessionId: sessionId,
+        modelId: targetModel,
+        providerId: _providerId,
+      );
     }
 
     final requestedMode = _catalogTracker.resolveModeId(agent: agent) ?? _catalogTracker.defaultModeId;
@@ -280,14 +289,13 @@ class CursorPlugin._({
         modeConfigId != null &&
         _catalogTracker.hasModeOption(modeId: requestedMode) &&
         requestedMode != _appliedModeId) {
-      if (await _setConfig(
+      await _setConfig(
         configRepository: configRepository,
         sessionId: sessionId,
         configId: modeConfigId,
         value: requestedMode,
-      )) {
-        _appliedModeId = requestedMode;
-      }
+      );
+      _appliedModeId = requestedMode;
     }
 
     final thoughtLevelModelId =
@@ -300,47 +308,47 @@ class CursorPlugin._({
         thoughtLevel != null &&
         requestedThoughtLevel != _appliedThoughtLevelId &&
         thoughtLevel.variants.contains(requestedThoughtLevel)) {
-      if (await _setConfig(
+      await _setConfig(
         configRepository: configRepository,
         sessionId: sessionId,
         configId: thoughtLevel.configId,
         value: requestedThoughtLevel,
-      )) {
-        _appliedThoughtLevelId = requestedThoughtLevel;
-      }
+      );
+      _appliedThoughtLevelId = requestedThoughtLevel;
     }
   }
 
-  Future<bool> _setConfig({
+  Future<void> _setConfig({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,
     required String configId,
     required String value,
   }) async {
+    final AcpNewSessionResult? result;
     try {
-      final result = await configRepository.setConfigOption(
+      result = await configRepository.setConfigOption(
         sessionId: sessionId,
         configId: configId,
         value: value,
       );
-      if (result != null) {
-        final capture = _catalogService.captureSessionConfig(
-          result: result,
-          fromNewSession: false,
-          thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
-          captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
-        );
-        _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
-      }
-      return true;
-    } catch (error, stack) {
-      Log.w(
-        "[cursor] set_config_option($configId=$value) rejected",
-        error,
+    } on Object catch (error, stack) {
+      Error.throwWithStackTrace(
+        PluginStaleOptionsException(
+          operation: "session/set_config_option",
+          message: "Cursor rejected $configId=$value",
+          cause: error,
+        ),
         stack,
       );
-      return false;
     }
+    if (result == null) return;
+    final capture = _catalogService.captureSessionConfig(
+      result: result,
+      fromNewSession: false,
+      thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
+      captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
+    );
+    _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
   }
 
   @override

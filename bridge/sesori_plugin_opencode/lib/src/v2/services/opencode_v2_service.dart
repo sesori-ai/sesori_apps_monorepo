@@ -34,6 +34,7 @@ class OpenCodeV2Service({
   required final V2McpAuthenticationService _mcpAuthentication,
 }) {
   static const compactionCommandName = "compact";
+  static const _anthropicProviderId = "anthropic";
 
   PluginWorkState get workState => _tracker.workState;
 
@@ -366,6 +367,14 @@ class OpenCodeV2Service({
       message: "OpenCode no longer offers the selected command.",
     );
   }
+
+  /// How long the provider of [sessionId]'s model keeps its prompt cache.
+  /// OpenCode sends Anthropic no cache lifetime, so it gets Anthropic's
+  /// 5-minute default. Other providers' lives are unknown.
+  Future<Duration?> promptCacheLife({required String sessionId}) async =>
+      (await _repository.getSessionModel(sessionId: sessionId))?.providerID == _anthropicProviderId
+      ? const Duration(minutes: 5)
+      : null;
 
   Future<void> _select({
     required String sessionId,

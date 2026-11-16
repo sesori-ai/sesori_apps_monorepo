@@ -40,13 +40,13 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
   }
 
   /// Codex keeps a prompt cache for about 30 minutes (maintainer-provided).
-  static const int _promptCacheTtlSeconds = 30 * 60;
+  static const Duration promptCacheLife = Duration(minutes: 30);
 
   /// Codex reports no account-level signal, so a model with the fast tier is
   /// always available.
   PluginFastModeSupport? _fastMode({required CodexModelDto model}) =>
       (model.serviceTiers ?? const <CodexModelServiceTierDto>[]).any((tier) => tier.id == CodexServiceTier.fast)
-      ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
+      ? PluginFastModeSupport.available(promptCacheTtlSeconds: promptCacheLife.inSeconds)
       : null;
 
   List<String> _reasoningEffortVariants({required CodexModelDto model}) {

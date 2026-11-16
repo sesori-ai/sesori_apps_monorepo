@@ -1149,7 +1149,7 @@ plugin's answer is authoritative.
 | Pi | ✅ RPC `compact`, even when a Pi command is named `compact`. |
 | Cursor | ✅ Native `/summarize`. |
 | Copilot | ✅ `/compact`, advertised and verified after a real turn on 1.0.109 ("Compacted conversation history"). |
-| Hermes | ✅ `/compress`, verified on v0.21.5. A real compression may start a new Hermes session id; this was not observed. |
+| Hermes | ✅ `/compress`, verified on v0.21.5. `/compress` keeps the ACP session id (live-verified on v0.21.5+2453); only Hermes' internal head id rotates on automatic compression, and Sesori never uses it. |
 | OMP | ✅ `/compact`, handled natively on 18.20.2. A compaction with real history was not exercised; an empty session answers "Nothing to compact". |
 | Grok | ✅ `/compact`, verified on an idle session on 1.0.30. |
 | DeepSeek | ✅ `compact` from `deepseek/catalog` on 0.2.2. A compaction with real history was not exercised; an empty session answers "No compactable history yet." |
@@ -1161,6 +1161,24 @@ answer unsupported otherwise, so an Antigravity version that adds `/compact`
 works without a bridge change. A freshly started agent process has advertised
 no commands yet, so the plugin first loads the quiet session, as its next turn
 would, and then reads them.
+
+### Prompt-cache life
+
+Each plugin answers `getPromptCacheLife` with how long its harness keeps a
+session's prompt cache after the last use, so the bridge can compact a quiet
+scheduled-task session while the cache is still warm. Null means unknown.
+
+| Harness | Prompt-cache life |
+|---|---|
+| Claude | Read from the init handshake's account: 1 hour when it reports `subscriptionType` (even with `apiProvider`), 5 minutes when it reports `apiProvider` without one (API key, Bedrock or Vertex), and 1 hour when it reports neither. |
+| Codex | 30 minutes. |
+| OpenCode v2 | 5 minutes for an Anthropic model (OpenCode sends no cache lifetime); unknown for other providers. |
+| OpenCode v1 | Unknown; v1 does not compact on request. |
+| Pi | 5 minutes (Pi's default "short" retention). |
+| Cursor | 5 minutes for an Anthropic model; unknown for the others, which cache for 30 minutes or longer. |
+| Hermes | 5 minutes (the default `cache_ttl`; Sesori does not read the user's Hermes config). |
+| OMP | 5 minutes. An Anthropic subscription seat caches for an hour, but the seat is not visible over ACP, so the shorter life is answered. |
+| Copilot, Grok, DeepSeek, Antigravity | Unknown: not published, or evicted without a fixed lifetime. |
 
 ## Command limitations
 
@@ -1353,7 +1371,7 @@ no longer lists:
 |---|---|
 | Copilot, Grok, Antigravity (ACP) | ✅ Refused before the prompt is accepted, against the options each harness last reported. |
 | OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
-| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. |
+| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. An option the catalog still lists but Cursor rejects when the turn applies it fails that turn with a session error, instead of running on the previous settings. |
 | Hermes, DeepSeek (ACP) | ❌ Not implemented: caught only when the turn applies it. The target shows a session error after the send reported Sent. |
 
 ## Sub-agents
