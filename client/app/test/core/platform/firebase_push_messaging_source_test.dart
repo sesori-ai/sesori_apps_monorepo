@@ -5,6 +5,7 @@ import "package:firebase_core/firebase_core.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase_push_messaging_source.dart";
 
@@ -52,9 +53,27 @@ void main() {
       final request = source.notificationOpenFromMessage(message: message);
 
       if (request == null) fail("message did not open a session");
-      expect(request.projectId, equals("proj_1"));
-      expect(request.sessionId, equals("ses_1"));
-      expect(request.sessionTitle, equals("Session title"));
+      expect(
+        request.target,
+        const NotificationOpenTarget.session(projectId: "proj_1", sessionId: "ses_1", sessionTitle: "Session title"),
+      );
+      expect(request.bridgeId, equals("br_workstation"));
+    });
+
+    test("opens the task of a run that could not start", () {
+      const message = RemoteMessage(
+        data: {
+          "category": "session_message",
+          "eventType": "scheduled_task_run_failed",
+          "taskId": "stk_1",
+          "bridgeId": "br_workstation",
+        },
+      );
+
+      final request = source.notificationOpenFromMessage(message: message);
+
+      if (request == null) fail("message did not open a task");
+      expect(request.target, const NotificationOpenTarget.task(taskId: "stk_1"));
       expect(request.bridgeId, equals("br_workstation"));
     });
 
@@ -218,9 +237,10 @@ void main() {
     );
 
     final request = await forwardedOpen;
-    expect(request.projectId, "proj_1");
-    expect(request.sessionId, "ses_1");
-    expect(request.sessionTitle, "Session title");
+    expect(
+      request.target,
+      const NotificationOpenTarget.session(projectId: "proj_1", sessionId: "ses_1", sessionTitle: "Session title"),
+    );
   });
 
   group("register", () {

@@ -20,6 +20,7 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
 import "mappers/claude_content_mapper.dart";
+import "models/claude_fork_result.dart";
 import "models/claude_rewind_point.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
@@ -167,6 +168,48 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
         messageId: messageId,
       ),
     );
+  }
+
+  /// Writes root session [forkSessionId] beside [sessionId], holding
+  /// [sessionId]'s active branch through the end of the turn whose last shown
+  /// message is [throughMessageId].
+  ///
+  /// Claude Code's own `--fork-session` writes nothing until the fork's first
+  /// prompt (checked live on 2.1.322), so the fork would not exist on disk
+  /// until then. This writes the records the CLI's fork keeps, verbatim except
+  /// for their `sessionId`, and a plain `--resume` continues from them. The
+  /// origin's file is only read, so a later turn may still be running in it.
+  /// Sub-agent transcripts stay with the origin, as with the CLI's fork: a
+  /// sub-agent's session id is global, so a copy would list it twice.
+  Future<ClaudeForkResult> forkTranscript({
+    required String sessionId,
+    required String throughMessageId,
+    required String forkSessionId,
+  }) async {
+    final path = await findTranscriptPath(sessionId: sessionId);
+    if (path == null || _rootIdFromPath(path) == null) {
+      return const ClaudeForkUnavailable(reason: ClaudeForkRefusal.transcriptMissing);
+    }
+    final forkPath = p.join(p.dirname(path), "$forkSessionId.jsonl");
+    final transcriptApi = _transcriptApi;
+    return await Isolate.run(() {
+      final prefix = _forkPrefix(
+        entries: transcriptApi.readTranscriptEntries(transcriptPath: path),
+        messageId: throughMessageId,
+      );
+      switch (prefix) {
+        case _ForkRefused(:final reason):
+          return ClaudeForkUnavailable(reason: reason);
+        case _ForkKept(:final records):
+          transcriptApi.writeTranscript(
+            transcriptPath: forkPath,
+            records: [
+              for (final record in records) {...record, "sessionId": forkSessionId},
+            ],
+          );
+          return const ClaudeForkWritten();
+      }
+    });
   }
 
   /// Every session — roots and their sub-agent children — for bridge-derived
@@ -645,6 +688,58 @@ ClaudeRewindPoint _rewindPointBefore({required List<ClaudeTranscriptRecordDto> r
   }
   return ClaudeRewindEntry(entryUuid: entryUuid);
 }
+
+/// What a fork keeps, or why it keeps nothing.
+sealed class const _ForkPrefix();
+
+final class const _ForkKept({required final List<Map<String, dynamic>> records}) extends _ForkPrefix;
+
+final class const _ForkRefused({required final ClaudeForkRefusal reason}) extends _ForkPrefix;
+
+/// The raw records a fork through the turn whose last shown message is
+/// [messageId] keeps: the active branch in file order through that turn's last
+/// chain record. That is the record before the chain's next prompt or
+/// compaction, which is usually the turn's `turn_duration`, else the leaf, so
+/// a turn still running after it stays behind. A later compaction stays
+/// behind with the turns after it, so a fork from before one continues from
+/// the whole conversation it summarised.
+///
+/// Records the branch keeps beside the chain, such as parallel tool results,
+/// come along. Records without an id carry metadata rather than turns, and stay
+/// behind as with the CLI's own fork; the fork's title is the bridge's. Inline
+/// sub-agent records stay with the origin, as its sub-agent transcripts do.
+_ForkPrefix _forkPrefix({required List<ClaudeTranscriptEntry> entries, required String messageId}) {
+  final records = [for (final entry in entries) entry.record];
+  final active = _activeChain(records: records);
+  if (active == null) return const _ForkRefused(reason: ClaudeForkRefusal.notOnActiveBranch);
+  final byId = {for (final record in records) ?_chainId(record): record};
+  final chain = [for (final id in active.chain.toList().reversed) ?byId[id]];
+  // An assistant message spans several records; its last one is the latest.
+  final target = chain.lastIndexWhere((record) => _messageIdOf(record) == messageId);
+  if (target == -1) return const _ForkRefused(reason: ClaudeForkRefusal.notOnActiveBranch);
+  var last = target;
+  while (last + 1 < chain.length && !_startsBranch(chain[last + 1])) {
+    last++;
+  }
+  final boundary = chain[last];
+  final branch = Set<ClaudeTranscriptRecordDto>.identity()..addAll(_activeBranch(records: records));
+  final end = entries.indexWhere((entry) => identical(entry.record, boundary));
+  return _ForkKept(
+    records: [
+      for (final entry in entries.take(end + 1))
+        if (branch.contains(entry.record) && _chainId(entry.record) != null) entry.json,
+    ],
+  );
+}
+
+/// The Sesori message id a record carries, as history maps it.
+String? _messageIdOf(ClaudeTranscriptRecordDto record) => switch (_mapTranscriptRecord(record)) {
+  ClaudeTranscriptUserRecord(:final id) ||
+  ClaudeTranscriptAssistantRecord(:final id) ||
+  ClaudeTranscriptApiErrorRecord(:final id) ||
+  ClaudeTranscriptQueuedCommandRecord(:final id) => id,
+  _ => null,
+};
 
 bool _isCompactBoundary(ClaudeTranscriptRecordDto record) =>
     record.type == ClaudeTranscriptContextKind.system.wireType &&

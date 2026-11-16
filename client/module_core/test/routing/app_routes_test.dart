@@ -42,6 +42,19 @@ void main() {
       expect(AnalyticsScreen.settingsDefaultInput.wireValue, "settings_default_input");
     });
 
+    test("the task editor round-trips a new task and an edited one", () {
+      expect(const AppRoute.scheduledTaskEditor(taskId: null).buildPath(), "/scheduled-task-editor");
+      for (final taskId in [null, "task 1"]) {
+        final route = AppRoute.scheduledTaskEditor(taskId: taskId);
+        final decoded = AppRoute.fromDef(
+          def: route.def,
+          pathParams: const {},
+          queryParams: Uri.parse(route.buildPath()).queryParameters,
+        );
+        expect(decoded, isA<AppRouteScheduledTaskEditor>().having((route) => route.taskId, "taskId", taskId));
+      }
+    });
+
     test("settings Harnesses route round-trips its presentation", () {
       for (final presentation in HarnessSettingsPresentation.values) {
         final route = AppRoute.settingsHarnesses(presentation: presentation);

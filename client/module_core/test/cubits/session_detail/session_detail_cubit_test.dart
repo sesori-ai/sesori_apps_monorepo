@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/interrupted_turn.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_turn_shape.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
@@ -4418,6 +4419,130 @@ void main() {
         ).called(1);
       },
     );
+
+    group("interrupted turn", () {
+      const prompt = MessageWithParts(
+        info: Message.user(
+          invocation: null,
+          handoff: null,
+          id: "prompt",
+          sessionID: sessionId,
+          agent: null,
+          time: null,
+          promptId: null,
+        ),
+        parts: [MessagePart.text(id: "prompt-text", sessionID: sessionId, messageID: "prompt", text: "Build it")],
+      );
+      SessionInterruption interruption({required bool unacknowledged}) =>
+          SessionInterruption(afterMessageId: "prompt", unacknowledged: unacknowledged);
+
+      void stubTranscript({required SessionInterruption? cutOff}) {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(interruption: cutOff),
+        );
+        when(
+          () => mockSourceRepository.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            const MessageWithPartsResponse(
+              messages: [prompt],
+              nextCursor: null,
+              userMessagesBefore: null,
+              replayedPromptDefaults: null,
+              awaitingHarnessSync: false,
+              cannotContinueMessage: null,
+            ),
+          ),
+        );
+      }
+
+      dynamic continueSend() => mockSourceRepository.sendMessage(
+        promptId: any(named: "promptId"),
+        sessionId: sessionId,
+        text: SessionDetailCubit.continueInterruptedTurnPrompt,
+        attachments: any(named: "attachments"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: null,
+        commandSource: any(named: "commandSource"),
+      );
+
+      test("a turn cut off before any reply ends under its prompt and Continue sends the prompt", () async {
+        stubTranscript(cutOff: interruption(unacknowledged: false));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final state = await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded,
+          description: "loaded",
+        );
+
+        expect(
+          (state as SessionDetailLoaded).interruptedTurn,
+          const InterruptedTurnView.shown(
+            afterMessageId: "prompt",
+            lineAfterMessageId: "prompt",
+            supersededStoppedIds: <String>{},
+            continueRefusal: null,
+          ),
+        );
+        expect(await cubit.continueInterruptedTurn(), isNull);
+        verify(continueSend).called(1);
+      });
+
+      test("Continue sends nothing without an interrupted turn", () async {
+        stubTranscript(cutOff: null);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+
+        expect(await cubit.continueInterruptedTurn(), InterruptedTurnContinueRefusal.noInterruptedTurn);
+        verifyNever(continueSend);
+      });
+
+      test("an interruption arriving while the session is open declares the view again", () async {
+        stubTranscript(cutOff: null);
+        final viewingService = stubbedSessionViewingService();
+        final cubit = buildCubit(sessionViewingService: viewingService);
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        clearInteractions(viewingService);
+
+        final unacknowledged = testSession(id: sessionId).copyWith(interruption: interruption(unacknowledged: true));
+        sessionEvents.add(SesoriSessionUpdated(info: unacknowledged));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.session.interruption != null,
+          description: "interruption arrived",
+        );
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+
+        // Another update of the same interruption, and its acknowledgement,
+        // declare nothing more.
+        sessionEvents
+          ..add(SesoriSessionUpdated(info: unacknowledged.copyWith(title: "Renamed")))
+          ..add(
+            SesoriSessionUpdated(
+              info: unacknowledged.copyWith(title: "Renamed", interruption: interruption(unacknowledged: false)),
+            ),
+          );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !(state.session.interruption?.unacknowledged ?? true),
+          description: "interruption acknowledged",
+        );
+        verifyNever(() => viewingService.setViewingSession(any()));
+      });
+    });
 
     group("viewing declaration", () {
       test("declares the view once the transcript loads and clears it on close", () async {

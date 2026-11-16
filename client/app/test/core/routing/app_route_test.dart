@@ -285,7 +285,10 @@ void main() {
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
       expect(flatPaths, equals([AppRouteDef.splash.path, AppRouteDef.login.path]));
-      expect(signedInPaths, equals([AppRouteDef.scheduledTasks.path, AppRouteDef.settings.path]));
+      expect(
+        signedInPaths,
+        equals([AppRouteDef.scheduledTasks.path, AppRouteDef.scheduledTaskEditor.path, AppRouteDef.settings.path]),
+      );
       expect(shell.routes, hasLength(1));
       expect(
         allPaths,
@@ -300,6 +303,7 @@ void main() {
           AppRouteDef.archivedSessionDetail.path,
           AppRouteDef.scheduledTasks.path,
           AppRouteDef.scheduledTaskDetail.path,
+          AppRouteDef.scheduledTaskEditor.path,
           AppRouteDef.settingsHarnesses.path,
           AppRouteDef.settingsHarnessDetail.path,
           AppRouteDef.settings.path,
@@ -450,6 +454,7 @@ void main() {
         ]);
         expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [
           AppRouteDef.scheduledTasks.path,
+          AppRouteDef.scheduledTaskEditor.path,
           AppRouteDef.settings.path,
         ]);
       });

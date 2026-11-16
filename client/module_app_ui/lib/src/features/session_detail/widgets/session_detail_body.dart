@@ -340,6 +340,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final turns = const TranscriptTurnBuilder().build(
       messages: messages,
       hasOlderMessages: state.olderMessagesCursor != null,
+      turnEndMessageIds: state.interruptedTurn.turnEndMessageIds,
     );
     return const TranscriptPromptListBuilder().build(
       messages: messages,

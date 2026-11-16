@@ -19,9 +19,11 @@ class _RecordingRouteDispatcher() implements RouteDispatcher {
 }
 
 const NotificationOpenRequest _request = NotificationOpenRequest(
-  projectId: "project-1",
-  sessionId: "session-1",
-  sessionTitle: "Weekly planning",
+  target: NotificationOpenTarget.session(
+    projectId: "project-1",
+    sessionId: "session-1",
+    sessionTitle: "Weekly planning",
+  ),
   accountId: null,
   bridgeId: null,
 );
@@ -35,10 +37,14 @@ void main() {
     routeDispatcher = _RecordingRouteDispatcher();
   });
 
-  void open({required String? location, required bool keepIfAlreadyShown}) {
+  void open({
+    required String? location,
+    required bool keepIfAlreadyShown,
+    NotificationOpenRequest request = _request,
+  }) {
     when(() => routeSource.currentLocation).thenReturn(location);
-    openNotificationSession(
-      request: _request,
+    openNotificationTarget(
+      request: request,
       routeDispatcher: routeDispatcher,
       routeSource: routeSource,
       keepIfAlreadyShown: keepIfAlreadyShown,
@@ -92,5 +98,35 @@ void main() {
     open(location: "/sessions/project-1/session-1/diffs", keepIfAlreadyShown: true);
 
     expect(routeDispatcher.replacedStacks, hasLength(1));
+  });
+
+  group("a task's push", () {
+    const taskRequest = NotificationOpenRequest(
+      target: NotificationOpenTarget.task(taskId: "stk_1"),
+      accountId: null,
+      bridgeId: null,
+    );
+
+    test("opens the task's page over the Scheduled page", () {
+      open(location: "/sessions/project-1/session-1", keepIfAlreadyShown: true, request: taskRequest);
+
+      expect(routeDispatcher.replacedStacks.single.paths, [
+        const AppRoute.home().buildPath(),
+        const AppRoute.scheduledTasks().buildPath(),
+        const AppRoute.scheduledTaskDetail(taskId: "stk_1").buildPath(),
+      ]);
+    });
+
+    test("leaves the stack alone when that task's page is already on top", () {
+      open(location: "/scheduled-tasks/stk_1", keepIfAlreadyShown: true, request: taskRequest);
+
+      expect(routeDispatcher.replacedStacks, isEmpty);
+    });
+
+    test("rebuilds after a computer switch even when that task's page is on top", () {
+      open(location: "/scheduled-tasks/stk_1", keepIfAlreadyShown: false, request: taskRequest);
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+    });
   });
 }

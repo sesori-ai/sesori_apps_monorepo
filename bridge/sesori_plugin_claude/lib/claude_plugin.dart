@@ -49,6 +49,7 @@ export "src/repositories/mappers/claude_content_mapper.dart";
 export "src/repositories/mappers/claude_mcp_mapper.dart";
 export "src/repositories/mappers/claude_side_answer_mapper.dart";
 export "src/repositories/mappers/claude_task_status_mapping.dart";
+export "src/repositories/models/claude_fork_result.dart";
 export "src/repositories/models/claude_mcp_authentication_context.dart";
 export "src/repositories/models/claude_mcp_command_exception.dart";
 export "src/repositories/models/claude_rewind_point.dart";

@@ -330,7 +330,7 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before a compaction forks from the full turns before it, leaving the compaction behind; a message off the active branch and an origin without a transcript are refused with a reason. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
@@ -350,6 +350,18 @@ directory, 2026-11-15):
   before answering `initialize`. A CLI that does not know the flag exits with
   `error: unknown option`, which Sesori reports as "This Claude Code version
   can't edit messages from Sesori."
+- On 2.1.322, `--resume=<id> --fork-session --session-id=<new> --resume-session-at=<entry>`
+  writes nothing until the first prompt, then copies the kept chain with the
+  same `uuid`s, rewrites only `sessionId`, and drops metadata records such as
+  `last-prompt`. It does not copy `<id>/subagents/`. Sesori therefore writes
+  that copy itself when the fork is created, so the fork has history before its
+  first prompt and needs no fork flags. A plain `--resume=<new>` of the written
+  file reports the new id and parents the next prompt to the kept turn's last
+  record.
+- A fork written from before a compaction holds no compaction, and a
+  `--resume=<new>` of it sends the full turns before the compaction
+  (checked live on 2.1.322 on 2026-11-16). Only an edit must stay after the
+  latest compaction, because it resumes the original transcript.
 
 ## Explicit shell-command presentation
 
@@ -654,14 +666,30 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
-| Claude Code | ⬜ | ⬜ |
-| Codex | ⬜ | ⬜ |
+| OMP | ✅ The shared ACP plugin's line, as below. | ✅ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing, folds into the live line. For a reply that streamed first, the bridge keeps the live line while the replay holds the turn's prompt. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ✅ They record no stop; the bridge keeps the live line while the replay holds the turn's prompt. |
+| Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
+| Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+Codex (0.169.0) records the interrupt a bridge shutdown sends the same way as a user Stop, so such a turn reads Stopped
+after a reload although it showed no Stopped line live. Claude Code (2.1.325) does too when the CLI writes its interrupt
+record before the shutdown ends the process, which a shutdown does not wait for. A Claude Code Stop waits up to 2
+seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
+including for a turn the CLI started on its own, such as a wakeup.
+
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
+snapshots that text live.
+
+The bridge's chat history keeps the live rows that the replay lacks of a turn with a row marked `kind: stopped` (a
+user Stop), its streamed reply and its Stopped row alike, for as long as the replay still holds the turn's prompt. A
+Stopped line shown live therefore stays after a reload on every harness, including those that record no stop; a
+rollback that removes the prompt removes them too. Rows not marked stopped, such as OMP's "Request was aborted"
+notices, stay failures and this rule keeps none of them. A session the bridge did not watch live shows only what the
+harness recorded.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
@@ -1177,19 +1205,20 @@ reconciliation when connected to an older bridge.
 
 ## Tool calls in replayed history
 
-The live stream gives every visible ACP tool call its own message. When a
-harness stamps its reasoning and text chunks with a message id, the shared
-replay groups the next tool call into that stamped message, which no longer
-matches the live rows, so a re-import shows the tool call twice: inside the
-replayed assistant message and as the live tool row.
+The live stream gives every visible ACP tool call its own message, and the
+shared replay does the same for every ACP harness, also after reasoning or text
+chunks stamped with a message id. Before, a replayed tool call joined the
+stamped message before it, so a re-import showed it twice: inside the replayed
+assistant message and as the live tool row. A harness that replays without
+message ids was never affected.
 
 | Harness | Status |
 |---|---|
-| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
-| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
-| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
-| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
-| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
+| Oh My Pi | ✅ Stamps its chunks. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| DeepSeek | ✅ Stamps its chunks. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids. |
+| Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
+| Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
 ## Failed-turn notices sent as text
 

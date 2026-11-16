@@ -78,7 +78,11 @@ TranscriptPromptList _list({
   int? olderMessagesCursor,
 }) => const TranscriptPromptListBuilder().build(
   messages: messages,
-  turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
+  turns: const TranscriptTurnBuilder().build(
+    messages: messages,
+    hasOlderMessages: hasOlderMessages,
+    turnEndMessageIds: const {},
+  ),
   userMessagesBefore: userMessagesBefore,
   index: index,
   olderMessagesCursor: olderMessagesCursor,
@@ -443,7 +447,11 @@ void main() {
     String? pinOf({required List<MessageWithParts> messages, required bool hasOlderMessages}) =>
         const TranscriptPromptListBuilder()
             .pinAbove(
-              turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
+              turns: const TranscriptTurnBuilder().build(
+                messages: messages,
+                hasOlderMessages: hasOlderMessages,
+                turnEndMessageIds: const {},
+              ),
               index: index,
             )
             ?.messageId;
@@ -490,7 +498,11 @@ void main() {
     test("pins nothing without an index", () {
       final messages = [_answer(id: "a3"), _user(id: "u4")];
       final pin = const TranscriptPromptListBuilder().pinAbove(
-        turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: true),
+        turns: const TranscriptTurnBuilder().build(
+          messages: messages,
+          hasOlderMessages: true,
+          turnEndMessageIds: const {},
+        ),
         index: null,
       );
 

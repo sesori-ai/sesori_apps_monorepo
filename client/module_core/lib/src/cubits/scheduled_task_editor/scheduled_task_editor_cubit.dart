@@ -43,6 +43,10 @@ class ScheduledTaskEditorCubit({
   /// The interval Every few hours starts at.
   static const int defaultHours = 2;
 
+  /// The shortest and longest Every few hours intervals the computer accepts.
+  static const int minHours = 1;
+  static const int maxHours = 12;
+
   /// The longest name taken from a prompt's first line.
   static const int _maxNameLength = 80;
 
@@ -124,7 +128,7 @@ class ScheduledTaskEditorCubit({
     if (ready.schedule case TaskScheduleEveryHours(:final start)) {
       _update(
         ready: ready,
-        schedule: TaskSchedule.everyHours(hours: hours.clamp(1, 12), start: start),
+        schedule: TaskSchedule.everyHours(hours: hours.clamp(minHours, maxHours), start: start),
       );
     }
   }

@@ -29,13 +29,25 @@ class SideChatCubit({
   required final SideQuestionAvailability _availability,
   required final bool _isArchived,
 
-  /// Asked in a new chat once the chats first load, as `/btw` mode hands
-  /// its text over; null when the user opened the side chat to type.
+  /// Asked in a new chat right away, as `/btw` mode hands its text over;
+  /// null when the user opened the side chat to type. It shows as asked from
+  /// the start, so the sheet never opens on a spinner, and it doesn't wait
+  /// for the earlier chats, so neither closing the sheet nor a failed load
+  /// can drop it.
   required String? initialQuestion,
 }) extends Cubit<SideChatState> {
-  String? _initialQuestion = initialQuestion;
-
-  this : super(const SideChatState.loading()) {
+  this
+    : super(switch (initialQuestion) {
+        final question? when !_isArchived && _availability == SideQuestionAvailability.available => SideChatState.ready(
+          earlierChats: const [],
+          thread: const SideChatThread.newChat(),
+          ask: SideQuestionAsk.waiting(question: question),
+        ),
+        _ => const SideChatState.loading(),
+      }) {
+    if (state case SideChatReady(ask: SideQuestionWaiting(:final question))) {
+      unawaited(_send(question: question, thread: const SideChatThread.newChat()));
+    }
     unawaited(_load());
   }
 
@@ -56,12 +68,16 @@ class SideChatCubit({
     final question = text.trim();
     final current = state;
     if (question.isEmpty || !canAsk || current is! SideChatReady || current.ask is SideQuestionWaiting) return;
+    emit(current.copyWith(ask: SideQuestionAsk.waiting(question: question)));
+    await _send(question: question, thread: current.thread);
+  }
 
-    final sideChatId = switch (current.thread) {
+  /// Asks [question] in [thread], which the state already shows as waiting.
+  Future<void> _send({required String question, required SideChatThread thread}) async {
+    final sideChatId = switch (thread) {
       SideChatNewThread() => null,
       SideChatExistingThread(:final chat) => chat.id,
     };
-    emit(current.copyWith(ask: SideQuestionAsk.waiting(question: question)));
     final response = await _repository.askSideQuestion(
       sessionId: _sessionId,
       sideChatId: sideChatId,
@@ -141,7 +157,8 @@ class SideChatCubit({
     if (isClosed) return;
     switch (response) {
       case SuccessResponse(:final data):
-        emit(switch (data.sideChats) {
+        final current = state;
+        final loaded = switch (data.sideChats) {
           // Nothing can be asked in an archived session, so it opens on the
           // newest chat to read instead of an empty new one.
           [final newest, ...final earlier] when _isArchived => SideChatState.ready(
@@ -149,18 +166,26 @@ class SideChatCubit({
             thread: SideChatThread.existing(chat: newest),
             ask: const SideQuestionAsk.idle(),
           ),
+          // A handed-over question is already shown and asked; the list may
+          // hold its chat once answered.
+          final chats when current is SideChatReady => current.copyWith(
+            earlierChats: [
+              for (final chat in chats)
+                if (!_shows(thread: current.thread, chatId: chat.id)) chat,
+            ],
+          ),
           final chats => SideChatState.ready(
             earlierChats: chats,
             thread: const SideChatThread.newChat(),
             ask: const SideQuestionAsk.idle(),
           ),
-        });
-        final initialQuestion = _initialQuestion;
-        _initialQuestion = null;
-        if (initialQuestion != null) await ask(text: initialQuestion);
+        };
+        emit(loaded);
       case ErrorResponse(:final error):
         logw("Failed to load the side chats of session $_sessionId", error);
-        emit(const SideChatState.loadFailed());
+        // A handed-over question stays on screen; only its earlier chats are
+        // missing.
+        if (state is! SideChatReady) emit(const SideChatState.loadFailed());
     }
   }
 
@@ -185,6 +210,11 @@ class SideChatCubit({
     );
     return SideChatReady(earlierChats: earlierChats, thread: thread, ask: const SideQuestionAsk.idle());
   }
+
+  static bool _shows({required SideChatThread thread, required String chatId}) => switch (thread) {
+    SideChatNewThread() => false,
+    SideChatExistingThread(:final chat) => chat.id == chatId,
+  };
 
   static int _lastAnsweredAt({required SideChat chat}) => chat.exchanges.lastOrNull?.answeredAt ?? 0;
 

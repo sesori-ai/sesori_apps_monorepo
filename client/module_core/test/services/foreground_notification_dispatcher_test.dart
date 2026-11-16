@@ -65,10 +65,42 @@ void main() {
             sessionId: "session-1",
             projectId: "project-1",
             sessionTitle: "Weekly planning",
+            taskId: null,
             bridgeId: "br_workstation",
           ),
         ),
       );
+    });
+
+    test("a task's can't-start push is shown with its task and no session", () async {
+      await dispatcher.start();
+
+      pushMessagingSource.emitForegroundMessage(
+        const PushNotificationMessage(
+          data: {
+            "category": "session_message",
+            "eventType": "scheduled_task_run_failed",
+            "taskId": "stk_1",
+            "bridgeId": "br_workstation",
+          },
+          title: "Morning summary",
+          body: "Couldn't start this run.",
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(localNotificationClient.shownNotifications, [
+        const ShownNotification(
+          title: "Morning summary",
+          body: "Couldn't start this run.",
+          category: NotificationCategory.sessionMessage,
+          sessionId: null,
+          projectId: null,
+          sessionTitle: null,
+          taskId: "stk_1",
+          bridgeId: "br_workstation",
+        ),
+      ]);
     });
 
     test("disabled category suppresses local notification", () async {
@@ -136,6 +168,7 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? taskId,
     required String? accountId,
     required String? bridgeId,
   }) async {
@@ -147,6 +180,7 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        taskId: taskId,
         bridgeId: bridgeId,
       ),
     );
@@ -199,6 +233,7 @@ class const ShownNotification({
   required final String? sessionId,
   required final String? projectId,
   required final String? sessionTitle,
+  required final String? taskId,
   required final String? bridgeId,
 }) {
   @override
@@ -210,9 +245,10 @@ class const ShownNotification({
         other.sessionId == sessionId &&
         other.projectId == projectId &&
         other.sessionTitle == sessionTitle &&
+        other.taskId == taskId &&
         other.bridgeId == bridgeId;
   }
 
   @override
-  int get hashCode => Object.hash(title, body, category, sessionId, projectId, sessionTitle, bridgeId);
+  int get hashCode => Object.hash(title, body, category, sessionId, projectId, sessionTitle, taskId, bridgeId);
 }

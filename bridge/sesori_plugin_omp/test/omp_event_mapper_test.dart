@@ -233,7 +233,6 @@ void main() {
           haltClassifier: mapper.classifyHaltNotice,
           toolPartReplacement: null,
           toolPartSuppression: null,
-          separatesToolMessages: false,
         );
         for (final update in [
           {

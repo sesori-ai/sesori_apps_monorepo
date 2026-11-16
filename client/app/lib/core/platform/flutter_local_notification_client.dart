@@ -119,19 +119,17 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
 
     try {
       final tapEvent = LocalNotificationPayload.fromJson(jsonDecodeMap(payload));
-      final sessionId = tapEvent.sessionId;
-      final projectId = tapEvent.projectId;
-      if (sessionId == null || projectId == null) {
+      final target = NotificationOpenTarget.of(
+        projectId: tapEvent.projectId,
+        sessionId: tapEvent.sessionId,
+        sessionTitle: tapEvent.sessionTitle,
+        taskId: tapEvent.taskId,
+      );
+      if (target == null) {
         return null;
       }
 
-      return NotificationOpenRequest(
-        projectId: projectId,
-        sessionId: sessionId,
-        sessionTitle: tapEvent.sessionTitle,
-        accountId: tapEvent.accountId,
-        bridgeId: tapEvent.bridgeId,
-      );
+      return NotificationOpenRequest(target: target, accountId: tapEvent.accountId, bridgeId: tapEvent.bridgeId);
     } catch (error, stackTrace) {
       logw("Failed to parse local notification payload", error, stackTrace);
       return null;
@@ -153,6 +151,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? taskId,
     required String? accountId,
     required String? bridgeId,
   }) async {
@@ -174,6 +173,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        taskId: taskId,
         accountId: accountId,
         bridgeId: bridgeId,
       ).toJson(),

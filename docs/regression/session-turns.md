@@ -116,20 +116,38 @@ defaults and queued client sends coherent.
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
 - A user Stop ends the turn with a small grey "Stopped" line in the compaction row's quiet style, never a red row
-  or the harness's own abort wording. Pi and OpenCode (v1 and v2) mark their native abort record stopped, so the line
-  shows live and after a reload. On the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP)
-  the bridge adds one stopped row when the agent ends a turn the user's Stop cancelled; they record no stop, so the
-  line lasts until the history is re-read. The exception is an OMP stop before the reply produced anything: OMP records
-  it as "Interrupted by user", which replays as the same one line, so that line also shows after a reload.
-  A shutdown, a plugin restart, a follow-up that replaces the running turn, or a Stop before the prompt reached the
-  agent adds no line. The other harnesses are listed under "Stopped turns" in
+  or the harness's own abort wording. Pi, OpenCode (v1 and v2), Claude Code and Codex mark their native stop record
+  stopped (Claude Code's interrupt record by its uuid, with the CLI's "No response requested." filler hidden; Codex's
+  interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble. On
+  the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP) the bridge adds one stopped row when
+  the agent ends a turn the user's Stop cancelled; they record no stop, so the bridge keeps that line after a reload
+  while the replay holds the turn's prompt. An OMP stop before the reply produced anything is recorded as
+  "Interrupted by user", which replays as the same one line. A shutdown, a plugin restart, a follow-up that
+  replaces the running turn, or a Stop before the prompt reached the agent adds no line on the ACP harnesses. The other
+  harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
-  stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
+  stay, with the line under them where the reply ended, and both stay after a reload while the harness still holds
+  the turn's prompt: the bridge's chat history keeps the rows a harness doesn't record, such as the reply Codex was
+  streaming or the Stopped row of a harness that records no stop. A failed turn likewise keeps them above its red
+  error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
   away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
   into the reply sees nothing they read move. Failures keep their verbatim red text. An older bridge sends no
   kind, so its rows stay failures; an older app ignores the kind and keeps a red row.
+- A turn a bridge stop cut off (see session-history-and-recovery.md) ends with a grey "Interrupted · Sesori's bridge
+  stopped during this turn" line in the Stopped line's style, after the turn's last loaded message: under the reply
+  when it streamed one, under the prompt when the stop came before any output. The turn ends there, so the next
+  prompt opens a new turn even with no reply between. The line replaces every Stopped line in that turn, so Claude
+  Code and Codex, which record a bridge shutdown like a user Stop, show only the Interrupted line, never both. While
+  the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
+  line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
+  above moves. While the session is idle and an edit is open or sending, Continue stays but dims like the locked
+  composer, and a tap sends nothing and says why in a popup alert; while the session works, as during an edit's
+  Stop and resend, Continue folds away as it does for any working session. Every refused tap answers with an alert
+  saying why, including one on a Continue folding away; a tap on a detached reader's frozen view also returns to the
+  newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the
+  list's label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
 - The prompt after a Stop is answered on every harness, including a Stop pressed while the session was idle. Hermes
   refuses the next prompt when a cancel reaches its idle session, so the bridge sends Hermes no cancel then.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
@@ -1085,6 +1103,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   "Stopped"; a real failure reads "Stopped"; a
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
+- A turn a bridge stop cut off shows no Interrupted line, shows it beside a Stopped line, or offers Continue while
+  the session works, a prompt is queued or a later turn follows; Continue sends during an open edit, or a refused tap
+  shows no alert; Continue sends nothing or sends twice; the prompt
+  after a turn cut off before any output joins that turn; or the list keeps "Interrupted" after the session is opened.
 - A Claude compaction shows two rows, a row that stays running after its
   turn, a failure with no note or with the error repeated as a reply, or
   successful-compaction details missing after a reload.
