@@ -339,7 +339,7 @@ for Interrupted (bridge-owned after a normalized status boundary).
 | Cell | Boundary | Plugins |
 |---|---|---|
 | Stop mid-reply shows grey Stopped, fading in, no jump | Client end to end | Every installed harness; at least omp, Claude Code, Codex, Pi, OpenCode, one other ACP harness |
-| Stopped after reload | Client end to end | Every harness: the native record or, since #2675, the bridge's retained live row stays |
+| Stopped after reload | Client end to end | Every harness: the native record or, since #2675, the bridge's retained live row stays while the replay holds the turn's prompt |
 | `kill -9` bridge mid-turn, restart: Interrupted line, list label, Continue sends the prompt, opening clears the label | Client end to end + headless bridge | Representative (omp) |
 | SIGTERM bridge mid-turn, restart: Interrupted, no live Stopped | Headless bridge | Representative |
 | OpenCode 2 shared service still busy after `kill -9`: no Interrupted | Headless bridge | OpenCode 2, if runnable; otherwise Blocked |
