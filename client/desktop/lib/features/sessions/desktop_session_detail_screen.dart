@@ -15,6 +15,7 @@ import "../../core/widgets/desktop_page_toolbar.dart";
 import "../../core/widgets/desktop_pane_drop_target.dart";
 import "../../core/widgets/desktop_session_signals.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
+import "desktop_side_chat_panel.dart";
 
 /// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
@@ -107,6 +108,17 @@ class const DesktopSessionDetailScreen({
                 repository: getIt<FilePreviewRepository>(),
                 reference: reference,
               ),
+              createSideChatCubit:
+                  ({required sessionId, required pluginId, required availability, required isArchived}) =>
+                      SideChatCubit(
+                        repository: getIt<SideChatRepository>(),
+                        productAnalyticsService: getIt<ProductAnalyticsService>(),
+                        sessionId: sessionId,
+                        pluginId: pluginId,
+                        availability: availability,
+                        isArchived: isArchived,
+                        initialQuestion: null,
+                      ),
               canShareImages: defaultTargetPlatform != TargetPlatform.linux,
             ),
           ),
@@ -143,59 +155,69 @@ class const DesktopSessionDetailView({
   required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final PendingFormCubitFactory createPendingFormCubit,
   required final FilePreviewCubitFactory createFilePreviewCubit,
+  required final DesktopSideChatCubitFactory createSideChatCubit,
   required final bool canShareImages,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SessionDetailPresentationScope(
-      messageImageRepository: messageImageRepository,
-      imageSaver: imageSaver,
-      imageClipboard: imageClipboard,
-      imageSharer: imageSharer,
-      sessionRepository: sessionRepository,
-      createExternalActionCubit: createExternalActionCubit,
-      createPendingFormCubit: createPendingFormCubit,
-      createFilePreviewCubit: createFilePreviewCubit,
-      canShareImages: canShareImages,
-      openExternalLink: openDesktopExternalLink,
-      openSession: onOpenSession,
-      openHarnessSettings: onOpenHarnessSettings,
-      openBridgeSettings: onOpenBridgeSettings,
-      // Desktop has no side-chat panel yet, so it offers no side questions.
-      openSideChat: null,
-      child: _MarkUnreadShortcut(
-        onMarkUnread: () {
-          final session = context.read<SessionDetailCubit>().state.hydratedSession;
-          if (session != null) _markUnread(context: context, session: session);
-        },
-        child: SessionDetailBody(
-          projectId: projectId,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
-          banner: null,
-          // The page goes back with Cmd/Ctrl+[, so its toolbar has no Back.
-          onBack: null,
-          onShowDiffs: onShowDiffs,
-          bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
-              // Voice lives with the composer, so a block that removes it also
-              // closes any recording.
-              DesktopVoiceInputScope(
+    return DesktopSideChatPanelHost(
+      createCubit: createSideChatCubit,
+      builder: (context, {required openSideChat, required panel}) => SessionDetailPresentationScope(
+        messageImageRepository: messageImageRepository,
+        imageSaver: imageSaver,
+        imageClipboard: imageClipboard,
+        imageSharer: imageSharer,
+        sessionRepository: sessionRepository,
+        createExternalActionCubit: createExternalActionCubit,
+        createPendingFormCubit: createPendingFormCubit,
+        createFilePreviewCubit: createFilePreviewCubit,
+        canShareImages: canShareImages,
+        openExternalLink: openDesktopExternalLink,
+        openSession: onOpenSession,
+        openHarnessSettings: onOpenHarnessSettings,
+        openBridgeSettings: onOpenBridgeSettings,
+        openSideChat: openSideChat,
+        child: _MarkUnreadShortcut(
+          onMarkUnread: () {
+            final session = context.read<SessionDetailCubit>().state.hydratedSession;
+            if (session != null) _markUnread(context: context, session: session);
+          },
+          // The side chats float over the page, which keeps its layout under them.
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              SessionDetailBody(
                 projectId: projectId,
-                child: SessionDetailComposerControls(
-                  projectId: projectId,
-                  sessionId: sessionId,
-                  source: source,
+                sessionId: sessionId,
+                sessionTitle: sessionTitle,
+                readOnly: readOnly,
+                banner: null,
+                // The page goes back with Cmd/Ctrl+[, so its toolbar has no Back.
+                onBack: null,
+                onShowDiffs: onShowDiffs,
+                bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
+                    // Voice lives with the composer, so a block that removes it also
+                    // closes any recording.
+                    DesktopVoiceInputScope(
+                      projectId: projectId,
+                      child: SessionDetailComposerControls(
+                        projectId: projectId,
+                        sessionId: sessionId,
+                        source: source,
+                      ),
+                    ),
+                pageChrome: SessionDetailPageChrome(
+                  columnWidths: const SessionDetailColumnWidths(
+                    transcript: desktopTranscriptWidth,
+                    composer: desktopComposerWidth,
+                  ),
+                  headerBuilder: _buildToolbar,
                 ),
+                menuEntriesBuilder: null,
               ),
-          pageChrome: SessionDetailPageChrome(
-            columnWidths: const SessionDetailColumnWidths(
-              transcript: desktopTranscriptWidth,
-              composer: desktopComposerWidth,
-            ),
-            headerBuilder: _buildToolbar,
+              panel,
+            ],
           ),
-          menuEntriesBuilder: null,
         ),
       ),
     );

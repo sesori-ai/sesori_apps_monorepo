@@ -93,6 +93,7 @@ export "src/features/settings/widgets/chat_input_mode_picker.dart";
 export "src/features/settings/widgets/settings_section.dart";
 export "src/features/settings/widgets/settings_window_page.dart";
 export "src/features/side_chat/show_side_chat_sheet.dart";
+export "src/features/side_chat/side_chat_view.dart" show SideChatView;
 export "src/l10n/app_localizations.dart";
 export "src/l10n/app_localizations_en.dart";
 export "src/platform/external_link_opener.dart";
