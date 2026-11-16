@@ -155,6 +155,14 @@ class ScheduledTaskDao({required AppDatabase database})
         .getSingleOrNull();
   }
 
+  /// Points the task at [sessionId], only while its update time is still
+  /// [expectedUpdatedAt]. Returns the rows changed.
+  Future<int> setTargetSession({required String taskId, required int expectedUpdatedAt, required String sessionId}) {
+    return (update(scheduledTasksTable)
+          ..where((task) => task.id.equals(taskId) & task.updatedAt.equals(expectedUpdatedAt)))
+        .write(ScheduledTasksTableCompanion(targetSessionId: Value(sessionId)));
+  }
+
   /// Returns the rows changed.
   Future<int> setRunSession({required String runId, required String sessionId}) {
     return (update(scheduledTaskRunsTable)..where((row) => row.id.equals(runId))).write(

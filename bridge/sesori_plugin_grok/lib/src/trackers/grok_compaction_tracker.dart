@@ -1,7 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-/// One live compaction: the message its row lives on, when the bridge saw it
-/// start (Grok's queue entry carries no time), and what started it.
+import "../api/models/grok_session_notification_dto.dart";
+
+/// One live compaction: the message its row lives on, when it started, and
+/// what started it.
 typedef GrokRunningCompaction = ({String messageId, int startedAtMs, PluginCompactionTrigger trigger});
 
 /// Owns each session's live compaction. Grok's compaction notifications carry
@@ -13,17 +15,26 @@ final class GrokCompactionTracker({required final ServerClock clock}) {
 
   /// Records a start, or returns the compaction already running in
   /// [sessionId]: every queue change during a `/compact` repeats its running
-  /// entry, and must keep one row and one timer. A retry after a failure
-  /// gets its own row, even when it starts in the same millisecond.
-  GrokRunningCompaction start({required String sessionId, required PluginCompactionTrigger trigger}) =>
-      _running.putIfAbsent(sessionId, () {
-        final startedAtMs = clock.now().millisecondsSinceEpoch;
-        return (
-          messageId: "$sessionId-compaction-$startedAtMs-${_sequence++}",
-          startedAtMs: startedAtMs,
-          trigger: trigger,
-        );
-      });
+  /// entry, and must keep one row and one timer. [key] names the row as its
+  /// replay will (see [GrokSessionProtocol.compactionMessageId]); without one
+  /// the row is live only. [startedAtMs] is Grok's time for the start, else
+  /// the bridge stamps it.
+  GrokRunningCompaction start({
+    required String sessionId,
+    required String? key,
+    required int? startedAtMs,
+    required PluginCompactionTrigger trigger,
+  }) => _running.putIfAbsent(sessionId, () {
+    final startedAt = startedAtMs ?? clock.now().millisecondsSinceEpoch;
+    return (
+      messageId: GrokSessionProtocol.compactionMessageId(
+        sessionId: sessionId,
+        key: key ?? "$startedAt-${_sequence++}",
+      ),
+      startedAtMs: startedAt,
+      trigger: trigger,
+    );
+  });
 
   /// Removes and returns the compaction running in [sessionId], if any.
   GrokRunningCompaction? finish({required String sessionId}) => _running.remove(sessionId);
