@@ -21,6 +21,7 @@ on:
       - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
       - '.github/workflows/submit-release.yml'
+      - '.github/workflows/android-release-apk.yml'
       - '.github/workflows/desktop-qualification.yml'
       - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/scripts/test_store_release_notes.py'

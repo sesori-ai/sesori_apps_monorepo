@@ -437,4 +437,33 @@ platform :android do
       _cleanup_secret_files
     end
   end
+
+  # Play App Signing re-signs what we upload, so only Google's generated APK can
+  # update a Play install. Google builds it asynchronously after the upload,
+  # hence the short bounded retry. Does NOT build — runs on Linux.
+  desc "Download the Play-signed universal APK for VERSION_CODE to APK_PATH"
+  lane :download_universal_apk do
+    version_code = Integer(ENV.fetch("VERSION_CODE"))
+    destination = File.expand_path(ENV.fetch("APK_PATH"))
+
+    _materialize_secret_files
+
+    begin
+      attempts = 4
+      attempt = 0
+      begin
+        attempt += 1
+        download_universal_apk_from_google_play(version_code: version_code, destination: destination)
+      rescue StandardError => e
+        raise if attempt >= attempts
+
+        UI.important("Universal APK download attempt #{attempt}/#{attempts} failed " \
+                     "(#{e.message.to_s.strip}); retrying in 60s.")
+        sleep(60)
+        retry
+      end
+    ensure
+      _cleanup_secret_files
+    end
+  end
 end

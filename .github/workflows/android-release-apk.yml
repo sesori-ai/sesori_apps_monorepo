@@ -1,0 +1,87 @@
+name: Attach Android Release APK
+
+# Attaches the universal APK Google Play generated for an uploaded version code
+# to the v<version> GitHub release. Play App Signing re-signs our upload, so only
+# Google's APK can update a Play install and keep Google sign-in working; an APK
+# signed with our upload key could do neither. submit-release.yml calls this
+# after each production release. Dispatch it by hand to backfill a release.
+#
+# A failed download or upload only leaves a warning: the release itself is
+# already published and must not turn red over a convenience asset.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      build_number:
+        type: string
+        required: true
+    secrets:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the v prefix (e.g. 1.14.0)"
+        type: string
+        required: true
+      build_number:
+        description: "Android version code of that release (the build number in its title)"
+        type: string
+        required: true
+
+run-name: "android apk · v${{ inputs.version }} · build ${{ inputs.build_number }}"
+
+jobs:
+  attach:
+    name: Attach Play-signed APK to v${{ inputs.version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # The workflow's own revision: only the Fastfile is needed, never the build's tree.
+      - uses: actions/checkout@v6
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: client/app/android
+
+      - name: Download the Play-signed APK and attach it
+        id: attach
+        continue-on-error: true
+        working-directory: client/app/android
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ inputs.build_number }}
+          APK_PATH: ${{ runner.temp }}/Sesori-android-${{ inputs.version }}-${{ inputs.build_number }}.apk
+        run: |
+          set -euo pipefail
+          bundle exec fastlane download_universal_apk
+          gh release upload "v${VERSION}" "$APK_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f client/app/android/fastlane/service-account.json
+
+      - name: Summary
+        if: always()
+        env:
+          OUTCOME: ${{ steps.attach.outcome }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ inputs.build_number }}
+        run: |
+          if [[ "$OUTCOME" == "success" ]]; then
+            echo "- **Android APK**: \`Sesori-android-${VERSION}-${VERSION_CODE}.apk\` attached to \`v${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            message="Play-signed APK for build ${VERSION_CODE} was not attached to v${VERSION}. See the attach step log, then re-run this job or dispatch android-release-apk.yml."
+            echo "::warning::${message}"
+            echo "- **Android APK**: ${message}" >> "$GITHUB_STEP_SUMMARY"
+          fi
