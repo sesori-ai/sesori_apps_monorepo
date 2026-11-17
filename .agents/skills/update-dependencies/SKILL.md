@@ -372,6 +372,13 @@ set -e
 
 </step>
 
+CI seeds the `sqlite3` and `pdfium_dart` (pdfrx) build-hook downloads with `.github/actions/prefetch-sqlite3-native/prefetch.py`, which parses those packages' sources and pins archive hashes. Local `make test` does not run it, so when either package's resolved version changes, run it against the client workspace before pushing. If it fails, update the script (or `PDFIUM_PINS`) in the same PR:
+
+```bash
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace client --platform host plan
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace client --platform android plan
+```
+
 <step name="4.3">If build or tests fail:
 
 - Identify the failing dependency
