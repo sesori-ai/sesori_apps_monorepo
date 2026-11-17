@@ -108,6 +108,67 @@ void main() {
     expect(cubit.state["project-1"]?.rowKeys, {"created": "launch-1"});
   });
 
+  group("under a chip or search", () {
+    const running = (projectId: null, query: null, filter: SessionListQuickFilter.running);
+    Set<String> named() => {
+      for (final launch in cubit.state["project-1"]?.named.values ?? const <({String sessionId, bool arrived})>[])
+        launch.sessionId,
+    };
+
+    test("a session the surface never showed stays out while a launch waits", () async {
+      launch();
+      await pumpEventQueue();
+      key = running;
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "All showed it already");
+
+      // It reaches Running before the reply that names it.
+      windowState.add(loaded([created, existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, {"created"}, reason: "it may be the waiting launch's");
+      expect(named(), isEmpty);
+
+      launches.promote(launchId: "launch-1", session: created);
+      await pumpEventQueue();
+      expect(named(), {"created"}, reason: "now named, it lists as an ordinary row there");
+      expect(placeholders(), ["launch-1"], reason: "the row waits for All");
+
+      key = unfiltered;
+      windowState.add(loaded([created, existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.placeholders, isEmpty);
+      expect(cubit.state["project-1"]?.rowKeys, {
+        "created": "launch-1",
+      }, reason: "back on All it takes the row's place");
+    });
+
+    test("a session it showed before the launch began stays listed", () async {
+      final other = testSession(id: "other");
+      key = running;
+      windowState.add(loaded([other]));
+      await pumpEventQueue();
+
+      launch();
+      windowState.add(loaded([other]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "the surface already showed it");
+    });
+
+    test("a page appended there is never held", () async {
+      final older = testSession(id: "older");
+      launch();
+      await pumpEventQueue();
+      key = (projectId: null, query: "bug", filter: SessionListQuickFilter.all);
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+
+      windowState.add(loaded([existing, older]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "an older page is never the launch's session");
+    });
+  });
+
   test("another computer drops the launching rows of the previous one", () async {
     launch();
     await pumpEventQueue();

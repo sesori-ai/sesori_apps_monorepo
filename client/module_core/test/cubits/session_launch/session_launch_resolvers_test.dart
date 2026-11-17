@@ -356,11 +356,13 @@ void main() {
       required Map<String, LaunchRows> previous,
       required SessionLaunchState launches,
       required List<Session>? sessions,
+      bool drawsLaunchRows = true,
       Set<String> appendedSessionIds = const {},
     }) => resolveProjectLaunchRows(
       previous: previous,
       launches: launches,
       sessionsByProject: {"project-1": ?sessions},
+      drawsLaunchRows: drawsLaunchRows,
       appendedSessionIds: appendedSessionIds,
     );
 
@@ -378,6 +380,29 @@ void main() {
 
       expect(reloading["project-1"]?.placeholders, [launch]);
       expect(reloading["project-1"]?.named, {"launch-1": (sessionId: "created", arrived: false)});
+    });
+
+    test("a chip first listed mid-launch holds its project's newest session until the launch names it", () {
+      final older = testSession(id: "older", createdAt: 200);
+      final newest = testSession(id: "newest", createdAt: 300);
+      final opened = resolveProject(
+        previous: const {},
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [older, newest],
+        drawsLaunchRows: false,
+      );
+      expect(opened["project-1"]?.placeholders, [launch], reason: "the row waits for All");
+      expect(opened["project-1"]?.heldSessionIds, {"newest"}, reason: "it may be the launch's session");
+      expect(opened["project-1"]?.shownSessionIds, isNull, reason: "All still holds as on its first update");
+
+      final named = resolveProject(
+        previous: opened,
+        launches: const SessionLaunchState(launching: [], sessionIds: {"launch-1": "newest"}),
+        sessions: [older, newest],
+        drawsLaunchRows: false,
+      );
+      expect(named["project-1"]?.named, {"launch-1": (sessionId: "newest", arrived: false)});
+      expect(named["project-1"]?.heldSessionIds, {"newest"}, reason: "only its launching row's place holds it");
     });
 
     test("drops a failed launch's row while the project is not listed", () {
