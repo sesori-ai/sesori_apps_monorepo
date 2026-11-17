@@ -446,7 +446,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Upstream publishes only prereleases (`dsh-vX.Y.Z-rc.N` tags); its npm `latest`
   tag is stale. **The harness target is the npm `next` dist-tag** (an RC, never an
   alpha), checked with `npm view @deepseek-ai/dsh-agent dist-tags`. Take the
-  `@deepseek-ai/cordis*` versions from that RC's own dependencies.
+  `@deepseek-ai/cordis*` versions from that RC's own dependencies. Upstream can
+  publish the `next` RC to npm hours before pushing its `dsh-v` tag, and the npm
+  manifests carry no `gitHead` (rc.4, 2026-11-17). Then audit by diffing the old
+  and new published tarballs, and recheck the tag before the consumer pin.
 - **Always update:** every refresh compares `next` with the producer's
   `release/config.json` `deepSeekHarnessVersion`. When `next` is newer, the refresh
   **must** migrate the adapter, release it and pin the consumer. A refresh that
@@ -460,7 +463,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Producer work:** work in a fresh worktree of the local
   `~/sesori-ai/sesori-deepseek-acp` clone, branched from `origin/main`. Inspect its
   `release/config.json`, package/lockfile, extension protocol, packaging workflow and
-  conformance tests. Use the previous migration (PR #25, adapter v0.2.3 over dsh 0.2.2-rc.3) as the template:
+  conformance tests. Use the previous migration (PR #26, adapter v0.2.4 over dsh 0.2.2-rc.4) as the template:
   dsh pins, lockfile, `deepSeekHarnessVersion`, package version, runtime/session
   source, smoke script, README and fixtures. After bumping the exact dsh pins,
   `npm install` fails with ERESOLVE because the old dsh packages pin each other

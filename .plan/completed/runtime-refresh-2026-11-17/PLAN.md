@@ -1,6 +1,6 @@
 # Runtime refresh, 2026-11-17
 
-Status: active.
+Status: completed 2026-11-17. Every step is merged; the remaining verification is listed under final follow-ups.
 
 Raise every registered harness to its current stable upstream release, following
 `.agents/skills/update-backend-runtimes/SKILL.md`. Floors (`minPathVersion` /
@@ -36,12 +36,22 @@ Release channels were checked on 2026-11-17.
 4. DeepSeek adapter: move `sesori-ai/sesori-deepseek-acp` to dsh 0.2.2-rc.4 and release `v0.2.4`.
 5. Pin the DeepSeek consumer to adapter 0.2.4 from the published assets.
 6. Findings that need code get their own PRs here. Reconcile capability and regression docs, apply skill
-   corrections, then retire this plan.
+   corrections, then retire this plan. The one code finding (DeepSeek content refusals) shipped inside steps 4–5;
+   the skill corrections and retirement are the final docs-only PR.
 
 ## Findings
 
-Filled in from the step 2–4 audits.
-
+- **Copilot 1.0.112 → 1.0.113** (#2775): ACP methods and update types are identical. Track only: Copilot's own SDK
+  event types drop the deprecated `parentToolCallId` and terminal tool-result content (not on Sesori's ACP seam).
+  Not applicable: the `features.browserUse` admin setting. No parity cell changes.
+- **Claude Code 2.1.325 → 2.1.326** (#2775): one new initialize key (`hooks_when_unanswered_kept`); models and
+  commands unchanged. Probe first: the SDK fixed `resumeSessionAt` failing on an empty reply, which is on
+  Sesori's rewind path. Track only: `system/informational` warnings (already ignored), better secret masking in
+  permission descriptions, sandboxed approval-rewritten commands, plan-mode auto-compaction on the answering
+  model, resumed sessions no longer losing turns. No parity cell changes.
+- **OMP 18.21.0 → 18.22.0** (#2775): nothing changed in the ACP layer, compaction notifications or model
+  restore. Not applicable: the `ida`/`ghidra` tools folding into a `dsm` namespace (breaking upstream, unused
+  here). Track only: lower sub-agent CPU/memory, LSP watch fixes. No parity cell changes.
 - **Hermes 0.23.1 → 0.23.2** (7,918 commits, 5,211 files; diffed in a blobless clone because the compare
   API caps at 250 commits/300 files). `acp_adapter/gateway_server.py` and `hermes sessions delete` copy are
   unchanged. New `guardrail_blocked` failure copy, recognised in this PR. Track only: edit auto-approval now
@@ -65,3 +75,19 @@ Filled in from the step 2–4 audits.
 
 Carried from 2026-11-16 and still open: authenticated lifecycles for Copilot, Cursor, OMP, Antigravity, Grok
 and DeepSeek; non-macOS-arm64 hosts; a live OpenCode 2.3.0 turn with provider credentials.
+
+New from this run:
+
+- Claude Code 2.1.326: the live compaction-rewind and side-question probes against the local test endpoint
+  (`resumeSessionAt` fix). Expected: a rewind to an earlier message after compaction resumes there.
+- Grok 1.0.88: probe the new `_x.ai/yolo_mode_changed`, `session/history_tree` and `session/import` names with a
+  signed-in session before relying on them.
+- DeepSeek 0.2.4: a real content-refused turn, which needs DeepSeek provider credentials. Expected: one red
+  failure notice with DeepSeek's explanation, live and after reload.
+
+## Skill corrections
+
+- Copilot: audit from the readable `cli-main.js`, `changelog.json` and SDK typings inside the release `.tgz`
+  assets; OMP recheck notes for 18.22.0 (#2775).
+- DeepSeek: the npm `next` RC can precede its upstream tag; audit the published tarballs and recheck the tag
+  before the consumer pin. The reference's template migration now points at sesori-deepseek-acp#26.
