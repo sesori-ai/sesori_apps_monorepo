@@ -26,13 +26,13 @@ jobs:
   catalog:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Read Flutter version from .tool-versions
         id: flutter
         uses: ./.github/actions/resolve-flutter-dart-version
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: ${{ steps.flutter.outputs.flutter-version }}
           channel: ${{ steps.flutter.outputs.flutter-channel }}

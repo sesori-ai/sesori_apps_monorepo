@@ -72,14 +72,14 @@ jobs:
             asset_name: sesori-bridge-windows-arm64
             archive_ext: zip
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
 
       # Production submissions can rebuild older source commits. Use helper
       # actions from the workflow revision, not the checked-out product ref.
       - name: Checkout CI actions at workflow revision
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: .ci-workflow
           sparse-checkout: .github/actions
@@ -96,12 +96,12 @@ jobs:
         uses: ./.ci-workflow/.github/actions/resolve-flutter-dart-version
 
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
         with:
           sdk: ${{ steps.dart-version.outputs.version }}
 
       - name: Cache pub dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           # Default pub cache locations; only the one for the current OS exists.
           path: |
@@ -261,7 +261,7 @@ jobs:
         run: Compress-Archive -Path "bridge/app/build/cli/bundle/*" -DestinationPath "bridge/app/${{ matrix.asset_name }}.zip"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset_name }}
           path: bridge/app/${{ matrix.asset_name }}.${{ matrix.archive_ext }}

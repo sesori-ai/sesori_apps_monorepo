@@ -59,7 +59,7 @@ class InternalReleaseGateTest(unittest.TestCase):
     def run_gate(
         self, *, automatic: str = "true", ref: str = "refs/heads/main", succeeds: bool = True
     ) -> tuple[str, str]:
-        # Model checkout@v6 fetch-depth: 0, refreshing the moving remote tag.
+        # Model checkout fetch-depth: 0, refreshing the moving remote tag.
         self.git(args=["fetch", "origin", "+refs/tags/*:refs/tags/*"])
         self.output.write_text("")
         self.summary.write_text("")

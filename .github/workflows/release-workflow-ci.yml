@@ -61,10 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
       - name: Test bridge build workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_bridge_build_workflow.py'
       - name: Test Linux CLI signing and existing-release publication contracts
@@ -91,9 +91,9 @@ jobs:
         run: python3 .github/scripts/test_check_internal_release.py
       - name: Test Firebase analytics release cutoff publisher
         run: python3 .github/scripts/test_publish_firebase_analytics_release_cutoff.py
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '24'
+          node-version: '26'
           cache: npm
           cache-dependency-path: tool/release_scheduler/package-lock.json
       - name: Install release dispatcher tooling
@@ -104,9 +104,9 @@ jobs:
         run: npm test --prefix tool/release_scheduler
       - name: Test MCP contract probe tooling
         run: node --test tool/mcp-contracts/*.test.mjs
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
       - name: Check store lane syntax
         run: |
           ruby -c client/app/ios/fastlane/Fastfile

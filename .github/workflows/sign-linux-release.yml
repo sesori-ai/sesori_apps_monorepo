@@ -23,7 +23,7 @@ jobs:
     secrets: inherit
   publish:
     needs: sign
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
@@ -31,10 +31,10 @@ jobs:
       - name: Require trusted main workflow
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux signature publication requires main'; exit 1; }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sesori-bridge-linux-signatures
           path: build/bridge-linux-signatures

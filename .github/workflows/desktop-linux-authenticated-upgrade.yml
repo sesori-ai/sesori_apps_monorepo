@@ -51,12 +51,12 @@ jobs:
             echo 'Select two distinct retained signed Linux producer runs; no default or latest substitution.'
             exit 1
           }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.architecture }}
       - name: Verify focused tooling contracts
         run: |
@@ -72,13 +72,13 @@ jobs:
             dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools \
             gnome-shell plasma-desktop plasma-workspace kwin-x11 \
             xvfb xauth wmctrl xdotool x11-utils mesa-utils
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_run }}
           pattern: desktop-linux-*
           path: build/linux-authenticated-producers/previous
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.current_run }}
@@ -94,12 +94,12 @@ jobs:
           python .github/scripts/qualify_desktop_linux_session.py prepare \
             --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \
             --inputs build/linux-authenticated-producers --output build/linux-authenticated-inputs
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.inputs.outputs.previous_source }}
           path: .qa-previous
           persist-credentials: false
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.inputs.outputs.current_source }}
           path: .qa-current
@@ -149,7 +149,7 @@ jobs:
             --output build/linux-authenticated-evidence
       - name: Retain only bounded account-free results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-linux-authenticated-${{ matrix.architecture }}-${{ matrix.desktop }}
           path: |

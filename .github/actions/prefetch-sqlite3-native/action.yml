@@ -36,7 +36,7 @@ runs:
     - name: Restore native library cache
       id: cache
       if: steps.plan.outputs.key != ''
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.plan.outputs.path }}
         key: ${{ steps.plan.outputs.key }}
@@ -57,7 +57,7 @@ runs:
     # leaves the cache warm for the next run.
     - name: Save native library cache
       if: steps.plan.outputs.key != '' && steps.cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         path: ${{ steps.plan.outputs.path }}
         key: ${{ steps.plan.outputs.key }}

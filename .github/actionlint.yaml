@@ -1,9 +1,10 @@
-# GitHub-hosted preview label; actionlint's built-in runner list does not yet include it.
-# This declares the exact additional label, not a self-hosted execution requirement.
-# https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md
+# GitHub-hosted labels that actionlint 1.7.12's built-in runner list does not yet include.
+# These declare the exact additional labels, not a self-hosted execution requirement.
+# https://github.com/actions/runner-images#available-images
 self-hosted-runner:
   labels:
     - xcode-27
+    - ubuntu-26.04
 
 # actionlint 1.7.12 lacks GitHub's concurrency.queue. Remove when the linter supports it.
 # Only this key's syntax error is exempt; authenticated workflow contracts enforce max/no cancellation.

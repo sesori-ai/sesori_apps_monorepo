@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   sign:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     environment: desktop-update-signing
     outputs:
@@ -35,16 +35,16 @@ jobs:
       - name: Require trusted main
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Update feed signing requires main'; exit 1; }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
       # Pre-Velopack sources upload none; signing then leaves the Linux feeds unchanged.
       - name: Collect this run's Velopack release packages
         if: inputs.platform == 'linux'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: desktop-velopack-linux-*
           path: build/desktop-update-input
@@ -75,7 +75,7 @@ jobs:
             --channel "$CHANNEL" --version "$VERSION" --build-number "$BUILD_NUMBER" \
             --root build/desktop-update-input --output build/desktop-update-feed
           if [[ -d build/desktop-update-feed ]]; then echo feed=true; else echo feed=false; fi >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: steps.sign.outputs.feed == 'true'
         with:
           name: desktop-update-feed-${{ inputs.platform }}-${{ inputs.channel }}
@@ -86,7 +86,7 @@ jobs:
   publish:
     needs: sign
     if: needs.sign.outputs.feed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -95,22 +95,22 @@ jobs:
       - name: Require trusted main
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Update feed hosting requires main'; exit 1; }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
-      - uses: actions/download-artifact@v4
+          python-version: '3.15'
+      - uses: actions/download-artifact@v8
         with:
           name: desktop-update-feed-${{ inputs.platform }}-${{ inputs.channel }}
           path: build/desktop-update-publication
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: >-
             projects/1068630921159/locations/global/workloadIdentityPools/linux-packages/providers/github
           service_account: linux-package-publisher@sesori-ai.iam.gserviceaccount.com
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Publish packages before signed feeds and verify anonymous bytes
         env:
           CHANNEL: ${{ inputs.channel }}

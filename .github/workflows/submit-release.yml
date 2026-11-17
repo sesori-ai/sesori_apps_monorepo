@@ -79,7 +79,7 @@ jobs:
             echo 'Store submissions and bridge releases must be dispatched from main.' >&2
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -178,7 +178,7 @@ jobs:
       # logic apply even to builds cut from older commits (the build's binary is
       # permanent on TestFlight). The version NAME that must match the binary is
       # injected via VERSION_NAME below, not read from this tree's pubspec.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Clone the private metadata repo so we can both read its listing and decide
       # whether it needs publishing. Only for production submits with
@@ -190,7 +190,7 @@ jobs:
       - name: Checkout store metadata
         id: cometa
         if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
@@ -224,9 +224,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
           bundler-cache: true
           working-directory: client/app/ios
 
@@ -296,7 +296,7 @@ jobs:
       # logic apply even to builds cut from older commits (the build's binary is
       # permanent on Play). The version NAME that must match the binary is
       # injected via VERSION_NAME below, not read from this tree's pubspec.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Clone the private metadata repo (production + STORE_METADATA_REPO only) to
       # read the listing and run the same tag-driven gate as iOS. See the iOS job
@@ -304,7 +304,7 @@ jobs:
       - name: Checkout store metadata
         id: cometa
         if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
@@ -335,9 +335,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
           bundler-cache: true
           working-directory: client/app/android
 
@@ -561,14 +561,14 @@ jobs:
     steps:
       - name: Get release tagger token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RELEASE_TAGGER_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_TAGGER_PRIVATE_KEY }}
           permission-contents: write
           permission-workflows: write
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
           fetch-depth: 0
@@ -710,7 +710,7 @@ jobs:
     steps:
       - name: Get release tagger token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RELEASE_TAGGER_CLIENT_ID }}
           private-key: ${{ secrets.RELEASE_TAGGER_PRIVATE_KEY }}
@@ -721,17 +721,17 @@ jobs:
       # release's tree (notes are API-driven, checksums come from artifacts,
       # the tag is already pushed) — only tool/generate_release_notes.dart,
       # which must come from the workflow's own revision.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # The notes script is dependency-free pure Dart — a bare Dart SDK
       # installs in seconds, vs minutes for the asdf Flutter toolchain.
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
         with:
           sdk: stable
 
       - name: Download bridge artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: sesori-bridge-*
@@ -761,7 +761,7 @@ jobs:
       # Preserve core's existing release/rebuild authority. Signatures follow the
       # archive set; the later read-only check verifies delivery, not promotion policy.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           token: ${{ steps.app-token.outputs.token }}
           tag_name: v${{ needs.resolve.outputs.version }}

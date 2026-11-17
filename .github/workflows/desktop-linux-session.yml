@@ -51,12 +51,12 @@ jobs:
             echo 'Select two retained signed Linux producer runs; no default or latest substitution is allowed.'
             exit 1
           }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.architecture }}
       - name: Verify focused tooling contracts
         run: |
@@ -75,13 +75,13 @@ jobs:
             xvfb xauth wmctrl xdotool x11-utils imagemagick tesseract-ocr tesseract-ocr-eng mesa-utils
       # Release objects roll away by design. Bind QA to original signed producer
       # artifacts instead; do not change retention or recreate historical releases.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_run }}
           pattern: desktop-linux-*
           path: build/linux-session-producers/previous
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.current_run }}
@@ -97,12 +97,12 @@ jobs:
           python .github/scripts/qualify_desktop_linux_session.py prepare \
             --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \
             --inputs build/linux-session-producers --output build/linux-session-inputs
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.inputs.outputs.previous_source }}
           path: .qa-previous
           persist-credentials: false
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.inputs.outputs.current_source }}
           path: .qa-current
@@ -156,8 +156,8 @@ jobs:
       - name: Upgrade and exercise Secret Service on native Debian 13 and Fedora 44
         env:
           # Same digests as the producer's install fixtures; the tooling test keeps them in step.
-          DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
-          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
+          DEBIAN_IMAGE: docker.io/library/debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
+          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:98b558564d3510363f0f706a44b1ee9de461b030373d741c5729ae3f24d8cb26
         run: |
           set -euo pipefail
           for row in "debian-13|deb|$DEBIAN_IMAGE" "fedora-44|rpm|$FEDORA_IMAGE"; do
@@ -173,7 +173,7 @@ jobs:
           done
       - name: Replace the portable AppImage on native Arch Linux with a Plasma 6 tray host
         env:
-          ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:52dfbd5afb23a220d5ee92dafcb4c788d96c026ed04179890c23adef4c897fa0
+          ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:d4594bb2300cba11f41c2f27923eb56f63d9988909c402f9c95517d1e362c899
           # Arch has no official ARM64 image. Import the community Arch Linux ARM rootfs only after its
           # build-system signature verifies against this pinned primary fingerprint.
           ARCH_ARM_SIGNER: 68B3537F39A313B3E574D06777193F152BDBE6A6
@@ -227,7 +227,7 @@ jobs:
             --architecture '${{ matrix.architecture }}' --output build/linux-session-evidence/login
       - name: Retain credential-free native evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-linux-session-${{ matrix.architecture }}-${{ matrix.desktop }}
           path: build/linux-session-evidence/

@@ -47,12 +47,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
           bundler-cache: true
           working-directory: client/app/ios
 

@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:26-trixie-slim
 
 ENV NODE_ENV=production
 WORKDIR /app
