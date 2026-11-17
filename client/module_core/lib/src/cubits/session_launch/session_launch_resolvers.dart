@@ -39,7 +39,9 @@ final class const LaunchRows({
 
   /// The sessions the surface showed on its last update; null before its
   /// first, where a surface opened mid-launch holds its project's newest
-  /// sessions instead, one for each launch still waiting.
+  /// sessions instead, one for each launch still waiting. Before its first
+  /// update on All ([listedSessionIds] null) they are only what a chip or a
+  /// search showed, so on All it still holds the newest among the rest.
   required final Set<String>? shownSessionIds,
 
   /// Every session the surface had on its last update, in list order; null
@@ -167,12 +169,20 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
     }
   }
 
+  // What a chip or a search showed before All's first update stays listed,
+  // but All lists sessions it never saw (see [LaunchRows.shownSessionIds]).
+  final shownOnAll = previous.listedSessionIds != null;
   held.addAll(
     _unseenSessionIds(
       launching: launching,
       sessions: sessions,
-      settled: {...sessionIds.values, ...rowKeys.keys, ...held},
-      shown: previous.shownSessionIds,
+      settled: {
+        ...sessionIds.values,
+        ...rowKeys.keys,
+        ...held,
+        if (!shownOnAll) ...?previous.shownSessionIds,
+      },
+      shown: shownOnAll ? previous.shownSessionIds : null,
     ),
   );
 
@@ -250,15 +260,13 @@ LaunchRows holdUnseenLaunchSessions({
     placeholders: latched.placeholders,
     named: latched.named,
     rowKeys: latched.rowKeys,
-    // Before its first update on All a surface keeps holding a project's
-    // newest sessions, so nothing it shows here counts yet.
-    shownSessionIds: shown == null
-        ? null
-        : {
-            ...shown,
-            for (final session in sessions)
-              if (!held.contains(session.id)) session.id,
-          },
+    // Counted even before its first update on All, so what it showed or held
+    // here stays that way (see [LaunchRows.shownSessionIds]).
+    shownSessionIds: {
+      ...?shown,
+      for (final session in sessions)
+        if (!held.contains(session.id)) session.id,
+    },
     listedSessionIds: latched.listedSessionIds,
     heldSessionIds: held,
   );

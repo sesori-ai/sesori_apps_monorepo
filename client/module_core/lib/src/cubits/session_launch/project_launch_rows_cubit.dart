@@ -12,7 +12,8 @@ import "../../services/session_launch_service.dart";
 import "../../services/session_window_service.dart";
 import "session_launch_resolvers.dart";
 
-typedef _Update = ({SessionWindowState window, List<SessionLaunch> launches});
+/// [key] is the window's key when it emitted [window]: what it answers.
+typedef _Update = ({SessionWindowState window, SessionWindowKey key, List<SessionLaunch> launches});
 
 /// One surface's launching rows per project (see [resolveProjectLaunchRows]),
 /// carried from one update to the next. Each surface that draws launches per
@@ -37,7 +38,7 @@ class ProjectLaunchRowsCubit({
   required final Map<String, LaunchRows> initialRows,
 }) extends Cubit<Map<String, LaunchRows>> {
   late final StreamSubscription<_Update> _updates;
-  late _Update _latest = (window: _window.state.value, launches: _launchService.launches.value);
+  late _Update _latest = (window: _window.state.value, key: _window.key, launches: _launchService.launches.value);
 
   /// The window's rows on the last update that had its answer, in order, and
   /// the key they answered; null after one that did not.
@@ -53,9 +54,9 @@ class ProjectLaunchRowsCubit({
     // launch names only in passing (before the launch goes) is still seen.
     _updates =
         Rx.combineLatest2(
-          _window.state,
+          _window.state.map((window) => (window: window, key: _window.key)),
           _launchService.launches,
-          (window, launches) => (window: window, launches: launches),
+          (answer, launches) => (window: answer.window, key: answer.key, launches: launches),
         ).skip(1).listen((update) {
           // The window loads again only for another computer.
           final switched = update.window is SessionWindowLoading && _latest.window is! SessionWindowLoading;
@@ -75,7 +76,9 @@ class ProjectLaunchRowsCubit({
     final key = _window.key;
     final drawsLaunchRows = key.query == null && key.filter == SessionListQuickFilter.all;
     final sessions = switch (_latest.window) {
-      SessionWindowLoaded(:final sessions, awaitingAnswer: false) => sessions,
+      // Rows answered for another key, as while a typed query waits to narrow
+      // them, say nothing about this one.
+      SessionWindowLoaded(:final sessions, awaitingAnswer: false) when _latest.key == key => sessions,
       // Rows narrowed from another key may lack a launch's session.
       SessionWindowLoaded() || SessionWindowLoading() || SessionWindowFailed() => null,
     };

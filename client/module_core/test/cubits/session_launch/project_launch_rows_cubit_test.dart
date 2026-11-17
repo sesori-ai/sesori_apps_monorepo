@@ -42,9 +42,9 @@ void main() {
     await windowState.close();
   });
 
-  void launch() => launches.start(
-    launchId: "launch-1",
-    projectId: "project-1",
+  void launch({String launchId = "launch-1", String projectId = "project-1"}) => launches.start(
+    launchId: launchId,
+    projectId: projectId,
     pluginId: "claude",
     startedAt: DateTime.utc(2026, 10, 7, 12),
     projectName: "Sesori",
@@ -166,6 +166,45 @@ void main() {
       windowState.add(loaded([existing, older]));
       await pumpEventQueue();
       expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "an older page is never the launch's session");
+    });
+
+    test("a session it showed before a launch began stays listed though All never listed its project", () async {
+      final elsewhere = testSession(id: "elsewhere").copyWith(projectID: "project-2");
+      key = running;
+      windowState.add(loaded([elsewhere]));
+      await pumpEventQueue();
+
+      launch(projectId: "project-2");
+      await pumpEventQueue();
+      expect(cubit.state["project-2"]?.heldSessionIds, isEmpty, reason: "the surface already showed it");
+
+      key = unfiltered;
+      windowState.add(loaded([existing, elsewhere]));
+      await pumpEventQueue();
+      expect(cubit.state["project-2"]?.heldSessionIds, isEmpty, reason: "back on All it stays listed too");
+    });
+
+    test("rows the window answered for another key never count as a typed query's answer", () async {
+      final match = testSession(id: "match");
+      launch();
+      await pumpEventQueue();
+      key = (projectId: null, query: "b", filter: SessionListQuickFilter.all);
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+
+      // Listing everything, the window narrows its rows to a typed query only
+      // once typing pauses, so it emits nothing meanwhile.
+      key = (projectId: null, query: "bu", filter: SessionListQuickFilter.all);
+      launch(launchId: "launch-2", projectId: "project-2");
+      await pumpEventQueue();
+
+      windowState.add(loaded([existing, match]));
+      await pumpEventQueue();
+      expect(
+        cubit.state["project-1"]?.heldSessionIds,
+        {"match"},
+        reason: "a session the search never showed is not a page appended below its rows",
+      );
     });
   });
 
