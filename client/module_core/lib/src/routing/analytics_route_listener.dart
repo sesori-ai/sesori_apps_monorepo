@@ -128,8 +128,7 @@ class AnalyticsRouteListener {
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,
     AppRouteDef.scheduledTasks => AnalyticsScreen.scheduledTasks,
     AppRouteDef.scheduledTaskDetail => AnalyticsScreen.scheduledTaskDetail,
-    // The auth server does not accept a scheduled_task_editor screen yet.
-    AppRouteDef.scheduledTaskEditor => null,
+    AppRouteDef.scheduledTaskEditor => AnalyticsScreen.scheduledTaskEditor,
   };
 
   @disposeMethod

@@ -483,6 +483,7 @@ void main() {
           "session_diffs",
           "scheduled_tasks",
           "scheduled_task_detail",
+          "scheduled_task_editor",
         },
       ),
       (
