@@ -528,9 +528,14 @@ variant, and worktree mode, and creating the session with its first input.
   The follow-ups follow it in the same rows, sent in press order once the session
   exists, whether or not any screen is open, each saying "Queued" or "Sending"
   only two seconds after it was sent; a failed one offers Retry, and Remove after
-  an authoritative rejection. A follow-up the bridge refused for stale options (a
-  command, agent, model, variant, or fast mode it no longer offers) would be
-  resent with the same options, so it offers only Remove, with the reason "An
+  an authoritative rejection. A session screen opened from a list before the
+  session's create reply, with the composer still open under it, shows each
+  follow-up once and no first-message bubble, and a later reopen of the
+  session shows no first-message bubble either; the composer keeps the text it
+  held unsent. A follow-up the bridge refused
+  for stale options (a command, agent, model, variant, or fast mode it no
+  longer offers) would be resent with the same options, so it offers only
+  Remove, with the reason "An
   option this message uses is no longer available. Remove it and send it
   again." A Stop pressed while they wait, during
   creation, holds them until the stop is decided. An accepted Stop returns
@@ -911,8 +916,10 @@ startup-extension file failure, retry once the filesystem is usable.
   options of a launch in flight. A follow-up creates a second session, sends
   out of press order or ahead of the first message, vanishes at the route
   replacement or the first load, or is lost when the first load fails or finds
-  the harness blocked. The
-  session screen opens without a composer, with default options instead of the
+  the harness blocked. A screen opened before the create reply shows an accepted
+  follow-up twice, or a later reopen shows the first message as "Sending"
+  again. The session screen opens without a composer, with default options
+  instead of the
   committed ones, without the unsent text, caret or images, or moves the
   composer when the transcript loads. A picked or pasted image, or a word
   mid-composition, lands in neither composer because the route swapped while

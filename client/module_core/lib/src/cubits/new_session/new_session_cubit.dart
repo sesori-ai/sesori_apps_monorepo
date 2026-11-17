@@ -1530,9 +1530,11 @@ class NewSessionCubit({
 
   /// Passes the composer to the session screen about to replace this one, and
   /// forgets its text here so the next new session starts empty instead of
-  /// showing it again.
+  /// showing it again. A session screen the user opened before the session
+  /// existed took the handoff without it and keeps its own composer, so the
+  /// text then stays here.
   void _handOverComposer({required String launchId, required AgentModelData data}) {
-    _sessionLaunchService.handOverComposer(
+    final handedOver = _sessionLaunchService.handOverComposer(
       launchId: launchId,
       composer: SessionLaunchComposer(
         agents: data.agents,
@@ -1549,7 +1551,7 @@ class NewSessionCubit({
         unsent: _unsentComposer,
       ),
     );
-    clearComposerDraft();
+    if (handedOver) clearComposerDraft();
   }
 
   void _onLaunchOutcome(SessionLaunchOutcome outcome) {

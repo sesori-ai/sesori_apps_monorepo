@@ -4799,6 +4799,80 @@ void main() {
         expect(loaded().awaitingBridgeSubmissions.map((item) => item.submission.promptId), ["prm_a"]);
       });
 
+      group("a screen opened before the create reply while the composing route stays open", () {
+        // On desktop the composing route stays mounted under the session the
+        // user opened from the list, so nothing released the handoff.
+        SessionLaunchRepository pendingRepository() => SessionLaunchRepository(storage: SessionLaunchStorage())
+          ..start(
+            launchId: "launch-1",
+            projectId: "project-1",
+            pluginId: "claude",
+            startedAt: startedAt,
+            projectName: null,
+            submission: submission,
+          )
+          ..addFollowUp(
+            launchId: "launch-1",
+            submission: followUp(promptId: "prm_a"),
+          )
+          ..addFollowUp(
+            launchId: "launch-1",
+            submission: followUp(promptId: "prm_b"),
+          );
+
+        test("parks each follow-up the launch delivers once, however often the launch changes after", () async {
+          final repository = pendingRepository();
+          final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+          SessionDetailLoaded loaded() => cubit.state as SessionDetailLoaded;
+
+          repository.promote(
+            launchId: "launch-1",
+            session: testSession(id: _sessionId),
+          );
+          await Future<void>.delayed(Duration.zero);
+          expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_a");
+          repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+          await Future<void>.delayed(Duration.zero);
+          expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_b");
+          repository.followUpFailed(
+            launchId: "launch-1",
+            promptId: "prm_b",
+            failure: const PromptSendFailure.rejected(reason: null),
+          );
+          await Future<void>.delayed(Duration.zero);
+
+          expect(loaded().awaitingBridgeSubmissions.map((item) => item.submission.promptId), ["prm_a"]);
+          expect(loaded().launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_b"]);
+          expect(loaded().launchHandoff, isNull, reason: "this screen never drew the first message");
+        });
+
+        test("takes the handoff once the session exists, so a later reopen has no stale first message", () async {
+          final repository = pendingRepository();
+          final first = await createLoadedCubit(sessionLaunchRepository: repository);
+
+          repository.promote(
+            launchId: "launch-1",
+            session: testSession(id: _sessionId),
+          );
+          await Future<void>.delayed(Duration.zero);
+          expect(first.launchStartedAt, isNull, reason: "this screen did not replace the composing route");
+          await first.close();
+
+          SessionDetailState? initial;
+          final reopened = await createLoadedCubit(
+            sessionLaunchRepository: repository,
+            onInitialState: (state) => initial = state,
+          );
+
+          expect(initial, const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
+          expect((reopened.state as SessionDetailLoaded).launchFollowUps.map((f) => f.submission.promptId), [
+            "prm_a",
+            "prm_b",
+          ]);
+          expect(repository.takeHandoff(sessionId: _sessionId), isNull);
+        });
+      });
+
       test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);

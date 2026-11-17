@@ -334,11 +334,15 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   }
 
   /// Adds the composing route's composer to the handoff of a created launch,
-  /// before the session screen takes it.
-  void handOverComposer({required String launchId, required SessionLaunchComposer composer}) {
+  /// before the session screen takes it. Returns whether it was added: a
+  /// session screen opened before the session existed may have taken the
+  /// handoff already.
+  bool handOverComposer({required String launchId, required SessionLaunchComposer composer}) {
     if (_storage.read(launchId: launchId) case final CreatedSessionLaunch launch) {
       _put(launch: launch.copyWith(composer: composer));
+      return true;
     }
+    return false;
   }
 
   /// Hands the first message of the created launch for [sessionId] to the

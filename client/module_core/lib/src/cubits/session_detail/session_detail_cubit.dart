@@ -193,6 +193,16 @@ class SessionDetailCubit(
   /// accept one, so it returns to the composer only if its send fails.
   final Set<String> _launchFollowUpsSendingAtStop = {};
 
+  /// Whether this screen holds its launch's handoff. One opened before the
+  /// launch created its session could not take it while opening, so it takes
+  /// it once the session exists; see [_onLaunchFollowUps].
+  bool _tookLaunchHandoff = false;
+
+  /// The launch follow-ups this screen has parked as accepted. A list the
+  /// launch published before this screen took the handoff can land after it
+  /// and still name the ones the handoff carried.
+  final Set<String> _parkedLaunchPromptIds = {};
+
   /// This screen's own send a stop found still in flight, which returns to
   /// the composer only if its send fails, like a launch follow-up's.
   String? _ownSendSendingAtStop;
@@ -332,10 +342,11 @@ class SessionDetailCubit(
     if (state case SessionDetailLoading(
       launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer, :final startedAt),
     )) {
+      _tookLaunchHandoff = true;
       _launchStartedAt = startedAt;
       _namesCommandInvocations = composer?.namesCommandInvocations ?? false;
       for (final AcceptedLaunchFollowUp(:submission, :since) in acceptedFollowUps) {
-        _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
+        _parkLaunchFollowUp(submission: submission, since: since);
       }
       // What the launch's composer held unsent becomes this composer's, before
       // the composer first reads it.
@@ -514,9 +525,23 @@ class SessionDetailCubit(
   /// leaves no ghost bubble.
   void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
     if (isClosed) return;
+    var adopted = false;
+    // Until the handoff is taken, every launch change repeats the follow-ups
+    // the bridge accepted, and a later reopen would take the first message as
+    // still sending. This screen never drew that message and keeps its own
+    // composer, so it only parks the accepted follow-ups.
+    if (!_tookLaunchHandoff) {
+      if (_sessionLaunchService.takeHandoff(sessionId: _sessionId) case SessionLaunchHandoff(
+        :final acceptedFollowUps,
+      )) {
+        _tookLaunchHandoff = true;
+        for (final AcceptedLaunchFollowUp(:submission, :since) in acceptedFollowUps) {
+          adopted = _parkLaunchFollowUp(submission: submission, since: since) || adopted;
+        }
+      }
+    }
     final unsent = <LaunchFollowUp>[];
     final failedAfterStop = <QueuedSessionSubmission>[];
-    var adopted = false;
     for (final followUp in followUps) {
       final promptId = followUp.submission.promptId;
       // A list the launch published before a stop took these back can land
@@ -537,8 +562,7 @@ class SessionDetailCubit(
         }
       }
       if (followUp case AcceptedLaunchFollowUp(:final submission, :final since)) {
-        _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
-        adopted = true;
+        adopted = _parkLaunchFollowUp(submission: submission, since: since) || adopted;
       } else {
         unsent.add(followUp);
       }
@@ -559,6 +583,14 @@ class SessionDetailCubit(
       emit(_returnUndeliveredToComposer(current: latest));
     }
     if (released) _tryDrainQueue();
+  }
+
+  /// Parks a follow-up the launch delivered the way this screen parks its own
+  /// accepted sends, unless it already did. Returns whether it parked it.
+  bool _parkLaunchFollowUp({required QueuedSessionSubmission submission, required DateTime since}) {
+    if (!_parkedLaunchPromptIds.add(submission.promptId)) return false;
+    _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
+    return true;
   }
 
   /// Puts [failed], sends a stop left in flight that then failed, into the

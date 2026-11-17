@@ -72,7 +72,7 @@ class SessionLaunchService({
   Stream<List<LaunchFollowUp>> watchFollowUps({required String launchId}) =>
       _launchRepository.watchFollowUps(launchId: launchId);
 
-  void handOverComposer({required String launchId, required SessionLaunchComposer composer}) =>
+  bool handOverComposer({required String launchId, required SessionLaunchComposer composer}) =>
       _launchRepository.handOverComposer(launchId: launchId, composer: composer);
 
   /// Queues a message sent after the first one. It is sent once the session
