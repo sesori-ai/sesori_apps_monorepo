@@ -167,9 +167,9 @@ them or can't start. Same-session tasks can compact their session between runs (
 - The phone reports `scheduled_task_saved` once per save the bridge accepted, with `action` (`created`, `edited`),
   `repeat_kind`, `run_mode`, `approval_mode`, `missed_run_policy` for repeating tasks only (Once omits it), and
   `auto_compact` for same-session tasks only.
-  The Scheduled page, task page and editor report `scheduled_tasks`, `scheduled_task_detail` and
+  On the phone, the Scheduled page, task page and editor report `scheduled_tasks`, `scheduled_task_detail` and
   `scheduled_task_editor`.
-- The desktop sends `scheduled_task_saved` like the phone. Run outcomes are not tracked: runs happen on the bridge,
+- The desktop sends `scheduled_task_saved` like the phone but reports no screens. Run outcomes are not tracked: runs happen on the bridge,
   which has no analytics pipeline.
 
 ## Regression Levels
