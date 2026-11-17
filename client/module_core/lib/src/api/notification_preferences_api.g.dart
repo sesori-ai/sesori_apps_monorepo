@@ -13,13 +13,10 @@ _NotificationPreferencesApiRecord _$NotificationPreferencesApiRecordFromJson(
   notifications: NotificationPreferencesApiNotifications.fromJson(
     Map<String, dynamic>.from(json['notifications'] as Map),
   ),
-  updatedAt: json['updatedAt'] == null
-      ? null
-      : DateTime.parse(json['updatedAt'] as String),
+  updatedAt: json['updatedAt'] == null ? null : DateTime.parse(json['updatedAt'] as String),
 );
 
-_NotificationPreferencesApiNotifications
-_$NotificationPreferencesApiNotificationsFromJson(Map json) =>
+_NotificationPreferencesApiNotifications _$NotificationPreferencesApiNotificationsFromJson(Map json) =>
     _NotificationPreferencesApiNotifications(
       aiInteraction: json['aiInteraction'] as bool,
       sessionMessage: json['sessionMessage'] as bool,

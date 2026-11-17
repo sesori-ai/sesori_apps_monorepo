@@ -6,18 +6,15 @@ part of 'feedback_prompt_state.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-FeedbackPromptCounting _$FeedbackPromptCountingFromJson(Map json) =>
-    FeedbackPromptCounting(
-      pointsBySession:
-          (json['pointsBySession'] as Map?)?.map(
-            (k, e) => MapEntry(k as String, (e as num).toInt()),
-          ) ??
-          const <String, int>{},
-      lastShownAt: json['lastShownAt'] == null
-          ? null
-          : DateTime.parse(json['lastShownAt'] as String),
-      $type: json['kind'] as String?,
-    );
+FeedbackPromptCounting _$FeedbackPromptCountingFromJson(Map json) => FeedbackPromptCounting(
+  pointsBySession:
+      (json['pointsBySession'] as Map?)?.map(
+        (k, e) => MapEntry(k as String, (e as num).toInt()),
+      ) ??
+      const <String, int>{},
+  lastShownAt: json['lastShownAt'] == null ? null : DateTime.parse(json['lastShownAt'] as String),
+  $type: json['kind'] as String?,
+);
 
 Map<String, dynamic> _$FeedbackPromptCountingToJson(
   FeedbackPromptCounting instance,

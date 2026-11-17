@@ -21,7 +21,10 @@ typedef _Update = ({SessionWindowState window, List<SessionLaunch> launches});
 /// The rows are resolved on every window and launch update, so each update is
 /// seen once and a launch's session is never missed. Only the window's own
 /// answer for an unsearched key on chip All settles launches; under any other
-/// key, or while it loads or failed, they keep their rows until it returns.
+/// key, or while it loads or failed, they keep their rows until it returns. A
+/// search or chip draws no launching rows, so there a surface lists the
+/// sessions their launches have named as ordinary rows rather than holding
+/// them (see [LaunchRows.named]).
 class ProjectLaunchRowsCubit({
   required final SessionWindowService _window,
   required final SessionLaunchService _launchService,

@@ -133,9 +133,18 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
   Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
     initialRows: const {},
     builder: ({required context, required launchRows}) {
+      final drawsLaunches = context.select((AllSessionsCubit cubit) => _drawsLaunches(state: cubit.state));
       final hidden = {
         ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
-        for (final rows in launchRows.values) ...rows.heldSessionIds,
+        for (final rows in launchRows.values)
+          if (drawsLaunches)
+            ...rows.heldSessionIds
+          else
+            // With no launching row drawn, a session its launch has named
+            // shows as an ordinary row instead, so a created session never
+            // leaves a list it belongs to. Only a session that may be a
+            // waiting launch's stays out.
+            ...rows.heldSessionIds.difference({for (final launch in rows.named.values) launch.sessionId}),
       };
       if (!setEquals(hidden, _hiddenSessionIds)) {
         _hiddenSessionIds = hidden;
@@ -155,6 +164,12 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
     },
   );
 }
+
+/// Whether the list draws launching rows. A launching row has no title to
+/// match, and is neither running nor unread yet, so a search or a chip hides
+/// it.
+bool _drawsLaunches({required AllSessionsState state}) =>
+    state.query.trim().isEmpty && state.quickFilter == SessionListQuickFilter.all;
 
 /// One item of the list: a session, a launch leading Today, or the loader
 /// row at the end.
@@ -376,10 +391,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     // The list's bottom breathing room collapses with its last row, which
     // rests above the home indicator and anything floating there.
     final endPadding = 8 + MediaQuery.paddingOf(context).bottom + list.endClearance;
-    // A launching row has no title to match, and is neither running nor
-    // unread yet, so a search or a chip hides it.
-    List<LaunchingSession> launchesOf(AllSessionsState state) =>
-        state.query.trim().isNotEmpty || state.quickFilter != SessionListQuickFilter.all
+    List<LaunchingSession> launchesOf(AllSessionsState state) => !_drawsLaunches(state: state)
         ? const <LaunchingSession>[]
         : [
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)

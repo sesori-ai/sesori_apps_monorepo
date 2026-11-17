@@ -6,16 +6,13 @@ part of 'feedback_submit_request.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_FeedbackSubmitRequest _$FeedbackSubmitRequestFromJson(Map json) =>
-    _FeedbackSubmitRequest(
-      issues: (json['issues'] as List<dynamic>)
-          .map((e) => $enumDecode(_$FeedbackIssueEnumMap, e))
-          .toList(),
-      message: json['message'] as String?,
-      source: $enumDecode(_$FeedbackSourceEnumMap, json['source']),
-      platform: $enumDecode(_$DevicePlatformEnumMap, json['platform']),
-      appVersion: json['appVersion'] as String,
-    );
+_FeedbackSubmitRequest _$FeedbackSubmitRequestFromJson(Map json) => _FeedbackSubmitRequest(
+  issues: (json['issues'] as List<dynamic>).map((e) => $enumDecode(_$FeedbackIssueEnumMap, e)).toList(),
+  message: json['message'] as String?,
+  source: $enumDecode(_$FeedbackSourceEnumMap, json['source']),
+  platform: $enumDecode(_$DevicePlatformEnumMap, json['platform']),
+  appVersion: json['appVersion'] as String,
+);
 
 Map<String, dynamic> _$FeedbackSubmitRequestToJson(
   _FeedbackSubmitRequest instance,
