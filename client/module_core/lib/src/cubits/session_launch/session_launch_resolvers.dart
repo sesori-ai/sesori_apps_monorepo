@@ -322,7 +322,10 @@ int _inPlaceCount({
     final tail = rows.sublist(rows.length - count);
     var matches = true;
     for (var index = 0; index < count && matches; index++) {
-      matches = resolved[tail[index].launchId]?.sessionId == sessions.elementAtOrNull(index);
+      // A row still waiting has no session, so it is never in place, even
+      // past the list's end.
+      final sessionId = resolved[tail[index].launchId]?.sessionId;
+      matches = sessionId != null && sessionId == sessions.elementAtOrNull(index);
     }
     if (matches) return count;
   }

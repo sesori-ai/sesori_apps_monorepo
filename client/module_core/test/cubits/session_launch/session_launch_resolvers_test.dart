@@ -312,6 +312,30 @@ void main() {
       expect(promoted.rowKeys, {"created": "launch-1"});
     });
 
+    test("a newer launch whose session is the only one below them keeps its row over an older one still waiting", () {
+      final newer = LaunchingSession(
+        launchId: "launch-2",
+        projectId: "project-1",
+        pluginId: "claude",
+        startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+        title: "Add tests",
+      );
+      final opened = resolve(previous: LaunchRows.none, launching: const [], sessionIds: const {}, sessions: [pinned]);
+      final landedFirst = resolve(
+        previous: resolve(previous: opened, launching: [newer, launch], sessionIds: const {}, sessions: [pinned]),
+        launching: [launch],
+        sessionIds: const {"launch-2": "created-2"},
+        sessions: [
+          pinned,
+          testSession(id: "created-2"),
+        ],
+      );
+
+      expect(landedFirst.placeholders, [newer, launch], reason: "a waiting row is never in place");
+      expect(landedFirst.heldSessionIds, {"created-2"});
+      expect(landedFirst.rowKeys, isEmpty);
+    });
+
     test("a list opened mid-launch never holds a pinned session as the launch's", () {
       final opened = resolve(
         previous: LaunchRows.none,
