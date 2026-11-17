@@ -702,11 +702,12 @@ state.
   list whose only row is a launch shows that row rather than the empty
   state, including when the launch came from the desktop home. When the session exists the row cross-fades in place into the real
   session row (instantly under reduced motion) without moving the rows below,
+  also when pinned sessions sit above it,
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
   so it can never be opened before its launch resolves, even when Archived was
   shown meanwhile. A list first loaded mid-launch holds its project's newest
-  sessions, one for each launch still waiting, until those launches resolve,
+  unpinned sessions, one for each launch still waiting, until those launches resolve,
   so it never shows a launch twice; an older session held this way returns a
   moment later. A launch that resolves while the list is loading, failed,
   searched, on Running or Unread, or shows Archived keeps its row until the
