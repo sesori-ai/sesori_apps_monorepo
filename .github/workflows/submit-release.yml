@@ -798,3 +798,19 @@ jobs:
               echo "- **Mode**: pre-release — promote it in the GitHub UI to arm bridge auto-update and trigger npm publish."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Production releases also carry the Play-signed universal APK for sideloading.
+  # Only when Android itself shipped; the callee soft-fails to a warning, so a
+  # missing APK never blocks or fails the release.
+  attach-android-apk:
+    name: Attach Play-signed Android APK
+    needs: [resolve, submit-android, release]
+    if: always() && needs.submit-android.result == 'success' && needs.release.result == 'success'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/android-release-apk.yml
+    with:
+      version: ${{ needs.resolve.outputs.version }}
+      build_number: ${{ needs.resolve.outputs.build_number }}
+    secrets:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
