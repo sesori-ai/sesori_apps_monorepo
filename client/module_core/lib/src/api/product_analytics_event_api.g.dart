@@ -9,7 +9,8 @@ part of 'product_analytics_event_api.dart';
 Map<String, dynamic> _$ProductAnalyticsEventRequestToJson(
   _ProductAnalyticsEventRequest instance,
 ) => <String, dynamic>{
-  'schemaVersion': _$ProductAnalyticsEventSchemaVersionEnumMap[instance.schemaVersion]!,
+  'schemaVersion':
+      _$ProductAnalyticsEventSchemaVersionEnumMap[instance.schemaVersion]!,
   'platform': _$ProductAnalyticsEventPlatformEnumMap[instance.platform]!,
   'appVersion': instance.appVersion,
   'name': instance.name,
