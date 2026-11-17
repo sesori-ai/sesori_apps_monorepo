@@ -531,8 +531,9 @@ variant, and worktree mode, and creating the session with its first input.
   an authoritative rejection. A session screen opened from a list before the
   session's create reply, with the composer still open under it, shows each
   follow-up once and no first-message bubble, and a later reopen of the
-  session shows no first-message bubble either; the composer keeps the text it
-  held unsent. A follow-up the bridge refused
+  session shows no first-message bubble either; the composer keeps the text,
+  images, files and staged command it held unsent, and if it closes without the
+  user going back to it, the next new-session composer opens with them. A follow-up the bridge refused
   for stale options (a command, agent, model, variant, or fast mode it no
   longer offers) would be resent with the same options, so it offers only
   Remove, with the reason "An
@@ -918,7 +919,8 @@ startup-extension file failure, retry once the filesystem is usable.
   replacement or the first load, or is lost when the first load fails or finds
   the harness blocked. A screen opened before the create reply shows an accepted
   follow-up twice, or a later reopen shows the first message as "Sending"
-  again. The session screen opens without a composer, with default options
+  again, or the composer under it loses its unsent images, files or staged
+  command when it closes. The session screen opens without a composer, with default options
   instead of the
   committed ones, without the unsent text, caret or images, or moves the
   composer when the transcript loads. A picked or pasted image, or a word

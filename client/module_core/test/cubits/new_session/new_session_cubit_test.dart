@@ -3036,6 +3036,111 @@ void main() {
           expect(draftRepository.readForNewSession().text, "next idea");
         });
 
+        group("when a session screen opened earlier took the handoff first", () {
+          late ComposerDraftRepository draftRepository;
+
+          setUp(() {
+            draftRepository = inMemoryComposerDraftRepository();
+          });
+
+          /// Sends, lets [compose] fill the composer while the launch is
+          /// pending, and has the session screen opened from the list take the
+          /// handoff as soon as the session exists. Then [afterCreate] runs and
+          /// the composing route closes.
+          Future<void> sendWhileAnEarlyScreenTakesTheHandoff({
+            required void Function(NewSessionCubit cubit) compose,
+            void Function(NewSessionCubit cubit)? afterCreate,
+          }) async {
+            final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+            await waitForComposer(cubit);
+            final early = launchRepository.watchForSession(sessionId: "s-1").listen((_) {
+              launchRepository.takeHandoff(sessionId: "s-1");
+            });
+            addTearDown(early.cancel);
+
+            final pending = send(cubit);
+            compose(cubit);
+            response.complete(ApiResponse.success(testSession(id: "s-1")));
+            await pending;
+            await Future<void>.delayed(Duration.zero);
+            expect(cubit.state, isA<NewSessionCreated>());
+            afterCreate?.call(cubit);
+            await cubit.close();
+          }
+
+          test("the next new-session composer opens with the images staged after Send, once", () async {
+            await sendWhileAnEarlyScreenTakesTheHandoff(
+              compose: (cubit) {
+                cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
+                cubit.saveComposerAttachments(attachments: [image]);
+              },
+            );
+
+            final next = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+            addTearDown(next.close);
+            await waitForComposer(next);
+            expect(next.composerDraft.text, "next idea");
+            expect(next.initialAttachments, [same(image)]);
+
+            final after = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+            addTearDown(after.close);
+            expect(after.initialAttachments, isEmpty);
+          });
+
+          test("the next new-session composer opens with the images the user left after coming back", () async {
+            final second = ComposerImageAttachment(mime: "image/png", bytes: Uint8List.fromList([2]), filename: null);
+            await sendWhileAnEarlyScreenTakesTheHandoff(
+              compose: (cubit) => cubit.saveComposerAttachments(attachments: [image, second]),
+              // The user goes back to the composing route and removes one.
+              afterCreate: (cubit) => cubit.saveComposerAttachments(attachments: [second]),
+            );
+
+            final next = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+            addTearDown(next.close);
+            expect(next.initialAttachments, [same(second)]);
+          });
+
+          test("the next new-session composer opens with the command staged after Send", () async {
+            final command = testCommandInfo(name: "review");
+            when(
+              () => mockSessionApi.listCommands(
+                projectId: any(named: "projectId"),
+                pluginId: any(named: "pluginId"),
+              ),
+            ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
+            await sendWhileAnEarlyScreenTakesTheHandoff(
+              compose: (cubit) {
+                cubit.stageCommand(command);
+                cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "the parser"));
+              },
+            );
+
+            final next = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+            addTearDown(next.close);
+            await waitForComposer(next);
+            expect(next.composerDraft.text, "the parser");
+            expect(next.state.stagedCommand?.name, "review");
+          });
+        });
+
+        test("a composer handed to the session screen leaves nothing for the next new-session composer", () async {
+          final draftRepository = inMemoryComposerDraftRepository();
+          final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.saveComposerAttachments(attachments: [image]);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+          expect(launchRepository.takeHandoff(sessionId: "s-1")?.composer?.unsent?.attachments, [same(image)]);
+          await cubit.close();
+
+          final next = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+          addTearDown(next.close);
+          expect(next.initialAttachments, isEmpty);
+        });
+
         test("carries the bridge's file upload capability from discovery to the session screen", () async {
           when(mockPluginRepository.listPlugins).thenAnswer(
             (_) async => ApiResponse.success(

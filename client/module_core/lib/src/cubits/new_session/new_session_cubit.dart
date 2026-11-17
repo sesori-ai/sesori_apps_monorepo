@@ -108,16 +108,28 @@ class NewSessionCubit({
     NewSessionEditTask(:final initialSelection) => ComposerDraft.typed(text: initialSelection.prompt),
   };
 
-  /// A task's command, staged once the harness' commands first arrive.
-  String? _taskCommandToStage = switch (_purpose) {
-    NewSessionStartSession() => null,
+  /// What the last new-session composer kept for this one besides its text,
+  /// taken once; see [_handOverComposer].
+  final KeptNewSessionComposer _kept = switch (_purpose) {
+    NewSessionStartSession() => _composerDraftRepository.takeKeptForNewSession(),
+    NewSessionEditTask() => (attachments: const [], commandName: null),
+  };
+
+  /// A task's command, or the one the last new-session composer kept, staged
+  /// once the harness' commands first arrive.
+  late String? _commandToStage = switch (_purpose) {
+    NewSessionStartSession() => _kept.commandName,
     NewSessionEditTask(:final initialSelection) => initialSelection.commandName,
   };
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<SseEvent> _pluginManagementSubscription;
   late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
   StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
-  List<ComposerAttachment> _composerAttachments = const [];
+  late List<ComposerAttachment> _composerAttachments = _kept.attachments;
+
+  /// What this composer kept for the next one once a session screen opened
+  /// earlier took its launch without it; null until then.
+  KeptNewSessionComposer? _keptAfterLaunch;
   bool _composerFocused = false;
   ({int base, int extent})? _composerSelection;
   bool _composerBusy = false;
@@ -839,7 +851,7 @@ class NewSessionCubit({
       NewSessionOptionsRefreshFailureUnavailable() => const NewSessionOptionsRefreshFailureUnavailableState(),
     };
     _emitStateUpdate(
-      options: _withTaskCommandStaged(options: options),
+      options: _withCommandStaged(options: options),
       backendScope: null,
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: null,
@@ -1531,8 +1543,12 @@ class NewSessionCubit({
   /// Passes the composer to the session screen about to replace this one, and
   /// forgets its text here so the next new session starts empty instead of
   /// showing it again. A session screen the user opened before the session
-  /// existed took the handoff without it and keeps its own composer, so the
-  /// text then stays here.
+  /// existed took the handoff without it and keeps its own composer, so what
+  /// the composer holds then stays here: the text as the new-session draft,
+  /// and its attachments and staged command kept beside it, for the next
+  /// new-session composer when this one goes away. They are kept now, not on
+  /// close, because a pane that starts a fresh composer on success builds it
+  /// before this one closes.
   void _handOverComposer({required String launchId, required AgentModelData data}) {
     final handedOver = _sessionLaunchService.handOverComposer(
       launchId: launchId,
@@ -1551,7 +1567,16 @@ class NewSessionCubit({
         unsent: _unsentComposer,
       ),
     );
-    if (handedOver) clearComposerDraft();
+    if (handedOver) {
+      clearComposerDraft();
+    } else {
+      _keepAfterLaunch(kept: (attachments: _composerAttachments, commandName: data.stagedCommand?.name));
+    }
+  }
+
+  void _keepAfterLaunch({required KeptNewSessionComposer kept}) {
+    _keptAfterLaunch = kept;
+    _composerDraftRepository.keepForNewSession(kept: kept);
   }
 
   void _onLaunchOutcome(SessionLaunchOutcome outcome) {
@@ -1620,12 +1645,12 @@ class NewSessionCubit({
     }
   }
 
-  /// [options] with a task's command staged, the first time they carry the
+  /// [options] with [_commandToStage] staged, the first time they carry the
   /// harness' commands.
-  NewSessionOptionsLoadState _withTaskCommandStaged({required NewSessionOptionsLoadState options}) {
-    final command = _taskCommandToStage;
+  NewSessionOptionsLoadState _withCommandStaged({required NewSessionOptionsLoadState options}) {
+    final command = _commandToStage;
     if (command == null || options.data == null) return options;
-    _taskCommandToStage = null;
+    _commandToStage = null;
     return _restoreStagedCommand(options: options, command: command);
   }
 
@@ -1680,6 +1705,10 @@ class NewSessionCubit({
 
   ComposerDraft get composerDraft => _composerDraft;
 
+  /// The attachments the composer opens with: those the last new-session
+  /// composer kept when a session screen opened earlier took its launch.
+  List<ComposerAttachment> get initialAttachments => _kept.attachments;
+
   /// Whether the composer has work in flight whose result lands in it later.
   /// A creation that lands meanwhile waits for it to settle.
   void setComposerBusy({required bool busy}) {
@@ -1702,9 +1731,15 @@ class NewSessionCubit({
   }
 
   /// The images the composer has staged, which live only in the composer, so
-  /// they can go with the session that takes it over.
+  /// they can go with the session that takes it over, or to the next
+  /// new-session composer when none does.
   void saveComposerAttachments({required List<ComposerAttachment> attachments}) {
     _composerAttachments = attachments;
+    // Once kept for the next composer, what is kept follows this one, as its
+    // text does.
+    if (_keptAfterLaunch case (:final commandName, attachments: _)) {
+      _keepAfterLaunch(kept: (attachments: attachments, commandName: commandName));
+    }
   }
 
   /// Whether the composer has keyboard focus, so the session screen that takes

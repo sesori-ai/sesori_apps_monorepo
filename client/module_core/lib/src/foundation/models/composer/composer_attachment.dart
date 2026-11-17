@@ -19,8 +19,8 @@ const composerFileAttachmentMime = "application/octet-stream";
 /// holds goes by its path.
 ///
 /// Held in memory only: staged attachments are not part of the persisted
-/// composer draft, so they live exactly as long as the composer that staged
-/// them.
+/// composer draft, so they live as long as the composer that staged them, or
+/// the one it hands them to.
 ///
 /// The bytes a variant carries are owned by that attachment. They are not
 /// defensively copied — the buffers are megabytes and come straight from the
