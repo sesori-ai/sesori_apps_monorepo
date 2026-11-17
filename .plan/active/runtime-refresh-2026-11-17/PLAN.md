@@ -24,7 +24,7 @@ Release channels were checked on 2026-11-17.
 | Hermes Agent | 0.23.1 | **0.23.2** (`v0.23.2` → `ae2a81cc`; from `3b421578`) | 0.20.0 | Step 3 (#2774, merged) | Tagged-source install prints `0.23.2`; offline ACP initialize (load/list/resume/fork) and empty `session/list` pass on macOS arm64; configured lifecycle pending |
 | Pi | 1.5.2 | 1.5.2 | 0.99.0 | None, already newest | — |
 | Oh My Pi | 18.21.0 | 18.22.0 (`3e8cff3b`); 8 binaries match `SHA256SUMS.txt` and GitHub digests | 17.2.13 | Step 2 (#2775) | Managed install, offline ACP initialize and credential-free delete/new list probes on macOS arm64 pass; busy window and authenticated lifecycle pending |
-| DeepSeek | adapter 0.2.3 (dsh 0.2.2-rc.3) | adapter 0.2.4 (dsh `next` 0.2.2-rc.4) | 0.1.5 | Steps 4–5 | Pending |
+| DeepSeek | adapter 0.2.3 (dsh 0.2.2-rc.3) | adapter **0.2.4** (`v0.2.4` → `d294bb56`; dsh `next` 0.2.2-rc.4, tag `dsh-v0.2.2-rc.4` → `3f321d32`); 6 archives match `checksums.txt` and GitHub digests | 0.1.5 | Steps 4 (sesori-deepseek-acp#26, merged)–5 (#2776) | Managed install, offline `check`, ACP initialize, `session/new` and `session/list` on macOS arm64 pass (tree, commands and results in #2776's Verification); refusal notice covered by tests; authenticated lifecycle pending |
 | Grok Build | 1.0.77 | **1.0.88** (`x.ai/cli/stable`, build `2fe3608f7398`; no published checksums) | 1.0.5 | Step 3 (#2774, merged) | `grok 1.0.88 (2fe3608f7398)`; offline exact-launch ACP initialize and empty `session/list` pass on macOS arm64, surface identical to 1.0.77; authenticated lifecycle pending |
 
 ## Steps
@@ -55,6 +55,11 @@ Filled in from the step 2–4 audits.
   commands, 1.0.88 loaded sessions keep saved model/effort when the first model fetch fails. New binary
   strings `_x.ai/yolo_mode_changed`, `session/history_tree`, `session/import` are unprobed. No parity cell
   changes.
+- **DeepSeek 0.2.2-rc.3 → rc.4** (audited from the npm tarballs before upstream tagged; `dsh-v0.2.2-rc.4` has since appeared at
+  `3f321d32`). The one change on the adapter's seam: a turn DeepSeek's content safety review refuses now ends with
+  `CONTENT_REFUSED` and an explanation instead of a malformed-response error. Done: the adapter (0.2.4) forwards the
+  explanation and stops with `refusal`, and the DeepSeek plugin shows it once as the red failed-turn notice, live and on
+  reload, in this PR; no shared or wire change. Not yet seen against the live service. No other parity cell changes.
 
 ## Verification still needed (final follow-ups)
 

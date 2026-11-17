@@ -17,7 +17,7 @@ void main() {
     );
     expect(manifest.minPathVersion.raw, "0.1.5");
     expect(manifest.minPathVersion.raw, DeepSeekPluginDescriptor.minVersion);
-    expect(manifest.bundledVersion.raw, "0.2.3");
+    expect(manifest.bundledVersion.raw, "0.2.4");
     expect(manifest.parseVersion(value: "sesori-deepseek-acp/0.1.0")?.raw, "0.1.0");
   });
 
@@ -37,18 +37,18 @@ void main() {
     expect(
       {for (final asset in assets) asset.assetName: asset.sha256},
       {
-        "sesori-deepseek-acp-v0.2.3-darwin-arm64.tar.gz":
-            "437dbbfbbd6d18b255b35ec89dead4a864810a1c44cfbb10c22dc245228a9906",
-        "sesori-deepseek-acp-v0.2.3-darwin-x64.tar.gz":
-            "e5294bca3702a893f96e0428aecffc0f8689d0a78ba0ba7dd44e118b8f618c92",
-        "sesori-deepseek-acp-v0.2.3-linux-arm64.tar.gz":
-            "261e8330b17519c07aab60096bff283046300dedfd5d1f9f9a12aa187530b078",
-        "sesori-deepseek-acp-v0.2.3-linux-x64.tar.gz":
-            "0b974187a72181a2a29862620ec11a708ee65e544c4fc1d794d464364958b3c0",
-        "sesori-deepseek-acp-v0.2.3-windows-arm64.zip":
-            "fb80cc40117948b3a738bdb401d16a0998bdfd4308ce6d23953b290180262ee2",
-        "sesori-deepseek-acp-v0.2.3-windows-x64.zip":
-            "3f676e4bc0490af4a97778272f682972fdba4b13efb1f909c77d966663736de2",
+        "sesori-deepseek-acp-v0.2.4-darwin-arm64.tar.gz":
+            "21ff378c81f8bef40acb0c1692006065be7dd946f08cfb90956bdae6d162e4c4",
+        "sesori-deepseek-acp-v0.2.4-darwin-x64.tar.gz":
+            "ca6fde10cd99b0f579ce7bda333f538e4fb0faa23c407eebb7db5845345dca82",
+        "sesori-deepseek-acp-v0.2.4-linux-arm64.tar.gz":
+            "1e8195b0829298f400adb4b2f0941e6fdd72710cdf852d40138b595f210c6813",
+        "sesori-deepseek-acp-v0.2.4-linux-x64.tar.gz":
+            "55ffa687650b353e1f4162e225072430908d3825b09a7d5a7c46d35266beb565",
+        "sesori-deepseek-acp-v0.2.4-windows-arm64.zip":
+            "2d1dbf13c97d04ac027515ba1cff6a53e5a297453a05add9486a15a3dbcf9916",
+        "sesori-deepseek-acp-v0.2.4-windows-x64.zip":
+            "8be508356a00ec8bad8da2f8816a8b1b6fe92d7e18503b848a592488fa7f1410",
       },
     );
     expect(
@@ -70,7 +70,7 @@ void main() {
         fail("no macOS arm64 asset");
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/sesori-ai/sesori-deepseek-acp/releases/download/v0.2.3/sesori-deepseek-acp-v0.2.3-darwin-arm64.tar.gz",
+      "https://github.com/sesori-ai/sesori-deepseek-acp/releases/download/v0.2.4/sesori-deepseek-acp-v0.2.4-darwin-arm64.tar.gz",
     );
   });
 }

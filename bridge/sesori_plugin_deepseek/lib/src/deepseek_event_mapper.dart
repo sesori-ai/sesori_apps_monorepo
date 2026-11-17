@@ -23,6 +23,36 @@ class DeepSeekEventMapper({
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) =>
       messageTimeParser.parse(notification.params);
 
+  /// Message-id prefix the adapter (0.2.4+) gives a turn's content-refusal
+  /// explanation, live and on history replay.
+  static const String _refusalMessageIdPrefix = "deepseek-refusal-";
+
+  /// DeepSeek Harness's own wording for a turn its content safety review
+  /// refused (`CONTENT_REFUSED`, dsh-llm-deepseek 0.2.2-rc.4), optionally
+  /// followed by the provider's explanation.
+  static const String _contentRefusalText = "DeepSeek refused to answer under its content safety review";
+
+  /// Drops the message id from the adapter's content-refusal explanation.
+  ///
+  /// The shared mapper and the history loader read only id-less assistant text
+  /// as a halt notice, because an identified message may still grow. The
+  /// adapter sends this explanation as one complete chunk under its own id and
+  /// then ends the prompt with `refusal`, so nothing can join it.
+  @override
+  Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
+    final update = params["update"];
+    if (update is! Map || update["sessionUpdate"] != "agent_message_chunk") return params;
+    final messageId = update["messageId"];
+    if (messageId is! String || !messageId.startsWith(_refusalMessageIdPrefix)) return params;
+    return {...params, "update": Map<String, dynamic>.of(update.cast<String, dynamic>())..remove("messageId")};
+  }
+
+  /// Shows a content refusal as a failed-turn notice, live and after reload.
+  @override
+  AcpHaltNotice? classifyHaltNotice({required String text}) => text.startsWith(_contentRefusalText)
+      ? const AcpHaltNotice(errorName: "deepseek_content_refused", kind: PluginErrorKind.failure)
+      : null;
+
   final Map<String, Map<String, _DeferredDeepSeekDelegation>> _deferredDelegations = {};
 
   void resetLiveState() {
