@@ -65,7 +65,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
 - Pinning or unpinning a session reports `session_pin_changed` with `pinned` (`true`, `false`) only after the bridge
   answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
 - The desktop sends `computer_switched`, `computer_managed`, `session_pin_changed`, `side_question_asked`,
-  `harness_install_finished` and `transcript_prompts_opened` to the auth server with the same pinned parameters as the
+  `harness_install_finished`, `transcript_prompts_opened`, `voice_transcription_completed`, `session_message_edited`,
+  `session_sent_to_session` and `scheduled_task_saved` to the auth server with the same pinned parameters as the
   phone. It never sends the desktop-link or CEO-call events, which only the phone shows.
 - A side question reports `side_question_asked` once per ask, when the bridge's result arrives, even if the side chat
   has closed meanwhile. It carries the session's pinned `harness` and an `outcome`: `answered` when the bridge stored
@@ -80,15 +81,15 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   edit, `refused_busy` when the session ran when it arrived, `branch_point_unavailable` when the harness cannot cut
   the conversation at that message, `refused` for stale options or another refusal, and `failed` for a failed or lost
   request. It never carries the prompt, the message, the session, or a count. A Resend the app never sends (a busy
-  session caught locally, which offers Stop and resend instead, or a cancelled edit) reports nothing. The desktop does
-  not send it to the warehouse yet, because the auth server's product-event route doesn't accept it. Reporting reads
+  session caught locally, which offers Stop and resend instead, or a cancelled edit) reports nothing. Reporting reads
   it from the raw export: adoption is read as edits per harness and the share of each outcome.
 - Fork reports `session_forked` once per fork the bridge answers, from a message's "Fork from here" or the session
   menu, even if the screen closed meanwhile, with the origin's pinned `harness` and an `outcome`: `succeeded` when the
   bridge created the fork, `branch_point_unavailable` when the harness cannot cut the conversation there, `refused`
   for nothing to fork, a missing worktree branch or another refusal, and `failed` for a failed or lost request. A
   missing-branch refusal followed by "Create a new worktree" reports twice, once per request. It never carries the
-  message, the sessions, or a count. Like the edit event, the desktop does not send it to the warehouse yet. Reporting
+  message, the sessions, or a count. The desktop does not send it to the warehouse yet, because the auth server's
+  product-event route doesn't accept it. Reporting
   reads it from the raw export: adoption is read as forks per harness and the share of each outcome.
 - Sending a session into another reports `session_sent_to_session` once per send that reaches an outcome, even if the
   app moved to another computer meanwhile, with the source session's pinned `harness` and an `outcome`: `sent` when the
@@ -98,16 +99,15 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   that predates sending, and `unconfirmed` when the answer never arrived. When the answer was lost but the app later
   read the outcome from the two sessions, it reports `sent` or `refused_other` instead. It never carries either session,
   a title, the summary, or error text. A running source caught locally, which offers Stop instead, and a cancelled picker report
-  nothing. The desktop does not send it to the warehouse yet, because the auth server's product-event route doesn't
-  accept it. Reporting reads it from the raw export: adoption is read as sends per harness and the share of each
+  nothing. Reporting reads it from the raw export: adoption is read as sends per harness and the share of each
   outcome.
 - Saving a scheduled task reports `scheduled_task_saved` once per save the bridge accepted, with `action` (`created`,
   `edited`), `repeat_kind` (`once`, `daily`, `weekdays`, `weekly`, `every_hours`), `run_mode` (`new_session`,
   `same_session`), `approval_mode` (`ask`, `approve_all`), `missed_run_policy` (`run_when_back`, `wait_for_next`)
   only for a repeating task (Once omits it), and `auto_compact` only for a same-session task. It never carries the prompt, name, project, harness, model or times, and a
   refused or failed save reports nothing. The Scheduled page and a task's page report `scheduled_tasks` and
-  `scheduled_task_detail`; the task editor reports no screen, and the desktop does not send the event, until the auth
-  server accepts both. Run outcomes are not tracked. See [Scheduled tasks](scheduled-tasks.md).
+  `scheduled_task_detail`; the task editor reports no screen yet. Run outcomes are not tracked.
+  See [Scheduled tasks](scheduled-tasks.md).
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).

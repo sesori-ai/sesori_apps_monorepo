@@ -168,8 +168,8 @@ them or can't start. Same-session tasks can compact their session between runs (
   `repeat_kind`, `run_mode`, `approval_mode`, `missed_run_policy` for repeating tasks only (Once omits it), and
   `auto_compact` for same-session tasks only.
   The Scheduled page and task page report `scheduled_tasks` and `scheduled_task_detail`.
-- Held: the desktop drops `scheduled_task_saved` and the editor reports no screen on either app, until the auth server
-  accepts them (sesori_auth_server #119). Run outcomes are not tracked: runs happen on the bridge, which has no
+- The desktop sends `scheduled_task_saved` like the phone. The editor reports no screen on either app yet. Run
+  outcomes are not tracked: runs happen on the bridge, which has no
   analytics pipeline.
 
 ## Regression Levels
@@ -223,7 +223,7 @@ editor between one that can compact and one that can't. Use fixture projects and
   run's compaction answers unsupported.
 - Oh My Pi answers a session too small to compact with "Nothing to compact", which the bridge records as accepted: that
   run's one ask is spent and a run due first is held one pass (about 30 seconds). The next run gets its own ask.
-- Run outcomes are not in analytics, and the desktop and editor-screen events are held (see Analytics).
+- Run outcomes are not in analytics, and the editor reports no screen on either app yet (see Analytics).
 
 ## Harness Scope
 

@@ -120,14 +120,9 @@ class DesktopProductAnalyticsDeliveryService({
     DesktopLinkSharedEvent() ||
     FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
-    FounderCallDeclinedEvent() ||
-    SessionMessageEditedEvent() ||
-    SessionSentToSessionEvent() => null,
-    // The auth server does not accept these yet.
-    ScheduledTaskSavedEvent() || SessionForkedEvent() => null,
-    // The warehouse has no `finish` or `mode` column, and a server enum would
-    // reject the next new mode.
-    VoiceTranscriptionCompletedEvent() => const {},
+    FounderCallDeclinedEvent() => null,
+    // The auth server does not accept it yet.
+    SessionForkedEvent() => null,
     SessionMessageSentEvent() ||
     SessionCreatedWithMessageEvent() ||
     AnalyticsSchemaReadyEvent() ||
@@ -156,6 +151,10 @@ class DesktopProductAnalyticsDeliveryService({
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||
     SessionPinChangedEvent() ||
-    SideQuestionAskedEvent() => event.parameters,
+    SideQuestionAskedEvent() ||
+    VoiceTranscriptionCompletedEvent() ||
+    SessionMessageEditedEvent() ||
+    SessionSentToSessionEvent() ||
+    ScheduledTaskSavedEvent() => event.parameters,
   };
 }

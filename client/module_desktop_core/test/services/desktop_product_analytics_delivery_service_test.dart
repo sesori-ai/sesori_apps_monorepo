@@ -190,7 +190,7 @@ void main() {
           mode: AnalyticsVoiceMode.onDevice,
         ),
         name: "voice_transcription_completed",
-        params: const {},
+        params: const {"finish": "sent", "mode": "on_device"},
       ),
       (
         event: const ProductAnalyticsEvent.sessionQuestionAnswered(),
@@ -310,10 +310,40 @@ void main() {
         name: "side_question_asked",
         params: const {"harness": "codex", "outcome": "no_answer"},
       ),
+      (
+        event: const ProductAnalyticsEvent.sessionMessageEdited(
+          harness: AnalyticsHarness.claudeCode,
+          outcome: AnalyticsMessageEditOutcome.branchPointUnavailable,
+        ),
+        name: "session_message_edited",
+        params: const {"harness": "claude_code", "outcome": "branch_point_unavailable"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.sessionSentToSession(
+          harness: AnalyticsHarness.pi,
+          outcome: AnalyticsSessionSendOutcome.unconfirmed,
+        ),
+        name: "session_sent_to_session",
+        params: const {"harness": "pi", "outcome": "unconfirmed"},
+      ),
+      (
+        // A one-off, new-session task carries neither missed_run_policy nor
+        // auto_compact.
+        event: const ProductAnalyticsEvent.scheduledTaskSaved(
+          action: AnalyticsScheduledTaskAction.created,
+          repeat: AnalyticsScheduledTaskRepeat.once,
+          runMode: AnalyticsScheduledTaskRunMode.newSession,
+          approvalMode: AnalyticsScheduledTaskApprovalMode.ask,
+          missedRunPolicy: null,
+          autoCompact: null,
+        ),
+        name: "scheduled_task_saved",
+        params: const {"action": "created", "repeat_kind": "once", "run_mode": "new_session", "approval_mode": "ask"},
+      ),
     ];
 
-    test("covers all 30 event names in the contract", () {
-      expect(sentEvents.map((event) => event.name).toSet(), hasLength(30));
+    test("covers all 33 event names in the contract", () {
+      expect(sentEvents.map((event) => event.name).toSet(), hasLength(33));
     });
 
     for (final sent in sentEvents) {
@@ -478,6 +508,42 @@ void main() {
       (
         client: ComputerManageAction.values.map((value) => value.wireValue),
         contract: const {"renamed", "removed"},
+      ),
+      (
+        client: AnalyticsVoiceFinish.values.map((value) => value.wireValue),
+        contract: const {"sent", "edited", "cut_off"},
+      ),
+      (
+        client: AnalyticsVoiceMode.values.map((value) => value.wireValue),
+        contract: const {"live", "after_recording", "on_device"},
+      ),
+      (
+        client: AnalyticsMessageEditOutcome.values.map((value) => value.wireValue),
+        contract: const {"succeeded", "refused_busy", "branch_point_unavailable", "refused", "failed"},
+      ),
+      (
+        client: AnalyticsSessionSendOutcome.values.map((value) => value.wireValue),
+        contract: const {"sent", "refused_busy", "refused_other", "failed", "unsupported", "unconfirmed"},
+      ),
+      (
+        client: AnalyticsScheduledTaskAction.values.map((value) => value.wireValue),
+        contract: const {"created", "edited"},
+      ),
+      (
+        client: AnalyticsScheduledTaskRepeat.values.map((value) => value.wireValue),
+        contract: const {"once", "daily", "weekdays", "weekly", "every_hours"},
+      ),
+      (
+        client: AnalyticsScheduledTaskRunMode.values.map((value) => value.wireValue),
+        contract: const {"new_session", "same_session"},
+      ),
+      (
+        client: AnalyticsScheduledTaskApprovalMode.values.map((value) => value.wireValue),
+        contract: const {"ask", "approve_all"},
+      ),
+      (
+        client: AnalyticsScheduledTaskMissedRunPolicy.values.map((value) => value.wireValue),
+        contract: const {"run_when_back", "wait_for_next"},
       ),
       (
         client: AnalyticsSideQuestionOutcome.values.map((value) => value.wireValue),
