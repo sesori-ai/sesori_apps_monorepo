@@ -223,7 +223,7 @@ editor between one that can compact and one that can't. Use fixture projects and
   run's compaction answers unsupported.
 - Oh My Pi answers a session too small to compact with "Nothing to compact", which the bridge records as accepted: that
   run's one ask is spent and a run due first is held one pass (about 30 seconds). The next run gets its own ask.
-- Run outcomes are not in analytics, and the desktop and editor-screen events are held (see Analytics).
+- Run outcomes are not in analytics, and the editor reports no screen on either app yet (see Analytics).
 
 ## Harness Scope
 

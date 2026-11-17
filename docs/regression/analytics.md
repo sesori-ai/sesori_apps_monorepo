@@ -65,7 +65,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
 - Pinning or unpinning a session reports `session_pin_changed` with `pinned` (`true`, `false`) only after the bridge
   answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
 - The desktop sends `computer_switched`, `computer_managed`, `session_pin_changed`, `side_question_asked`,
-  `harness_install_finished` and `transcript_prompts_opened` to the auth server with the same pinned parameters as the
+  `harness_install_finished`, `transcript_prompts_opened`, `voice_transcription_completed`, `session_message_edited`,
+  `session_sent_to_session` and `scheduled_task_saved` to the auth server with the same pinned parameters as the
   phone. It never sends the desktop-link or CEO-call events, which only the phone shows.
 - A side question reports `side_question_asked` once per ask, when the bridge's result arrives, even if the side chat
   has closed meanwhile. It carries the session's pinned `harness` and an `outcome`: `answered` when the bridge stored
@@ -105,7 +106,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   `same_session`), `approval_mode` (`ask`, `approve_all`), `missed_run_policy` (`run_when_back`, `wait_for_next`)
   only for a repeating task (Once omits it), and `auto_compact` only for a same-session task. It never carries the prompt, name, project, harness, model or times, and a
   refused or failed save reports nothing. The Scheduled page and a task's page report `scheduled_tasks` and
-  `scheduled_task_detail`; the task editor reports no screen yet. Run outcomes are not tracked. See [Scheduled tasks](scheduled-tasks.md).
+  `scheduled_task_detail`; the task editor reports no screen yet. Run outcomes are not tracked.
+  See [Scheduled tasks](scheduled-tasks.md).
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).
