@@ -18,14 +18,14 @@ Release channels were checked on 2026-11-17.
 | OpenCode | 2.3.0 | 2.3.0 | PATH 1.14.0; v2 2.0.11 | None, already newest | — |
 | Antigravity | 1.5.0 | 1.5.0 | Exact package/server/ACP 1 pair | None, already newest | — |
 | Codex | 0.169.0 | 0.169.0 | 0.139.0 | None, already newest | — |
-| GitHub Copilot | 1.0.112 | 1.0.113 | 1.0.78 | Step 2 | Pending |
+| GitHub Copilot | 1.0.112 | 1.0.113 (`16604af5`); 6 archives match `SHA256SUMS.txt` and GitHub digests | 1.0.78 | Step 2 (#2775) | Managed install and offline ACP initialize on macOS arm64 pass; authenticated lifecycle pending |
 | Cursor | 2026.11.13-eacade1 | 2026.11.13-eacade1 | date 2026.09.23 | None, already newest | — |
-| Claude Code | 2.1.325 | 2.1.326 | 2.1.221 | Step 2 | Pending |
-| Hermes Agent | 0.23.1 | **0.23.2** (`v0.23.2` → `ae2a81cc`; from `3b421578`) | 0.20.0 | Step 3, this PR | Tagged-source install prints `0.23.2`; offline ACP initialize (load/list/resume/fork) and empty `session/list` pass on macOS arm64; configured lifecycle pending |
+| Claude Code | 2.1.325 | 2.1.326 (`bc1e8a88`); npm `latest`; probed archive matches `SHASUMS256.txt` and GitHub digest | 2.1.221 | Step 2 (#2775) | `--help` flags and unauthenticated stream-json initialize pass; live side-question and compaction-rewind probes pending |
+| Hermes Agent | 0.23.1 | **0.23.2** (`v0.23.2` → `ae2a81cc`; from `3b421578`) | 0.20.0 | Step 3 (#2774, merged) | Tagged-source install prints `0.23.2`; offline ACP initialize (load/list/resume/fork) and empty `session/list` pass on macOS arm64; configured lifecycle pending |
 | Pi | 1.5.2 | 1.5.2 | 0.99.0 | None, already newest | — |
-| Oh My Pi | 18.21.0 | 18.22.0 | 17.2.13 | Step 2 | Pending |
+| Oh My Pi | 18.21.0 | 18.22.0 (`3e8cff3b`); 8 binaries match `SHA256SUMS.txt` and GitHub digests | 17.2.13 | Step 2 (#2775) | Managed install, offline ACP initialize and credential-free delete/new list probes on macOS arm64 pass; busy window and authenticated lifecycle pending |
 | DeepSeek | adapter 0.2.3 (dsh 0.2.2-rc.3) | adapter 0.2.4 (dsh `next` 0.2.2-rc.4) | 0.1.5 | Steps 4–5 | Pending |
-| Grok Build | 1.0.77 | **1.0.88** (`x.ai/cli/stable`, build `2fe3608f7398`; no published checksums) | 1.0.5 | Step 3, this PR | `grok 1.0.88 (2fe3608f7398)`; offline exact-launch ACP initialize and empty `session/list` pass on macOS arm64, surface identical to 1.0.77; authenticated lifecycle pending |
+| Grok Build | 1.0.77 | **1.0.88** (`x.ai/cli/stable`, build `2fe3608f7398`; no published checksums) | 1.0.5 | Step 3 (#2774, merged) | `grok 1.0.88 (2fe3608f7398)`; offline exact-launch ACP initialize and empty `session/list` pass on macOS arm64, surface identical to 1.0.77; authenticated lifecycle pending |
 
 ## Steps
 

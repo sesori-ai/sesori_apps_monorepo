@@ -152,7 +152,7 @@ class OmpPlugin._({
   /// deletion persists an empty untitled replacement session
   /// (https://github.com/can1357/oh-my-pi/issues/19068), and `session/new`
   /// alone still writes an empty untitled session at once (verified on
-  /// 18.21.0). An entry with
+  /// 18.22.0). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
   /// A missing or non-int count keeps the entry.
