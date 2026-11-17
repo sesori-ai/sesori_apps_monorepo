@@ -29,8 +29,8 @@ Independent minimums are unchanged; Antigravity retains its exact-pair policy ra
 independent floor. On 2026-11-12 the production managed install (digest sentinel) passed on macOS
 arm64 for all eight managed harnesses; it had network and normal file reads. The native probes
 below ran with network denied, home reads denied and no credentials. Codex was raised again on
-2026-11-15 in a single-harness follow-up, and OpenCode, Antigravity, Copilot, Cursor, Claude Code, OMP and DeepSeek
-on 2026-11-16 (`runtime-refresh-2026-11`); each of those rows records its own run's evidence and probe conditions.
+2026-11-15 in a single-harness follow-up, OpenCode, Antigravity, Cursor and DeepSeek
+on 2026-11-16 (`runtime-refresh-2026-11`), and Copilot, Claude Code and OMP on 2026-11-17 (`runtime-refresh-2026-11-17`); each of those rows records its own run's evidence and probe conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
