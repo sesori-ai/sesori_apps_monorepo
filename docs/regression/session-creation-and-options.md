@@ -531,7 +531,8 @@ variant, and worktree mode, and creating the session with its first input.
   an authoritative rejection. A session screen opened from a list before the
   session's create reply, with the composer still open under it, shows each
   follow-up once and no first-message bubble, and a later reopen of the
-  session shows no first-message bubble either. A follow-up the bridge refused
+  session shows no first-message bubble either; the composer keeps the text it
+  held unsent. A follow-up the bridge refused
   for stale options (a command, agent, model, variant, or fast mode it no
   longer offers) would be resent with the same options, so it offers only
   Remove, with the reason "An

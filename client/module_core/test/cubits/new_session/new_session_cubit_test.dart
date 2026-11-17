@@ -18,6 +18,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/new_session_subm
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/dedicated_worktree_preference_store.dart";
@@ -3008,6 +3009,31 @@ void main() {
           expect(composer?.unsent?.attachments, [same(image)]);
           expect(cubit.composerDraft.text, isEmpty);
           expect(draftRepository.readForNewSession().text, isEmpty);
+        });
+
+        test("keeps what the composer holds when a session screen opened earlier took the handoff first", () async {
+          final draftRepository = inMemoryComposerDraftRepository();
+          final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+          // A session screen the user opened from the list before the create
+          // reply takes the handoff as soon as the session exists.
+          SessionLaunchHandoff? taken;
+          final early = launchRepository.watchForSession(sessionId: "s-1").listen((_) {
+            taken ??= launchRepository.takeHandoff(sessionId: "s-1");
+          });
+          addTearDown(early.cancel);
+
+          final pending = send(cubit);
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+
+          expect(taken?.composer, isNull);
+          expect(cubit.state, isA<NewSessionCreated>());
+          expect(cubit.composerDraft.text, "next idea");
+          expect(draftRepository.readForNewSession().text, "next idea");
         });
 
         test("carries the bridge's file upload capability from discovery to the session screen", () async {
