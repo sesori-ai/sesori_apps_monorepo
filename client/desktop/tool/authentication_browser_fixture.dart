@@ -18,15 +18,14 @@ import "package:window_manager/window_manager.dart";
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
-  await windowManager.ensureInitialized();
   runApp(const _Fixture());
-  await windowManager.waitUntilReadyToShow(
-    const WindowOptions(size: Size(760, 720), title: "Authentication visual fixture"),
-    () async {
-      await windowManager.show();
-      await windowManager.focus();
-    },
-  );
+  final Window window =
+      WindowManager.instance.getCurrent() ?? (throw StateError("The fixture's native window is not available"));
+  window
+    ..setSize(const Size(760, 720).toNative(), false)
+    ..title = "Authentication visual fixture"
+    ..show()
+    ..focus();
 }
 
 const _title = "Synthetic sign-in fixture";

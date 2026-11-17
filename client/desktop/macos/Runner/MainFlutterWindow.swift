@@ -1,10 +1,11 @@
 import Cocoa
 import FlutterMacOS
-import window_manager
 
 class MainFlutterWindow: NSWindow {
   /// Carries the View menu's text-size items to Dart (`MethodChannelDesktopAppMenu`).
   private var appMenuChannel: FlutterMethodChannel?
+  /// Whether AppKit has ordered the window in once; see `order(_:relativeTo:)`.
+  private var orderedAtLaunch = false
 
   override func awakeFromNib() {
     let flutterProject = FlutterDartProject()
@@ -26,7 +27,7 @@ class MainFlutterWindow: NSWindow {
 
     // The sidebar panel runs to the window's top edge (the Dart side hides the
     // title bar). An empty unified toolbar makes AppKit itself set the traffic
-    // lights lower and further in, onto that panel; window_manager cannot move them.
+    // lights lower and further in, onto that panel; nativeapi cannot move them.
     let toolbar = NSToolbar()
     self.toolbar = toolbar
     self.toolbarStyle = .unified
@@ -60,11 +61,14 @@ class MainFlutterWindow: NSWindow {
   }
 
   // MainMenu.xib orders the Flutter window before Dart can restore persisted
-  // bounds. Hide that first native ordering for every launch; window_manager's
-  // configured guard applies this only once, so FlutterWindowHost can perform
-  // the first visible show after restoration (or remain hidden for --hidden).
+  // bounds. Hide that first native ordering for every launch, and only that
+  // one, so FlutterWindowHost can perform the first visible show after
+  // restoration (or remain hidden for --hidden).
   override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {
     super.order(place, relativeTo: otherWin)
-    hiddenWindowAtLaunch()
+    if !orderedAtLaunch {
+      orderedAtLaunch = true
+      setIsVisible(false)
+    }
   }
 }

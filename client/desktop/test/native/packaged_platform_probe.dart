@@ -39,13 +39,12 @@ Future<void> main() async {
   final File report = File(output);
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    await windowManager.ensureInitialized();
     runApp(
       const MaterialApp(
         home: Scaffold(body: Center(child: Text("Sesori packaged platform probe"))),
       ),
     );
-    await windowManager.show();
+    (WindowManager.instance.getCurrent() ?? (throw StateError("The probe's native window is not available"))).show();
     await WidgetsBinding.instance.endOfFrame;
 
     final persistence = GetIt.asNewInstance()

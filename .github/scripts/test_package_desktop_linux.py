@@ -170,7 +170,7 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertEqual(audit["explicitDependencies"], [])
         self.assertEqual(audit["packages"], [
             "desktop_drop", "file_selector_linux", "flutter_secure_storage_linux", "flutter_timezone", "pasteboard",
-            "record_linux", "screen_retriever_linux", "url_launcher_linux", "window_manager",
+            "record_linux", "url_launcher_linux",
         ])
         source = self.plugin_root / "url_launcher_linux/linux/plugin.cc"
         source.write_text('void *x = dlopen("libguessed.so", 1);\n')

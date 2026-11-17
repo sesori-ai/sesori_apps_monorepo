@@ -9,10 +9,8 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_timezone
   pasteboard
   record_windows
-  screen_retriever_windows
   url_launcher_windows
   share_plus
-  window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
