@@ -7531,6 +7531,12 @@ abstract class AppLocalizations {
   /// **'Run started'**
   String get scheduledTaskRunStarted;
 
+  /// Alert after Run now was tapped again while the computer is still starting the run from the previous tap.
+  ///
+  /// In en, this message translates to:
+  /// **'Already starting the run…'**
+  String get scheduledTaskRunNowPending;
+
   /// Alert after Run now failed for an unexpected reason.
   ///
   /// In en, this message translates to:

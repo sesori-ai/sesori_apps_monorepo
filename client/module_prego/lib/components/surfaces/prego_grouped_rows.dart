@@ -9,6 +9,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
+import "../loaders/prego_activity_indicator.dart";
 
 /// Minimum height of a row without a subtitle.
 const double _rowMinHeight = 52.0;
@@ -26,6 +27,9 @@ const double _leadingIconSize = 20.0;
 const double _pointerRowMinHeight = 44.0;
 const double _pointerTallRowMinHeight = 56.0;
 const double _pointerLeadingIconSize = 16.0;
+
+/// How long the leading glyph and the busy spinner take to swap.
+const Duration _busySwapDuration = Duration(milliseconds: 180);
 
 /// A solid rounded card hosting grouped settings rows (Figma "Grouped Rows").
 class const PregoGroupedRows({
@@ -95,6 +99,10 @@ class const PregoGroupedRow({
   /// [leading] is provided.
   final IconData? icon,
 
+  /// Swaps [icon] for a spinner of the same size, crossfading, while the row's
+  /// action is under way. The row keeps its size and stays tappable.
+  final bool busy = false,
+
   /// Custom leading widget (e.g. an avatar). Takes precedence over [icon].
   final Widget? leading,
 
@@ -124,7 +132,15 @@ class const PregoGroupedRow({
         switch (icon) {
           final glyph? => SizedBox(
             width: _leadingSlotWidth,
-            child: Icon(glyph, size: glyphSize, color: prego.colors.textTertiary),
+            child: AnimatedSwitcher(
+              duration: _busySwapDuration,
+              child: busy
+                  ? SizedBox.square(
+                      dimension: glyphSize,
+                      child: const PregoActivityIndicator(color: null),
+                    )
+                  : Icon(glyph, size: glyphSize, color: prego.colors.textTertiary),
+            ),
           ),
           null => null,
         };

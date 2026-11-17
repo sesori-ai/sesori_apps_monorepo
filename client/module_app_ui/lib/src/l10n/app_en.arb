@@ -2976,6 +2976,8 @@
   "@scheduledTaskRunNow": {"description": "Task page action that starts a run now without moving the schedule."},
   "scheduledTaskRunStarted": "Run started",
   "@scheduledTaskRunStarted": {"description": "Alert after Run now started a run."},
+  "scheduledTaskRunNowPending": "Already starting the run…",
+  "@scheduledTaskRunNowPending": {"description": "Alert after Run now was tapped again while the computer is still starting the run from the previous tap."},
   "scheduledTaskRunNowFailed": "Couldn’t start the run. Try again.",
   "@scheduledTaskRunNowFailed": {"description": "Alert after Run now failed for an unexpected reason."},
   "scheduledTaskPreviousRunActive": "The previous run is still going. Try again once it finishes.",

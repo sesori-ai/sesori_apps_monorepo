@@ -130,6 +130,30 @@ void main() {
     );
   });
 
+  test("Run now shows as pending until its answer, and a tap while pending sends nothing", () async {
+    answerList([scheduledTaskFixture(id: "task")]);
+    final cubit = create();
+    await pumpEventQueue();
+    expect((cubit.state as ScheduledTaskDetailLoaded).runNowPending, isFalse);
+    final answer = Completer<ScheduledTaskResult<ScheduledTaskRun>>();
+    when(() => repository.runNow(taskId: "task")).thenAnswer((_) => answer.future);
+
+    final first = cubit.runNow();
+    expect((cubit.state as ScheduledTaskDetailLoaded).runNowPending, isTrue);
+
+    expect(await cubit.runNow(), isNull);
+    verify(() => repository.runNow(taskId: "task")).called(1);
+
+    // A refresh while the request is out keeps the page pending.
+    events.add(SseEvent(data: const SesoriSseEvent.scheduledTasksChanged()));
+    await pumpEventQueue();
+    expect((cubit.state as ScheduledTaskDetailLoaded).runNowPending, isTrue);
+
+    answer.complete(const ScheduledTaskSuccess(value: _run));
+    expect(await first, isA<ScheduledTaskSuccess<ScheduledTaskRun>>());
+    expect((cubit.state as ScheduledTaskDetailLoaded).runNowPending, isFalse);
+  });
+
   test("Pause shows at once and reverts when the bridge fails", () async {
     answerList([scheduledTaskFixture(id: "task")]);
     final cubit = create();

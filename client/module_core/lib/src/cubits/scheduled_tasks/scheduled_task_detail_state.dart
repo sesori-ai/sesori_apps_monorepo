@@ -16,6 +16,9 @@ final class const ScheduledTaskDetailLoaded({
 
   /// This device's IANA zone; null when the platform cannot report it.
   required final String? deviceTimeZone,
+
+  /// Whether a Run now was sent and its answer hasn't arrived yet.
+  required final bool runNowPending,
 }) extends ScheduledTaskDetailState;
 
 /// The task left the computer's list: it was deleted, or a one-off task ran.

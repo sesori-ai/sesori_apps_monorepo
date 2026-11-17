@@ -4360,6 +4360,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskRunStarted => 'Run started';
 
   @override
+  String get scheduledTaskRunNowPending => 'Already starting the run…';
+
+  @override
   String get scheduledTaskRunNowFailed => 'Couldn’t start the run. Try again.';
 
   @override
