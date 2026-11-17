@@ -711,7 +711,10 @@ state.
   so it never shows a launch twice; an older session held this way returns a
   moment later. A launch that resolves while the list is loading, failed,
   searched, on Running or Unread, or shows Archived keeps its row until the
-  unsearched list on All lists its session; a page appended below never
+  unsearched list on All lists its session; meanwhile a search, Running or
+  Unread lists that session as an ordinary row when it matches, so a created
+  session never vanishes from a list it belongs to, and back on All it takes
+  its row's place as above. A page appended below never
   resolves or holds a launch. A computer switch drops the launching rows
   carried over and ignores every launch that existed at the switch, even one
   still pending on the computer that was left. Launches whose sessions land together each take their own
@@ -1126,7 +1129,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A launching row jumps or collapses when its session arrives, the rows below
   it move during the swap, one launch shows both a launching row and its
   session row, the new session can be opened before its launch resolves, the
-  row is counted by the chips, survives a failure, or opens anything on tap.
+  row is counted by the chips, survives a failure, or opens anything on tap;
+  or a created session is missing from a search, Running or Unread list it
+  matches while its launching row waits on All.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

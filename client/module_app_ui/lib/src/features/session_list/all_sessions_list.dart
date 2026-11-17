@@ -133,9 +133,11 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
   Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
     initialRows: const {},
     builder: ({required context, required launchRows}) {
+      final archiving = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
+      final drawsLaunches = context.select((AllSessionsCubit cubit) => _drawsLaunches(state: cubit.state));
       final hidden = {
-        ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
-        for (final rows in launchRows.values) ...rows.heldSessionIds,
+        ...archiving,
+        ..._launchHeldSessionIds(launchRows: launchRows, drawsLaunches: drawsLaunches),
       };
       if (!setEquals(hidden, _hiddenSessionIds)) {
         _hiddenSessionIds = hidden;
@@ -150,11 +152,29 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
         list: widget.list,
         awaitingConnection: widget.awaitingConnection,
         launchRows: launchRows,
-        hiddenSessionIds: hidden,
+        hiddenSessionIds: archiving,
       );
     },
   );
 }
+
+/// Whether the list draws launching rows. A launching row has no title to
+/// match, and is neither running nor unread yet, so a search or a chip hides
+/// it.
+bool _drawsLaunches({required AllSessionsState state}) =>
+    state.query.trim().isEmpty && state.quickFilter == SessionListQuickFilter.all;
+
+/// The sessions [launchRows] leave out of the list. With no launching rows
+/// drawn, a session its launch has named shows as an ordinary row instead, so
+/// a created session never leaves a list it belongs to; only a session that
+/// may belong to a launch still waiting for its session stays out.
+Set<String> _launchHeldSessionIds({required Map<String, LaunchRows> launchRows, required bool drawsLaunches}) => {
+  for (final rows in launchRows.values)
+    if (drawsLaunches)
+      ...rows.heldSessionIds
+    else
+      ...rows.heldSessionIds.difference({for (final launch in rows.named.values) launch.sessionId}),
+};
 
 /// One item of the list: a session, a launch leading Today, or the loader
 /// row at the end.
@@ -177,6 +197,9 @@ class const _Sessions({
   /// nothing loads yet.
   required final bool awaitingConnection,
   required final Map<String, LaunchRows> launchRows,
+
+  /// The sessions hidden besides those [launchRows] hold, which the rows of
+  /// each state leave out by that state's own search and chip.
   required final Set<String> hiddenSessionIds,
 }) extends StatefulWidget {
   @override
@@ -376,10 +399,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     // The list's bottom breathing room collapses with its last row, which
     // rests above the home indicator and anything floating there.
     final endPadding = 8 + MediaQuery.paddingOf(context).bottom + list.endClearance;
-    // A launching row has no title to match, and is neither running nor
-    // unread yet, so a search or a chip hides it.
-    List<LaunchingSession> launchesOf(AllSessionsState state) =>
-        state.query.trim().isNotEmpty || state.quickFilter != SessionListQuickFilter.all
+    List<LaunchingSession> launchesOf(AllSessionsState state) => !_drawsLaunches(state: state)
         ? const <LaunchingSession>[]
         : [
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)
@@ -402,10 +422,17 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           loc: loc,
         ),
       );
+      final hidden = {
+        ...hiddenSessionIds,
+        ..._launchHeldSessionIds(
+          launchRows: launchRows,
+          drawsLaunches: _drawsLaunches(state: state),
+        ),
+      };
       // Only a still-unarchived session hides, as on every list.
       final sessions = [
         for (final (index, row) in state.rows.indexed)
-          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
+          if (row.session.time?.archived != null || !hidden.contains(row.session.id))
             _SessionItem(row: row, heading: headings[index]),
       ];
       // Pinned rows lead the list, so launches lead Today right below them.

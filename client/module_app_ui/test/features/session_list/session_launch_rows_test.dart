@@ -25,18 +25,23 @@ void main() {
   late BehaviorSubject<SessionWindowState> windowState;
   late SessionLaunchRepository launches;
   late int opened;
+  late SessionWindowKey windowKey;
   final now = DateTime.now().millisecondsSinceEpoch;
   final earlier = testSession(id: "earlier", title: "Earlier work", updatedAt: now - 60000);
   final created = testSession(id: "created", title: "Fix the bug", updatedAt: now);
 
-  AllSessionsState list({required List<Session> sessions}) {
+  AllSessionsState list({
+    required List<Session> sessions,
+    SessionListQuickFilter quickFilter = SessionListQuickFilter.all,
+  }) {
+    final running = quickFilter == SessionListQuickFilter.running;
     final rows = [
       for (final session in sessions)
         AllSessionsRow(
           sending: null,
           session: session,
           project: project,
-          isRunning: false,
+          isRunning: running,
           isUnseen: false,
           isAwaitingInput: false,
           isRetrying: false,
@@ -47,9 +52,9 @@ void main() {
     return AllSessionsState(
       projectId: null,
       query: "",
-      quickFilter: SessionListQuickFilter.all,
+      quickFilter: quickFilter,
       rows: rows,
-      counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
+      counts: SessionListChipCounts(all: sessions.length, running: running ? sessions.length : 0, unread: 0),
       loadMore: null,
       awaitingAnswer: false,
       anySessionAwaitingInput: false,
@@ -70,9 +75,13 @@ void main() {
 
   /// The sessions reach the window the launching rows read and the list's
   /// rows together, as one scope's window feeds both.
-  void showSessions({required List<Session> sessions}) {
+  void showSessions({
+    required List<Session> sessions,
+    SessionListQuickFilter quickFilter = SessionListQuickFilter.all,
+  }) {
+    windowKey = (projectId: null, query: null, filter: quickFilter);
     windowState.add(loaded(sessions: sessions));
-    listStates.add(list(sessions: sessions));
+    listStates.add(list(sessions: sessions, quickFilter: quickFilter));
   }
 
   Future<void> pumpList(
@@ -98,7 +107,8 @@ void main() {
     );
     final window = _MockSessionWindowService();
     when(() => window.state).thenAnswer((_) => windowState.stream);
-    when(() => window.key).thenReturn((projectId: null, query: null, filter: SessionListQuickFilter.all));
+    windowKey = (projectId: null, query: null, filter: SessionListQuickFilter.all);
+    when(() => window.key).thenAnswer((_) => windowKey);
     launches = inMemorySessionLaunchRepository();
     opened = 0;
     await tester.pumpWidget(
@@ -238,6 +248,51 @@ void main() {
     await tester.pump();
 
     expect(launchRow, findsNothing);
+    expect(find.text("Fix the bug"), findsOneWidget);
+  });
+
+  testWidgets("under Running a created session shows in its launching row's stead, which it takes back on All", (
+    tester,
+  ) async {
+    await pumpList(tester, sessions: [earlier]);
+    await startLaunch(tester);
+    // The reply names the session before the list has it, so its launching
+    // row holds it.
+    launches.promote(launchId: "launch-1", session: created);
+    await settle(tester);
+    expect(launchRow, findsOneWidget);
+
+    showSessions(sessions: [created], quickFilter: SessionListQuickFilter.running);
+    await settle(tester);
+    expect(launchRow, findsNothing, reason: "a launching row is not running yet");
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "the session is running, so it is listed");
+
+    showSessions(sessions: [created, earlier]);
+    await settle(tester);
+    expect(launchRow, findsNothing);
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "only its session, not the launching row too");
+  });
+
+  testWidgets("under Running a session that may be a waiting launch's stays out until the launch names it", (
+    tester,
+  ) async {
+    await pumpList(tester, sessions: [earlier]);
+    await startLaunch(tester);
+    // It arrives before the reply that names it.
+    showSessions(sessions: [created, earlier]);
+    await settle(tester);
+    expect(launchRow, findsOneWidget);
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "only the launching row");
+
+    showSessions(sessions: [created], quickFilter: SessionListQuickFilter.running);
+    await settle(tester);
+    expect(find.text("Fix the bug"), findsNothing);
+    expect(find.text("No sessions match this filter"), findsOneWidget);
+
+    launches.promote(launchId: "launch-1", session: created);
+    // The filter's empty note fades out first, then the row comes in.
+    await settle(tester);
+    await settle(tester);
     expect(find.text("Fix the bug"), findsOneWidget);
   });
 
