@@ -6,9 +6,9 @@ import "package:injectable/injectable.dart";
 /// Injectable seam around Gal's static plugin API.
 @lazySingleton
 class GalClient() {
-  Future<bool> hasAccess() => Gal.hasAccess();
+  Future<bool> hasAccess() => Gal.hasPermission();
 
-  Future<bool> requestAccess() => Gal.requestAccess();
+  Future<bool> requestAccess() => Gal.requestPermission();
 
   Future<void> putImageBytes({required Uint8List bytes, required String name}) => Gal.putImageBytes(bytes, name: name);
 }

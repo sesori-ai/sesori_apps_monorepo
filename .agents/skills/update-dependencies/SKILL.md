@@ -506,7 +506,7 @@ Update the `fastlane` gem constraint in both Gemfiles if a newer minor version i
 Do NOT add a `cocoapods` gem — Sesori does not use CocoaPods, and neither Gemfile lists it.
 </step>
 
-<step name="5.4">Update Gemfile.lock for iOS:
+<step name="5.4">Update Gemfile.lock for iOS. The lockfiles are bundled with Bundler 4, which macOS's system Ruby 2.6 cannot run; put a modern Ruby first on `PATH` (for example `export PATH=/opt/homebrew/opt/ruby/bin:$PATH`). CI uses Ruby 3.3, so gems must stay compatible with it.
 
 ```bash
 cd client/app/ios && bundle update && cd ../../..
