@@ -145,7 +145,7 @@ void main() {
         AnalyticsScreen.sessionDiffs,
         AnalyticsScreen.scheduledTasks,
         AnalyticsScreen.scheduledTaskDetail,
-        // The task editor reports no screen until the server accepts it.
+        AnalyticsScreen.scheduledTaskEditor,
       ],
     );
     expect(AppRouteDef.values, hasLength(sequence.length + 1));
