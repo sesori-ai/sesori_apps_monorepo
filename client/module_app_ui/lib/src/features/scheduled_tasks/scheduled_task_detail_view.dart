@@ -93,6 +93,7 @@ class const ScheduledTaskDetailView({
                   :final runs,
                   :final editable,
                   :final deviceTimeZone,
+                  :final runNowPending,
                 ) =>
                   SliverList.list(
                     children: [
@@ -103,7 +104,13 @@ class const ScheduledTaskDetailView({
                           child: _SecondaryText(text: context.loc.scheduledTaskReadOnly),
                         ),
                       _Summary(task: task, deviceTimeZone: deviceTimeZone),
-                      _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
+                      _Actions(
+                        task: task,
+                        editable: editable,
+                        runNowPending: runNowPending,
+                        onDeleted: onDeleted,
+                        onEdit: onEdit,
+                      ),
                       SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false, action: null),
                       _History(
                         task: task,
@@ -153,6 +160,7 @@ class const _Summary({required final ScheduledTask task, required final String? 
 class const _Actions({
   required final ScheduledTask task,
   required final bool editable,
+  required final bool runNowPending,
   required final VoidCallback onDeleted,
   required final VoidCallback onEdit,
 }) extends StatelessWidget {
@@ -166,6 +174,7 @@ class const _Actions({
           PregoGroupedRow(
             key: const Key("scheduled-task-run-now"),
             icon: TablerRegular.player_play,
+            busy: runNowPending,
             title: Text(loc.scheduledTaskRunNow),
             onTap: () => unawaited(_runNow(context: context)),
           ),
@@ -210,6 +219,8 @@ class const _Actions({
     final presenter = PregoPopupAlertPresenter.of(context);
     final labels = ScheduledTaskFormatter(loc: loc, now: DateTime.now);
     final (message, variant) = switch (await context.read<ScheduledTaskDetailCubit>().runNow()) {
+      // The earlier tap's request is still out; its answer shows its own alert.
+      null => (loc.scheduledTaskRunNowPending, PregoPopupAlertsNotificationsVariant.info),
       ScheduledTaskSuccess(value: ScheduledTaskRun(outcome: ScheduledTaskRunFailed(:final reason))) => (
         loc.scheduledTaskRunFailed(labels.failureReason(reason: reason)),
         PregoPopupAlertsNotificationsVariant.error,

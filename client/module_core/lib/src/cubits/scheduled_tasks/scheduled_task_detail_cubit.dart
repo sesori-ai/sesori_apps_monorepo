@@ -32,6 +32,9 @@ class ScheduledTaskDetailCubit({
   ({bool enabled, int request})? _pendingEnabled;
   int _switchRequests = 0;
 
+  /// Whether a Run now is waiting on its answer, shown on the page.
+  bool _runNowPending = false;
+
   this : super(const ScheduledTaskDetailLoading()) {
     _signals = scheduledTaskRefreshSignals(connectionService: _connectionService).listen((_) => unawaited(refresh()));
     unawaited(refresh());
@@ -48,8 +51,17 @@ class ScheduledTaskDetailCubit({
   /// Starts a run now. The result says whether it started, could not start
   /// (the run's own outcome), or was refused, such as while the previous run
   /// is still going. The new run row arrives with the bridge's change event.
-  Future<ScheduledTaskResult<ScheduledTaskRun>> runNow() async {
+  ///
+  /// The bridge answers once the run's session has started, which can take a
+  /// while, so the page shows the request as pending until then. A tap while
+  /// one is pending sends nothing and returns null.
+  Future<ScheduledTaskResult<ScheduledTaskRun>?> runNow() async {
+    if (_runNowPending) return null;
+    _runNowPending = true;
+    _emitShown();
     final result = await _repository.runNow(taskId: taskId);
+    _runNowPending = false;
+    _emitShown();
     logScheduledTaskFailure(message: "Run now for scheduled task $taskId did not start", result: result);
     return result;
   }
@@ -145,7 +157,8 @@ class ScheduledTaskDetailCubit({
     if (_shown case (task: _, :final runs)) _shown = (task: task, runs: runs);
   }
 
-  /// Emits the shown task with the pending pause or resume over it.
+  /// Emits the shown task with the pending pause or resume over it, and
+  /// whether a Run now is pending.
   void _emitShown() {
     final shown = _shown;
     if (isClosed || shown == null) return;
@@ -156,6 +169,7 @@ class ScheduledTaskDetailCubit({
         runs: shown.runs,
         editable: shown.task.definition.isEditableHere,
         deviceTimeZone: _shownDeviceTimeZone,
+        runNowPending: _runNowPending,
       ),
     );
   }

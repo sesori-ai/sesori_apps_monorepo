@@ -331,6 +331,37 @@ void main() {
       expect(find.text("Run now tries again."), findsNothing);
     });
 
+    testWidgets("Run now spins until the run starts, and a second tap meanwhile says so", (tester) async {
+      final answer = Completer<ScheduledTaskResult<ScheduledTaskRun>>();
+      when(() => repository.runNow(taskId: _recurring.id)).thenAnswer((_) => answer.future);
+      await pumpTask(tester: tester, task: _recurring);
+      final runNow = find.byKey(const Key("scheduled-task-run-now"));
+      Finder spinner() => find.descendant(of: runNow, matching: find.byType(PregoActivityIndicator));
+      final rowSize = tester.getSize(runNow);
+
+      await tester.tap(runNow);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(spinner(), findsOneWidget);
+      expect(find.descendant(of: runNow, matching: find.byIcon(TablerRegular.player_play)), findsNothing);
+      expect(tester.getSize(runNow), rowSize);
+
+      await tester.tap(runNow);
+      await tester.pump();
+      expect(find.text("Already starting the run…"), findsOneWidget);
+      verify(() => repository.runNow(taskId: _recurring.id)).called(1);
+
+      answer.complete(
+        ScheduledTaskSuccess(
+          value: _run(id: "now", outcome: const ScheduledTaskRunOutcome.started(session: null, late: false)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Run started"), findsOneWidget);
+      expect(spinner(), findsNothing);
+      await tester.pumpAndSettle(const Duration(seconds: 10));
+    });
+
     testWidgets("offers Edit and Rename for a task this app can edit", (tester) async {
       var edits = 0;
       await pumpTask(tester: tester, task: _recurring, onEdit: () => edits++);
