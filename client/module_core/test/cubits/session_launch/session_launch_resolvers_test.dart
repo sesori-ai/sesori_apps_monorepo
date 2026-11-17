@@ -356,11 +356,13 @@ void main() {
       required Map<String, LaunchRows> previous,
       required SessionLaunchState launches,
       required List<Session>? sessions,
+      bool drawsLaunchRows = true,
       Set<String> appendedSessionIds = const {},
     }) => resolveProjectLaunchRows(
       previous: previous,
       launches: launches,
       sessionsByProject: {"project-1": ?sessions},
+      drawsLaunchRows: drawsLaunchRows,
       appendedSessionIds: appendedSessionIds,
     );
 
@@ -378,6 +380,97 @@ void main() {
 
       expect(reloading["project-1"]?.placeholders, [launch]);
       expect(reloading["project-1"]?.named, {"launch-1": (sessionId: "created", arrived: false)});
+    });
+
+    test("a chip first listed mid-launch holds its project's newest session until the launch names it", () {
+      final older = testSession(id: "older", createdAt: 200);
+      final newest = testSession(id: "newest", createdAt: 300);
+      final opened = resolveProject(
+        previous: const {},
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [older, newest],
+        drawsLaunchRows: false,
+      );
+      expect(opened["project-1"]?.placeholders, [launch], reason: "the row waits for All");
+      expect(opened["project-1"]?.heldSessionIds, {"newest"}, reason: "it may be the launch's session");
+      expect(opened["project-1"]?.shownSessionIds, {"older"});
+      expect(opened["project-1"]?.listedSessionIds, isNull, reason: "All still holds as on its first update");
+
+      final named = resolveProject(
+        previous: opened,
+        launches: const SessionLaunchState(launching: [], sessionIds: {"launch-1": "newest"}),
+        sessions: [older, newest],
+        drawsLaunchRows: false,
+      );
+      expect(named["project-1"]?.named, {"launch-1": (sessionId: "newest", arrived: false)});
+      expect(named["project-1"]?.heldSessionIds, {"newest"}, reason: "only its launching row's place holds it");
+    });
+
+    test("a chip first listed mid-launch keeps holding what it held once a newer session arrives", () {
+      final older = testSession(id: "older", createdAt: 200);
+      final newest = testSession(id: "newest", createdAt: 300);
+      final launches = SessionLaunchState(launching: [launch], sessionIds: const {});
+      final opened = resolveProject(
+        previous: const {},
+        launches: launches,
+        sessions: [newest, older],
+        drawsLaunchRows: false,
+      );
+
+      final newer = testSession(id: "newer", createdAt: 400);
+      final next = resolveProject(
+        previous: opened,
+        launches: launches,
+        sessions: [newer, newest, older],
+        drawsLaunchRows: false,
+      );
+      expect(next["project-1"]?.heldSessionIds, {"newer", "newest"}, reason: "either may be the launch's session");
+    });
+
+    test("a page a chip appends before All lists the project is never held", () {
+      final older = testSession(id: "older", createdAt: 200);
+      final newest = testSession(id: "newest", createdAt: 300);
+      final launches = SessionLaunchState(launching: [launch], sessionIds: const {});
+      final opened = resolveProject(
+        previous: const {},
+        launches: launches,
+        sessions: [newest, older],
+        drawsLaunchRows: false,
+      );
+
+      // Listed by activity, a session on a further page can be newer.
+      final appended = testSession(id: "appended", createdAt: 400);
+      final paged = resolveProject(
+        previous: opened,
+        launches: launches,
+        sessions: [newest, older, appended],
+        drawsLaunchRows: false,
+        appendedSessionIds: {"appended"},
+      );
+      expect(paged["project-1"]?.heldSessionIds, {"newest"});
+    });
+
+    test("All's first update after a chip holds the newest session the chip never showed", () {
+      final idle = testSession(id: "idle", createdAt: 100);
+      final running = testSession(id: "running", createdAt: 200);
+      final shownOnChip = resolveProject(
+        previous: const {},
+        launches: const SessionLaunchState(launching: [], sessionIds: {}),
+        sessions: [running],
+        drawsLaunchRows: false,
+      );
+
+      final newest = testSession(id: "newest", createdAt: 300);
+      final onAll = resolveProject(
+        previous: shownOnChip,
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [newest, running, idle],
+      );
+      expect(
+        onAll["project-1"]?.heldSessionIds,
+        {"newest"},
+        reason: "the chip showed one session, and an older one All lists is not the launch's",
+      );
     });
 
     test("drops a failed launch's row while the project is not listed", () {

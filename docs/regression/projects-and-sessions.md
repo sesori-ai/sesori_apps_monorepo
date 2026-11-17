@@ -706,8 +706,10 @@ state.
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
   so it can never be opened before its launch resolves, even when Archived was
-  shown meanwhile. A list first loaded mid-launch holds its project's newest
-  unpinned sessions, one for each launch still waiting, until those launches resolve,
+  shown meanwhile, and also under a search, Running or Unread when it reaches
+  that list before All lists it; a session the list already showed there or on
+  All stays, as does a page appended below. A list first loaded mid-launch
+  holds its project's newest unpinned sessions, one for each launch still waiting, until those launches resolve,
   so it never shows a launch twice; an older session held this way returns a
   moment later. A launch that resolves while the list is loading, failed,
   searched, on Running or Unread, or shows Archived keeps its row until the
@@ -1128,7 +1130,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   settles, or snaps chips still fading in to full opacity.
 - A launching row jumps or collapses when its session arrives, the rows below
   it move during the swap, one launch shows both a launching row and its
-  session row, the new session can be opened before its launch resolves, the
+  session row, the new session can be opened before its launch resolves (also
+  from a search, Running or Unread), the
   row is counted by the chips, survives a failure, or opens anything on tap;
   or a created session is missing from a search, Running or Unread list it
   matches while its launching row waits on All.
