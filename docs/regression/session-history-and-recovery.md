@@ -344,6 +344,11 @@ reconnect or restart.
   Stopped line, folded into the live stop's line, and "Request was aborted"
   otherwise as an error notice with that text. A reply that only mentions those
   words stays a reply.
+- A DeepSeek turn refused by DeepSeek's content safety review (adapter 0.2.4+)
+  shows exactly one error notice with DeepSeek's explanation, live and after any
+  number of reloads. The adapter sends that explanation as one message under a
+  `deepseek-refusal-` id and ends the prompt with `refusal`, which adds no second
+  notice. A reply in the same words under any other id stays a reply.
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the

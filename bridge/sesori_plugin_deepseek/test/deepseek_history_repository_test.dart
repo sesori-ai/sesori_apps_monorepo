@@ -37,6 +37,30 @@ void main() {
     ]);
   });
 
+  test("history replays a content refusal as the same failed-turn notice", () async {
+    const refusal = "DeepSeek refused to answer under its content safety review: image 1 was blocked";
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [
+            _update("s1", "user_message_chunk", "user-initial", "describe this"),
+            _update("s1", "agent_message_chunk", "deepseek-refusal-abc", refusal),
+          ],
+        ),
+      ]),
+      childSessions: AcpChildSessionTracker(),
+    );
+
+    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+
+    expect(messages, hasLength(2));
+    final notice = messages.last.info.toJson();
+    expect(notice["role"], "error");
+    expect(notice["errorName"], "deepseek_content_refused");
+    expect(notice["errorMessage"], refusal);
+    expect(messages.last.parts, isEmpty);
+  });
+
   test("history rejects a non-progressing cursor with preserved cause", () async {
     final repository = _repository(
       api: _HistoryApi([
