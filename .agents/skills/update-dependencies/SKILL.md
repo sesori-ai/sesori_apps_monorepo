@@ -372,6 +372,16 @@ set -e
 
 </step>
 
+CI seeds the `sqlite3` and `pdfium_dart` (pdfrx) build-hook downloads with `.github/actions/prefetch-sqlite3-native/prefetch.py`, which parses those packages' sources and pins archive hashes. Local `make test` does not run it, so when either package's resolved version changes, run it for every workspace and platform CI uses before pushing. If one fails, update the script (or `PDFIUM_PINS`) in the same PR:
+
+```bash
+set -e
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace bridge --platform host plan
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace client --platform host plan
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace client --platform android plan
+GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace client --platform ios plan
+```
+
 <step name="4.3">If build or tests fail:
 
 - Identify the failing dependency
@@ -506,7 +516,7 @@ Update the `fastlane` gem constraint in both Gemfiles if a newer minor version i
 Do NOT add a `cocoapods` gem — Sesori does not use CocoaPods, and neither Gemfile lists it.
 </step>
 
-<step name="5.4">Update Gemfile.lock for iOS:
+<step name="5.4">Update Gemfile.lock for iOS. The lockfiles are bundled with Bundler 4, which macOS's system Ruby 2.6 cannot run; put a modern Ruby first on `PATH` (for example `export PATH=/opt/homebrew/opt/ruby/bin:$PATH`). CI uses Ruby 3.3, so gems must stay compatible with it.
 
 ```bash
 cd client/app/ios && bundle update && cd ../../..

@@ -12,9 +12,9 @@ the hook accepts only the pinned hash, so the built bytes never change.
 package:pdfium_dart (pdfrx's PDF engine) has the same kind of hook: it fetches
 pdfium-<platform>-<arch>.tgz from bblanchon/pdfium-binaries on every platform
 but iOS, with three quick retries, and reuses the library it extracted into
-<workspace>/.dart_tool/hooks_runner/shared/pdfium_dart/build/<release>/. The
-package pins no hashes, so this script pins the archives' SHA-256 itself and
-seeds the extracted library the same way.
+<workspace>/.dart_tool/hooks_runner/shared/pdfium_dart/build/<release>/. This
+script pins the archives' SHA-256 itself (older pdfium_dart releases pinned
+none) and seeds the extracted library the same way.
 
 Locally, after `pub get`, it seeds a worktree whose hook download failed. The
 default seeds this host's libraries; add `--platform ios` or `--platform
@@ -188,10 +188,13 @@ def pdfium_release(*, workspace: Path) -> str | None:
     root = package_root(workspace=workspace, name="pdfium_dart")
     if root is None:
         return None
-    hook = root / "hook/build.dart"
-    match = re.search(r"_pdfiumRelease = '([^']+)'", hook.read_text()) if hook.is_file() else None
+    # pdfium_dart 0.4.3 moved the release constant from the hook into its library.
+    sources = [root / "lib/src/pdfium_archive_integrity.dart", root / "hook/build.dart"]
+    matches = (re.search(r"_?pdfiumRelease = '([^']+)'", source.read_text())
+               for source in sources if source.is_file())
+    match = next((found for found in matches if found is not None), None)
     if match is None:
-        fail(f"{hook} changed shape; update this script for the new pdfium_dart hook")
+        fail(f"{root} changed shape; update this script for the new pdfium_dart hook")
     release = match.group(1).replace("%2F", "/")
     if release not in PDFIUM_PINS:
         fail(f"pdfium_dart fetches PDFium release {release}; add its archive hashes to PDFIUM_PINS "

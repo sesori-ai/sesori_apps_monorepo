@@ -201,10 +201,7 @@ SesoriSessionDiff _$SesoriSessionDiffFromJson(Map json) => SesoriSessionDiff(
 );
 
 Map<String, dynamic> _$SesoriSessionDiffToJson(SesoriSessionDiff instance) =>
-    <String, dynamic>{
-      'sessionID': instance.sessionID,
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SesoriSessionError _$SesoriSessionErrorFromJson(Map json) => SesoriSessionError(
   sessionID: json['sessionID'] as String?,
@@ -212,10 +209,7 @@ SesoriSessionError _$SesoriSessionErrorFromJson(Map json) => SesoriSessionError(
 );
 
 Map<String, dynamic> _$SesoriSessionErrorToJson(SesoriSessionError instance) =>
-    <String, dynamic>{
-      'sessionID': ?instance.sessionID,
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': ?instance.sessionID, 'type': instance.$type};
 
 SesoriSessionCompacted _$SesoriSessionCompactedFromJson(Map json) =>
     SesoriSessionCompacted(
@@ -547,10 +541,7 @@ SesoriTodoUpdated _$SesoriTodoUpdatedFromJson(Map json) => SesoriTodoUpdated(
 );
 
 Map<String, dynamic> _$SesoriTodoUpdatedToJson(SesoriTodoUpdated instance) =>
-    <String, dynamic>{
-      'sessionID': instance.sessionID,
-      'type': instance.$type,
-    };
+    <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
 
 SesoriProjectsSummary _$SesoriProjectsSummaryFromJson(Map json) =>
     SesoriProjectsSummary(
@@ -620,10 +611,7 @@ SesoriFileEdited _$SesoriFileEditedFromJson(Map json) => SesoriFileEdited(
 );
 
 Map<String, dynamic> _$SesoriFileEditedToJson(SesoriFileEdited instance) =>
-    <String, dynamic>{
-      'file': ?instance.file,
-      'type': instance.$type,
-    };
+    <String, dynamic>{'file': ?instance.file, 'type': instance.$type};
 
 SesoriInstallationUpdateAvailable _$SesoriInstallationUpdateAvailableFromJson(
   Map json,

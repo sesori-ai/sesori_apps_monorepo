@@ -72,7 +72,8 @@ android {
     println("Flutter Version Name: ${flutter.versionName}")
 
     namespace = "com.sesori.app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_local_notifications 23 requires compileSdk 37; Flutter 3.50 defaults to 36.
+    compileSdk = maxOf(flutter.compileSdkVersion, 37)
     ndkVersion = flutter.ndkVersion
 
     buildFeatures {
