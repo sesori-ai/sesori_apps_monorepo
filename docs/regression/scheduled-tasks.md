@@ -168,8 +168,8 @@ them or can't start. Same-session tasks can compact their session between runs (
   `repeat_kind`, `run_mode`, `approval_mode`, `missed_run_policy` for repeating tasks only (Once omits it), and
   `auto_compact` for same-session tasks only.
   The Scheduled page and task page report `scheduled_tasks` and `scheduled_task_detail`.
-- Held: the desktop drops `scheduled_task_saved` and the editor reports no screen on either app, until the auth server
-  accepts them (sesori_auth_server #119). Run outcomes are not tracked: runs happen on the bridge, which has no
+- The desktop sends `scheduled_task_saved` like the phone. The editor reports no screen on either app yet. Run
+  outcomes are not tracked: runs happen on the bridge, which has no
   analytics pipeline.
 
 ## Regression Levels
