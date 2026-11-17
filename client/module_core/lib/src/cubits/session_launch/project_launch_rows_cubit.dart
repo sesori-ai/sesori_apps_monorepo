@@ -12,7 +12,8 @@ import "../../services/session_launch_service.dart";
 import "../../services/session_window_service.dart";
 import "session_launch_resolvers.dart";
 
-typedef _Update = ({SessionWindowState window, List<SessionLaunch> launches});
+/// [key] is the window's key when it emitted [window]: what it answers.
+typedef _Update = ({SessionWindowState window, SessionWindowKey key, List<SessionLaunch> launches});
 
 /// One surface's launching rows per project (see [resolveProjectLaunchRows]),
 /// carried from one update to the next. Each surface that draws launches per
@@ -24,7 +25,9 @@ typedef _Update = ({SessionWindowState window, List<SessionLaunch> launches});
 /// key, or while it loads or failed, they keep their rows until it returns.
 /// A search or chip draws no launching rows, so a surface lists the sessions
 /// those launches have named as ordinary rows there instead of holding them
-/// (see [LaunchRows.named]).
+/// (see [LaunchRows.named]). Its answer still holds a session the surface has
+/// not shown before while that project has a launch waiting, as on All (see
+/// [holdUnseenLaunchSessions]).
 class ProjectLaunchRowsCubit({
   required final SessionWindowService _window,
   required final SessionLaunchService _launchService,
@@ -35,11 +38,11 @@ class ProjectLaunchRowsCubit({
   required final Map<String, LaunchRows> initialRows,
 }) extends Cubit<Map<String, LaunchRows>> {
   late final StreamSubscription<_Update> _updates;
-  late _Update _latest = (window: _window.state.value, launches: _launchService.launches.value);
+  late _Update _latest = (window: _window.state.value, key: _window.key, launches: _launchService.launches.value);
 
-  /// The window's rows on the last update that settled launches, in order;
-  /// empty after one that did not.
-  List<String> _listedSessionIds = const [];
+  /// The window's rows on the last update that had its answer, in order, and
+  /// the key they answered; null after one that did not.
+  ({SessionWindowKey key, List<String> sessionIds})? _listed;
 
   /// Launches started for a computer the window has since left: their
   /// sessions never reach its rows, so they draw nothing.
@@ -51,9 +54,9 @@ class ProjectLaunchRowsCubit({
     // launch names only in passing (before the launch goes) is still seen.
     _updates =
         Rx.combineLatest2(
-          _window.state,
+          _window.state.map((window) => (window: window, key: _window.key)),
           _launchService.launches,
-          (window, launches) => (window: window, launches: launches),
+          (answer, launches) => (window: answer.window, key: answer.key, launches: launches),
         ).skip(1).listen((update) {
           // The window loads again only for another computer.
           final switched = update.window is SessionWindowLoading && _latest.window is! SessionWindowLoading;
@@ -71,20 +74,22 @@ class ProjectLaunchRowsCubit({
       ],
     );
     final key = _window.key;
+    final drawsLaunchRows = key.query == null && key.filter == SessionListQuickFilter.all;
     final sessions = switch (_latest.window) {
-      SessionWindowLoaded(:final sessions, awaitingAnswer: false)
-          when key.query == null && key.filter == SessionListQuickFilter.all =>
-        sessions,
+      // Rows answered for another key, as while a typed query waits to narrow
+      // them, say nothing about this one.
+      SessionWindowLoaded(:final sessions, awaitingAnswer: false) when _latest.key == key => sessions,
       // Rows narrowed from another key may lack a launch's session.
       SessionWindowLoaded() || SessionWindowLoading() || SessionWindowFailed() => null,
     };
     if (sessions == null) {
-      _listedSessionIds = const [];
+      _listed = null;
       emit(
         resolveProjectLaunchRows(
           previous: previous,
           launches: launches,
           sessionsByProject: const {},
+          drawsLaunchRows: drawsLaunchRows,
           appendedSessionIds: const {},
         ),
       );
@@ -100,26 +105,29 @@ class ProjectLaunchRowsCubit({
     for (final session in sessions) {
       if (listed(session.projectID)) sessionsByProject.putIfAbsent(session.projectID, () => []).add(session);
     }
-    final appended = _appendedSessionIds(sessions: sessions);
-    _listedSessionIds = [for (final session in sessions) session.id];
+    final appended = _appendedSessionIds(key: key, sessions: sessions);
+    _listed = (key: key, sessionIds: [for (final session in sessions) session.id]);
     emit(
       resolveProjectLaunchRows(
         previous: previous,
         launches: launches,
         sessionsByProject: sessionsByProject,
+        drawsLaunchRows: drawsLaunchRows,
         appendedSessionIds: appended,
       ),
     );
   }
 
   /// The sessions listed after the last update's last row that it did not
-  /// list: a page the window appended.
-  Set<String> _appendedSessionIds({required List<Session> sessions}) {
-    final last = _listedSessionIds.lastOrNull;
+  /// list, under the same key: a page the window appended.
+  Set<String> _appendedSessionIds({required SessionWindowKey key, required List<Session> sessions}) {
+    final listed = _listed;
+    if (listed == null || listed.key != key) return const {};
+    final last = listed.sessionIds.lastOrNull;
     if (last == null) return const {};
     final lastIndex = sessions.indexWhere((session) => session.id == last);
     if (lastIndex < 0) return const {};
-    final known = _listedSessionIds.toSet();
+    final known = listed.sessionIds.toSet();
     return {
       for (final session in sessions.skip(lastIndex + 1))
         if (!known.contains(session.id)) session.id,

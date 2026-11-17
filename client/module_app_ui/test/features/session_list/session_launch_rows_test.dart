@@ -296,6 +296,27 @@ void main() {
     expect(find.text("Fix the bug"), findsOneWidget);
   });
 
+  testWidgets("under Running a session All never showed stays out until its waiting launch names it", (
+    tester,
+  ) async {
+    await pumpList(tester, sessions: [earlier]);
+    await startLaunch(tester);
+    showSessions(sessions: [earlier], quickFilter: SessionListQuickFilter.running);
+    await settle(tester);
+    expect(find.text("Earlier work"), findsOneWidget, reason: "All showed it before the launch");
+
+    // It reaches Running before All has it, and before the reply that names
+    // it.
+    showSessions(sessions: [created, earlier], quickFilter: SessionListQuickFilter.running);
+    await settle(tester);
+    expect(find.text("Fix the bug"), findsNothing, reason: "opening it now would find no handoff");
+    expect(find.text("Earlier work"), findsOneWidget);
+
+    launches.promote(launchId: "launch-1", session: created);
+    await settle(tester);
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "named, it lists as an ordinary row");
+  });
+
   testWidgets("tapping a launching row explains it is not ready and opens nothing", (tester) async {
     await pumpList(tester, sessions: [earlier]);
     await startLaunch(tester);

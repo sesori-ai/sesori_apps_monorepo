@@ -42,9 +42,9 @@ void main() {
     await windowState.close();
   });
 
-  void launch() => launches.start(
-    launchId: "launch-1",
-    projectId: "project-1",
+  void launch({String launchId = "launch-1", String projectId = "project-1"}) => launches.start(
+    launchId: launchId,
+    projectId: projectId,
     pluginId: "claude",
     startedAt: DateTime.utc(2026, 10, 7, 12),
     projectName: "Sesori",
@@ -106,6 +106,106 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state["project-1"]?.placeholders, isEmpty);
     expect(cubit.state["project-1"]?.rowKeys, {"created": "launch-1"});
+  });
+
+  group("under a chip or search", () {
+    const running = (projectId: null, query: null, filter: SessionListQuickFilter.running);
+    Set<String> named() => {
+      for (final launch in cubit.state["project-1"]?.named.values ?? const <({String sessionId, bool arrived})>[])
+        launch.sessionId,
+    };
+
+    test("a session the surface never showed stays out while a launch waits", () async {
+      launch();
+      await pumpEventQueue();
+      key = running;
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "All showed it already");
+
+      // It reaches Running before the reply that names it.
+      windowState.add(loaded([created, existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, {"created"}, reason: "it may be the waiting launch's");
+      expect(named(), isEmpty);
+
+      launches.promote(launchId: "launch-1", session: created);
+      await pumpEventQueue();
+      expect(named(), {"created"}, reason: "now named, it lists as an ordinary row there");
+      expect(placeholders(), ["launch-1"], reason: "the row waits for All");
+
+      key = unfiltered;
+      windowState.add(loaded([created, existing]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.placeholders, isEmpty);
+      expect(cubit.state["project-1"]?.rowKeys, {
+        "created": "launch-1",
+      }, reason: "back on All it takes the row's place");
+    });
+
+    test("a session it showed before the launch began stays listed", () async {
+      final other = testSession(id: "other");
+      key = running;
+      windowState.add(loaded([other]));
+      await pumpEventQueue();
+
+      launch();
+      windowState.add(loaded([other]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "the surface already showed it");
+    });
+
+    test("a page appended there is never held", () async {
+      final older = testSession(id: "older");
+      launch();
+      await pumpEventQueue();
+      key = (projectId: null, query: "bug", filter: SessionListQuickFilter.all);
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+
+      windowState.add(loaded([existing, older]));
+      await pumpEventQueue();
+      expect(cubit.state["project-1"]?.heldSessionIds, isEmpty, reason: "an older page is never the launch's session");
+    });
+
+    test("a session it showed before a launch began stays listed though All never listed its project", () async {
+      final elsewhere = testSession(id: "elsewhere").copyWith(projectID: "project-2");
+      key = running;
+      windowState.add(loaded([elsewhere]));
+      await pumpEventQueue();
+
+      launch(projectId: "project-2");
+      await pumpEventQueue();
+      expect(cubit.state["project-2"]?.heldSessionIds, isEmpty, reason: "the surface already showed it");
+
+      key = unfiltered;
+      windowState.add(loaded([existing, elsewhere]));
+      await pumpEventQueue();
+      expect(cubit.state["project-2"]?.heldSessionIds, isEmpty, reason: "back on All it stays listed too");
+    });
+
+    test("rows the window answered for another key never count as a typed query's answer", () async {
+      final match = testSession(id: "match");
+      launch();
+      await pumpEventQueue();
+      key = (projectId: null, query: "b", filter: SessionListQuickFilter.all);
+      windowState.add(loaded([existing]));
+      await pumpEventQueue();
+
+      // Listing everything, the window narrows its rows to a typed query only
+      // once typing pauses, so it emits nothing meanwhile.
+      key = (projectId: null, query: "bu", filter: SessionListQuickFilter.all);
+      launch(launchId: "launch-2", projectId: "project-2");
+      await pumpEventQueue();
+
+      windowState.add(loaded([existing, match]));
+      await pumpEventQueue();
+      expect(
+        cubit.state["project-1"]?.heldSessionIds,
+        {"match"},
+        reason: "a session the search never showed is not a page appended below its rows",
+      );
+    });
   });
 
   test("another computer drops the launching rows of the previous one", () async {

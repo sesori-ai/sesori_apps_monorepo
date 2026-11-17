@@ -39,7 +39,9 @@ final class const LaunchRows({
 
   /// The sessions the surface showed on its last update; null before its
   /// first, where a surface opened mid-launch holds its project's newest
-  /// sessions instead, one for each launch still waiting.
+  /// sessions instead, one for each launch still waiting. Before its first
+  /// update on All ([listedSessionIds] null) they are only what a chip or a
+  /// search showed, so on All it still holds the newest among the rest.
   required final Set<String>? shownSessionIds,
 
   /// Every session the surface had on its last update, in list order; null
@@ -167,34 +169,22 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
     }
   }
 
-  // The first update has shown nothing before it, so there it holds as many
-  // of a project's newest unnamed unpinned sessions as it has launches
-  // waiting. An older session hidden until the launch resolves costs a
-  // moment; a launch's session shown beside its own row shows it twice.
-  final waitingPerProject = <String, int>{};
-  for (final launch in launching) {
-    waitingPerProject.update(launch.projectId, (count) => count + 1, ifAbsent: () => 1);
-  }
-  final shown = previous.shownSessionIds;
-  final settled = {...sessionIds.values, ...rowKeys.keys, ...held};
-  final unnamed = [
-    for (final session in sessions)
-      if (!session.pinned && waitingPerProject.containsKey(session.projectID) && !settled.contains(session.id)) session,
-  ];
-  if (shown == null) {
-    final newestFirst = unnamed.sorted((a, b) => (b.time?.created ?? 0).compareTo(a.time?.created ?? 0));
-    for (final session in newestFirst) {
-      final left = waitingPerProject[session.projectID] ?? 0;
-      if (left == 0) continue;
-      waitingPerProject[session.projectID] = left - 1;
-      held.add(session.id);
-    }
-  } else {
-    held.addAll([
-      for (final session in unnamed)
-        if (!shown.contains(session.id)) session.id,
-    ]);
-  }
+  // What a chip or a search showed before All's first update stays listed,
+  // but All lists sessions it never saw (see [LaunchRows.shownSessionIds]).
+  final shownOnAll = previous.listedSessionIds != null;
+  held.addAll(
+    _unseenSessionIds(
+      launching: launching,
+      sessions: sessions,
+      settled: {
+        ...sessionIds.values,
+        ...rowKeys.keys,
+        ...held,
+        if (!shownOnAll) ...?previous.shownSessionIds,
+      },
+      shown: shownOnAll ? previous.shownSessionIds : null,
+    ),
+  );
 
   return LaunchRows(
     placeholders: placeholders,
@@ -240,18 +230,100 @@ LaunchRows latchLaunchSessions({
   );
 }
 
+/// [latchLaunchSessions] for a surface that lists [sessions] without drawing
+/// launching rows, as under a search, Running or Unread. It lists a session
+/// its launch has named as an ordinary row there (see [LaunchRows.named]), so
+/// it holds only what may still belong to a launch waiting for its session: a
+/// session it has not shown before, as [resolveHeldLaunchSessions] does. What
+/// it shows here counts as shown, as do [appendedSessionIds].
+LaunchRows holdUnseenLaunchSessions({
+  required LaunchRows previous,
+  required List<LaunchingSession> launching,
+  required Map<String, String> sessionIds,
+  required List<Session> sessions,
+  required Set<String> appendedSessionIds,
+}) {
+  final latched = latchLaunchSessions(previous: previous, launching: launching, sessionIds: sessionIds);
+  final named = {for (final launch in latched.named.values) launch.sessionId};
+  final shown = latched.shownSessionIds;
+  final held = {
+    // Back on All, the rows narrowed from here hold them until its answer.
+    ...named,
+    ..._unseenSessionIds(
+      launching: launching,
+      sessions: sessions,
+      settled: {...sessionIds.values, ...latched.rowKeys.keys, ...named},
+      shown: shown == null ? null : {...shown, ...appendedSessionIds},
+    ),
+  };
+  return LaunchRows(
+    placeholders: latched.placeholders,
+    named: latched.named,
+    rowKeys: latched.rowKeys,
+    // Counted even before its first update on All, so what it showed or held
+    // here stays that way (see [LaunchRows.shownSessionIds]).
+    shownSessionIds: {
+      ...?shown,
+      for (final session in sessions)
+        if (!held.contains(session.id)) session.id,
+    },
+    listedSessionIds: latched.listedSessionIds,
+    heldSessionIds: held,
+  );
+}
+
+/// The [sessions] that may belong to one of [launching], still waiting for
+/// its session: unpinned ones of a project with a launch waiting, neither
+/// [settled] nor [shown] before. With nothing shown yet (null) it takes as
+/// many of a project's newest such sessions as it has launches waiting. An
+/// older session hidden until the launch resolves costs a moment; a launch's
+/// session shown beside its own row shows it twice.
+Set<String> _unseenSessionIds({
+  required List<LaunchingSession> launching,
+  required List<Session> sessions,
+  required Set<String> settled,
+  required Set<String>? shown,
+}) {
+  final waitingPerProject = <String, int>{};
+  for (final launch in launching) {
+    waitingPerProject.update(launch.projectId, (count) => count + 1, ifAbsent: () => 1);
+  }
+  final unnamed = [
+    for (final session in sessions)
+      if (!session.pinned && waitingPerProject.containsKey(session.projectID) && !settled.contains(session.id)) session,
+  ];
+  if (shown != null) {
+    return {
+      for (final session in unnamed)
+        if (!shown.contains(session.id)) session.id,
+    };
+  }
+  final held = <String>{};
+  final newestFirst = unnamed.sorted((a, b) => (b.time?.created ?? 0).compareTo(a.time?.created ?? 0));
+  for (final session in newestFirst) {
+    final left = waitingPerProject[session.projectID] ?? 0;
+    if (left == 0) continue;
+    waitingPerProject[session.projectID] = left - 1;
+    held.add(session.id);
+  }
+  return held;
+}
+
 /// Each project's launching rows on a surface that leads each project's
 /// sessions with its launches (see [resolveHeldLaunchSessions]).
 ///
 /// [sessionsByProject] holds, in list order, the sessions of each project the
 /// surface lists; every other project keeps its rows (see
-/// [latchLaunchSessions]). [appendedSessionIds] are sessions the surface added
-/// at its end, such as a further page: they count as listed and shown on the
-/// last update already, so they never settle or hold a launch.
+/// [latchLaunchSessions]). Unless [drawsLaunchRows], the surface lists them
+/// without launching rows, and only holds sessions (see
+/// [holdUnseenLaunchSessions]). [appendedSessionIds] are sessions the surface
+/// added at its end, such as a further page: they count as listed and shown on
+/// the last update already, so they never settle or hold a launch.
 Map<String, LaunchRows> resolveProjectLaunchRows({
   required Map<String, LaunchRows> previous,
   required SessionLaunchState launches,
   required Map<String, List<Session>> sessionsByProject,
+  required bool drawsLaunchRows,
   required Set<String> appendedSessionIds,
 }) => {
   for (final projectId in {
@@ -267,6 +339,7 @@ Map<String, LaunchRows> resolveProjectLaunchRows({
       ],
       sessionIds: launches.sessionIds,
       sessions: sessionsByProject[projectId],
+      drawsLaunchRows: drawsLaunchRows,
       appendedSessionIds: appendedSessionIds,
     ),
 };
@@ -276,13 +349,21 @@ LaunchRows _projectLaunchRows({
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required List<Session>? sessions,
+  required bool drawsLaunchRows,
   required Set<String> appendedSessionIds,
 }) => switch (sessions) {
-  final sessions? => resolveHeldLaunchSessions(
+  final sessions? when drawsLaunchRows => resolveHeldLaunchSessions(
     previous: _withAppended(previous: previous, sessions: sessions, appendedSessionIds: appendedSessionIds),
     launching: launching,
     sessionIds: sessionIds,
     sessions: sessions,
+  ),
+  final sessions? => holdUnseenLaunchSessions(
+    previous: previous,
+    launching: launching,
+    sessionIds: sessionIds,
+    sessions: sessions,
+    appendedSessionIds: appendedSessionIds,
   ),
   null => latchLaunchSessions(previous: previous, launching: launching, sessionIds: sessionIds),
 };
