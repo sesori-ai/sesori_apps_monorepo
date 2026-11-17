@@ -88,6 +88,7 @@ void main() {
     when(() => composer.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => composer.composerDraft).thenReturn(ComposerDraft.typed(text: "Summarize yesterday"));
     when(() => composer.offersAttachments).thenReturn(false);
+    when(() => composer.initialAttachments).thenReturn(const []);
     when(() => composer.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
     final purposes = <NewSessionPurpose>[];
 

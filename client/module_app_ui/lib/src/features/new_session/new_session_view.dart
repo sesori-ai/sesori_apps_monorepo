@@ -683,7 +683,9 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     };
     final restoredAttachments = switch (restoringSubmission) {
       NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
-      NewSessionCommandSubmissionSnapshot() || null => const <ComposerAttachment>[],
+      NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
+      // The composer stages these once, as it opens.
+      null => cubit.initialAttachments,
     };
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
