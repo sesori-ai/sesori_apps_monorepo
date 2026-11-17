@@ -30,7 +30,8 @@ The main pane hosts one full-width routed page.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
   Chrome and content therefore never disagree, including after the system switches appearance while the
-  app follows it.
+  app follows it. On macOS the brightness is forced app-wide, so the tray menu and native dialogs follow
+  the in-app mode too; the menu bar icon still follows the menu bar.
 - Expanded width defaults to 288 logical pixels and clamps to 200–420. Dragging
   uses the starting width plus global pointer displacement, preserving overshoot
   when reversing beyond either bound. Changes are immediate; an admitted drag

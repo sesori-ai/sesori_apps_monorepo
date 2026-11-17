@@ -4,76 +4,88 @@ import "package:flutter/foundation.dart" show TargetPlatform, debugDefaultTarget
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:nativeapi/nativeapi.dart" as native show Application, Brightness;
 import "package:screen_retriever/screen_retriever.dart";
 import "package:sesori_desktop/core/platform/flutter_window_host.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:window_manager/window_manager.dart";
 
 const _minimumSize = WindowSize(width: 560, height: 480);
+const ListenerId _listenerId = 7;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const MethodChannel terminationChannel = MethodChannel("sesori/termination/test");
 
   setUpAll(() {
-    registerFallbackValue(const WindowOptions());
-    registerFallbackValue(Rect.zero);
+    registerFallbackValue(native.Brightness.light);
+    registerFallbackValue(TitleBarStyle.normal);
+    registerFallbackValue(Size.zero.toNative());
+    registerFallbackValue(Offset.zero.toNative());
   });
 
-  late _MockWindowManager manager;
-  late _MockScreenRetriever screenRetriever;
+  late _MockWindow window;
+  late _MockDisplayManager displayManager;
+  late _MockApplication application;
+  late _MockDisplay display;
+  late FutureOr<void> Function(WindowEvent) listener;
 
   FlutterWindowHost createHost() => FlutterWindowHost.forTesting(
-    manager: manager,
-    screenRetriever: screenRetriever,
+    findWindow: () => window,
+    displayManager: displayManager,
+    application: application,
     terminationChannel: terminationChannel,
   );
 
+  /// Delivers [event] the way nativeapi does, to the listener the host added.
+  void deliver({required WindowEvent event}) => listener(event);
+
   setUp(() {
-    manager = _MockWindowManager();
-    screenRetriever = _MockScreenRetriever();
-    when(manager.ensureInitialized).thenAnswer((_) async {});
-    when(() => manager.setPreventClose(any())).thenAnswer((_) async {});
-    when(() => manager.waitUntilReadyToShow(any())).thenAnswer((_) async {});
-    when(() => manager.setBounds(any())).thenAnswer((_) async {});
-    when(manager.getBounds).thenAnswer((_) async => const Rect.fromLTWH(40, 60, 900, 700));
-    when(manager.show).thenAnswer((_) async {});
-    when(manager.focus).thenAnswer((_) async {});
-    when(() => manager.setSkipTaskbar(any())).thenAnswer((_) async {});
-    when(manager.hide).thenAnswer((_) async {});
-    when(screenRetriever.getAllDisplays).thenAnswer(
-      (_) async => const <Display>[
-        Display(
-          id: "main",
-          size: Size(1512, 982),
-          visiblePosition: Offset(0, 24),
-          visibleSize: Size(1512, 958),
-        ),
-      ],
-    );
+    window = _MockWindow();
+    displayManager = _MockDisplayManager();
+    application = _MockApplication();
+    display = _MockDisplay();
+    when(() => window.addListener(any())).thenAnswer((invocation) {
+      listener = invocation.positionalArguments.single as FutureOr<void> Function(WindowEvent);
+      return _listenerId;
+    });
+    when(() => window.removeListener(any())).thenReturn(true);
+    when(() => window.isMinimized).thenReturn(false);
+    when(() => window.size).thenReturn(const Size(720, 620).toNative());
+    when(() => window.bounds).thenReturn(const Rect.fromLTWH(40, 60, 900, 700).toNative());
+    when(() => application.setDockIconVisible(any())).thenReturn(true);
+    when(() => application.setBrightness(any())).thenReturn(true);
+    when(() => display.position).thenReturn(Offset.zero.toNative());
+    when(() => display.size).thenReturn(const Size(1512, 982).toNative());
+    when(() => display.workArea).thenReturn(const Rect.fromLTWH(0, 24, 1512, 958).toNative());
+    when(displayManager.getAll).thenReturn(<Display>[display]);
+    when(displayManager.getPrimary).thenReturn(display);
+    when(displayManager.getCursorPosition).thenReturn(const Offset(300, 400).toNative());
   });
 
   test("initializes the default native window and emits typed close requests", () async {
     final host = createHost();
     addTearDown(host.dispose);
+    final request = _MockEventRequest();
+    when(request.cancel).thenReturn(true);
 
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
-    final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
     final event = host.events.first;
-    host.onWindowClose();
+    deliver(event: WindowCloseRequestedEvent(windowId: 1, request: request));
 
     verifyInOrder(<void Function()>[
-      () => manager.ensureInitialized(),
-      () => manager.addListener(host),
-      () => manager.setPreventClose(true),
-      () => manager.setSkipTaskbar(false),
-      () => manager.show(),
-      () => manager.focus(),
+      () => window.addListener(any()),
+      () => window.setSize(const Size(720, 620).toNative(), false),
+      // Centred in the work area of the display under the cursor.
+      () => window.position = const Offset(396, 193).toNative(),
+      () => window.minimumSize = const Size(560, 480).toNative(),
+      () => window.title = "Sesori",
+      () => window.isVisibleInTaskbar = true,
+      () => application.setDockIconVisible(true),
+      () => window.show(),
+      () => window.focus(),
     ]);
-    expect(options.size, const Size(720, 620));
-    expect(options.minimumSize, const Size(560, 480));
-    expect(options.center, isTrue);
-    expect(options.title, "Sesori");
+    verify(request.cancel).called(1);
     expect(host.currentState, WindowHostState.focused);
     expect(await event, WindowHostEvent.closeRequested);
   });
@@ -115,15 +127,26 @@ void main() {
 
     await host.initialize(hidden: false, initialBounds: bounds, minimumSize: _minimumSize);
 
-    final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
-    expect(options.size, const Size(1000, 760));
-    expect(options.center, isFalse);
     verifyInOrder(<void Function()>[
-      () => manager.setBounds(const Rect.fromLTWH(80, 90, 1000, 760)),
-      () => manager.setSkipTaskbar(false),
-      () => manager.show(),
-      () => manager.focus(),
+      () => window.setSize(const Size(1000, 760).toNative(), false),
+      () => window.bounds = const Rect.fromLTWH(80, 90, 1000, 760).toNative(),
+      () => window.isVisibleInTaskbar = true,
+      () => window.show(),
+      () => window.focus(),
     ]);
+    verifyNever(() => window.position = any());
+    verifyNever(window.center);
+  });
+
+  test("centres on the primary display when no display is under the cursor", () async {
+    when(displayManager.getCursorPosition).thenReturn(const Offset(-500, -500).toNative());
+    when(() => display.workArea).thenReturn(const Rect.fromLTWH(1512, 0, 1920, 1040).toNative());
+    final host = createHost();
+    addTearDown(host.dispose);
+
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+
+    verify(() => window.position = const Offset(2112, 210).toNative()).called(1);
   });
 
   test("hidden initialization never shows or focuses the window", () async {
@@ -133,21 +156,35 @@ void main() {
     await host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize);
 
     verifyInOrder(<void Function()>[
-      () => manager.setSkipTaskbar(true),
-      () => manager.hide(),
+      () => window.isVisibleInTaskbar = false,
+      () => application.setDockIconVisible(false),
+      () => window.hide(),
     ]);
-    verifyNever(manager.show);
-    verifyNever(manager.focus);
+    verifyNever(window.show);
+    verifyNever(window.focus);
     expect(host.currentState, WindowHostState.hidden);
+  });
+
+  test("fails when the native window cannot be found", () async {
+    final host = FlutterWindowHost.forTesting(
+      findWindow: () => null,
+      displayManager: displayManager,
+      application: application,
+      terminationChannel: terminationChannel,
+    );
+    addTearDown(host.dispose);
+
+    await expectLater(
+      host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize),
+      throwsStateError,
+    );
   });
 
   test("translates bounds and attached display work areas", () async {
     final host = createHost();
     addTearDown(host.dispose);
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
-    clearInteractions(manager);
-    when(manager.getBounds).thenAnswer((_) async => const Rect.fromLTWH(-20, 30, 860, 640));
-    when(() => manager.setBounds(any())).thenAnswer((_) async {});
+    when(() => window.bounds).thenReturn(const Rect.fromLTWH(-20, 30, 860, 640).toNative());
 
     expect(
       await host.getBounds(),
@@ -161,7 +198,7 @@ void main() {
       ],
     );
 
-    verify(() => manager.setBounds(const Rect.fromLTWH(10, 20, 900, 700))).called(1);
+    verify(() => window.bounds = const Rect.fromLTWH(10, 20, 900, 700).toNative()).called(1);
   });
 
   test("emits move and resize events plus focus and visibility states", () async {
@@ -175,13 +212,15 @@ void main() {
     addTearDown(eventSubscription.cancel);
     addTearDown(stateSubscription.cancel);
 
-    host.onWindowMove();
-    host.onWindowResize();
-    host.onWindowBlur();
-    host.onWindowMinimize();
-    host.onWindowFocus();
-    host.onWindowRestore();
-    host.onWindowFocus();
+    deliver(event: WindowMovedEvent(windowId: 1, newPosition: Offset.zero.toNative()));
+    deliver(event: WindowResizedEvent(windowId: 1, newSize: const Size(800, 600).toNative()));
+    deliver(event: const WindowBlurredEvent(windowId: 1));
+    // Leaving the maximized state is a restore too, and changes nothing.
+    deliver(event: const WindowRestoredEvent(windowId: 1));
+    deliver(event: const WindowMinimizedEvent(windowId: 1));
+    deliver(event: const WindowFocusedEvent(windowId: 1));
+    deliver(event: const WindowRestoredEvent(windowId: 1));
+    deliver(event: const WindowFocusedEvent(windowId: 1));
 
     expect(events, <WindowHostEvent>[WindowHostEvent.moved, WindowHostEvent.resized]);
     expect(
@@ -195,92 +234,102 @@ void main() {
     );
   });
 
-  test("show focuses the restored window and hide updates visibility", () async {
+  test("show restores and focuses the window and hide updates visibility", () async {
     final host = createHost();
     addTearDown(host.dispose);
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
-    clearInteractions(manager);
+    clearInteractions(window);
+    clearInteractions(application);
 
     await host.hide();
     expect(host.currentState, WindowHostState.hidden);
+    when(() => window.isMinimized).thenReturn(true);
     await host.show();
     expect(host.currentState, WindowHostState.focused);
 
     verifyInOrder(<void Function()>[
-      () => manager.hide(),
-      () => manager.setSkipTaskbar(true),
-      () => manager.setSkipTaskbar(false),
-      () => manager.show(),
-      () => manager.focus(),
+      () => window.hide(),
+      () => window.isVisibleInTaskbar = false,
+      () => application.setDockIconVisible(false),
+      () => window.isVisibleInTaskbar = true,
+      () => application.setDockIconVisible(true),
+      () => window.restore(),
+      () => window.show(),
+      () => window.focus(),
     ]);
   });
 
   test("only macOS hides the title bar, and it keeps its traffic lights", () async {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    Future<WindowOptions> optionsOn({required TargetPlatform platform}) async {
+    Future<void> initializeOn({required TargetPlatform platform}) async {
       debugDefaultTargetPlatformOverride = platform;
       final host = createHost();
       addTearDown(host.dispose);
       await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
-      final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
-      return options;
     }
 
-    final macOS = await optionsOn(platform: TargetPlatform.macOS);
-    expect(macOS.titleBarStyle, TitleBarStyle.hidden);
-    expect(macOS.windowButtonVisibility, isTrue);
-    // A null style leaves the native chrome alone.
-    expect((await optionsOn(platform: TargetPlatform.windows)).titleBarStyle, isNull);
-    expect((await optionsOn(platform: TargetPlatform.linux)).titleBarStyle, isNull);
+    await initializeOn(platform: TargetPlatform.macOS);
+    verifyInOrder(<void Function()>[
+      () => window.titleBarStyle = TitleBarStyle.hidden,
+      () => window.isWindowControlButtonsVisible = true,
+    ]);
+    clearInteractions(window);
+    // Windows and Linux keep their native chrome.
+    await initializeOn(platform: TargetPlatform.windows);
+    await initializeOn(platform: TargetPlatform.linux);
+    verifyNever(() => window.titleBarStyle = any());
+    verifyNever(() => window.isWindowControlButtonsVisible = any());
   });
 
   test("drags, zooms and sets the chrome's brightness through the native window", () async {
-    when(manager.startDragging).thenAnswer((_) async {});
-    when(manager.maximize).thenAnswer((_) async {});
-    when(manager.unmaximize).thenAnswer((_) async {});
-    when(() => manager.setBrightness(Brightness.dark)).thenAnswer((_) async {});
     final host = createHost();
     addTearDown(host.dispose);
     await expectLater(host.startDragging(), throwsStateError);
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
 
     await host.startDragging();
-    when(manager.isMaximized).thenAnswer((_) async => false);
+    when(() => window.isMaximized).thenReturn(false);
     await host.toggleZoom();
-    when(manager.isMaximized).thenAnswer((_) async => true);
+    when(() => window.isMaximized).thenReturn(true);
     await host.toggleZoom();
     await host.setBrightness(brightness: WindowBrightness.dark);
 
     verifyInOrder(<void Function()>[
-      () => manager.startDragging(),
-      () => manager.maximize(),
-      () => manager.unmaximize(),
-      () => manager.setBrightness(Brightness.dark),
+      () => window.startDragging(),
+      () => window.maximize(),
+      () => window.unmaximize(),
+      () => application.setBrightness(native.Brightness.dark),
     ]);
   });
 
-  test("failed initialization restores native close handling and removes its listener", () async {
+  test("failed initialization removes its close listener and restores the taskbar entry", () async {
     final host = createHost();
-    when(() => manager.waitUntilReadyToShow(any())).thenThrow(StateError("native window unavailable"));
+    when(() => window.setSize(any(), any())).thenThrow(StateError("native window unavailable"));
 
-    await expectLater(host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize), throwsStateError);
+    await expectLater(host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize), throwsStateError);
 
-    verify(() => manager.removeListener(host)).called(1);
-    verify(() => manager.setPreventClose(false)).called(1);
+    verify(() => window.removeListener(_listenerId)).called(1);
+    verify(() => window.isVisibleInTaskbar = true).called(1);
+    verify(() => application.setDockIconVisible(true)).called(1);
     await host.dispose();
   });
 
-  test("dispose removes its listener and restores native close behavior", () async {
+  test("dispose removes its close listener", () async {
     final host = createHost();
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
 
     await host.dispose();
 
-    verify(() => manager.removeListener(host)).called(1);
-    verify(() => manager.setPreventClose(false)).called(1);
+    verify(() => window.removeListener(_listenerId)).called(1);
   });
 }
 
-class _MockWindowManager() extends Mock implements WindowManager;
+class _MockWindow() extends Mock implements Window;
 
-class _MockScreenRetriever() extends Mock implements ScreenRetriever;
+class _MockDisplayManager() extends Mock implements DisplayManager;
+
+class _MockDisplay() extends Mock implements Display;
+
+class _MockApplication() extends Mock implements native.Application;
+
+class _MockEventRequest() extends Mock implements EventRequest;
