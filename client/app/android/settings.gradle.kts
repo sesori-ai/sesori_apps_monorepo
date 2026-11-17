@@ -21,18 +21,18 @@ plugins {
 
     // https://developer.android.com/studio/releases/gradle-plugin#updating-gradle
     // AGP (gradle plugin)
-    id("com.android.application") version "9.1.1" apply false
+    id("com.android.application") version "9.5.1" apply false
 
     // START: FlutterFire Configuration
     // https://mvnrepository.com/artifact/com.google.gms/google-services
-    id("com.google.gms.google-services") version ("4.4.4") apply false
+    id("com.google.gms.google-services") version ("4.6.0") apply false
     // https://mvnrepository.com/artifact/com.google.firebase/firebase-crashlytics-gradle
-    id("com.google.firebase.crashlytics") version ("3.0.6") apply false
+    id("com.google.firebase.crashlytics") version ("3.0.8") apply false
     // END: FlutterFire Configuration
 
     // Kotlin Version
     // https://plugins.gradle.org/plugin/org.jetbrains.kotlin.android
-    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    id("org.jetbrains.kotlin.android") version "2.4.21" apply false
 }
 
 include(":app")
