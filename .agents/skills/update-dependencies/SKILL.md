@@ -110,6 +110,7 @@ Use `--show-all`: after lockfile regeneration the default output hides already-r
 <step name="2.5">Verify with the Makefiles, never with per-package `dart analyze` by hand:
 
 ```bash
+set -e
 for d in shared bridge client; do (cd $d && make analyze && make test && make codegen); done
 ```
 
@@ -118,6 +119,7 @@ If a generator is added to a skipped package, update `CODEGEN_MODULES` in that M
 CI seeds the `sqlite3` and `pdfium_dart` (pdfrx) build-hook downloads with `.github/actions/prefetch-sqlite3-native/prefetch.py`, which parses those packages' sources and pins archive hashes. `make test` doesn't run it. When either package's resolved version changes, run all four plans, and fix the script (or `PDFIUM_PINS`) in the same PR if one fails:
 
 ```bash
+set -e
 for wp in "bridge host" "client host" "client android" "client ios"; do set -- $wp
   GITHUB_OUTPUT=/dev/null python3 .github/actions/prefetch-sqlite3-native/prefetch.py --workspace $1 --platform $2 plan; done
 ```
@@ -238,7 +240,7 @@ actionlint   # compare against main's output; no new findings
 <step name="7.2">The Fedora digest in `Dockerfile.linux-signing` and the Ubuntu/Debian/Arch digests in `desktop-qualification.yml` and `desktop-linux-session.yml` are named qualification fixtures, and a test keeps the shared ones in step. Refresh their digests every run. Moving a fixture to a new distro **release** renames a documented matrix row (fixture names, evidence files, `docs/desktop/downloads.md`), so it needs a decision and a dispatch qualification run.
 </step>
 
-<step name="7.3">Build every Dockerfile locally (`docker build -f <file> .`). `Dockerfile.linux-repository` builds `FROM sesori-linux-signing`, so build that image first.
+<step name="7.3">Build every Dockerfile locally from its own build context: `docker build -f .github/scripts/Dockerfile.linux-signing -t sesori-linux-signing .github/scripts` and the same for `Dockerfile.linux-repository`, then `docker build -f tool/release_scheduler/Dockerfile tool/release_scheduler` (its `COPY` lines expect that directory as the context). Check each Dockerfile's `COPY` paths when picking the context. `Dockerfile.linux-repository` builds `FROM sesori-linux-signing`, so build that image first.
 </step>
 </phase>
 
