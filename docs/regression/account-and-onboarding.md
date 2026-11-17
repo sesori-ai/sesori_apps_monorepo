@@ -47,7 +47,9 @@ participates.
 - Startup routing uses local session state only, with no network work at splash.
 - Client tokens are encrypted rows in shared persistence with an OS-protected
   master; auth owns runtime mutations. Tokens refresh before expiry and are
-  cleared on logout; the connection follows logout. Startup reads stored tokens
+  cleared on logout; the connection follows logout. Logout also drops every
+  unsent composer draft (text, images, files and a staged command), so the
+  next account's composers open empty. Startup reads stored tokens
   once before deciding whether validation or a fresh login is needed. Logout
   fences in-flight login, refresh, and restore results, so none can re-save
   credentials or emit authenticated after local sign-out. The auth server's

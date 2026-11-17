@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
+import "package:sesori_auth/sesori_auth.dart";
 
 import "../api/storage/composer_draft_storage.dart";
 import "../foundation/models/composer/composer_attachment.dart";
@@ -10,13 +13,30 @@ import "../foundation/models/composer/restored_composer.dart";
 typedef KeptNewSessionComposer = ({List<ComposerAttachment> attachments, String? commandName});
 
 @lazySingleton
-class ComposerDraftRepository({required final ComposerDraftStorage _storage}) {
+class ComposerDraftRepository({
+  required final ComposerDraftStorage _storage,
+  required final AuthSession _authSession,
+}) {
+  late final StreamSubscription<AuthState> _authStates;
+
   /// Attachments handed to sessions whose page has not opened yet; see
   /// [handOverForSession]. Their bytes are never persisted.
   final Map<String, List<ComposerAttachment>> _handedOverAttachments = {};
 
   /// See [keepForNewSession]. Like the attachments above, never persisted.
   KeptNewSessionComposer? _keptForNewSession;
+
+  this {
+    // Drafts belong to the account that typed them: signing out drops their
+    // text, images and files, so the next account's composer never opens with
+    // them.
+    _authStates = _authSession.authStateStream.listen((state) {
+      if (state is! AuthUnauthenticated) return;
+      _storage.clearAll();
+      _handedOverAttachments.clear();
+      _keptForNewSession = null;
+    });
+  }
 
   /// The new-session composer's draft: one for every project, since the
   /// composer keeps what it holds when its project changes.
@@ -73,4 +93,7 @@ class ComposerDraftRepository({required final ComposerDraftStorage _storage}) {
       _storage.write(key: key, draft: draft);
     }
   }
+
+  @disposeMethod
+  Future<void> dispose() => _authStates.cancel();
 }

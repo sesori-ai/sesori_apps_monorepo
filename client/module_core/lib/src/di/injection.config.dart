@@ -338,6 +338,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
+    gh.lazySingleton<_i198.ComposerDraftRepository>(
+      () => _i198.ComposerDraftRepository(
+        storage: gh<_i64.ComposerDraftStorage>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i385.BridgeApi>(
       () => _i385.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
@@ -395,11 +402,6 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i198.ComposerDraftRepository>(
-      () => _i198.ComposerDraftRepository(
-        storage: gh<_i64.ComposerDraftStorage>(),
-      ),
     );
     gh.lazySingleton<_i736.OnDeviceSpeechApi>(
       () => _i736.OnDeviceSpeechApi(source: gh<_i598.OnDeviceSpeechSource>()),

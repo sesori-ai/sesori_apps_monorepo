@@ -14,4 +14,6 @@ class ComposerDraftStorage() {
   }
 
   void clear({required String key}) => _drafts.remove(key);
+
+  void clearAll() => _drafts.clear();
 }

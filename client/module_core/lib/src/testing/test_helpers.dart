@@ -270,7 +270,10 @@ class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
-ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
+ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(
+  storage: ComposerDraftStorage(),
+  authSession: FakeAuthSession(initialState: const AuthState.initial()),
+);
 
 SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(storage: SessionLaunchStorage());
 
