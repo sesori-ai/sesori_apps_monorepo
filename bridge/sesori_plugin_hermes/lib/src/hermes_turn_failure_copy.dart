@@ -9,7 +9,7 @@
 //   - `hermes_cli/anon_auth.py`: `welcome_refusal_copy`,
 //     `_WELCOME_ROUTE_COPY` and `FREE_TIER_OUTAGE_COPY` (the chat forms).
 // Later additions are marked with the release they were copied from (read
-// on 2026-11-12).
+// on 2026-11-12 unless the entry names another date).
 // If Hermes rewords one, that failure shows as plain assistant text again,
 // which is how it showed before these matchers existed. Paste the new
 // template here from the Hermes source.
@@ -59,6 +59,13 @@ const Map<String, String> _turnFailureTemplates = {
       "A firewall/CDN in front of {label} blocked the request before it reached the model, so your key is probably "
       "fine. Set a custom User-Agent via the provider's extra_headers, check the proxy/WAF rules, or switch "
       "providers with /model.\n\nProvider said: {summary}",
+  // 0.23.2 (read on 2026-11-17): a provider's prompt-injection guardrail (`guardrail_blocked`).
+  "guardrail_blocked":
+      "{label}'s prompt-injection guardrail rejected this request before it reached any model, so the key is fine — "
+      "a scanner judged the request payload (tool output is scanned too, not just what you type), and retrying "
+      "won't help. On OpenRouter: Workspaces → Guardrails → set Prompt injection detection to Redact or Flag, or "
+      "allowlist the phrase under Settings → Privacy; the matched pattern names are in the error details.\n\n"
+      "Provider said: {summary}",
   "data_policy_denied":
       "This conversation holds a result from a connected app that may only go to a model that does not train on "
       "your data, and '{model}' on {label} can't promise that. Switch models with /model, run /compress to "
