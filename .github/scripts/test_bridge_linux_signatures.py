@@ -202,7 +202,7 @@ class BridgeLinuxSignaturesTests(unittest.TestCase):
         self.assertIn("contents: read", workflow)
         self.assertNotIn("contents: write", workflow)
         self.assertLess(workflow.index('[[ "$GITHUB_REF" == refs/heads/main ]]'),
-                        workflow.index("uses: actions/checkout@v6"))
+                        workflow.index("uses: actions/checkout@"))
         signing_step = workflow.split("      - name: Sign unchanged archives", 1)[1].split("      - name:", 1)[0]
         self.assertIn("--network none", signing_step)
         self.assertIn("/.github/scripts:/scripts:ro", signing_step)

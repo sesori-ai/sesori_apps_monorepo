@@ -25,15 +25,15 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
       - name: Download private evidence and packages from one selected run
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,7 +62,7 @@ jobs:
             --root build/desktop-release-input --source-sha "$SOURCE_SHA" \
             --channel "$CHANNEL" --run-id "$PACKAGING_RUN" --repository "$REPOSITORY" \
             --tooling-sha "$TOOLING_SHA" --output build/desktop-release-prepared
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: desktop-release-preparation
           path: |

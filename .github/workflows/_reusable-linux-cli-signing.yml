@@ -18,19 +18,19 @@ permissions:
 
 jobs:
   sign:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: linux-signing
     timeout-minutes: 15
     steps:
       - name: Require trusted main workflow
         run: |
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux signing requires main'; exit 1; }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Download this run's native Linux archives
         if: inputs.release_tag == ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: 'sesori-bridge-linux-{x64,arm64}'
           merge-multiple: true
@@ -60,7 +60,7 @@ jobs:
             sesori-linux-signing python3 /scripts/sign_bridge_linux.py \
               --root /artifacts/input --output /artifacts/signed
       - name: Upload signatures and private signing evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sesori-bridge-linux-signatures
           path: build/bridge-linux-signing/signed/*

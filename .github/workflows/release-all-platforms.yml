@@ -49,7 +49,7 @@ jobs:
             echo 'Internal all-platform releases must be dispatched from main.' >&2
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
@@ -258,17 +258,17 @@ jobs:
       VERSION: ${{ needs.preflight.outputs.version }}
       BUILD_NUMBER: ${{ needs.next-build-number.outputs.build_number }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # The notes script is dependency-free pure Dart — a bare Dart SDK
       # installs in seconds, vs minutes for the asdf Flutter toolchain.
       - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
         with:
           sdk: stable
 
       - name: Download bridge artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: sesori-bridge-*

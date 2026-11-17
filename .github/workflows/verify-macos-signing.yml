@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   version:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       value: ${{ steps.version.outputs.value }}
@@ -21,7 +21,7 @@ jobs:
             echo 'macOS signing verification must be dispatched from main.' >&2
             exit 1
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - id: version

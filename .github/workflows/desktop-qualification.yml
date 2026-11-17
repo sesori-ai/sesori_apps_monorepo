@@ -164,7 +164,7 @@ jobs:
       DEBUG_HOST: sesori-linux-debug-${{ github.run_id }}-${{ github.run_attempt }}
       DEBUG_ARCH: ${{ inputs.debug_arch }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Require an explicit retained signed producer and configured federation
@@ -193,7 +193,7 @@ jobs:
             dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools gsettings-desktop-schemas \
             plasma-desktop plasma-workspace kwin-x11 xvfb xauth wmctrl xdotool imagemagick mesa-utils \
             x11vnc rpm gnupg
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.packaging_run }}
@@ -208,7 +208,7 @@ jobs:
             --run-id "$PACKAGING_RUN" --tooling-sha "$GITHUB_SHA" \
             --inputs build/linux-debug-producer --output build/linux-debug-inputs
       - name: Join the ephemeral runner through restricted GitHub OIDC
-        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        uses: tailscale/github-action@064b10558093f38325e838ddea35486bdc6b1d5c # v4.4.0
         with:
           oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
           audience: ${{ vars.TAILSCALE_AUDIENCE }}
@@ -248,7 +248,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
@@ -260,14 +260,14 @@ jobs:
           [[ "$GITHUB_REF" == refs/heads/main && "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
           git merge-base --is-ancestor HEAD origin/main
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: .ci-workflow
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: arm64
       - name: Set up ARM Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
@@ -277,7 +277,7 @@ jobs:
       # return 504.
       # SwiftPM still verifies each artifact against its pinned checksum.
       - name: Cache SwiftPM GitHub release artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
           key: swiftpm-github-artifacts-${{ hashFiles('client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'client/pubspec.lock') }}
@@ -327,7 +327,7 @@ jobs:
           cp build/desktop-qualification/sdk.json build/desktop-macos-gui/gui-sdk.json
           tar -czf 'build/macos-gui-${{ matrix.arch }}.tar.gz' -C build desktop-macos-gui
       - name: Upload same-run GUI handoff without signing credentials
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-gui-${{ matrix.arch }}
           path: build/macos-gui-${{ matrix.arch }}.tar.gz
@@ -336,7 +336,7 @@ jobs:
           retention-days: 14
       - name: Retain ARM compiler evidence, including partial failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-gui-evidence-${{ matrix.arch }}
           path: |
@@ -378,7 +378,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_sha || github.sha }}
           fetch-depth: 0
@@ -391,14 +391,14 @@ jobs:
           [[ "$GITHUB_REF" == refs/heads/main && "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
           git merge-base --is-ancestor HEAD origin/main
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: .ci-workflow
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
       - name: Set up native Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
@@ -433,7 +433,7 @@ jobs:
         with:
           workspace: client
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: inputs.mode == 'macos-packaging'
         with:
           name: desktop-macos-gui-${{ matrix.arch }}
@@ -469,7 +469,7 @@ jobs:
         run: |
           [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a trusted successful packaging run'; exit 1; }
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: inputs.mode == 'macos-gui-probe'
         with:
           github-token: ${{ github.token }}
@@ -524,7 +524,7 @@ jobs:
 
       - name: Upload complete private packages only after verification
         if: inputs.mode == 'macos-packaging'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-packages-${{ matrix.arch }}
           path: |
@@ -535,7 +535,7 @@ jobs:
 
       - name: Upload packaging diagnostics without private signing material
         if: always() && (inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-evidence-${{ matrix.arch }}
           path: |
@@ -573,13 +573,13 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
       - name: Set up native Xcode
         uses: ./.github/actions/setup-xcode
@@ -609,25 +609,25 @@ jobs:
             gh api "repos/$GH_REPO/commits/$source/pulls" \
               > "build/desktop-macos-upgrade/$label/pulls.json"
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_packaging_run }}
           name: desktop-macos-packages-${{ matrix.arch }}
           path: build/desktop-macos-upgrade/previous/packages
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_packaging_run }}
           name: desktop-macos-evidence-${{ matrix.arch }}
           path: build/desktop-macos-upgrade/previous/evidence
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.packaging_run }}
           name: desktop-macos-packages-${{ matrix.arch }}
           path: build/desktop-macos-upgrade/current/packages
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.packaging_run }}
@@ -648,7 +648,7 @@ jobs:
             --output build/desktop-macos-upgrade/result
       - name: Upload private upgrade evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-upgrade-evidence-${{ matrix.arch }}
           path: build/desktop-macos-upgrade/result/
@@ -708,13 +708,13 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.architecture }}
       - name: Set up native Xcode
         uses: ./.github/actions/setup-xcode
@@ -744,25 +744,25 @@ jobs:
             gh api "repos/$GH_REPO/commits/$source/pulls" \
               > "build/desktop-macos-authenticated-upgrade/$label/pulls.json"
           done
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_packaging_run }}
           name: desktop-macos-packages-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/previous/packages
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.previous_packaging_run }}
           name: desktop-macos-evidence-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/previous/evidence
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.packaging_run }}
           name: desktop-macos-packages-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/current/packages
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.packaging_run }}
@@ -799,7 +799,7 @@ jobs:
             --output build/desktop-macos-authenticated-upgrade/result
       - name: Upload bounded private authenticated upgrade evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-macos-authenticated-upgrade-evidence-${{ matrix.architecture }}
           path: build/desktop-macos-authenticated-upgrade/result/
@@ -829,15 +829,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
       # Runs Velopack's vpk, which the packager installs from its pinned, checksum-verified package.
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Bootstrap pinned native SDK
@@ -958,14 +958,14 @@ jobs:
             proofBoundary = 'Silent fixture only; Velopack stops running app processes itself, which is not exercised. Not interactive GUI, account, SmartScreen, signing, update, or product QA'
           } | ConvertTo-Json | Set-Content -Encoding utf8 build/desktop-windows-packaging/installer-probe.json
       - name: Upload private unsigned installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-windows-packages-${{ matrix.arch }}
           path: build/desktop-windows-packaging/Sesori-windows-*.exe
           if-no-files-found: error
           retention-days: 14
       - name: Upload the unpublished Velopack release package and feed
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # Outside the desktop-windows-* pattern, so no release consumer downloads it.
           name: desktop-velopack-windows-${{ matrix.arch }}
@@ -974,7 +974,7 @@ jobs:
           retention-days: 14
       - name: Upload qualification evidence, including partial failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-windows-evidence-${{ matrix.arch }}
           path: |
@@ -1009,8 +1009,8 @@ jobs:
       DOTNET_NOLOGO: '1'
       PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
       # Base filesystem indexes are pinned for both native CPUs. apt/dnf repositories remain rolling.
-      UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
-      DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
+      UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
+      DEBIAN_IMAGE: docker.io/library/debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
     defaults:
       run:
         shell: bash
@@ -1019,7 +1019,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux signing requires main'; exit 1; }
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_sha || github.sha }}
           fetch-depth: 0
@@ -1032,17 +1032,17 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ && "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
           git merge-base --is-ancestor HEAD origin/main
           printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: .ci-workflow
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
       # Runs Velopack's vpk, which the AppImage packager installs from its pinned, checksum-verified package.
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Refuse emulated host and install native build dependencies
@@ -1181,7 +1181,7 @@ jobs:
                 '${{ matrix.arch }}' 'build/desktop-linux-packaging/fedora-44-fixture.json'
             " 2>&1 | tee build/desktop-linux-packaging/fedora-44-fixture.log
       - name: Upload private signed packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-linux-packages-${{ matrix.arch }}
           path: |
@@ -1193,7 +1193,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload the unpublished Velopack release package and feed
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # Outside the desktop-linux-* pattern, so release and session consumers never download it.
           name: desktop-velopack-linux-${{ matrix.arch }}
@@ -1203,7 +1203,7 @@ jobs:
           retention-days: 14
       - name: Upload qualification evidence, including partial failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-linux-evidence-${{ matrix.arch }}
           path: |
@@ -1220,12 +1220,12 @@ jobs:
 
   tooling:
     if: github.event_name != 'workflow_dispatch' || inputs.mode != 'linux-interactive-debug'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
       - run: python -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
       - name: Verify real Linux signatures with a disposable subkey
         run: |
@@ -1263,15 +1263,15 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           path: .ci-workflow
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
       - name: Set up native Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
@@ -1299,7 +1299,7 @@ jobs:
         uses: ./.ci-workflow/.github/actions/prefetch-sqlite3-native
         with:
           workspace: client
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: desktop-macos-gui-${{ matrix.arch }}
           path: build/macos-gui-input
@@ -1335,7 +1335,7 @@ jobs:
           git status --short > build/desktop-qualification/failed-source-status.log
       - name: Upload qualification evidence, including partial failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-qualification-macos-${{ matrix.arch }}
           path: |
@@ -1378,10 +1378,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: '3.15'
           architecture: ${{ matrix.arch }}
 
       # Official pinned framework source bootstraps native Dart on each host.
@@ -1457,7 +1457,7 @@ jobs:
 
       - name: Upload qualification evidence, including partial failures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-qualification-${{ matrix.target }}-${{ matrix.arch }}
           path: |

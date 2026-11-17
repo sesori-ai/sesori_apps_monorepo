@@ -284,7 +284,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
             self.assertIn("${{ secrets." + key + " }}", exercise)
         self.assertNotIn("dbus-run-session --", exercise)
         self.assertIn("python .github/scripts/qualify_desktop_linux_authenticated_upgrade.py exercise", exercise)
-        upload = child.split("uses: actions/upload-artifact@v4", 1)[1]
+        upload = child.split("uses: actions/upload-artifact@", 1)[1]
         self.assertIn("build/linux-authenticated-evidence/result.json\n", upload)
         self.assertIn("build/linux-authenticated-evidence/failure.json\n", upload)
         self.assertNotIn("*", upload)

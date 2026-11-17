@@ -15,10 +15,10 @@ runs:
       env:
         # Xcode 27 runs only on Apple silicon hosts; native Intel jobs retain 26.6.
         # ARM64 consumers use the xcode-27 image, not the macos-latest alias.
-        XCODE_VERSION: ${{ runner.arch == 'ARM64' && '27.0' || '26.6' }}
+        XCODE_VERSION: ${{ runner.arch == 'ARM64' && '27.2' || '26.6' }}
       run: echo "version=$XCODE_VERSION" >> "$GITHUB_OUTPUT"
 
     - name: Select Xcode
-      uses: maxim-lobanov/setup-xcode@v1
+      uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
       with:
         xcode-version: ${{ steps.version.outputs.version }}

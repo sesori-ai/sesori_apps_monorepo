@@ -61,7 +61,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Store notes need every commit since the previous successful release.
           fetch-depth: 0
@@ -85,15 +85,15 @@ jobs:
       # also follows the iOS SwiftPM pins, like the macOS cache's.
       # SwiftPM still verifies each artifact against its pinned checksum.
       - name: Cache SwiftPM GitHub release artifacts
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
           key: swiftpm-github-artifacts-ios-${{ hashFiles('client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'client/pubspec.lock') }}
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
         with:
-          ruby-version: '3.3'
+          ruby-version: '4.0'
           bundler-cache: true
           working-directory: client/app/ios
 
@@ -161,7 +161,7 @@ jobs:
 
       - name: Upload build artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-build-logs-${{ github.run_id }}
           path: |

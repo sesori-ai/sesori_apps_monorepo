@@ -165,7 +165,7 @@ class LinuxSigningTests(unittest.TestCase):
         self.assertEqual(env_file.read_text(), f"FEDORA_IMAGE={expected_image}\n")
         self.assertIn("environment: linux-signing", linux)
         guard = '[[ "$GITHUB_REF" == refs/heads/main ]]'
-        self.assertLess(linux.index(guard), linux.index("uses: actions/checkout@v6"))
+        self.assertLess(linux.index(guard), linux.index("uses: actions/checkout@"))
         signing_step = linux.split("      - name: Sign and verify qualified Linux packages\n", 1)[1].split(
             "      - name:", 1)[0]
         self.assertIn("--network none", signing_step)
