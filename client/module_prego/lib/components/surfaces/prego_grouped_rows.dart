@@ -8,6 +8,7 @@ library;
 import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_interaction_scope.dart";
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 import "../loaders/prego_activity_indicator.dart";
 
@@ -133,7 +134,7 @@ class const PregoGroupedRow({
           final glyph? => SizedBox(
             width: _leadingSlotWidth,
             child: AnimatedSwitcher(
-              duration: _busySwapDuration,
+              duration: prefersReducedMotion(context) ? Duration.zero : _busySwapDuration,
               child: busy
                   ? SizedBox.square(
                       dimension: glyphSize,
