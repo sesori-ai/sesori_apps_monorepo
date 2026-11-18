@@ -284,7 +284,8 @@ reaches the backend so the turn continues.
 - While a session waits on the user, a pale amber needs-you card docks above
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
-  request's opening line in ordinary text, a command included, and a tap anywhere
+  request's opening line in ordinary text, a command included, with its Markdown
+  resolved (a `**bold**` warning shows without its asterisks), and a tap anywhere
   on it, like its Answer or Review button, opens the existing modal. The card itself looks the same on phone
   and desktop: light uses a cream warning fill and dark a faint amber tint, each
   with a soft amber border, an amber icon and a darker amber label that clears
