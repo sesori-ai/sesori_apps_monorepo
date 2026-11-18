@@ -42,6 +42,5 @@ final class ClaudeSesoriMcpConfigApi({
   }
 
   /// Removes [config] and its folder.
-  Future<void> delete({required ClaudeSesoriMcpConfigFile config}) =>
-      File(config.path).parent.delete(recursive: true);
+  Future<void> delete({required ClaudeSesoriMcpConfigFile config}) => File(config.path).parent.delete(recursive: true);
 }
