@@ -22,6 +22,7 @@ typedef OmpPluginFactory = OmpPlugin Function({
   required String? scratchDirectory,
   required AcpProcessFactory processFactory,
   required ServerClock clock,
+  required SesoriMcpAccess? sesoriMcp,
 });
 
 typedef OmpRuntimeAssetServiceFactory = OmpRuntimeAssetService Function({
@@ -53,12 +54,14 @@ OmpPlugin _buildOmpPlugin({
   required String? scratchDirectory,
   required AcpProcessFactory processFactory,
   required ServerClock clock,
+  required SesoriMcpAccess? sesoriMcp,
 }) => OmpPlugin(
   binaryPath: binaryPath,
   launchDirectory: launchDirectory,
   scratchDirectory: scratchDirectory,
   processFactory: processFactory,
   clock: clock,
+  sesoriMcp: sesoriMcp,
 );
 
 final class const OmpPluginDescriptor({
@@ -111,6 +114,9 @@ final class const OmpPluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  @override
+  bool get injectsSesoriTools => true;
 
   @override
   bool get namesCommandInvocations => true;
@@ -332,6 +338,7 @@ final class const OmpPluginDescriptor({
       scratchDirectory: null,
       processFactory: hostProcessAcpFactory(processes: host.processes, environment: host.environment),
       clock: host.clock,
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     return await AcpBridgePlugin.start(plugin: omp, host: host, connectBudget: _connectBudget);
   }

@@ -24,6 +24,7 @@ void main() {
       final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       plugin = TestAcpPlugin(
+        sesoriMcp: null,
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),

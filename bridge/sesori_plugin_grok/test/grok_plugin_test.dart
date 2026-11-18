@@ -79,6 +79,7 @@ void main() {
       fake = FakeAcpProcess();
       handledFrameIds = {};
       plugin = GrokPlugin(
+        sesoriMcp: null,
         binaryPath: "grok",
         launchDirectory: "/repo",
         environment: const {},
@@ -279,6 +280,7 @@ void main() {
           }),
         );
       final restarted = GrokPlugin(
+        sesoriMcp: null,
         binaryPath: "grok",
         launchDirectory: "/repo",
         environment: {"HOME": home.path},
@@ -312,6 +314,7 @@ void main() {
       addTearDown(() => home.deleteSync(recursive: true));
       await plugin.dispose();
       plugin = GrokPlugin(
+        sesoriMcp: null,
         binaryPath: "grok",
         launchDirectory: "/repo",
         environment: {"HOME": home.path},
@@ -1355,6 +1358,7 @@ void main() {
       fake = FakeAcpProcess();
       handledFrameIds.clear();
       plugin = GrokPlugin(
+        sesoriMcp: null,
         binaryPath: "grok",
         launchDirectory: "/fallback",
         environment: {"HOME": home.path},

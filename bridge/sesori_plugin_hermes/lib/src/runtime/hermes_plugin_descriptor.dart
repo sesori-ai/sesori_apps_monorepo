@@ -449,6 +449,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       commandTracker: commandTracker,
       processFactory: processFactory,
       hermesSessionOptionsService: sessionOptionsService,
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
     // first mobile request is fast and the status reflects reality; a

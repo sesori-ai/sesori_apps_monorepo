@@ -37,6 +37,7 @@ class CursorPlugin._({
   required super.commandTracker,
   required final CursorSessionCleanupService _sessionCleanupService,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
@@ -46,6 +47,7 @@ class CursorPlugin._({
     required String launchDirectory,
     required String? apiEndpoint,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
     required CursorSessionCleanupService sessionCleanupService,
   }) {
     final launchSpec = CursorBinary.launchSpec(
@@ -107,6 +109,7 @@ class CursorPlugin._({
       childSessionTracker: childSessionTracker,
       mapper: mapper,
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
       catalogService: catalogService,
       catalogCommandListener: catalogCommandListener,
       catalogTracker: catalogTracker,

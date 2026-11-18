@@ -48,6 +48,7 @@ void main() {
       launchEnvironments = [];
       var spawnCount = 0;
       plugin = CopilotPlugin(
+        sesoriMcp: null,
         binaryPath: "/opt/copilot",
         launchDirectory: "/repo",
         environment: const {"COPILOT_HOME": "/state/copilot"},

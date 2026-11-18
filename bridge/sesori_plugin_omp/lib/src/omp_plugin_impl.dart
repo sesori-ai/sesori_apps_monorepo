@@ -38,12 +38,14 @@ class OmpPlugin._({
   required final OmpSteeringService _steeringService,
   required final OmpEventMapper _ompEventMapper,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
     required String binaryPath,
     required String launchDirectory,
     required String? scratchDirectory,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
     required ServerClock clock,
   }) {
     final launchSpec = OmpBinary.launchSpec(
@@ -110,6 +112,7 @@ class OmpPlugin._({
       cleanupService: cleanupService,
       steeringService: OmpSteeringService(repository: OmpSteeringRepository(api: catalogApi)),
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
     );
   }
 

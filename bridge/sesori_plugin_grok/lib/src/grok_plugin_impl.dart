@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "api/grok_acp_api.dart";
 import "api/grok_session_store_api.dart";
 import "api/models/grok_session_notification_dto.dart";
+import "grok_approval_registry.dart";
 import "grok_binary.dart";
 import "grok_event_mapper.dart";
 import "grok_identity.dart";
@@ -26,6 +27,7 @@ class GrokPlugin._({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
   required GrokSessionOptionsService grokSessionOptionsService,
   required final GrokSessionService _sessionService,
 }) extends AcpPlugin {
@@ -34,6 +36,7 @@ class GrokPlugin._({
     required String launchDirectory,
     required Map<String, String> environment,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
     required ServerClock clock,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
@@ -79,6 +82,7 @@ class GrokPlugin._({
       ),
       commandTracker: commandTracker,
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
       grokSessionOptionsService: grokSessionOptionsService,
       sessionService: GrokSessionService(
         catalogRepository: sessionCatalogRepository,
@@ -109,6 +113,15 @@ class GrokPlugin._({
     client: client,
     parentSessionId: sessionId,
     childSessionId: childSessionId,
+  );
+
+  @override
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => GrokApprovalRegistry(
+    client: client,
+    emit: emitActivityEvent,
+    idGenerator: null,
+    activeSessionResolver: () => activeTurnSessionId,
+    holdsSesoriServer: holdsSesoriServer,
   );
 
   @override

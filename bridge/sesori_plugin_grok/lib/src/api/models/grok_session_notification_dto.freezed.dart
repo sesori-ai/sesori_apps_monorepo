@@ -1509,4 +1509,487 @@ as String?,
 
 }
 
+
+/// @nodoc
+mixin _$GrokPermissionRequestDto {
+
+ GrokPermissionToolCallDto? get toolCall;
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokPermissionRequestDtoCopyWith<GrokPermissionRequestDto> get copyWith => _$GrokPermissionRequestDtoCopyWithImpl<GrokPermissionRequestDto>(this as GrokPermissionRequestDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GrokPermissionRequestDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPermissionRequestDto&&(identical(other.toolCall, _this.toolCall) || other.toolCall == _this.toolCall));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GrokPermissionRequestDto;
+  return Object.hash(runtimeType,_this.toolCall);
+}
+
+@override
+String toString() {
+  final _this = this as GrokPermissionRequestDto;
+  return 'GrokPermissionRequestDto(toolCall: ${_this.toolCall})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokPermissionRequestDtoCopyWith<$Res>  {
+  factory $GrokPermissionRequestDtoCopyWith(GrokPermissionRequestDto value, $Res Function(GrokPermissionRequestDto) _then) = _$GrokPermissionRequestDtoCopyWithImpl;
+@useResult
+$Res call({
+ GrokPermissionToolCallDto? toolCall
+});
+
+
+$GrokPermissionToolCallDtoCopyWith<$Res>? get toolCall;
+
+}
+/// @nodoc
+class _$GrokPermissionRequestDtoCopyWithImpl<$Res>
+    implements $GrokPermissionRequestDtoCopyWith<$Res> {
+  _$GrokPermissionRequestDtoCopyWithImpl(this._self, this._then);
+
+  final GrokPermissionRequestDto _self;
+  final $Res Function(GrokPermissionRequestDto) _then;
+
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? toolCall = freezed,}) {
+  return _then(GrokPermissionRequestDto(
+toolCall: freezed == toolCall ? _self.toolCall : toolCall // ignore: cast_nullable_to_non_nullable
+as GrokPermissionToolCallDto?,
+  ));
+}
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokPermissionToolCallDtoCopyWith<$Res>? get toolCall {
+    if (_self.toolCall == null) {
+    return null;
+  }
+
+  return $GrokPermissionToolCallDtoCopyWith<$Res>(_self.toolCall!, (value) {
+    return _then(_self.copyWith(toolCall: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokPermissionRequestDto implements GrokPermissionRequestDto {
+  const _GrokPermissionRequestDto({required this.toolCall});
+  factory _GrokPermissionRequestDto.fromJson(Map<String, dynamic> json) => _$GrokPermissionRequestDtoFromJson(json);
+
+@override final  GrokPermissionToolCallDto? toolCall;
+
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokPermissionRequestDtoCopyWith<_GrokPermissionRequestDto> get copyWith => __$GrokPermissionRequestDtoCopyWithImpl<_GrokPermissionRequestDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokPermissionRequestDto&&(identical(other.toolCall, toolCall) || other.toolCall == toolCall));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,toolCall);
+}
+
+@override
+String toString() {
+    return 'GrokPermissionRequestDto(toolCall: $toolCall)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokPermissionRequestDtoCopyWith<$Res> implements $GrokPermissionRequestDtoCopyWith<$Res> {
+  factory _$GrokPermissionRequestDtoCopyWith(_GrokPermissionRequestDto value, $Res Function(_GrokPermissionRequestDto) _then) = __$GrokPermissionRequestDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ GrokPermissionToolCallDto? toolCall
+});
+
+
+@override $GrokPermissionToolCallDtoCopyWith<$Res>? get toolCall;
+
+}
+/// @nodoc
+class __$GrokPermissionRequestDtoCopyWithImpl<$Res>
+    implements _$GrokPermissionRequestDtoCopyWith<$Res> {
+  __$GrokPermissionRequestDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokPermissionRequestDto _self;
+  final $Res Function(_GrokPermissionRequestDto) _then;
+
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? toolCall = freezed,}) {
+  return _then(_GrokPermissionRequestDto(
+toolCall: freezed == toolCall ? _self.toolCall : toolCall // ignore: cast_nullable_to_non_nullable
+as GrokPermissionToolCallDto?,
+  ));
+}
+
+/// Create a copy of GrokPermissionRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokPermissionToolCallDtoCopyWith<$Res>? get toolCall {
+    if (_self.toolCall == null) {
+    return null;
+  }
+
+  return $GrokPermissionToolCallDtoCopyWith<$Res>(_self.toolCall!, (value) {
+    return _then(_self.copyWith(toolCall: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$GrokPermissionToolCallDto {
+
+@JsonKey(name: "_meta") GrokToolCallMetaDto? get meta; GrokUseToolInputDto? get rawInput;
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokPermissionToolCallDtoCopyWith<GrokPermissionToolCallDto> get copyWith => _$GrokPermissionToolCallDtoCopyWithImpl<GrokPermissionToolCallDto>(this as GrokPermissionToolCallDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GrokPermissionToolCallDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPermissionToolCallDto&&(identical(other.meta, _this.meta) || other.meta == _this.meta)&&(identical(other.rawInput, _this.rawInput) || other.rawInput == _this.rawInput));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GrokPermissionToolCallDto;
+  return Object.hash(runtimeType,_this.meta,_this.rawInput);
+}
+
+@override
+String toString() {
+  final _this = this as GrokPermissionToolCallDto;
+  return 'GrokPermissionToolCallDto(meta: ${_this.meta}, rawInput: ${_this.rawInput})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokPermissionToolCallDtoCopyWith<$Res>  {
+  factory $GrokPermissionToolCallDtoCopyWith(GrokPermissionToolCallDto value, $Res Function(GrokPermissionToolCallDto) _then) = _$GrokPermissionToolCallDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "_meta") GrokToolCallMetaDto? meta, GrokUseToolInputDto? rawInput
+});
+
+
+$GrokToolCallMetaDtoCopyWith<$Res>? get meta;$GrokUseToolInputDtoCopyWith<$Res>? get rawInput;
+
+}
+/// @nodoc
+class _$GrokPermissionToolCallDtoCopyWithImpl<$Res>
+    implements $GrokPermissionToolCallDtoCopyWith<$Res> {
+  _$GrokPermissionToolCallDtoCopyWithImpl(this._self, this._then);
+
+  final GrokPermissionToolCallDto _self;
+  final $Res Function(GrokPermissionToolCallDto) _then;
+
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? meta = freezed,Object? rawInput = freezed,}) {
+  return _then(GrokPermissionToolCallDto(
+meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
+as GrokToolCallMetaDto?,rawInput: freezed == rawInput ? _self.rawInput : rawInput // ignore: cast_nullable_to_non_nullable
+as GrokUseToolInputDto?,
+  ));
+}
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokToolCallMetaDtoCopyWith<$Res>? get meta {
+    if (_self.meta == null) {
+    return null;
+  }
+
+  return $GrokToolCallMetaDtoCopyWith<$Res>(_self.meta!, (value) {
+    return _then(_self.copyWith(meta: value));
+  });
+}/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokUseToolInputDtoCopyWith<$Res>? get rawInput {
+    if (_self.rawInput == null) {
+    return null;
+  }
+
+  return $GrokUseToolInputDtoCopyWith<$Res>(_self.rawInput!, (value) {
+    return _then(_self.copyWith(rawInput: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokPermissionToolCallDto implements GrokPermissionToolCallDto {
+  const _GrokPermissionToolCallDto({@JsonKey(name: "_meta") required this.meta, required this.rawInput});
+  factory _GrokPermissionToolCallDto.fromJson(Map<String, dynamic> json) => _$GrokPermissionToolCallDtoFromJson(json);
+
+@override@JsonKey(name: "_meta") final  GrokToolCallMetaDto? meta;
+@override final  GrokUseToolInputDto? rawInput;
+
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokPermissionToolCallDtoCopyWith<_GrokPermissionToolCallDto> get copyWith => __$GrokPermissionToolCallDtoCopyWithImpl<_GrokPermissionToolCallDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokPermissionToolCallDto&&(identical(other.meta, meta) || other.meta == meta)&&(identical(other.rawInput, rawInput) || other.rawInput == rawInput));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,meta,rawInput);
+}
+
+@override
+String toString() {
+    return 'GrokPermissionToolCallDto(meta: $meta, rawInput: $rawInput)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokPermissionToolCallDtoCopyWith<$Res> implements $GrokPermissionToolCallDtoCopyWith<$Res> {
+  factory _$GrokPermissionToolCallDtoCopyWith(_GrokPermissionToolCallDto value, $Res Function(_GrokPermissionToolCallDto) _then) = __$GrokPermissionToolCallDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: "_meta") GrokToolCallMetaDto? meta, GrokUseToolInputDto? rawInput
+});
+
+
+@override $GrokToolCallMetaDtoCopyWith<$Res>? get meta;@override $GrokUseToolInputDtoCopyWith<$Res>? get rawInput;
+
+}
+/// @nodoc
+class __$GrokPermissionToolCallDtoCopyWithImpl<$Res>
+    implements _$GrokPermissionToolCallDtoCopyWith<$Res> {
+  __$GrokPermissionToolCallDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokPermissionToolCallDto _self;
+  final $Res Function(_GrokPermissionToolCallDto) _then;
+
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? meta = freezed,Object? rawInput = freezed,}) {
+  return _then(_GrokPermissionToolCallDto(
+meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
+as GrokToolCallMetaDto?,rawInput: freezed == rawInput ? _self.rawInput : rawInput // ignore: cast_nullable_to_non_nullable
+as GrokUseToolInputDto?,
+  ));
+}
+
+/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokToolCallMetaDtoCopyWith<$Res>? get meta {
+    if (_self.meta == null) {
+    return null;
+  }
+
+  return $GrokToolCallMetaDtoCopyWith<$Res>(_self.meta!, (value) {
+    return _then(_self.copyWith(meta: value));
+  });
+}/// Create a copy of GrokPermissionToolCallDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokUseToolInputDtoCopyWith<$Res>? get rawInput {
+    if (_self.rawInput == null) {
+    return null;
+  }
+
+  return $GrokUseToolInputDtoCopyWith<$Res>(_self.rawInput!, (value) {
+    return _then(_self.copyWith(rawInput: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$GrokUseToolInputDto {
+
+@JsonKey(name: "tool_name") String? get toolName;
+/// Create a copy of GrokUseToolInputDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokUseToolInputDtoCopyWith<GrokUseToolInputDto> get copyWith => _$GrokUseToolInputDtoCopyWithImpl<GrokUseToolInputDto>(this as GrokUseToolInputDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GrokUseToolInputDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokUseToolInputDto&&(identical(other.toolName, _this.toolName) || other.toolName == _this.toolName));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GrokUseToolInputDto;
+  return Object.hash(runtimeType,_this.toolName);
+}
+
+@override
+String toString() {
+  final _this = this as GrokUseToolInputDto;
+  return 'GrokUseToolInputDto(toolName: ${_this.toolName})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokUseToolInputDtoCopyWith<$Res>  {
+  factory $GrokUseToolInputDtoCopyWith(GrokUseToolInputDto value, $Res Function(GrokUseToolInputDto) _then) = _$GrokUseToolInputDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "tool_name") String? toolName
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokUseToolInputDtoCopyWithImpl<$Res>
+    implements $GrokUseToolInputDtoCopyWith<$Res> {
+  _$GrokUseToolInputDtoCopyWithImpl(this._self, this._then);
+
+  final GrokUseToolInputDto _self;
+  final $Res Function(GrokUseToolInputDto) _then;
+
+/// Create a copy of GrokUseToolInputDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? toolName = freezed,}) {
+  return _then(GrokUseToolInputDto(
+toolName: freezed == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokUseToolInputDto implements GrokUseToolInputDto {
+  const _GrokUseToolInputDto({@JsonKey(name: "tool_name") required this.toolName});
+  factory _GrokUseToolInputDto.fromJson(Map<String, dynamic> json) => _$GrokUseToolInputDtoFromJson(json);
+
+@override@JsonKey(name: "tool_name") final  String? toolName;
+
+/// Create a copy of GrokUseToolInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokUseToolInputDtoCopyWith<_GrokUseToolInputDto> get copyWith => __$GrokUseToolInputDtoCopyWithImpl<_GrokUseToolInputDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokUseToolInputDto&&(identical(other.toolName, toolName) || other.toolName == toolName));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,toolName);
+}
+
+@override
+String toString() {
+    return 'GrokUseToolInputDto(toolName: $toolName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokUseToolInputDtoCopyWith<$Res> implements $GrokUseToolInputDtoCopyWith<$Res> {
+  factory _$GrokUseToolInputDtoCopyWith(_GrokUseToolInputDto value, $Res Function(_GrokUseToolInputDto) _then) = __$GrokUseToolInputDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: "tool_name") String? toolName
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokUseToolInputDtoCopyWithImpl<$Res>
+    implements _$GrokUseToolInputDtoCopyWith<$Res> {
+  __$GrokUseToolInputDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokUseToolInputDto _self;
+  final $Res Function(_GrokUseToolInputDto) _then;
+
+/// Create a copy of GrokUseToolInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? toolName = freezed,}) {
+  return _then(_GrokUseToolInputDto(
+toolName: freezed == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
 // dart format on
