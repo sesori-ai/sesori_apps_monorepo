@@ -76,8 +76,8 @@ enum SesoriMcpTool({
     readOnly: false,
     description:
         "Propose a new scheduled task in this session's project (or project_id) with this session's harness. The "
-        "user allows or rejects it on their phone; nothing is created until they allow it. A session has one "
-        "request waiting at a time: a new one replaces it.",
+        "user allows or rejects it on their phone; nothing is created until they allow it. Each request is "
+        "answered separately, so several can wait at once.",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -100,9 +100,9 @@ enum SesoriMcpTool({
     wireName: "update_task",
     readOnly: false,
     description:
-        "Propose changes to a scheduled task. $_leaveOutUnchanged The user allows or rejects it on their phone, "
-        "and a change the user makes to the task first wins. A session has one request waiting at a time: a new "
-        "one replaces it.",
+        "Propose changes to a scheduled task. $_leaveOutUnchanged The user allows or rejects it on their phone. "
+        "Each request is answered separately, so several can wait at once; if the fields it changes are changed "
+        "first, nothing is applied.",
     inputSchema: {
       "type": "object",
       "properties": {
