@@ -308,6 +308,33 @@ void main() {
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
     });
 
+    test("works since a Sesori notice that opened the turn, not the earlier prompt", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          const MessageWithParts(
+            info: Message.assistant(
+              id: "notice",
+              sessionID: "s",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              sender: MessageSender.sesori,
+              time: MessageTime(created: 9000, completed: null),
+            ),
+            parts: [MessagePart.text(id: "notice-text", sessionID: "s", messageID: "notice", text: "Allowed")],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+    });
+
     test("works since a follow-up sent before any loaded prompt", () {
       final activity = _activity(
         messages: [

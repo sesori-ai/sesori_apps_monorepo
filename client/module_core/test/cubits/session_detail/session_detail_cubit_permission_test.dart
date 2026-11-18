@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/permission_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -11,6 +12,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/feedback_prompt_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -330,6 +332,75 @@ void main() {
           pluginId: "plugin-1",
         ),
       ).called(1);
+    });
+
+    test("a reply the bridge answers with 409 settles the request without a reload or failure", () async {
+      final api = _MockPermissionApi();
+      when(
+        () => api.replyToPermission(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+          reply: any(named: "reply"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse<void>.error(
+          ApiError.nonSuccessCode(
+            errorCode: 409,
+            rawErrorString: "The task changed since this was proposed, so nothing was applied.",
+          ),
+        ),
+      );
+      final feedbackPromptService = FakeFeedbackPromptService();
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: PermissionRepository(api: api),
+        failureReporter: mockFailureReporter,
+        feedbackPromptService: feedbackPromptService,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSourceRepository);
+
+      sessionEvents.add(
+        const SesoriPermissionAsked(
+          requestID: "perm-123",
+          sessionID: sessionId,
+          displaySessionId: null,
+          tool: "update_task",
+          description: "Pause Daily digest",
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.pendingPermissions.isNotEmpty,
+        description: "permission added",
+      );
+
+      final result = await cubit.replyToPermission(
+        requestId: "perm-123",
+        sessionId: sessionId,
+        reply: PermissionReply.once,
+      );
+
+      expect(result, isTrue);
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((state) => state.pendingPermissions, "pendingPermissions", isEmpty),
+      );
+      expect(feedbackPromptService.failedSessions, isEmpty);
+      verifyNever(
+        () => mockSourceRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      );
     });
 
     test("replyToPermission rejects a non-throwing error response without reporting success", () async {
@@ -882,6 +953,8 @@ void main() {
   });
 }
 
+class _MockPermissionApi() extends Mock implements PermissionApi;
+
 SessionDetailCubit _buildCubit({
   required String sessionId,
   required String projectId,
@@ -889,7 +962,7 @@ SessionDetailCubit _buildCubit({
   required SessionDetailLoadService loadService,
   required SessionRepository promptDispatcher,
   required MockNotificationCanceller notificationCanceller,
-  required MockPermissionRepository permissionRepository,
+  required PermissionRepository permissionRepository,
   required MockFailureReporter failureReporter,
   ProductAnalyticsService? productAnalyticsService,
   FeedbackPromptService? feedbackPromptService,

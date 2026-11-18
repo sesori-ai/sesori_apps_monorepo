@@ -14,7 +14,8 @@ sealed class const TranscriptActivity();
 final class const TranscriptActivityWorking({
   /// When the newest prompt was sent, in epoch ms: one still waiting for its
   /// message from when the bridge accepted it, else the running turn's latest
-  /// user message (a message sent mid-turn, else the prompt that opened it).
+  /// user message (a message sent mid-turn, else the prompt that opened it), or
+  /// a newer Sesori notice that opened it.
   /// Null while this surface's prompt is still on its way to the bridge, when
   /// the harness reports no time, or when no user message has loaded.
   required final int? sinceMs,
@@ -100,12 +101,17 @@ class const TranscriptActivityBuilder() {
     if (messages.lastOrNull?.info is MessageError) return const TranscriptActivityIdle();
     // While busy, the last turn is the running one, and it runs to the newest
     // message. So whatever the turn's shape, its latest user message is the
-    // newest shown one: a message sent mid-turn, else the opener. One the
-    // bridge held first keeps its acceptance time, which is earlier, so the
-    // count never steps back when the harness takes it.
-    final latestUser = messages
-        .where((message) => message.info is MessageUser && message.hasRenderableUserContent)
-        .lastOrNull;
+    // newest shown one: a message sent mid-turn, else the opener. A Sesori
+    // notice opens a turn of its own without being a user message, so a newer
+    // one counts instead. One the bridge held first keeps its acceptance time,
+    // which is earlier, so the count never steps back when the harness takes it.
+    final latestUser = messages.where((message) {
+      return switch (message.info) {
+        MessageUser() => message.hasRenderableUserContent,
+        MessageAssistant(sender: MessageSender.sesori) => true,
+        MessageAssistant() || MessageError() => false,
+      };
+    }).lastOrNull;
     final created = latestUser?.info.time?.created;
     int? acceptedAt;
     if (latestUser?.info case MessageUser(:final promptId?) when promptId == lastHeldPrompt?.promptId) {

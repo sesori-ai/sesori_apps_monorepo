@@ -68,7 +68,8 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   two requests changing the same field the second loses), when the result no longer validates, or when the task is
   gone, Allow applies nothing and the reply route answers 409 "The task changed since this was proposed". An allowed
   run now that does not start (failed or skipped) also answers 409, and its run record holds the reason. Reject drops
-  it.
+  it. The app takes either 409 as an answer: the sheet closes and the next waiting request opens as after any answer,
+  with no failure alert and no chat reload.
 - Once the user answers, Sesori messages the session that shows the request (the root session for a sub-agent's) with
   the outcome: a bridge notice the app shows as a Sesori row with only its summary, addressed to the user, for
   example "You allowed pausing “Nightly”." or "You didn’t allow running “Nightly” now.". The agent also reads guidance:
@@ -150,6 +151,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 - The run note shows in the app, reaches a command's arguments, or reaches a harness that has no Sesori server.
 - A proposal changes a task before the user allows it, YOLO answers it, Allow applies a change after the user edited
   the task, or the request text omits the Approve everything warning.
+- Allowing a stale request shows a failure alert, reloads the chat ("Getting everything ready…"), or leaves the next
+  waiting request unopened.
 - Transcript text, a prompt or tool arguments show up in bridge logs.
 - An outcome notice stops a running turn, lands while a question or permission waits on the user, reaches an
   archived session, shows as the user's own message, or moves the session's last user message time.
