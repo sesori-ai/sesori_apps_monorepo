@@ -95,21 +95,26 @@ extension PluginMessageWithPartsMapper on PluginMessageWithParts {
         // The notice the bridge sent shows as the Sesori row its live echo
         // became, as no harness records the bridge's stamp.
         (PluginMessageUser(:final id, :final time), [final text]) when parseSessionNotice(text: text.text) != null =>
-          Message.assistant(
-            id: id,
-            sessionID: sessionId,
-            agent: null,
-            modelID: null,
-            providerID: null,
-            sender: MessageSender.sesori,
-            time: time.toShared(),
-          ),
+          sesoriNoticeRow(id: id, sessionId: sessionId, time: time.toShared()),
         (final message, _) => message.toSharedMessage(sessionId: sessionId),
       },
       parts: [for (final part in visibleParts) part.withoutNoticeFrame().toShared(sessionId: sessionId)],
     );
   }
 }
+
+/// The row a Sesori notice prompt shows as: Sesori's own message, live and on
+/// reload alike.
+Message sesoriNoticeRow({required String id, required String sessionId, required MessageTime? time}) =>
+    Message.assistant(
+      id: id,
+      sessionID: sessionId,
+      agent: null,
+      modelID: null,
+      providerID: null,
+      sender: MessageSender.sesori,
+      time: time,
+    );
 
 extension PluginMessagePartSystemContext on PluginMessagePart {
   /// This part without the bridge's notes, or `null` when the notes were

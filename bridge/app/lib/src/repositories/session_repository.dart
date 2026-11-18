@@ -42,7 +42,6 @@ import "package:sesori_shared/sesori_shared.dart"
         MessageHandoffNotSent,
         MessageHandoffSent,
         MessagePartSubtask,
-        MessageSender,
         MessageUser,
         MessageWithParts,
         ProjectActivitySummary,
@@ -670,15 +669,7 @@ class SessionRepository({
         case PromptStampHandoff(:final handoff):
           return message.copyWith(handoff: handoff);
         case PromptStampNotice():
-          return Message.assistant(
-            id: message.id,
-            sessionID: sessionID,
-            agent: null,
-            modelID: null,
-            providerID: null,
-            sender: MessageSender.sesori,
-            time: message.time,
-          );
+          return sesoriNoticeRow(id: message.id, sessionId: sessionID, time: message.time);
         case PromptStampCommand() || null:
           break;
       }
