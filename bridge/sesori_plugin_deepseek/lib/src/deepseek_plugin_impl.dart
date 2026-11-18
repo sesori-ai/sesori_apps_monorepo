@@ -20,6 +20,7 @@ class DeepSeekPlugin({
   required final DeepSeekSessionOptionsService deepSeekSessionOptionsService,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends AcpPlugin {
   this
     : super(

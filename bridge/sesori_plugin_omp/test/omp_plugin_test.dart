@@ -19,6 +19,7 @@ void main() {
       events = [];
       spawns = 0;
       plugin = OmpPlugin(
+        sesoriMcp: null,
         binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
         scratchDirectory: null,
@@ -1360,6 +1361,7 @@ void main() {
       final processes = <FakeAcpProcess>[];
       final specs = <AcpLaunchSpec>[];
       plugin = OmpPlugin(
+        sesoriMcp: null,
         binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
         scratchDirectory: null,

@@ -13,6 +13,7 @@ class TestAcpPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends AcpPlugin {
   @override
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({

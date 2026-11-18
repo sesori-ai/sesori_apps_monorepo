@@ -546,6 +546,7 @@ void main() {
     final fake = FakeAcpProcess();
     final childSessions = AcpChildSessionTracker();
     final plugin = _OwnCatalogAcpPlugin(
+      sesoriMcp: null,
       id: "own",
       agentDisplayName: "Own",
       launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: []),
@@ -587,6 +588,7 @@ class _OwnCatalogAcpPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends TestAcpPlugin {
   @override
   Future<List<PluginCommand>> replayCommands({required String sessionId}) async => const [

@@ -102,6 +102,7 @@ void main() {
       sessionCleanupService = _FakeCursorSessionCleanupService();
       handledFrameIds = {};
       plugin = CursorPlugin(
+        sesoriMcp: null,
         launchDirectory: "/repo",
         apiEndpoint: null,
         processFactory: (_) async => fake,
@@ -1504,6 +1505,7 @@ void main() {
     setUp(() {
       fakes.clear();
       plugin = CursorPlugin(
+        sesoriMcp: null,
         launchDirectory: cwd,
         apiEndpoint: null,
         sessionCleanupService: _FakeCursorSessionCleanupService(),

@@ -20,6 +20,7 @@ class AntigravityPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
   required final AntigravitySessionOptionsService _options,
   required final AntigravitySessionMetadataService _metadata,
   required final String _geminiHome,

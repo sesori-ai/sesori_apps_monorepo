@@ -22,6 +22,7 @@ DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
     compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
   );
   return DeepSeekPlugin(
+    sesoriMcp: null,
     launchSpec: const AcpLaunchSpec(
       includeParentEnvironment: true,
       command: "deepseek",

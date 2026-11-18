@@ -51,7 +51,7 @@ class HermesAcpApi({
   Future<AcpNewSessionResult> newScratchSession({
     required String cwd,
     required Duration timeout,
-  }) => AcpAgentApi(client: _openScratchClient()).newSession(cwd: cwd, timeout: timeout);
+  }) => AcpAgentApi(client: _openScratchClient()).newSession(cwd: cwd, sesoriMcp: null, timeout: timeout);
 
   Future<void> setModel({
     required AcpStdioClient liveClient,

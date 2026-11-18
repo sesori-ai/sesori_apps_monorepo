@@ -17,6 +17,7 @@ class _PromptHookPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends TestAcpPlugin {
   @override
   Map<String, dynamic> outboundPromptMeta({
@@ -38,6 +39,7 @@ class _GatedSelectionPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 
@@ -196,6 +198,7 @@ void main() {
       final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final hookPlugin = _PromptHookPlugin(
+        sesoriMcp: null,
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
@@ -492,6 +495,7 @@ void main() {
         childSessions: childSessionTracker,
       );
       final orderedPlugin = TestAcpPlugin(
+        sesoriMcp: null,
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"], includeParentEnvironment: true),
@@ -1278,6 +1282,7 @@ void main() {
       final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final gated = _GatedSelectionPlugin(
+        sesoriMcp: null,
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),

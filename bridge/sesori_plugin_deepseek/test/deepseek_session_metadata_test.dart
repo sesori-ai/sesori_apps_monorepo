@@ -27,6 +27,7 @@ void main() {
       compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
     );
     final plugin = DeepSeekPlugin(
+      sesoriMcp: null,
       launchSpec: const AcpLaunchSpec(
         includeParentEnvironment: true,
         command: "deepseek",

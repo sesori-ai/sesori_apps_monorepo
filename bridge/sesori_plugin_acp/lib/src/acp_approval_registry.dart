@@ -220,6 +220,13 @@ class AcpApprovalRegistry({
   /// paired key for [choiceKey], or null; the base pairs none.
   String? elicitationCustomAnswerKey({required String choiceKey, required Set<String> propertyKeys}) => null;
 
+  /// Override to answer a permission request with allow-once without asking
+  /// the user, for a tool call the harness identifies by structured fields as
+  /// one of Sesori's own MCP tools in [sessionId]. The bridge asks the user
+  /// before any Sesori tool changes a task, so a harness prompt would only ask
+  /// twice. The base allows nothing.
+  bool preAllowsPermission({required String sessionId, required Map<String, dynamic> params}) => false;
+
   /// Override to handle harness-specific server requests. Returns true when
   /// handled; the base handles none.
   bool handleExtensionRequest(AcpServerRequest request) => false;
@@ -244,6 +251,15 @@ class AcpApprovalRegistry({
       Log.w("[acp] permission request with no resolvable session; auto-cancelling");
       _respond(request.id, const {
         "outcome": {"outcome": "cancelled"},
+      });
+      return;
+    }
+    final allowOnce = preAllowsPermission(sessionId: sessionId, params: request.params)
+        ? _selectOptionId(options: _optionsFrom(request.params), reply: PluginPermissionReply.once)
+        : null;
+    if (allowOnce != null) {
+      _respond(request.id, {
+        "outcome": {"outcome": "selected", "optionId": allowOnce},
       });
       return;
     }

@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:acp_plugin/acp_testing.dart";
 import "package:grok_plugin/grok_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -461,6 +462,9 @@ class _StartPluginHost({
   @override required final String? provisionedRuntimePath,
   @override required final StartAbortSignal startAborted,
 }) implements PluginHost {
+  @override
+  final SesoriMcpAccess sesoriMcp = RecordingSesoriMcpAccess(enabled: true);
+
   @override
   Map<String, String> get environment => const {"HOME": "/tmp"};
 

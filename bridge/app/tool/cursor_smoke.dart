@@ -15,6 +15,7 @@ Future<void> main(List<String> args) async {
   final prompt = args.isEmpty ? "Reply with exactly: hello world" : args.first;
   final cwd = Directory.current.path;
   final plugin = CursorPlugin(
+    sesoriMcp: null,
     launchDirectory: cwd,
     apiEndpoint: null,
     processFactory: defaultAcpProcessFactory,

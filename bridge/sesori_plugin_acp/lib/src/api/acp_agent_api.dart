@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginAuthenticationRecovery, PluginAuthenticationRequiredException;
+    show PluginAuthenticationRecovery, PluginAuthenticationRequiredException, SesoriMcpLaunch;
 
 import "../acp_protocol.dart";
 import "../acp_stdio_client.dart";
@@ -136,15 +136,17 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     }
   }
 
-  /// `session/new` in [cwd]. Throws [FormatException] when the agent answers
-  /// without a session id, since nothing can be done with such a session.
+  /// `session/new` in [cwd], with Sesori's MCP server when [sesoriMcp] is
+  /// given. Throws [FormatException] when the agent answers without a session
+  /// id, since nothing can be done with such a session.
   Future<AcpNewSessionResult> newSession({
     required String cwd,
+    required SesoriMcpLaunch? sesoriMcp,
     required Duration timeout,
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionNew,
-      params: _sessionActivationParams(cwd: cwd),
+      params: _sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp),
       timeout: timeout,
     );
     return AcpNewSessionResult.fromJson(_asJson(raw));
@@ -157,16 +159,30 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   Future<AcpNewSessionResult> loadSession({
     required String sessionId,
     required String cwd,
+    required SesoriMcpLaunch? sesoriMcp,
     required Duration timeout,
-  }) => _activateSession(method: AcpMethods.sessionLoad, sessionId: sessionId, cwd: cwd, timeout: timeout);
+  }) => _activateSession(
+    method: AcpMethods.sessionLoad,
+    sessionId: sessionId,
+    cwd: cwd,
+    sesoriMcp: sesoriMcp,
+    timeout: timeout,
+  );
 
   /// `session/resume` — re-activates [sessionId] without history replay. Same
   /// result contract as [loadSession].
   Future<AcpNewSessionResult> resumeSession({
     required String sessionId,
     required String cwd,
+    required SesoriMcpLaunch? sesoriMcp,
     required Duration timeout,
-  }) => _activateSession(method: AcpMethods.sessionResume, sessionId: sessionId, cwd: cwd, timeout: timeout);
+  }) => _activateSession(
+    method: AcpMethods.sessionResume,
+    sessionId: sessionId,
+    cwd: cwd,
+    sesoriMcp: sesoriMcp,
+    timeout: timeout,
+  );
 
   /// One `session/list` page; [cwd] null means the unfiltered form.
   Future<AcpSessionListResult> listSessionsPage({
@@ -221,13 +237,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String method,
     required String sessionId,
     required String cwd,
+    required SesoriMcpLaunch? sesoriMcp,
     required Duration timeout,
   }) async {
     final raw = await client.request(
       method: method,
       params: {
         "sessionId": sessionId,
-        ..._sessionActivationParams(cwd: cwd),
+        ..._sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp),
       },
       timeout: timeout,
     );
@@ -235,11 +252,27 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     return AcpNewSessionResult.forSession(sessionId: sessionId, json: raw.cast<String, dynamic>());
   }
 
-  /// The bridge never injects MCP servers, but the field is required by the
-  /// spec for `session/new`, `session/load`, and `session/resume`.
-  static Map<String, dynamic> _sessionActivationParams({required String cwd}) => {
+  /// `mcpServers` is required by the spec for `session/new`, `session/load`
+  /// and `session/resume`. It carries only Sesori's own server, as a streamable
+  /// HTTP entry whose token rides in a header, never in the URL. Agents that
+  /// replace a session's servers on every activation (OMP, Grok) get the same
+  /// list each time, so callers pass the session's one launch throughout.
+  static Map<String, dynamic> _sessionActivationParams({
+    required String cwd,
+    required SesoriMcpLaunch? sesoriMcp,
+  }) => {
     "cwd": cwd,
-    "mcpServers": const <Object?>[],
+    "mcpServers": [
+      if (sesoriMcp != null)
+        {
+          "type": "http",
+          "name": sesoriMcp.serverName,
+          "url": sesoriMcp.url,
+          "headers": [
+            {"name": "Authorization", "value": "Bearer ${sesoriMcp.token}"},
+          ],
+        },
+    ],
   };
 
   static Map<String, dynamic> _asJson(Object? raw) =>

@@ -74,7 +74,7 @@ class CursorCatalogProbeApi({required final AcpStdioClient _client}) {
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) => _initializedApi().loadSession(sessionId: sessionId, cwd: cwd, timeout: timeout);
+  }) => _initializedApi().loadSession(sessionId: sessionId, cwd: cwd, sesoriMcp: null, timeout: timeout);
 
   Future<void> reset() async {
     if (_disposed) return;

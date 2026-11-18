@@ -12,6 +12,7 @@ class _PolicyPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends TestAcpPlugin {
   this
     : super(
@@ -71,6 +72,7 @@ void main() {
       final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       return _PolicyPlugin(
+        sesoriMcp: null,
         forms: forms,
         closeTimeout: closeTimeout,
         childSessionTracker: childSessionTracker,

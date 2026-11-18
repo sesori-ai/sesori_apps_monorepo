@@ -92,6 +92,11 @@ abstract class AcpPlugin({
   /// notification listener and served by [getCommands].
   required final AcpCommandTracker _commandTracker,
   required final AcpProcessFactory _processFactory,
+
+  /// Sesori's own MCP server for the sessions this plugin activates, or null
+  /// when the harness does not take it (its descriptor's
+  /// `injectsSesoriTools` is false).
+  required final SesoriMcpAccess? _sesoriMcp,
 }) extends BridgeDerivedProjectsPluginApi {
   @override
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
@@ -122,6 +127,11 @@ abstract class AcpPlugin({
   /// the right project, and the activity summary groups correctly. In-memory
   /// only: the bridge's stored rows are the durable attribution.
   final Map<String, String> _sessionDirectories = {};
+
+  /// sessionId -> the Sesori MCP launch its activations carry. One launch per
+  /// session for the bridge's lifetime, so every `session/load` re-sends the
+  /// same server and a reload never re-mints a token.
+  final Map<String, SesoriMcpLaunch> _sesoriMcpLaunches = {};
 
   // Cold-recovery fallbacks must never block a later repository-backed prime.
   final Map<String, String> _recoveredSessionDirectories = {};
@@ -206,6 +216,10 @@ abstract class AcpPlugin({
     }
     return _lastTurnSessionId;
   }
+
+  /// Whether [sessionId] was given Sesori's MCP server, so a `sesori_bridge`
+  /// tool in it is Sesori's own rather than a user server of that name.
+  bool holdsSesoriServer({required String sessionId}) => _sesoriMcpLaunches.containsKey(sessionId);
 
   /// Sessions resident in the live agent process (created via `session/new` or
   /// resumed via `session/load` this run). ACP agents hold sessions in memory
@@ -1066,10 +1080,17 @@ abstract class AcpPlugin({
     // derives from it; the bridge's stored row folds a worktree session back
     // under the project the user opened.
     final canonicalDirectory = normalizeProjectDirectory(directory: directory);
+    final sesoriMcp = _sesoriMcp;
+    final launch = sesoriMcp?.mint();
     final session = await AcpAgentApi(client: client).newSession(
       cwd: directory,
+      sesoriMcp: launch,
       timeout: AcpAgentApi.defaultRequestTimeout,
     );
+    if (sesoriMcp != null && launch != null) {
+      sesoriMcp.bind(launch: launch, backendSessionId: session.sessionId);
+      _sesoriMcpLaunches[session.sessionId] = launch;
+    }
     final createdAt = DateTime.now().millisecondsSinceEpoch;
     _sessionDirectories[session.sessionId] = canonicalDirectory;
     eventMapper.setSessionProject(sessionId: session.sessionId, directory: canonicalDirectory);
@@ -1579,6 +1600,7 @@ abstract class AcpPlugin({
       final result = await AcpAgentApi(client: client).loadSession(
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
+        sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
         timeout: const Duration(minutes: 2),
       );
       // A resume load: capture the catalog + this session's own model, but do
@@ -1622,6 +1644,7 @@ abstract class AcpPlugin({
       final result = await AcpAgentApi(client: client).resumeSession(
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
+        sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
         timeout: const Duration(minutes: 2),
       );
       // The resume result carries the modes/configOptions catalog (and this
@@ -1641,6 +1664,19 @@ abstract class AcpPlugin({
       Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
     }
     return null;
+  }
+
+  /// The Sesori MCP launch [sessionId] is activated with on the live process:
+  /// the one it already has, or a launch minted and bound now. Null when this
+  /// harness takes no Sesori server or the user turned agent tools off.
+  SesoriMcpLaunch? _sesoriMcpLaunchFor({required String sessionId}) {
+    final existing = _sesoriMcpLaunches[sessionId];
+    if (existing != null) return existing;
+    final sesoriMcp = _sesoriMcp;
+    final launch = sesoriMcp?.mint();
+    if (sesoriMcp == null || launch == null) return null;
+    sesoriMcp.bind(launch: launch, backendSessionId: sessionId);
+    return _sesoriMcpLaunches[sessionId] = launch;
   }
 
   /// Queues a prompt turn on [sessionId]'s serialization chain. Accepted
@@ -2693,9 +2729,11 @@ abstract class AcpPlugin({
       });
       final AcpNewSessionResult result;
       try {
+        // A short-lived history process runs no turn, so it gets no server.
         result = await AcpAgentApi(client: replayClient).loadSession(
           sessionId: sessionId,
           cwd: directoryForSession(sessionId: sessionId),
+          sesoriMcp: null,
           timeout: const Duration(minutes: 2),
         );
       } on AcpRpcException catch (error, stackTrace) {
@@ -2800,9 +2838,12 @@ abstract class AcpPlugin({
         received++;
         collector.consumeNotification(notification: notification);
       };
+      // The live process keeps the session after this load, and some agents
+      // replace its servers on every load, so it re-sends the session's own.
       final result = await AcpAgentApi(client: await _connectedClient()).loadSession(
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
+        sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
         timeout: const Duration(minutes: 2),
       );
       captureSessionConfig(result, sessionId: sessionId, fromNewSession: false);

@@ -225,6 +225,7 @@ class _Harness({required final Directory directory, required final List<_Process
   final specs = <AcpLaunchSpec>[];
   final events = <BridgeSseEvent>[];
   late final plugin = const AntigravityPluginComposer().compose(
+    sesoriMcp: null,
     pair: const AntigravityRuntimePair(
       serverPath: "/synthetic/antigravity-acp",
       harnessPath: "/synthetic/localharness_external",

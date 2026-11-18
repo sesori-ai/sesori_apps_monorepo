@@ -472,11 +472,13 @@ void main() {
               required String? apiEndpoint,
               required AcpProcessFactory processFactory,
               required CursorSessionCleanupService sessionCleanupService,
+              required SesoriMcpAccess? sesoriMcp,
             }) {
               return CursorPlugin(
                 binaryPath: binaryPath,
                 launchDirectory: launchDirectory,
                 apiEndpoint: apiEndpoint,
+                sesoriMcp: sesoriMcp,
                 processFactory: (_) async {
                   final process = FakeAcpProcess();
                   spawnedAcpProcesses.add(process);

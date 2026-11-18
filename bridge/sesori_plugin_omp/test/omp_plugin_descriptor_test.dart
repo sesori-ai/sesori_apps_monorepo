@@ -310,11 +310,13 @@ void main() {
               required scratchDirectory,
               required processFactory,
               required clock,
+              required sesoriMcp,
             }) => OmpPlugin(
               binaryPath: binaryPath,
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
               clock: clock,
+              sesoriMcp: sesoriMcp,
               processFactory: (_) async => throw StateError("connection failed"),
             ),
         buildRuntimeAssetService: _runtimeAssets,
@@ -330,6 +332,40 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
+    test("hands the host's Sesori MCP access to the plugin it starts", () async {
+      final host = _Host(processes: _Processes(), clock: const _ImmediateClock());
+      SesoriMcpAccess? received;
+      final descriptor = OmpPluginDescriptor(
+        buildPlugin:
+            ({
+              required binaryPath,
+              required launchDirectory,
+              required scratchDirectory,
+              required processFactory,
+              required clock,
+              required sesoriMcp,
+            }) {
+              received = sesoriMcp;
+              return OmpPlugin(
+                binaryPath: binaryPath,
+                launchDirectory: launchDirectory,
+                scratchDirectory: scratchDirectory,
+                clock: clock,
+                sesoriMcp: sesoriMcp,
+                processFactory: (_) async => throw StateError("connection failed"),
+              );
+            },
+        buildRuntimeAssetService: _runtimeAssets,
+        connectBudget: const Duration(milliseconds: 20),
+        versionProbeTimeout: const Duration(seconds: 1),
+      );
+      final plugin = await descriptor.start(host);
+
+      expect(descriptor.injectsSesoriTools, isTrue);
+      expect(received, same(host.sesoriMcp));
+      await plugin.shutdown(budget: null);
+    });
+
     test("recovers from degraded after a later successful ACP connection", () async {
       final process = FakeAcpProcess();
       var attempts = 0;
@@ -341,11 +377,13 @@ void main() {
               required scratchDirectory,
               required processFactory,
               required clock,
+              required sesoriMcp,
             }) => OmpPlugin(
               binaryPath: binaryPath,
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
               clock: clock,
+              sesoriMcp: sesoriMcp,
               processFactory: (_) async {
                 if (attempts++ == 0) throw StateError("connection failed");
                 return process;
@@ -420,6 +458,9 @@ class _Host({
 }) implements PluginHost {
   @override
   final StartAbortSignal startAborted = startAborted ?? StartAbortSignal.never;
+
+  @override
+  final SesoriMcpAccess sesoriMcp = RecordingSesoriMcpAccess(enabled: true);
 
   @override
   PluginConfig get config => const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"});

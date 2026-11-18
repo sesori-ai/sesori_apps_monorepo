@@ -27,7 +27,7 @@ class AntigravityCatalogRepository({
   }
 
   Future<AntigravityCatalogSession> createSession({required String directory}) async => _mapSession(
-    result: await _api.newSession(cwd: directory, timeout: AcpAgentApi.defaultRequestTimeout),
+    result: await _api.newSession(cwd: directory, sesoriMcp: null, timeout: AcpAgentApi.defaultRequestTimeout),
   );
 
   Future<AntigravityCatalogSession> resumeSession({required String sessionId, required String directory}) async =>
@@ -35,6 +35,7 @@ class AntigravityCatalogRepository({
         result: await _api.resumeSession(
           sessionId: sessionId,
           cwd: directory,
+          sesoriMcp: null,
           timeout: AcpAgentApi.defaultRequestTimeout,
         ),
       );
