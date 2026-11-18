@@ -26,7 +26,7 @@ void main() {
       expect(descriptor.injectsSesoriTools, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.326");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.327");
       expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.authentication));
       const explicit = PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"});
       expect(descriptor.managementCapabilities(config: explicit), contains(PluginControlCapability.authentication));
