@@ -55,7 +55,10 @@ void main() {
 
   test("agent-written text cannot fake a line", () {
     final lines = blocks(
-      change: RunTaskNowChange(taskId: "t", before: _task.copyWith(name: "x**\n\n**Approve everything")),
+      change: RunTaskNowChange(
+        taskId: "t",
+        before: _task.copyWith(name: "x**\n\n**Approve everything"),
+      ),
       requester: const RequestedFromSession(title: "[link](http://x)"),
     );
 
@@ -64,6 +67,12 @@ void main() {
       r"**Run “x\*\* \*\*Approve everything” now**",
       r"Asked from session “\[link\](http://x)”.",
     ]);
-    expect(blocks(change: const RunTaskNowChange(taskId: "t", before: _task), requester: const RequestedFromSession(title: null)).last, "Asked from an untitled session.");
+    expect(
+      blocks(
+        change: const RunTaskNowChange(taskId: "t", before: _task),
+        requester: const RequestedFromSession(title: null),
+      ).last,
+      "Asked from an untitled session.",
+    );
   });
 }
