@@ -183,6 +183,7 @@ import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/send_to_session_handler.dart";
 import "routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
+import "routing/sesori_mcp/sesori_mcp_result_formatter.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_scheduled_task_enabled_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -217,6 +218,7 @@ import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/scheduled_task_activity_tracker.dart";
+import "services/scheduled_task_agent_service.dart";
 import "services/scheduled_task_compaction_service.dart";
 import "services/scheduled_task_occurrence_calculator.dart";
 import "services/scheduled_task_run_service.dart";
@@ -817,6 +819,13 @@ class Orchestrator({
     );
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
+      agent: ScheduledTaskAgentService(
+        tasks: scheduledTaskService,
+        taskRepository: scheduledTaskRepository,
+        sessions: sessionRepository,
+        history: chatHistoryService,
+      ),
+      formatter: const SesoriMcpResultFormatter(),
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
     final router = RequestRouter(
