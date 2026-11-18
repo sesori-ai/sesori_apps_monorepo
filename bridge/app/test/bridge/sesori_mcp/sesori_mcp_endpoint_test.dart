@@ -674,11 +674,45 @@ void main() {
         await tasks.update(taskId: taskId, definition: change(await definition()));
       }
 
+      // A second project the task can move to.
+      await insertTestSession(
+        db: db,
+        sessionId: "s-other",
+        backendSessionId: "backend-s-other",
+        pluginId: _definition.pluginId,
+        projectId: "/other",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
       for (final (tool, arguments, userEdit) in [
         (
           "update_task",
           {"task_id": taskId, "name": "Evening summary"},
           () => edit((definition) => definition.copyWith(name: "Night summary")),
+        ),
+        // Shown for one project, it never applies in another.
+        (
+          "update_task",
+          {"task_id": taskId, "prompt": "Summarize the week"},
+          () => edit((definition) => definition.copyWith(projectId: "/other")),
+        ),
+        // A schedule was shown in its time zone.
+        (
+          "update_task",
+          {
+            "task_id": taskId,
+            "schedule": {
+              "kind": "daily",
+              "time": {"hour": 10, "minute": 0},
+            },
+          },
+          () => edit((definition) => definition.copyWith(timeZone: "America/New_York")),
         ),
         ("pause_task", {"task_id": taskId}, () => tasks.setEnabled(taskId: taskId, enabled: false)),
         (
@@ -688,7 +722,7 @@ void main() {
         ),
       ]) {
         await tasks.setEnabled(taskId: taskId, enabled: true);
-        await edit((definition) => definition.copyWith(approvalMode: TaskApprovalMode.ask));
+        await edit((definition) => definition.copyWith(projectId: "/repo", approvalMode: TaskApprovalMode.ask));
         expect(
           (await call(tool: tool, arguments: arguments)).isError,
           isFalse,

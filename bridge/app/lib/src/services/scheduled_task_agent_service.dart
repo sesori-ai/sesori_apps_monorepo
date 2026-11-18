@@ -249,12 +249,16 @@ class ScheduledTaskAgentService({
     if (record == null) return const AgentApprovalStale();
     final current = record.definition;
     final before = change.before;
-    // The request's Approve everything warning was worked out from this mode,
-    // so only a pause, which is always safe, outlives a change to it.
-    final sameWarning = current.approvalMode == before.approvalMode;
+    // The request was described for this project and harness, and its Approve
+    // everything warning was worked out from this mode, so only a pause, which
+    // is always safe, outlives a change to any of them.
+    final sameContext =
+        current.projectId == before.projectId &&
+        current.pluginId == before.pluginId &&
+        current.approvalMode == before.approvalMode;
     switch (change) {
       case UpdateTaskChange():
-        final rebased = sameWarning ? _rebased(change: change, current: current) : null;
+        final rebased = sameContext ? _rebased(change: change, current: current) : null;
         if (rebased == null) return const AgentApprovalStale();
         try {
           await _tasks.update(taskId: taskId, definition: rebased);
@@ -268,10 +272,10 @@ class ScheduledTaskAgentService({
       case SetTaskEnabledChange(enabled: true):
         // A resume request shows the schedule it restarts.
         final sameSchedule = current.schedule == before.schedule && current.timeZone == before.timeZone;
-        if (record.enabled || !sameWarning || !sameSchedule) return const AgentApprovalStale();
+        if (record.enabled || !sameContext || !sameSchedule) return const AgentApprovalStale();
         await _tasks.setEnabled(taskId: taskId, enabled: true);
       case RunTaskNowChange():
-        if (!sameWarning) return const AgentApprovalStale();
+        if (!sameContext) return const AgentApprovalStale();
         final run = await _runner.runNow(taskId: taskId);
         if (run.outcome is! ScheduledTaskRunStarted) return const AgentApprovalRunNotStarted();
     }
@@ -294,15 +298,19 @@ class ScheduledTaskAgentService({
       return proposed;
     }
 
+    // A schedule reads in its time zone, and a variant belongs to its model, so
+    // each pair is approved, and checked, as one value.
+    final (schedule, timeZone) = edited((definition) => (definition.schedule, definition.timeZone));
+    final (model, variant) = edited((definition) => (definition.model, definition.variant));
     final rebased = current.copyWith(
       name: edited((definition) => definition.name),
       prompt: edited((definition) => definition.prompt),
-      schedule: edited((definition) => definition.schedule),
-      timeZone: edited((definition) => definition.timeZone),
+      schedule: schedule,
+      timeZone: timeZone,
       missedRunPolicy: edited((definition) => definition.missedRunPolicy),
       runMode: edited((definition) => definition.runMode),
-      model: edited((definition) => definition.model),
-      variant: edited((definition) => definition.variant),
+      model: model,
+      variant: variant,
       approvalMode: edited((definition) => definition.approvalMode),
     );
     return conflicts ? null : rebased;
