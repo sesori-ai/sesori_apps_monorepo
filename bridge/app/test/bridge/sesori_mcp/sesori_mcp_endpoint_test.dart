@@ -8,6 +8,8 @@ import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
+import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
@@ -15,13 +17,17 @@ import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_result_formatter.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
+import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
+import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
@@ -56,6 +62,10 @@ void main() {
   late String taskId;
   late String runId;
   late String token;
+  late ScheduledTaskService tasks;
+  late ScheduledTaskAgentService agent;
+  late _FakeRunService runner;
+  late List<AgentApprovalEvent> approvalEvents;
   var nextId = 1;
 
   setUpAll(tz_data.initializeTimeZones);
@@ -73,7 +83,7 @@ void main() {
     history = createTestChatHistory(sessionRepository: sessions);
     final taskRepository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
     final now = DateTime.utc(2026, 11, 15, 10);
-    final tasks = ScheduledTaskService(
+    tasks = ScheduledTaskService(
       repository: taskRepository,
       sessionRepository: sessions,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -83,14 +93,31 @@ void main() {
     grants = SesoriMcpGrantRepository(random: Random.secure());
     server = await SesoriMcpServer.bindLoopback();
     addTearDown(server.close);
+    final approvals = AgentApprovalRepository(random: Random.secure());
+    addTearDown(approvals.dispose);
+    approvalEvents = [];
+    final approvalSubscription = approvals.events.listen(approvalEvents.add);
+    addTearDown(approvalSubscription.cancel);
+    runner = _FakeRunService();
+    agent = ScheduledTaskAgentService(
+      tasks: tasks,
+      runner: runner,
+      taskRepository: taskRepository,
+      sessions: sessions,
+      projects: singlePluginProjectRepository(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+        gitCliApi: FakeGitCliApi(),
+      ),
+      history: history.service,
+      approvals: approvals,
+      descriptions: const ScheduledTaskChangeDescriptionBuilder(),
+    );
     final dispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: grants, sessions: sessions),
-      agent: ScheduledTaskAgentService(
-        tasks: tasks,
-        taskRepository: taskRepository,
-        sessions: sessions,
-        history: history.service,
-      ),
+      agent: agent,
       formatter: const SesoriMcpResultFormatter(),
     );
     // As the Orchestrator wires it.
@@ -262,7 +289,7 @@ void main() {
       expect(response.body, isEmpty);
     });
 
-    test("ping answers and tools/list names the read tools", () async {
+    test("ping answers and tools/list names every tool", () async {
       expect((await rpc(method: "ping", params: null))["result"], <String, dynamic>{});
 
       final tools = ((await rpc(method: "tools/list", params: null))["result"] as Map<String, dynamic>)["tools"];
@@ -273,10 +300,15 @@ void main() {
           "get_task",
           "list_task_runs",
           "get_task_run_transcript",
+          "pause_task",
+          "resume_task",
+          "run_task_now",
         ],
       );
       for (final tool in tools) {
-        expect((tool as Map<String, dynamic>)["annotations"], {"readOnlyHint": true});
+        final name = (tool as Map<String, dynamic>)["name"] as String;
+        final readOnly = name.startsWith("list_") || name.startsWith("get_");
+        expect(tool["annotations"], {"readOnlyHint": readOnly});
         expect(tool["inputSchema"], containsPair("type", "object"));
       }
     });
@@ -443,4 +475,125 @@ void main() {
       expect(result.text, contains("No run str_x"));
     });
   });
+
+  group("proposing tools", () {
+    /// The request the last proposal raised.
+    PendingPermission asked() => approvalEvents.whereType<AgentApprovalAsked>().last.permission;
+
+    test("pause_task asks the user and Allow applies it", () async {
+      final result = await call(tool: "pause_task", arguments: {"task_id": taskId});
+
+      expect(result.isError, isFalse);
+      expect(result.text, "Sent to the user for approval. Nothing happens unless they allow it.");
+      final approval = asked();
+      expect(approval.sessionID, "s1");
+      expect(approval.tool, "Sesori: pause task");
+      expect(approval.allowAlways, isFalse);
+      expect(
+        approval.description,
+        "Project: repo\n\n**Pause “Morning summary”**\n\nAsked by a scheduled run of this task.",
+      );
+      expect((await tasks.list()).items.single.enabled, isTrue);
+
+      expect(await agent.settle(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect((await tasks.list()).items.single.enabled, isFalse);
+      expect(agent.pendingPermissions(sessionId: "s1"), isEmpty);
+    });
+
+    test("Allow applies nothing once the user changed the task", () async {
+      Future<void> userEdits() async {
+        final current = (await tasks.list()).items.single;
+        await tasks.update(
+          taskId: taskId,
+          definition: current.definition.copyWith(name: "${current.definition.name}!"),
+        );
+      }
+
+      for (final (tool, arguments) in [
+        ("pause_task", {"task_id": taskId}),
+        ("run_task_now", {"task_id": taskId}),
+      ]) {
+        expect(
+          (await call(tool: tool, arguments: arguments)).isError,
+          isFalse,
+          reason: tool,
+        );
+        await userEdits();
+
+        expect(
+          await agent.settle(requestId: asked().id, reply: PermissionReply.once),
+          isA<AgentApprovalStale>(),
+          reason: tool,
+        );
+      }
+      final task = (await tasks.list()).items.single;
+      expect(task.definition.name, "Morning summary!!");
+      expect(task.enabled, isTrue);
+      expect(runner.ranNow, isEmpty);
+
+      await tasks.setEnabled(taskId: taskId, enabled: false);
+      expect((await call(tool: "resume_task", arguments: {"task_id": taskId})).isError, isFalse);
+      await userEdits();
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect((await tasks.list()).items.single.enabled, isFalse);
+    });
+
+    test("Allow applies nothing once the task is deleted", () async {
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      await tasks.delete(taskId: taskId);
+
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+    });
+
+    test("run_task_now runs the task on Allow, and Reject drops a request", () async {
+      await call(tool: "run_task_now", arguments: {"task_id": taskId});
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(runner.ranNow, [taskId]);
+
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.reject), isA<AgentApprovalRejected>());
+      expect((await tasks.list()).items.single.enabled, isTrue);
+    });
+
+    test("a new request replaces the session's earlier one", () async {
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      final first = asked();
+
+      final second = await call(tool: "run_task_now", arguments: {"task_id": taskId});
+
+      expect(second.text, contains("replaces this session's earlier request"));
+      expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [asked().id]);
+      expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<NotAgentApproval>());
+      expect((await tasks.list()).items.single.enabled, isTrue);
+    });
+
+    test("a proposal for a missing task or a task already in that state asks nobody", () async {
+      final missing = await call(tool: "run_task_now", arguments: {"task_id": "stk_missing"});
+      final running = await call(tool: "resume_task", arguments: {"task_id": taskId});
+
+      expect(missing.isError, isTrue);
+      expect(missing.text, contains("No scheduled task stk_missing"));
+      expect(running.isError, isTrue);
+      expect(running.text, contains("already in that state"));
+      expect(approvalEvents, isEmpty);
+    });
+  });
+}
+
+/// Records the tasks run now instead of starting sessions.
+class _FakeRunService() implements ScheduledTaskRunService {
+  final List<String> ranNow = [];
+
+  @override
+  Future<ScheduledTaskRun> runNow({required String taskId}) async {
+    ranNow.add(taskId);
+    return const ScheduledTaskRun(
+      id: "run-now",
+      scheduledFor: ScheduledTaskInstant(at: 0, offsetMinutes: 0),
+      outcome: ScheduledTaskRunOutcome.skipped(),
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

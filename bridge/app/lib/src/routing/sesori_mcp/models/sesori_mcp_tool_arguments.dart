@@ -17,11 +17,12 @@ sealed class GetTaskArguments with _$GetTaskArguments {
   factory fromJson(Map<String, dynamic> json) => _$GetTaskArgumentsFromJson(json);
 }
 
+/// The arguments of the tools that take only a task.
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
-sealed class ListTaskRunsArguments with _$ListTaskRunsArguments {
-  const factory({@JsonKey(name: "task_id") required String taskId}) = _ListTaskRunsArguments;
+sealed class TaskIdArguments with _$TaskIdArguments {
+  const factory({@JsonKey(name: "task_id") required String taskId}) = _TaskIdArguments;
 
-  factory fromJson(Map<String, dynamic> json) => _$ListTaskRunsArgumentsFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$TaskIdArgumentsFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)

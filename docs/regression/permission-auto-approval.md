@@ -22,6 +22,9 @@ user present. It is a bridge policy, not a client feature.
 - Each request is approved at most once. A failed approval is not recorded as
   approved and can be retried.
 - Questions are never auto-answered.
+- An agent's proposed task change (the bridge-owned "Sesori: ..." request, see
+  [Sesori MCP for agents](sesori-mcp.md)) is never auto-approved, by the bridge
+  setting or a session override.
 - MCP forms, URL/connector setup consent and server sign-in are not tool
   permissions and never inherit YOLO approval. A real MCP tool permission keeps
   the existing one-time policy; neither that approval nor native authentication
@@ -92,6 +95,7 @@ in the same run.
 - A permission reaches a client as answerable while the setting is on.
 - A pending request survives enabling or a backend reconnect.
 - A question is answered automatically.
+- An agent's proposed task change is answered automatically.
 - The auto-approval reply appears as user activity or triggers a completion
   notification as if a user acted.
 - The reported setting differs from the persisted value, or a failed write is

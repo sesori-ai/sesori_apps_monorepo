@@ -2,6 +2,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/permission_repository.dart";
 import "../services/permission_auto_approval_service.dart";
+import "../services/scheduled_task_agent_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /session/permissions` — returns the pending permission
@@ -10,10 +11,12 @@ import "request_handler.dart";
 ///
 /// Under YOLO the snapshot is resolved through auto-approval first: approved
 /// requests disappear from the response, while any request YOLO could not
-/// answer stays visible so it can be answered manually.
+/// answer stays visible so it can be answered manually. Agent task approvals
+/// follow the plugin's requests and never pass through auto-approval.
 class GetSessionPermissionsHandler({
   required final PermissionRepository _permissionRepository,
   required final PermissionAutoApprovalService _permissionAutoApprovalService,
+  required final ScheduledTaskAgentService _scheduledTaskAgentService,
 }) extends BodyRequestHandler<SessionIdRequest, PendingPermissionResponse> {
   this
     : super(
@@ -32,7 +35,10 @@ class GetSessionPermissionsHandler({
 
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
     return PendingPermissionResponse(
-      data: await _permissionAutoApprovalService.resolveSnapshot(permissions: permissions),
+      data: [
+        ...await _permissionAutoApprovalService.resolveSnapshot(permissions: permissions),
+        ..._scheduledTaskAgentService.pendingPermissions(sessionId: sessionId),
+      ],
       editsAutoAccepted: await _permissionRepository.editsAutoAccepted(sessionId: sessionId),
     );
   }

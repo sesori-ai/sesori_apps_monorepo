@@ -2,6 +2,7 @@ import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/routing/reply_to_permission_handler.dart";
+import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -29,7 +30,10 @@ void main() {
       final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
       addTearDown(pending.dispatcher.dispose);
       addTearDown(pending.service.dispose);
-      handler = ReplyToPermissionHandler(pendingInteractionService: pending.service);
+      handler = ReplyToPermissionHandler(
+        pendingInteractionService: pending.service,
+        scheduledTaskAgentService: NoAgentApprovalsService(),
+      );
     });
 
     tearDown(() async {
@@ -59,6 +63,31 @@ void main() {
         SessionArchivedRejection.fromJson(jsonDecodeMap(response.body ?? "")),
         const SessionArchivedRejection(sessionId: "ses-456", reason: SessionArchivedReason.archivedReadOnly),
       );
+      expect(plugin.lastReplyToPermissionRequestId, isNull);
+    });
+
+    test("returns 409 and leaves the plugin alone when an agent approval went stale", () async {
+      final staleHandler = ReplyToPermissionHandler(
+        pendingInteractionService: buildTestPendingInteractionService(database: db, plugin: plugin).service,
+        scheduledTaskAgentService: _StaleAgentApprovals(),
+      );
+
+      final response = await staleHandler.routeForTest(
+        makeRequest(
+          "POST",
+          "/permission/reply",
+          body: jsonEncode(
+            const ReplyToPermissionRequest(
+              requestId: "sesori-approval-1",
+              sessionId: "ses-456",
+              reply: PermissionReply.once,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 409);
+      expect(response.body, contains("nothing was applied"));
       expect(plugin.lastReplyToPermissionRequestId, isNull);
     });
 
@@ -126,4 +155,10 @@ void main() {
       );
     });
   });
+}
+
+class _StaleAgentApprovals() extends NoAgentApprovalsService {
+  @override
+  Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async =>
+      const AgentApprovalStale();
 }

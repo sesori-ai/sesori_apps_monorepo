@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../services/scheduled_task_agent_service.dart";
+import "../../services/scheduled_task_change_description_builder.dart";
 
 /// Renders tool results as the plain text agents read.
 ///
@@ -11,6 +12,9 @@ class const SesoriMcpResultFormatter() {
   static const int _replyExcerptChars = 500;
   static const int _toolResultChars = 300;
 
+  /// Schedules read the same in results as in approval requests.
+  static const ScheduledTaskChangeDescriptionBuilder _descriptions = ScheduledTaskChangeDescriptionBuilder();
+
   String taskList({required AgentTaskList list}) {
     if (list.tasks.isEmpty) return "No scheduled tasks.";
     return [
@@ -18,7 +22,7 @@ class const SesoriMcpResultFormatter() {
         [
           "- ${task.definition.name} (id: ${task.id})",
           "  project: ${task.definition.projectId}${task.definition.projectId == list.callerProjectId ? " (this session's project)" : ""}",
-          "  schedule: ${_schedule(definition: task.definition)}",
+          "  schedule: ${_descriptions.schedule(definition: task.definition)}",
           "  enabled: ${task.enabled ? "yes" : "no"}",
           "  next run: ${_instantOrNone(instant: task.nextRunAt)}",
           "  last run: ${_runOrNone(run: task.lastRun)}",
@@ -41,7 +45,7 @@ class const SesoriMcpResultFormatter() {
       if (definition.variant case SessionVariant(:final id)) "variant: $id",
       "fast mode: ${definition.fastMode ? "on" : "off"}",
       "dedicated worktree per run: ${definition.dedicatedWorktree ? "yes" : "no"}",
-      "schedule: ${_schedule(definition: definition)}",
+      "schedule: ${_descriptions.schedule(definition: definition)}",
       "when a run is missed: ${switch (definition.missedRunPolicy) {
         TaskMissedRunPolicy.runWhenBack => "run once when the bridge is back",
         TaskMissedRunPolicy.waitForNext => "wait for the next time",
@@ -189,19 +193,6 @@ class const SesoriMcpResultFormatter() {
     return "${_instant(instant: run.scheduledFor)}, $outcome";
   }
 
-  String _schedule({required ScheduledTaskDefinition definition}) {
-    final schedule = switch (definition.schedule) {
-      TaskScheduleOnce(:final at) => "once at ${_localDateTime(at: at)}",
-      TaskScheduleDaily(:final time) => "daily at ${_time(time: time)}",
-      TaskScheduleWeekdays(:final time) => "Monday to Friday at ${_time(time: time)}",
-      TaskScheduleWeekly(:final days, :final time) =>
-        "weekly on ${(days.toList()..sort((a, b) => a.isoWeekday.compareTo(b.isoWeekday))).map((day) => day.name).join(", ")} at ${_time(time: time)}",
-      TaskScheduleEveryHours(:final hours, :final start) => "every $hours hours from ${_localDateTime(at: start)}",
-      TaskScheduleUnknown() => "a schedule this bridge does not know",
-    };
-    return "$schedule (${definition.timeZone})";
-  }
-
   String _instantOrNone({required ScheduledTaskInstant? instant}) =>
       instant == null ? "none" : _instant(instant: instant);
 
@@ -216,11 +207,6 @@ class const SesoriMcpResultFormatter() {
     return "${_date(year: local.year, month: local.month, day: local.day)} "
         "${_two(value: local.hour)}:${_two(value: local.minute)} (UTC$sign${_two(value: offset ~/ 60)}:${_two(value: offset % 60)})";
   }
-
-  String _localDateTime({required TaskLocalDateTime at}) =>
-      "${_date(year: at.year, month: at.month, day: at.day)} ${_two(value: at.hour)}:${_two(value: at.minute)}";
-
-  String _time({required TaskTimeOfDay time}) => "${_two(value: time.hour)}:${_two(value: time.minute)}";
 
   String _date({required int year, required int month, required int day}) =>
       "${year.toString().padLeft(4, "0")}-${_two(value: month)}-${_two(value: day)}";

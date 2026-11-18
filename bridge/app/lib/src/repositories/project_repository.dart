@@ -95,6 +95,12 @@ class ProjectRepository({
     );
   }
 
+  /// The name the app shows for [projectId], or null when it is not stored.
+  Future<String?> getProjectName({required String projectId}) async {
+    final row = await _projectsDao.getProject(projectId: projectId);
+    return row == null ? null : _projectCatalogMapper.name(row: row);
+  }
+
   /// Whether [projectId] is gone: no project is stored under it, or its folder
   /// no longer exists on disk.
   Future<bool> isProjectGone({required String projectId}) async {

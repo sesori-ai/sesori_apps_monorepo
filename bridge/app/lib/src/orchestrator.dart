@@ -64,6 +64,7 @@ import "push/push_rate_limiter.dart";
 import "push/push_session_state_tracker.dart";
 import "push/scheduled_task_failure_push_listener.dart";
 import "repositories/accepted_prompts_repository.dart";
+import "repositories/agent_approval_repository.dart";
 import "repositories/agent_repository.dart";
 import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/bridge_settings_repository.dart";
@@ -78,6 +79,7 @@ import "repositories/mappers/plugin_message_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/mappers/session_transcript_markdown_builder.dart";
 import "repositories/mcp_repository.dart";
+import "repositories/models/agent_approval.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
@@ -219,6 +221,7 @@ import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/scheduled_task_activity_tracker.dart";
 import "services/scheduled_task_agent_service.dart";
+import "services/scheduled_task_change_description_builder.dart";
 import "services/scheduled_task_compaction_service.dart";
 import "services/scheduled_task_occurrence_calculator.dart";
 import "services/scheduled_task_run_service.dart";
@@ -817,14 +820,20 @@ class Orchestrator({
         clock: clock,
       ),
     );
+    final agentApprovalRepository = AgentApprovalRepository(random: Random.secure());
+    final scheduledTaskAgentService = ScheduledTaskAgentService(
+      tasks: scheduledTaskService,
+      runner: scheduledTaskRunService,
+      taskRepository: scheduledTaskRepository,
+      sessions: sessionRepository,
+      projects: projectRepository,
+      history: chatHistoryService,
+      approvals: agentApprovalRepository,
+      descriptions: const ScheduledTaskChangeDescriptionBuilder(),
+    );
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
-      agent: ScheduledTaskAgentService(
-        tasks: scheduledTaskService,
-        taskRepository: scheduledTaskRepository,
-        sessions: sessionRepository,
-        history: chatHistoryService,
-      ),
+      agent: scheduledTaskAgentService,
       formatter: const SesoriMcpResultFormatter(),
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
@@ -907,13 +916,17 @@ class Orchestrator({
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,
           permissionAutoApprovalService: permissionAutoApprovalService,
+          scheduledTaskAgentService: scheduledTaskAgentService,
         ),
         ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToExternalActionHandler(service: pendingInteractionService),
         ReplyToFormHandler(service: pendingInteractionService),
         DeclineFormHandler(service: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
-        ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
+        ReplyToPermissionHandler(
+          scheduledTaskAgentService: scheduledTaskAgentService,
+          pendingInteractionService: pendingInteractionService,
+        ),
         StopAcceptingEditsHandler(permissionRepository: permissionRepository),
         RenameProjectHandler(projectRepository: projectRepository),
         CreateProjectHandler(projectMutationService: projectMutationService),
@@ -948,6 +961,8 @@ class Orchestrator({
       chatHistoryActivityListener: chatHistoryActivityListener,
       sesoriMcpRequests: _sesoriMcpRequests,
       sesoriMcpRequestDispatcher: sesoriMcpRequestDispatcher,
+      scheduledTaskAgentService: scheduledTaskAgentService,
+      agentApprovalRepository: agentApprovalRepository,
       runningTurnListener: runningTurnListener,
       interruptedTurnListener: interruptedTurnListener,
       chatHistoryService: chatHistoryService,
@@ -1091,6 +1106,8 @@ class OrchestratorSession._({
   required final ChatHistoryActivityListener _chatHistoryActivityListener,
   required Stream<SesoriMcpInboundRequest> sesoriMcpRequests,
   required final SesoriMcpRequestDispatcher _sesoriMcpRequestDispatcher,
+  required final ScheduledTaskAgentService _scheduledTaskAgentService,
+  required final AgentApprovalRepository _agentApprovalRepository,
   required final RunningTurnListener _runningTurnListener,
   required final InterruptedTurnListener _interruptedTurnListener,
   required final ChatHistoryService _chatHistoryService,
@@ -1430,6 +1447,30 @@ class OrchestratorSession._({
           }
         })
         .addTo(_subscriptions);
+    // An agent's task approval travels as an ordinary permission request,
+    // and its session waits on the user until it settles.
+    _agentApprovalRepository.events
+        .listen((event) {
+          final permissionEvent = switch (event) {
+            AgentApprovalAsked(:final permission) => SesoriSseEvent.permissionAsked(
+              requestID: permission.id,
+              sessionID: permission.sessionID,
+              displaySessionId: permission.displaySessionId,
+              tool: permission.tool,
+              description: permission.description,
+              allowAlways: permission.allowAlways,
+            ),
+            AgentApprovalSettled(:final requestId, :final sessionId, :final displaySessionId, :final reply) =>
+              SesoriSseEvent.permissionReplied(
+                requestID: requestId,
+                sessionID: sessionId,
+                displaySessionId: displaySessionId,
+                reply: reply.name,
+              ),
+          };
+          unawaited(_deliverAgentApprovalEvent(event: permissionEvent));
+        })
+        .addTo(_subscriptions);
     // A send starting or ending changes its source's row on every client.
     _sessionSendService.sendingChanges
         .listen((_) => unawaited(_buildAndEnqueueProjectsSummaryInOrder()))
@@ -1530,6 +1571,7 @@ class OrchestratorSession._({
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
+      attempt(_agentApprovalRepository.dispose),
     ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
@@ -2125,8 +2167,26 @@ class OrchestratorSession._({
     required String pluginId,
     required int? generation,
     required bool allowDuringStop,
-  }) async {
-    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+  }) {
+    return _deliverToConsumers(
+      delivery: delivery,
+      isCurrent: () => _isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop),
+    );
+  }
+
+  /// Delivers an event the bridge raised itself, which no plugin generation
+  /// can make stale.
+  Future<void> _deliverBridgeEvent({required SesoriSseEvent event}) {
+    return _deliverToConsumers(
+      delivery: SseEventDelivery.uniform(event: event),
+      isCurrent: () => !_cancelled,
+    );
+  }
+
+  /// Feeds local observers, the wire, unseen activity and project activity,
+  /// while [isCurrent] holds.
+  Future<void> _deliverToConsumers({required SseEventDelivery delivery, required bool Function() isCurrent}) async {
+    if (!isCurrent()) return;
     // Bridge-local consumers observe the released inline shape; only the wire
     // is shaped per subscriber.
     final event = delivery.inlineEvent;
@@ -2189,7 +2249,7 @@ class OrchestratorSession._({
     if (event is SesoriSessionCreated) {
       await _routeUnseenActivity(event);
     }
-    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+    if (!isCurrent()) return;
     if (upsertSessionId != null &&
         _sessionMutationDispatcher.shouldSuppressEventsForSession(sessionId: upsertSessionId)) {
       return;
@@ -2207,6 +2267,15 @@ class OrchestratorSession._({
     } catch (e, st) {
       Log.w("failed to route project activity for ${event.runtimeType}", e, st);
     }
+  }
+
+  Future<void> _deliverAgentApprovalEvent({required SesoriSseEvent event}) async {
+    try {
+      await _deliverBridgeEvent(event: event);
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to deliver an agent approval event", error, stackTrace);
+    }
+    await _buildAndEnqueueProjectsSummaryInOrder();
   }
 
   Future<void> _buildAndDeliverProjectsSummaryInOrder({
@@ -2288,7 +2357,11 @@ class OrchestratorSession._({
   Future<SesoriSseEvent?> _buildProjectsSummary() async {
     try {
       return _mapper.buildProjectsSummaryEvent(
-        projects: _sessionSendService.markSending(projects: await _sessionRepository.getProjectActivitySummaries()),
+        projects: _sessionSendService.markSending(
+          projects: await _scheduledTaskAgentService.markAwaitingApproval(
+            projects: await _sessionRepository.getProjectActivitySummaries(),
+          ),
+        ),
       );
     } catch (e, st) {
       Log.e("[sse] error building projects summary", e, st);

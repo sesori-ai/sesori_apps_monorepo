@@ -110,7 +110,7 @@ String toString() {
 
 
 /// @nodoc
-mixin _$ListTaskRunsArguments {
+mixin _$TaskIdArguments {
 
 @JsonKey(name: "task_id") String get taskId;
 
@@ -120,8 +120,8 @@ mixin _$ListTaskRunsArguments {
 
 @override
 String toString() {
-  final _this = this as ListTaskRunsArguments;
-  return 'ListTaskRunsArguments(taskId: ${_this.taskId})';
+  final _this = this as TaskIdArguments;
+  return 'TaskIdArguments(taskId: ${_this.taskId})';
 }
 
 
@@ -134,9 +134,9 @@ String toString() {
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
-class _ListTaskRunsArguments implements ListTaskRunsArguments {
-  const _ListTaskRunsArguments({@JsonKey(name: "task_id") required this.taskId});
-  factory _ListTaskRunsArguments.fromJson(Map<String, dynamic> json) => _$ListTaskRunsArgumentsFromJson(json);
+class _TaskIdArguments implements TaskIdArguments {
+  const _TaskIdArguments({@JsonKey(name: "task_id") required this.taskId});
+  factory _TaskIdArguments.fromJson(Map<String, dynamic> json) => _$TaskIdArgumentsFromJson(json);
 
 @override@JsonKey(name: "task_id") final  String taskId;
 
@@ -147,7 +147,7 @@ class _ListTaskRunsArguments implements ListTaskRunsArguments {
 
 @override
 String toString() {
-    return 'ListTaskRunsArguments(taskId: $taskId)';
+    return 'TaskIdArguments(taskId: $taskId)';
 }
 
 

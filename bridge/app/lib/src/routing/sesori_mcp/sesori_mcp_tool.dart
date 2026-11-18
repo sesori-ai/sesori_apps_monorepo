@@ -70,6 +70,26 @@ enum SesoriMcpTool({
       "required": ["task_id", "run_id"],
       "additionalProperties": false,
     },
+  ),
+  pauseTask(
+    wireName: "pause_task",
+    readOnly: false,
+    description: "Propose pausing a scheduled task. The user allows or rejects it on their phone.",
+    inputSchema: _taskIdSchema,
+  ),
+  resumeTask(
+    wireName: "resume_task",
+    readOnly: false,
+    description:
+        "Propose resuming a paused scheduled task from its next time. The user allows or rejects it on their "
+        "phone.",
+    inputSchema: _taskIdSchema,
+  ),
+  runTaskNow(
+    wireName: "run_task_now",
+    readOnly: false,
+    description: "Propose running a scheduled task once now. The user allows or rejects it on their phone.",
+    inputSchema: _taskIdSchema,
   );
 
   static SesoriMcpTool? fromWireName({required String name}) {
@@ -79,3 +99,12 @@ enum SesoriMcpTool({
     return null;
   }
 }
+
+const Map<String, Object?> _taskIdSchema = {
+  "type": "object",
+  "properties": {
+    "task_id": {"type": "string"},
+  },
+  "required": ["task_id"],
+  "additionalProperties": false,
+};

@@ -1,20 +1,36 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/agent_approval_repository.dart";
 import "../repositories/models/history_window.dart";
+import "../repositories/models/scheduled_task_agent_change.dart";
+import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
+import "../repositories/models/stored_session.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "chat_history_service.dart";
+import "scheduled_task_change_description_builder.dart";
 import "scheduled_task_request_exception.dart";
+import "scheduled_task_run_service.dart";
 import "scheduled_task_service.dart";
 
 /// What agents may do with scheduled tasks, through the same services the
 /// app's task routes call. Reads cover every task on this computer.
+///
+/// Every write is a proposal: it waits as a permission request until the user
+/// allows it, and only then goes through the same service calls as the app's
+/// routes. Auto-approval never sees these requests, because they are neither
+/// plugin events nor in the plugin permission lists.
 class ScheduledTaskAgentService({
   required final ScheduledTaskService _tasks,
+  required final ScheduledTaskRunService _runner,
   required final ScheduledTaskRepository _taskRepository,
   required final SessionRepository _sessions,
+  required final ProjectRepository _projects,
   required final ChatHistoryService _history,
+  required final AgentApprovalRepository _approvals,
+  required final ScheduledTaskChangeDescriptionBuilder _descriptions,
 }) {
   /// Messages read to find a run's final reply. The reply closes the turn,
   /// so it is among the newest few.
@@ -82,6 +98,103 @@ class ScheduledTaskAgentService({
       return AgentRunTranscript(sessionId: id, messages: page.messages, nextCursor: page.nextCursor);
     }
     return AgentRunTranscriptNoSession(run: run);
+  }
+
+  /// Asks to pause or resume [taskId].
+  Future<AgentProposal> proposeSetEnabled({
+    required SesoriMcpCaller caller,
+    required String taskId,
+    required bool enabled,
+  }) async {
+    final record = await _uncompletedTask(taskId: taskId);
+    if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
+    if (record.enabled == enabled) return const AgentProposalRefused(reason: AgentProposalRefusal.alreadyInState);
+    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
+    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
+    return await _propose(
+      caller: caller,
+      session: session,
+      change: SetTaskEnabledChange(taskId: taskId, before: record.definition, enabled: enabled),
+    );
+  }
+
+  /// Asks to run [taskId] once now.
+  Future<AgentProposal> proposeRunNow({required SesoriMcpCaller caller, required String taskId}) async {
+    final record = await _uncompletedTask(taskId: taskId);
+    if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
+    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
+    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
+    return await _propose(
+      caller: caller,
+      session: session,
+      change: RunTaskNowChange(taskId: taskId, before: record.definition),
+    );
+  }
+
+  /// Answers [requestId] when it is an agent approval. Allow applies the
+  /// change through the app's own service calls, unless the task changed
+  /// since the request was described: the user's edit wins.
+  Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async {
+    final approval = _approvals.take(requestId: requestId, reply: reply);
+    if (approval == null) return const NotAgentApproval();
+    if (reply == PermissionReply.reject) return const AgentApprovalRejected();
+    final change = approval.change;
+    final record = await _uncompletedTask(taskId: change.taskId);
+    if (record == null || record.definition != change.before) return const AgentApprovalStale();
+    switch (change) {
+      case SetTaskEnabledChange(:final taskId, :final enabled):
+        await _tasks.setEnabled(taskId: taskId, enabled: enabled);
+      case RunTaskNowChange(:final taskId):
+        await _runner.runNow(taskId: taskId);
+    }
+    return const AgentApprovalApplied();
+  }
+
+  /// The agent approvals to show on [sessionId]'s screen.
+  List<PendingPermission> pendingPermissions({required String sessionId}) =>
+      _approvals.pendingPermissions(sessionId: sessionId);
+
+  /// [projects] with every session that waits on an agent approval marked
+  /// awaiting input, even when its harness has gone idle, so the app keeps it
+  /// on its attention list.
+  Future<List<ProjectActivitySummary>> markAwaitingApproval({required List<ProjectActivitySummary> projects}) {
+    return _sessions.markAwaitingInput(projects: projects, rootSessionIds: _approvals.awaitingRootSessionIds);
+  }
+
+  Future<AgentProposal> _propose({
+    required SesoriMcpCaller caller,
+    required StoredSession session,
+    required ScheduledTaskAgentChange change,
+  }) async {
+    final projectId = change.before.projectId;
+    final withdrewPrevious = _approvals.add(
+      sessionId: caller.sessionId,
+      displaySessionId: session.parentSessionId,
+      change: change,
+      description: _descriptions.build(
+        change: change,
+        projectName: await _projects.getProjectName(projectId: projectId) ?? projectId,
+        requester: await _requester(caller: caller, change: change),
+      ),
+    );
+    return AgentProposalSent(withdrewPrevious: withdrewPrevious);
+  }
+
+  Future<AgentRequester> _requester({required SesoriMcpCaller caller, required ScheduledTaskAgentChange change}) async {
+    final ownTaskId = await _ownTaskId(caller: caller);
+    if (ownTaskId != null) {
+      if (change.taskId == ownTaskId) return const RequestedByOwnRun();
+      if (await _taskRepository.get(taskId: ownTaskId) case final ownTask?) {
+        return RequestedByTaskRun(taskName: ownTask.definition.name);
+      }
+    }
+    return RequestedFromSession(title: await _sessions.getSessionTitle(sessionId: caller.sessionId));
+  }
+
+  /// A done one-off task has left the list, so agents cannot change it.
+  Future<ScheduledTaskRecord?> _uncompletedTask({required String taskId}) async {
+    final record = await _taskRepository.get(taskId: taskId);
+    return record == null || record.completedAt != null ? null : record;
   }
 
   Future<String?> _ownTaskId({required SesoriMcpCaller caller}) async {
@@ -175,3 +288,34 @@ final class const AgentRunTranscriptRunNotFound({required final String runId}) e
 
 /// The run never started a session, or its session was deleted.
 final class const AgentRunTranscriptNoSession({required final ScheduledTaskRun run}) extends AgentRunTranscriptLookup;
+
+sealed class const AgentProposal();
+
+/// The request is on the user's phone. [withdrewPrevious] tells whether it
+/// replaced an earlier request of the same session.
+final class const AgentProposalSent({required final bool withdrewPrevious}) extends AgentProposal;
+
+final class const AgentProposalTaskNotFound({required final String taskId}) extends AgentProposal;
+
+final class const AgentProposalRefused({required final AgentProposalRefusal reason}) extends AgentProposal;
+
+enum AgentProposalRefusal() {
+  /// The calling session's row is gone.
+  callerGone,
+
+  /// Pausing a paused task, or resuming a running one.
+  alreadyInState,
+}
+
+sealed class const AgentApprovalSettlement();
+
+/// The request was not an agent approval; a plugin owns it.
+final class const NotAgentApproval() extends AgentApprovalSettlement;
+
+final class const AgentApprovalApplied() extends AgentApprovalSettlement;
+
+final class const AgentApprovalRejected() extends AgentApprovalSettlement;
+
+/// Allowed, but the task was deleted or changed since the request was
+/// described, so nothing was applied.
+final class const AgentApprovalStale() extends AgentApprovalSettlement;
