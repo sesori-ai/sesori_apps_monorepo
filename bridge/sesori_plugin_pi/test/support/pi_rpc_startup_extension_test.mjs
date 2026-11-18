@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import http from "node:http";
 import { syncBuiltinESMExports } from "node:module";
 import { PassThrough } from "node:stream";
 import { test } from "node:test";
@@ -7,6 +8,8 @@ import { pathToFileURL } from "node:url";
 
 const { default: install } = await import(pathToFileURL(process.argv[2]).href);
 const tick = () => new Promise(resolve => setImmediate(resolve));
+const sesoriLaunchKey = Symbol.for("sesori.mcp.launch");
+const sesoriKeys = ["SESORI_MCP_URL", "SESORI_MCP_TOKEN", "SESORI_MCP_SERVER"];
 
 async function fixture(run, { mode = "rpc", nativeInput = false } = {}) {
   const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
@@ -116,4 +119,94 @@ test("readers from a fixed Pi runtime and non-RPC contexts are untouched", async
       assert.equal(input.listenerCount("data"), options.nativeInput ? 1 : 0);
     }, options);
   }
+});
+
+async function withSesoriServer(answer, run) {
+  const requests = [];
+  const server = http.createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    const message = JSON.parse(body);
+    requests.push({ headers: request.headers, message });
+    const { status = 200, result, error } = answer(message);
+    response.writeHead(status, { "content-type": "application/json" });
+    response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result, error }));
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  delete globalThis[sesoriLaunchKey];
+  Object.assign(process.env, {
+    SESORI_MCP_URL: `http://127.0.0.1:${server.address().port}/mcp`,
+    SESORI_MCP_TOKEN: "fixture-token",
+    SESORI_MCP_SERVER: "sesori_bridge",
+  });
+  const tools = [];
+  const load = () => install({ on: () => {}, registerTool: tool => tools.push(tool) });
+  try {
+    await load();
+    await run({ tools, requests, load });
+  } finally {
+    for (const key of sesoriKeys) delete process.env[key];
+    delete globalThis[sesoriLaunchKey];
+    await new Promise(resolve => server.close(resolve));
+  }
+}
+
+const fixtureTool = {
+  name: "get_task",
+  title: "Get task",
+  description: "Fixture description",
+  inputSchema: { type: "object", properties: { task_id: { type: "string" } } },
+  annotations: { readOnlyHint: true },
+};
+
+test("Sesori tools are registered under Pi's MCP names and forward calls", async () => {
+  await withSesoriServer(message => message.method === "tools/list"
+    ? { result: { tools: [fixtureTool] } }
+    : { result: { content: [{ type: "text", text: "Unknown task" }], isError: true } },
+  async ({ tools, requests, load }) => {
+    assert.equal(tools.length, 1);
+    for (const key of sesoriKeys) assert.equal(process.env[key], undefined);
+    const [tool] = tools;
+    assert.equal(tool.name, "mcp__sesori_bridge__get_task");
+    assert.equal(tool.label, "Get task");
+    assert.equal(tool.description, "Fixture description");
+    assert.deepEqual(tool.parameters, fixtureTool.inputSchema);
+    assert.deepEqual(tool.annotations, { readOnlyHint: true });
+    const result = await tool.execute("call-1", { task_id: "task" }, undefined);
+    assert.deepEqual(result, { content: [{ type: "text", text: "Unknown task" }], details: {}, isError: true });
+    assert.deepEqual(requests.map(r => r.message.method), ["tools/list", "tools/call"]);
+    assert.deepEqual(requests[1].message.params, { name: "get_task", arguments: { task_id: "task" } });
+    for (const { headers } of requests) {
+      assert.equal(headers.authorization, "Bearer fixture-token");
+      assert.equal(headers["content-type"], "application/json");
+      assert.equal(headers.origin, undefined);
+    }
+    // A /reload loads the file again after the environment was cleared.
+    await load();
+    assert.deepEqual(tools.map(t => t.name), ["mcp__sesori_bridge__get_task", "mcp__sesori_bridge__get_task"]);
+    assert.equal(requests.at(-1).headers.authorization, "Bearer fixture-token");
+  });
+});
+
+test("a refused tool list leaves Pi without Sesori tools and still starts", async () => {
+  const errors = [];
+  const originalError = console.error;
+  console.error = line => errors.push(line);
+  try {
+    await withSesoriServer(() => ({ status: 401 }), async ({ tools }) => {
+      assert.deepEqual(tools, []);
+    });
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /sesori_bridge tools are unavailable: HTTP 401/);
+  assert.doesNotMatch(errors[0], /fixture-token/);
+});
+
+test("a launch without Sesori tools registers none", async () => {
+  delete globalThis[sesoriLaunchKey];
+  const tools = [];
+  await install({ on: () => {}, registerTool: tool => tools.push(tool) });
+  assert.deepEqual(tools, []);
 });

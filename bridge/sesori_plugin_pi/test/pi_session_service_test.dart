@@ -20,6 +20,7 @@ import "package:test/test.dart";
 
 import "support/fake_pi_process.dart";
 import "support/fake_pi_session_storage_api.dart";
+import "support/fake_sesori_mcp_access.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
@@ -390,6 +391,7 @@ void main() {
       binaryPath: "/runtime/pi",
       environment: const {},
       processFactory: ({required spec}) => spawn.future,
+      sesoriMcp: FakeSesoriMcpAccess(enabled: false),
       historyMapper: PiHistoryMapper(pluginId: "pi"),
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
@@ -3687,6 +3689,7 @@ final class _Fixture({
       spawned.add(spec);
       return _processes.removeAt(0);
     },
+    sesoriMcp: FakeSesoriMcpAccess(enabled: false),
     historyMapper: historyMapper,
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),

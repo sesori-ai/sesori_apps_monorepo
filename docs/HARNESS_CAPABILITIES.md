@@ -169,6 +169,19 @@ resolves relative file paths.
 | GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
 | Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
 
+## Sesori agent tools
+
+Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with
+tools for scheduled tasks (see
+[Sesori MCP regression coverage](regression/sesori-mcp.md)). Each plugin hands
+it to its harness through a per-session launch seam, never through user
+configuration, and declares `injectsSesoriTools` once it does.
+
+| Harness | Sesori availability |
+|---|---|
+| Pi | ✅ Sesori's startup extension lists the server's tools and registers each with `pi.registerTool` as `mcp__sesori_bridge__<tool>`, forwarding calls over loopback HTTP. `pi.registerMcpServer` is avoided because pi-mcp-adapter makes it fail. Only the resident session process gets the URL and token, through its environment; the extension reads them at load and removes them, so the agent's shell commands do not inherit the token. Nothing reaches Pi's configuration, so the user's `mcp.json` servers still load and a session resumed in `pi` has no Sesori tools. Pi has no tool approval, so the bridge's approval is the only prompt. Verified live on 1.5.2, 2026-11-17; the 0.99.0 floor is unverified. |
+| Other harnesses | ⬜ Not injected yet. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

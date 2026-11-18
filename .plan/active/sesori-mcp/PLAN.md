@@ -575,6 +575,7 @@ There is no migration, no wire change and no client code change.
    - DeepSeek is recorded as not supported.
 10. 🌿 **Pi forwarder** in the startup extension, the flag, and live
    verification.
+   - Status: in review; verified live on Pi 1.5.2 (2026-11-17).
 11. 🌱 **Run the regression and retire the plan.**
 
 - **Order:**

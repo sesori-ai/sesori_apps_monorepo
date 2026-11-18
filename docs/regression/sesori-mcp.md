@@ -9,8 +9,8 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-No plugin injects the server yet, so no harness can reach it; until a plugin does, every check below runs headlessly
-against the endpoint. The per-harness injection is a later step of the plan.
+Pi sessions get the server; the other harnesses get it in later steps of the plan, and until then their checks run
+headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 
 | Tool | Effect |
 |---|---|
@@ -67,17 +67,22 @@ against the endpoint. The per-harness injection is a later step of the plan.
 - A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
   improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
   task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
-  declares false until its injection step. A command task gets no note. The note goes to the harness only: the run's
+  declares false until its injection step (Pi declares true). A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
   hides both.
+- Pi: the startup extension that every session process loads registers each listed tool with `pi.registerTool` as
+  `mcp__sesori_bridge__<tool>` and forwards calls to the endpoint. Only the resident session process gets the URL and a
+  fresh token, bound at once to its session id, through its environment; history, rename and catalog processes get
+  none. The extension removes the variables at load, keeping them for a `/reload`. A refused or unreachable tool list
+  leaves the session without Sesori tools and logs only the status.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Not included: no harness reaches the server yet. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
-| L3 Release | No additional coverage: no plugin injects the server yet. Each injection step adds its live harness check here (the server listed, a call resolving to the right session, no token in argv, URLs or harness session files). |
+| L1 Smoke | Not included. |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it), and for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list). |
+| L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -91,6 +96,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 - The endpoint answers on a non-loopback address, or accepts a request carrying `Origin` or a foreign `Host`.
 - A token appears in argv, a URL, a log line or a harness config file.
+- A user's own MCP server stops loading in a Sesori-started session, or a session resumed in the harness's own CLI
+  still has `sesori_bridge`.
 - An unknown or pre-restart token gets anything but 401, or an unbound token reads any task data.
 - A call resolves to the wrong session or another plugin's session.
 - A transcript page repeats or drops a message, or a read starts a harness or fails on an archived session.
@@ -101,8 +108,9 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Known Limitations
 
-- No harness injects the server yet; per-harness support lands with the injection steps and is recorded in
+- Only Pi injects the server so far; the other harnesses land with their injection steps and are recorded in
   [harness capabilities](../HARNESS_CAPABILITIES.md).
+- On Pi, the token stays in the process's initial environment block, which only the same OS user can read.
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
 - A bridge restart drops waiting requests; the phone's modal for one then fails to reply.
 - Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
@@ -110,7 +118,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Harness Scope
 
-Harness-neutral: the endpoint and tools live in `bridge/app`. Each injection step adds its harness here.
+The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: Pi (`bridge/sesori_plugin_pi`,
+`piRpcStartupExtensionSource`, `PiSessionProcessRepository`). Each later injection step adds its harness here.
 
 ## Related Coverage and Sources
 

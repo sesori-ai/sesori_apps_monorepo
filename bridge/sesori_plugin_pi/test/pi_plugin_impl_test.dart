@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/fake_pi_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
@@ -981,6 +982,7 @@ final class _Harness({
         );
         return process;
       },
+      sesoriMcp: FakeSesoriMcpAccess(enabled: false),
       clock: const _Clock(),
       launchDirectory: project.path,
       startupExitTimeout: const Duration(milliseconds: 100),
