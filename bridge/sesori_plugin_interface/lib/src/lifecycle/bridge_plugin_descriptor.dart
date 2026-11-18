@@ -48,6 +48,11 @@ abstract class const BridgePluginDescriptor() {
   /// Whether prompts can carry inline image attachments to this backend.
   bool get supportsPromptAttachments => false;
 
+  /// Whether this plugin gives the sessions it launches Sesori's own MCP
+  /// tools through [PluginHost.sesoriMcp] while the bridge's `agent-tools` setting
+  /// is on. Only then does a scheduled run's prompt ask the agent to use them.
+  bool get injectsSesoriTools => false;
+
   /// Whether this backend echoes a sent command as a user turn that carries
   /// the send's prompt id, so the bridge can name the command on that turn.
   bool get namesCommandInvocations => false;

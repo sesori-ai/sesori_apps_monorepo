@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -88,6 +89,7 @@ void main() {
       yoloSettings: _UnusedYoloSettings(),
       lifecycle: _UnusedLifecycle(),
       sessions: sessions,
+      bridgeSettings: _UnusedBridgeSettings(),
       projects: singlePluginProjectRepository(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -241,6 +243,11 @@ class _UnusedYoloSettings() implements YoloSettingsService {
 }
 
 class _UnusedLifecycle() implements SessionLifecycleService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedBridgeSettings() implements BridgeSettingsRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -10,6 +10,7 @@ void main() {
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isFalse);
+      expect(descriptor.injectsSesoriTools, isFalse);
       expect(descriptor.supportsSideQuestions, isFalse);
       expect(descriptor.mcpCapabilities, isEmpty);
       expect(descriptor.mcpScopes, isEmpty);

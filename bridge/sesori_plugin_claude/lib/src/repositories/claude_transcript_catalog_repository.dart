@@ -2,7 +2,7 @@ import "dart:isolate";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show normalizeProjectDirectory, stripWorktreeSystemContext;
+    show normalizeProjectDirectory, stripSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Log,
@@ -575,9 +575,9 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
   }
   for (final block in blocks) {
     if (block is! ClaudeMappedTextContentBlock) continue;
-    // The bridge strips its worktree note from messages, but not from a title
-    // already truncated here, so this one use strips it locally.
-    final visible = stripWorktreeSystemContext(text: block.text);
+    // The bridge strips its notes from messages, but not from a title
+    // already truncated here, so this one use strips them locally.
+    final visible = stripSystemContext(text: block.text);
     if (visible == null) continue;
     final text = unwrapDictatedText(text: visible).replaceAll(_whitespace, " ").trim();
     if (text.isEmpty) continue;

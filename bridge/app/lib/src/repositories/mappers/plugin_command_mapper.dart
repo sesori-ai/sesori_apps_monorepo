@@ -12,13 +12,13 @@ extension PluginCommandSourceMapping on PluginCommandSource {
 }
 
 extension PluginCommandInvocationMapping on PluginCommandInvocation {
-  /// The arguments lose the bridge's worktree note, as the message's text
+  /// The arguments lose the bridge's notes, as the message's text
   /// parts do, since a plugin names them from the prompt the bridge sent.
   CommandInvocation toShared() => CommandInvocation(
     name: name,
     source: source.toShared(),
     arguments: switch (arguments) {
-      final arguments? => stripWorktreeSystemContext(text: arguments),
+      final arguments? => stripSystemContext(text: arguments),
       null => null,
     },
   );

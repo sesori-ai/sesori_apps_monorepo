@@ -180,6 +180,7 @@ class const SessionContinuationService({
           command: null,
           commandSource: null,
           handoff: null,
+          runContext: null,
         ),
       );
     } on Object catch (error, stackTrace) {

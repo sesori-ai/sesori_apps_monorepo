@@ -1127,6 +1127,7 @@ final class _Prompts() implements SessionPromptService {
     required String? command,
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
+    required String? runContext,
   }) async {
     if (summaryFailure case final failure?) throw failure;
     sends.add(

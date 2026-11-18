@@ -36,23 +36,28 @@ class SessionCreationService({
   Future<void>? _drainFuture;
 
   Future<Session> createSession({required CreateSessionRequest request}) =>
-      _createRejectingStaleOptions(request: request, scheduledRun: null);
+      _createRejectingStaleOptions(request: request, scheduledRun: null, runContext: null);
 
   /// Starts a scheduled task's run as a new session. It goes through every
   /// check and step of [createSession] except remembering the picks as the
   /// user's new-session defaults, and the session row carries
   /// [ScheduledRunSessionLink.taskId] and the task's approval mode.
+  ///
+  /// A [runContext] note leads a text prompt's parts for the harness only;
+  /// the user's own text stays what the session shows.
   Future<Session> createScheduledRunSession({
     required CreateSessionRequest request,
     required ScheduledRunSessionLink scheduledRun,
-  }) => _createRejectingStaleOptions(request: request, scheduledRun: scheduledRun);
+    required String? runContext,
+  }) => _createRejectingStaleOptions(request: request, scheduledRun: scheduledRun, runContext: runContext);
 
   Future<Session> _createRejectingStaleOptions({
     required CreateSessionRequest request,
     required ScheduledRunSessionLink? scheduledRun,
+    required String? runContext,
   }) async {
     try {
-      return await _createSession(request: request, scheduledRun: scheduledRun);
+      return await _createSession(request: request, scheduledRun: scheduledRun, runContext: runContext);
     } on PluginStaleOptionsException catch (error, stackTrace) {
       try {
         await _sessionOptionsService.invalidateRejectedSelection(
@@ -75,6 +80,7 @@ class SessionCreationService({
   Future<Session> _createSession({
     required CreateSessionRequest request,
     required ScheduledRunSessionLink? scheduledRun,
+    required String? runContext,
   }) async {
     // Validate the opaque project handle before any plugin/git side effect.
     // The stored path is authoritative; unknown ids are not directories.
@@ -141,6 +147,7 @@ class SessionCreationService({
         parts: userParts,
         worktreeResult: worktreeResult,
         command: normalizedCommand,
+        runContext: runContext,
       ),
       userVisibleText: normalizedCommand == null ? userVisibleText : null,
       variant: normalizedCommand == null || normalizedCommand.isEmpty ? request.variant : null,
@@ -232,32 +239,25 @@ class SessionCreationService({
     required List<DeliverablePromptPart> parts,
     required WorktreeResult? worktreeResult,
     required String? command,
+    required String? runContext,
   }) {
     if (command != null) {
       return const [];
     }
-    final includeUserParts = command == null;
-    if (parts.isEmpty && includeUserParts) {
+    if (parts.isEmpty) {
       return parts;
     }
-    if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
-      final promptParts = <DeliverablePromptPart>[
+    return [
+      if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch))
         DeliverablePromptPart.text(
           text: buildWorktreeSystemContext(
             worktreePath: path,
             baseBranch: baseBranch,
           ),
         ),
-      ];
-      if (includeUserParts) {
-        promptParts.addAll(parts);
-      }
-      return promptParts;
-    }
-    if (!includeUserParts) {
-      return const [];
-    }
-    return parts;
+      if (runContext != null) DeliverablePromptPart.text(text: runContext),
+      ...parts,
+    ];
   }
 
   Future<void> _maybeSendCommand({

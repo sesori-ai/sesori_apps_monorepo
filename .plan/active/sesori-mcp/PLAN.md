@@ -6,10 +6,11 @@ Slug: `sesori-mcp`.
 
 - **Date:** 2026-11-17. Code facts come from `origin/main` at `062376863b`
   (product version 1.14.1, bridge drift schema 30).
-- **Stage:** steps 1–3 done (the endpoint, caller identity, bridge setting
-  and read tools); steps 4 (approvals with pause, resume and run now) and 5
-  (create and update) are in review. No plugin injects yet, so no harness reaches the server. Steps 2 and
-  4 were each split in two for size, so the series has 11 steps.
+- **Stage:** steps 1–5 done (the endpoint, caller identity, bridge setting,
+  read tools, and approvals for every proposing tool); step 6 (the
+  scheduled-run note) is in review. No plugin injects yet, so no harness
+  reaches the server. Steps 2 and 4 were each split in two for size, so the
+  series has 11 steps.
 - **Settled by the owner:**
   - Any agent create or modify of a task asks the user for approval. That
     includes a scheduled run editing its own prompt, so self-improvement
@@ -497,8 +498,9 @@ existing wire, push, client modal and reply route unchanged.
 - **When:** only for text prompts, and only when Sesori tools are injected for
   the task's harness. That means the bridge setting is on and the plugin
   declares injection: a `sesoriToolsSupported(pluginId)` read beside
-  `inlineImagesSupported`, backed by the same per-plugin flag the injection
-  steps turn on. Command prompts get no note: their arguments are command
+  `inlineImagesSupported`, backed by `BridgePluginDescriptor.injectsSesoriTools`,
+  the flag each injection step turns on. `ScheduledTaskRunService` reads the
+  setting from `BridgeSettingsRepository`, as the launch's `mint()` does. Command prompts get no note: their arguments are command
   input. `ponytail:` add it to command arguments if command tasks need the
   loop.
 - **Hidden on reload:** it uses the same `[SYSTEM CONTEXT — IMPORTANT]` …
