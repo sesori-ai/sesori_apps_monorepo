@@ -601,7 +601,7 @@ void main() {
       final delivered = notices.delivered.single;
       expect(delivered.sessionId, "s1");
       expect(delivered.notice.summary, "You allowed pausing “Morning summary”.");
-      expect(delivered.notice.guidance, "The change is saved. No reply is needed.");
+      expect(delivered.notice.guidance, "The change is saved. Reply in one short line.");
     });
 
     test("update_task asks the user and Allow applies it", () async {
@@ -899,13 +899,13 @@ void main() {
 
       expect(notices.delivered.map((delivered) => delivered.notice.summary), [
         "You allowed running “Morning summary” now.",
-        "You allowed running “Morning summary” now, but it didn't start.",
-        "You didn't allow pausing “Morning summary”.",
+        "You allowed running “Morning summary” now, but it didn’t start.",
+        "You didn’t allow pausing “Morning summary”.",
       ]);
       expect(notices.delivered.map((delivered) => delivered.notice.guidance), [
-        "The run started. No reply is needed.",
-        "The project folder is missing. No reply is needed.",
-        "Nothing changed. Don't propose it again unless they ask. No reply is needed.",
+        "The run started. Reply in one short line.",
+        "The project folder is missing. Reply in one short line.",
+        "Nothing changed. Don't propose it again unless they ask. Reply in one short line.",
       ]);
     });
 
@@ -1073,10 +1073,10 @@ void main() {
       expect(toGrandchild.sessionId, "s1");
       expect(
         toGrandchild.notice.guidance,
-        "A sub-agent of this session made this request. The change is saved. No reply is needed.",
+        "A sub-agent of this session made this request. The change is saved. Reply in one short line.",
       );
       expect(toRoot.sessionId, "s1");
-      expect(toRoot.notice.guidance, "The run started. No reply is needed.");
+      expect(toRoot.notice.guidance, "The run started. Reply in one short line.");
     });
 
     test("a proposal for a missing task or a task already in that state asks nobody", () async {

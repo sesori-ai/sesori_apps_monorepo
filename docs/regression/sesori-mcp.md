@@ -71,10 +71,10 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   it.
 - Once the user answers, Sesori messages the session that shows the request (the root session for a sub-agent's) with
   the outcome: a bridge notice the app shows as a Sesori row with only its summary, addressed to the user, for
-  example "You allowed pausing “Nightly”." or "You didn't allow running “Nightly” now.". The agent also reads guidance:
+  example "You allowed pausing “Nightly”." or "You didn’t allow running “Nightly” now.". The agent also reads guidance:
   what was saved and when it applies, a created task's id, "Read it with get_task" for a stale change, why a run now
-  did not start, not to propose a rejected change again, that a sub-agent asked when one did, and that no reply is
-  needed. Proposal results and tool descriptions say this message follows, so agents do not poll `get_task`.
+  did not start, not to propose a rejected change again, that a sub-agent asked when one did, and to reply in one
+  short line (Grok fails a turn that ends with no visible text). Proposal results and tool descriptions say this message follows, so agents do not poll `get_task`.
 - A harness that steers (Claude Code, Codex, Pi, Oh My Pi, OpenCode) takes the notice into a running turn; on the
   others it waits until the session is quiet and nothing waits on the user. The session's lane re-checks just before
   sending, so a turn started meanwhile makes it wait again. A finished scheduled run is woken by it. Archived and

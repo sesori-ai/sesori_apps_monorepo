@@ -92,11 +92,11 @@ class const ScheduledTaskChangeDescriptionBuilder() {
         "Read it with get_task before proposing anything else.",
       ),
       AgentApprovalRunNotStarted(outcome: final run) => (
-        "You allowed $request, but it didn't start.",
+        "You allowed $request, but it didn’t start.",
         "${_notStartedReason(outcome: run)}.",
       ),
       AgentApprovalRejected() => (
-        "You didn't allow $request.",
+        "You didn’t allow $request.",
         "Nothing changed. Don't propose it again unless they ask.",
       ),
     };
@@ -105,7 +105,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
       guidance: [
         if (bySubagent) "A sub-agent of this session made this request.",
         guidance,
-        "No reply is needed.",
+        "Reply in one short line.",
       ].join(" "),
     );
   }
