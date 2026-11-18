@@ -14,12 +14,12 @@ against the endpoint. The per-harness injection is a later step of the plan.
 
 | Tool | Effect |
 |---|---|
-| `list_tasks` | Every task not yet done: id, name, project (the caller's marked), schedule, on or off, next run, last outcome. Optional `project_id` filter. |
+| `list_tasks` | Every task not yet done: id, name, project (the caller's marked), schedule, on or off, next run, last outcome. Optional `project_id` filter; one no task or project has is an argument error. |
 | `get_task` | One task's full definition and state; without `task_id`, the caller's own task when the caller is a scheduled run. |
 | `list_task_runs` | A task's newest runs, newest first, with the start of each run session's final reply. |
 | `get_task_run_transcript` | One run's session as text, newest page first, about 20,000 characters a page, with a `page` cursor to older messages. Archived run sessions work. |
 | `create_task` | Proposes a new text task in the caller's project (or `project_id`) with the caller's harness; worktree off, fast mode off, default agent. |
-| `update_task` | Proposes changes to name, prompt text (or a command task's arguments), schedule, time zone, missed-run policy, run mode, model, effort and approval mode. Left-out fields keep their value. |
+| `update_task` | Proposes changes to name, prompt text (or a command task's arguments), schedule, time zone, missed-run policy, run mode, model, effort and approval mode. Left-out or empty fields keep their value, so an agent cannot clear a command's arguments (the app can). The request lists only fields that differ from the task. |
 | `pause_task`, `resume_task`, `run_task_now` | Propose pausing, resuming or running a task once now. |
 
 ## Required Behavior

@@ -372,7 +372,13 @@ void main() {
       expect(result.text, contains("project: /repo (this session's project)"));
       expect(result.text, contains("schedule: daily at 09:00 (Europe/Bucharest)"));
       expect(result.text, contains("next run: 2026-11-16 09:00 (UTC+02:00)"));
-      expect((await call(tool: "list_tasks", arguments: {"project_id": "/other"})).text, "No scheduled tasks.");
+      expect((await call(tool: "list_tasks", arguments: {"project_id": ""})).text, contains("Morning summary"));
+      final unknown = await call(tool: "list_tasks", arguments: {"project_id": "current"});
+      expect(unknown.isError, isTrue);
+      expect(
+        unknown.text,
+        "Invalid arguments for list_tasks: project_id is not a known project; leave it out to list every task.",
+      );
     });
 
     test("get_task without an id shows the caller's own task", () async {
@@ -560,6 +566,32 @@ void main() {
       expect(updated.name, "Morning summary");
       expect(updated.model, isNull);
       expect(updated.approvalMode, TaskApprovalMode.ask);
+    });
+
+    test("update_task asks only for the fields that differ from the task", () async {
+      final result = await call(
+        tool: "update_task",
+        arguments: {
+          "task_id": taskId,
+          "name": "Morning summary",
+          "prompt": "Summarize the week",
+          "schedule": {
+            "kind": "daily",
+            "time": {"hour": 9, "minute": 0},
+          },
+          "time_zone": "Europe/Bucharest",
+          "missed_run_policy": "runWhenBack",
+          "run_mode": {"kind": "sameSession", "autoCompact": false},
+          "approval_mode": "ask",
+        },
+      );
+
+      expect(result.isError, isFalse, reason: result.text);
+      expect(
+        asked().description,
+        "Project: repo\n\n**Update “Morning summary”**\n\nNew prompt:\n\n```\nSummarize the week\n```\n\n"
+        "Asked by a scheduled run of this task.",
+      );
     });
 
     test("arguments that do not parse name the field and ask nobody", () async {

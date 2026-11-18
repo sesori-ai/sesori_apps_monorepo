@@ -169,8 +169,12 @@ class SesoriMcpRequestDispatcher({
     switch (tool) {
       case SesoriMcpTool.listTasks:
         final args = _parse(json: arguments, fromJson: ListTasksArguments.fromJson);
-        final list = await _agent.listTasks(caller: caller, projectId: args.projectId);
-        return _ToolOutcome(isError: false, text: _formatter.taskList(list: list));
+        return switch (await _agent.listTasks(caller: caller, projectId: args.projectId)) {
+          final AgentTaskList list => _ToolOutcome(isError: false, text: _formatter.taskList(list: list)),
+          AgentTaskListUnknownProject() => throw const _InvalidArguments(
+            reason: "project_id is not a known project; leave it out to list every task.",
+          ),
+        };
       case SesoriMcpTool.getTask:
         final args = _parse(json: arguments, fromJson: GetTaskArguments.fromJson);
         return switch (await _agent.getTask(caller: caller, taskId: args.taskId)) {
