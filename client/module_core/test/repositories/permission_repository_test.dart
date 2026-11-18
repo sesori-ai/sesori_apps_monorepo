@@ -42,6 +42,12 @@ void main() {
     expect(await reply(), isA<SuccessResponse<void>>());
   });
 
+  test("a 404 is a request no longer pending, for example answered elsewhere, not a failure", () async {
+    stubReply(ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "Permission not found")));
+
+    expect(await reply(), isA<SuccessResponse<void>>());
+  });
+
   test("any other error stays a failure", () async {
     final error = ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null);
     stubReply(ApiResponse.error(error));

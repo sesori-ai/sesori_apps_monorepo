@@ -7,10 +7,12 @@ import "../logging/logging.dart";
 
 @lazySingleton
 class PermissionRepository({required final PermissionApi _api}) {
-  /// Succeeds once the bridge has taken the answer, a 409 included: the bridge
-  /// settled the request but could not apply it as sent, as for an agent's
-  /// task request whose task changed since. The bridge reports that outcome in
-  /// the session, so the request is answered and needs no retry.
+  /// Succeeds once the request is no longer pending. A 409 means the bridge
+  /// settled it without applying the reply, as for an agent's task request
+  /// whose task changed since; the bridge reports that outcome in the session.
+  /// A 404 means the harness no longer has it, for example because another
+  /// surface answered it first. A retry would fail the same way, so neither
+  /// is a failure.
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,
     required String sessionId,
@@ -21,8 +23,10 @@ class PermissionRepository({required final PermissionApi _api}) {
       sessionId: sessionId,
       reply: reply,
     );
-    if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, :final rawErrorString))) {
-      logi("Permission $requestId was answered without applying the reply: $rawErrorString");
+    if (response case ErrorResponse(
+      error: NonSuccessCodeError(errorCode: final errorCode && (404 || 409), :final rawErrorString),
+    )) {
+      logi("Permission $requestId is no longer pending ($errorCode): $rawErrorString");
       return ApiResponse.success(null);
     }
     return response;

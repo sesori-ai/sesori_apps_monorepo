@@ -304,7 +304,10 @@ reaches the backend so the turn continues.
   still pending, such as parallel sub-agent permissions, the card stays folded
   and that request's sheet opens next, after an answer and after a withdrawal
   alike. Only dismissing a sheet without answering, a failed reply, or a next
-  sheet that cannot open brings the card back, with a glide.
+  sheet that cannot open brings the card back, with a glide. A permission reply
+  the harness answers with 404 (no longer pending, such as one another surface
+  answered first) counts as answered, not failed: no toast and no reload, and
+  the next pending request opens.
 - When a request goes away together with a change to the transcript, such as an
   interrupted turn folding its running step, the transcript holds still while
   the card folds or the sheet leaves (200 ms) and then applies the change, so
