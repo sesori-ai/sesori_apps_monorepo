@@ -1,6 +1,8 @@
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/scheduled_task_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
@@ -23,6 +25,7 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildScheduledRunContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginStaleOptionsException, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
@@ -79,6 +82,7 @@ void main() {
   late _FakeOperations operations;
   late _FakeYoloSettings yolo;
   late _FakeLifecycle lifecycle;
+  late _FakeBridgeSettings bridgeSettings;
   late ScheduledTaskActivityTracker activity;
   late ScheduledTaskRunService service;
   late List<ScheduledTaskRunFailure> failures;
@@ -105,6 +109,7 @@ void main() {
     operations = _FakeOperations();
     yolo = _FakeYoloSettings();
     lifecycle = _FakeLifecycle();
+    bridgeSettings = _FakeBridgeSettings();
     final clock = Clock(() => now);
     activity = ScheduledTaskActivityTracker(clock: clock);
     service = ScheduledTaskRunService(
@@ -121,6 +126,7 @@ void main() {
       operations: operations,
       yoloSettings: yolo,
       sessions: sessions,
+      bridgeSettings: bridgeSettings,
       projects: singlePluginProjectRepository(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -231,6 +237,61 @@ void main() {
       await service.runDue();
 
       expect(creation.calls, hasLength(1));
+    });
+  });
+
+  group("run note", () {
+    setUp(() => sessions.sesoriTools = true);
+
+    test("a text run leads with the note beside the user's prompt when its harness gets Sesori's tools", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(creation.runContexts, [buildScheduledRunContext(taskName: "Morning summary", taskId: task.id)]);
+      expect(creation.calls.single.$1.parts, [const PromptPart.text(text: "Summarize yesterday")]);
+    });
+
+    test("a same-session run sends the note into its target session", () async {
+      final task = await createTask(definition: _sameSession, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      await service.runDue();
+      now = now.add(const Duration(days: 1));
+
+      await service.runDue();
+
+      expect(prompts.sends.single.runContext, buildScheduledRunContext(taskName: "Morning summary", taskId: task.id));
+      expect(prompts.sends.single.parts, [const PromptPart.text(text: "Summarize yesterday")]);
+    });
+
+    test("no note when the harness doesn't get Sesori's tools", () async {
+      sessions.sesoriTools = false;
+      await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(creation.runContexts, [null]);
+    });
+
+    test("no note when the agent-tools setting is off", () async {
+      bridgeSettings.settings = const BridgeSettings(agentTools: false);
+      await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(creation.runContexts, [null]);
+    });
+
+    test("no note for a command prompt", () async {
+      await createTask(
+        definition: _daily.copyWith(
+          prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.skill, arguments: "main"),
+        ),
+        nextDueAt: DateTime.utc(2026, 11, 15, 9),
+      );
+
+      await service.runDue();
+
+      expect(creation.runContexts, [null]);
     });
   });
 
@@ -967,6 +1028,7 @@ SessionOptionsOutcome _offering({required List<String> models, required bool sta
 
 class _FakeSessionCreation({required final AppDatabase _database}) implements SessionCreationService {
   final List<(CreateSessionRequest, ScheduledRunSessionLink)> calls = [];
+  final List<String?> runContexts = [];
   Object? error;
   Future<void> Function()? onCreate;
 
@@ -974,9 +1036,11 @@ class _FakeSessionCreation({required final AppDatabase _database}) implements Se
   Future<Session> createScheduledRunSession({
     required CreateSessionRequest request,
     required ScheduledRunSessionLink scheduledRun,
+    required String? runContext,
   }) async {
     await onCreate?.call();
     calls.add((request, scheduledRun));
+    runContexts.add(runContext);
     if (error case final error?) throw error;
     final id = "ses_${calls.length}";
     await recordSessionBinding(
@@ -1046,6 +1110,16 @@ class _FakeLifecycle() implements SessionLifecycleService {
 }
 
 /// Reads stored sessions from the test database the session fakes write.
+class _FakeBridgeSettings() implements BridgeSettingsRepository {
+  BridgeSettings settings = const BridgeSettings();
+
+  @override
+  BridgeSettings get currentSettings => settings;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Sessions({required final AppDatabase _database}) extends FakeSessionRepository {
   this : super(plugin: FakeBridgePlugin());
 
@@ -1063,6 +1137,7 @@ typedef _Send = ({
   PromptModel? model,
   String? command,
   CommandSource? commandSource,
+  String? runContext,
 });
 
 class _FakePrompts() implements SessionPromptService {
@@ -1103,6 +1178,7 @@ class _FakePrompts() implements SessionPromptService {
     required String? command,
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
+    required String? runContext,
   }) async {
     if (error case final error?) throw error;
     sends.add((
@@ -1114,6 +1190,7 @@ class _FakePrompts() implements SessionPromptService {
       model: model,
       command: command,
       commandSource: commandSource,
+      runContext: runContext,
     ));
   }
 

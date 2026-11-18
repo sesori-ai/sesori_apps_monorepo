@@ -1,10 +1,11 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, buildScheduledRunContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/bridge_settings_repository.dart";
 import "../repositories/models/project_not_found_exception.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/session_operation.dart";
@@ -41,6 +42,9 @@ import "yolo_settings_service.dart";
 /// After a new-session run starts, the task's finished run sessions beyond
 /// the newest [keptFinishedRuns] are archived, apart from the fire and one
 /// task at a time.
+///
+/// A text run's prompt opens with a hidden note asking the agent to propose
+/// improvements to its task, when the run's session gets Sesori's own tools.
 class ScheduledTaskRunService({
   required final ScheduledTaskRepository _repository,
   required final ScheduledTaskCompactionService _compaction,
@@ -49,6 +53,7 @@ class ScheduledTaskRunService({
   required final SessionOperationDispatcher _operations,
   required final YoloSettingsService _yoloSettings,
   required final SessionRepository _sessions,
+  required final BridgeSettingsRepository _bridgeSettings,
   required final ProjectRepository _projects,
   required final SessionLifecycleService _lifecycle,
   required final SessionOptionsService _sessionOptions,
@@ -329,7 +334,7 @@ class ScheduledTaskRunService({
     switch (task.definition.runMode) {
       case TaskRunModeSameSession():
         if (await _promptableTarget(task: task) case final targetId?) {
-          await _continueIn(sessionId: targetId, definition: task.definition);
+          await _continueIn(sessionId: targetId, task: task);
           return targetId;
         }
         final session = await _createSession(task: task);
@@ -379,13 +384,15 @@ class ScheduledTaskRunService({
           dedicatedWorktree: definition.dedicatedWorktree,
         ),
         scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
+        runContext: _runContextOf(task: task),
       ),
     );
   }
 
   /// Sends the prompt on [sessionId]'s lane with the task's current options,
   /// after putting the session in the task's approval mode.
-  Future<void> _continueIn({required String sessionId, required ScheduledTaskDefinition definition}) async {
+  Future<void> _continueIn({required String sessionId, required ScheduledTaskRecord task}) async {
+    final definition = task.definition;
     await _yoloSettings.setSessionOverride(
       sessionId: sessionId,
       approvalOverride: _approvalOverride(mode: definition.approvalMode),
@@ -409,9 +416,20 @@ class ScheduledTaskRunService({
           command: command,
           commandSource: commandSource,
           handoff: null,
+          runContext: _runContextOf(task: task),
         ),
       ),
     );
+  }
+
+  /// The note that leads a text run's prompt when its session gets Sesori's
+  /// own tools, or null. A command gets none: its arguments are command input.
+  String? _runContextOf({required ScheduledTaskRecord task}) {
+    final definition = task.definition;
+    if (definition.prompt is! ScheduledTaskPromptText) return null;
+    if (!_bridgeSettings.currentSettings.agentTools) return null;
+    if (!_sessions.sesoriToolsSupported(pluginId: definition.pluginId)) return null;
+    return buildScheduledRunContext(taskName: definition.name, taskId: task.id);
   }
 
   static PromptSettings _settingsOf({required ScheduledTaskDefinition definition}) => (

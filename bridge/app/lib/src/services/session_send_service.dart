@@ -325,6 +325,7 @@ class SessionSendService({
             command: null,
             commandSource: null,
             handoff: sent,
+            runContext: null,
           ),
         );
       } on Object catch (error, stackTrace) {

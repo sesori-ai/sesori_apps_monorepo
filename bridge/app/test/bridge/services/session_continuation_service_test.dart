@@ -486,6 +486,7 @@ class _Prompts({required final SessionContinuationRepository records}) implement
     required String? command,
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
+    required String? runContext,
   }) async {
     expect(handoff, isNull);
     expect(

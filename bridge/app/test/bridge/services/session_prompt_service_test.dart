@@ -17,7 +17,7 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginPromptPartFileData, PluginPromptPartText, PluginStaleOptionsException;
+    show PluginPromptPart, PluginPromptPartFileData, PluginPromptPartText, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -176,6 +176,7 @@ void main() {
                 command: null,
                 commandSource: null,
                 handoff: null,
+                runContext: null,
               );
       }
 
@@ -189,6 +190,27 @@ void main() {
         await send(byUser: false);
 
         expect(await tasks.isUnattendedRun(sessionId: "s1"), isTrue);
+      });
+
+      test("a run note leads the bridge's text prompt for the harness only", () async {
+        await service.sendPromptAlreadyReserved(
+          sessionId: "s1",
+          promptId: "prompt-bridge",
+          parts: const [PromptPart.text(text: "Also check the tests")],
+          variant: null,
+          fastMode: false,
+          agent: null,
+          model: null,
+          command: null,
+          commandSource: null,
+          handoff: null,
+          runContext: "run note",
+        );
+
+        expect(plugin.lastSendPromptParts, [
+          const PluginPromptPart.text(text: "run note"),
+          const PluginPromptPart.text(text: "Also check the tests"),
+        ]);
       });
     });
 

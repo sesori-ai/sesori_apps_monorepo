@@ -36,8 +36,12 @@ typedef PromptSettings = ({SessionVariant? variant, bool fastMode, String? agent
 /// What a send asks its session's plugin to do with the prompt.
 sealed class const _PromptSend();
 
-/// A prompt; [handoff] marks one Sesori wrote to send another session here.
-final class const _PromptSendPrompt({required final MessageHandoff? handoff}) extends _PromptSend;
+/// A prompt; [handoff] marks one Sesori wrote to send another session here,
+/// and a [runContext] note leads its parts for the harness only.
+final class const _PromptSendPrompt({
+  required final MessageHandoff? handoff,
+  required final String? runContext,
+}) extends _PromptSend;
 
 final class const _PromptSendCommand({
   required final String command,
@@ -77,7 +81,7 @@ class SessionPromptService({
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) {
-    final send = _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff);
+    final send = _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff, runContext: null);
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: switch (send) {
@@ -229,7 +233,8 @@ class SessionPromptService({
 
   /// Sends as [sendPrompt] does, for a caller that already holds the session's
   /// lane. It is the bridge's own send (a scheduled run, a quota continuation,
-  /// a send-to-session summary request), never a person's prompt.
+  /// a send-to-session summary request), never a person's prompt. A
+  /// [runContext] note leads a text prompt, never a command's arguments.
   Future<void> sendPromptAlreadyReserved({
     required String sessionId,
     required String promptId,
@@ -241,6 +246,7 @@ class SessionPromptService({
     required String? command,
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
+    required String? runContext,
   }) => _sendPrompt(
     sessionId: sessionId,
     promptId: promptId,
@@ -249,7 +255,12 @@ class SessionPromptService({
     fastMode: fastMode,
     agent: agent,
     model: model,
-    send: _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff),
+    send: _promptOrCommand(
+      command: command,
+      commandSource: commandSource,
+      handoff: handoff,
+      runContext: runContext,
+    ),
     byUser: false,
   );
 
@@ -257,10 +268,11 @@ class SessionPromptService({
     required String? command,
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
+    required String? runContext,
   }) {
     final normalizedCommand = command?.trim();
     return normalizedCommand == null || normalizedCommand.isEmpty
-        ? _PromptSendPrompt(handoff: handoff)
+        ? _PromptSendPrompt(handoff: handoff, runContext: runContext)
         : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
   }
 
@@ -291,12 +303,15 @@ class SessionPromptService({
     // Built before the quota cancellation below, so an edit its own checks
     // refuse leaves a pending continuation alone.
     final sendToPlugin = switch (send) {
-      _PromptSendPrompt(:final handoff) => () async => await _sessionRepository.sendPrompt(
+      _PromptSendPrompt(:final handoff, :final runContext) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
         parts: await _withFirstPromptContext(
           sessionId: sessionId,
-          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+          parts: [
+            if (runContext != null) DeliverablePromptPart.text(text: runContext),
+            ...await _deliverableParts(sessionId: sessionId, parts: parts),
+          ],
         ),
         variant: variant,
         fastMode: fastMode,

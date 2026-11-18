@@ -1026,6 +1026,10 @@ class SessionRepository({
   /// Whether [pluginId] takes image parts inline.
   bool inlineImagesSupported({required String pluginId}) => _runtime.supportsPromptAttachments(pluginId: pluginId);
 
+  /// Whether [pluginId]'s sessions get Sesori's own tools when the bridge's
+  /// `agent-tools` setting is on.
+  bool sesoriToolsSupported({required String pluginId}) => _runtime.injectsSesoriTools(pluginId: pluginId);
+
   /// Whether the plugin bound to [sessionId] takes image parts inline.
   Future<bool> inlineImagesSupportedForSession({required String sessionId}) async {
     final binding = await _requireBinding(sessionId: sessionId, operation: SessionOperation.sendPrompt);

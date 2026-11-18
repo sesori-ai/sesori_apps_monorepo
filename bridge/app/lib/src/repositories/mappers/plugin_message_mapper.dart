@@ -91,21 +91,21 @@ extension PluginMessageWithPartsMapper on PluginMessageWithParts {
       parts: [
         for (final part in parts)
           if (part is! PluginMessagePartUnknown)
-            if (part.withoutWorktreeContext() case final visible?) visible.toShared(sessionId: sessionId),
+            if (part.withoutSystemContext() case final visible?) visible.toShared(sessionId: sessionId),
       ],
     );
   }
 }
 
-extension PluginMessagePartWorktreeContext on PluginMessagePart {
-  /// This part without the bridge's worktree note, or `null` when the note was
+extension PluginMessagePartSystemContext on PluginMessagePart {
+  /// This part without the bridge's notes, or `null` when the notes were
   /// all it held. Live parts carry no role, so history and the live path strip
   /// every text part by the same rule and the stored transcript matches the
   /// live event.
-  PluginMessagePart? withoutWorktreeContext() {
+  PluginMessagePart? withoutSystemContext() {
     final part = this;
     if (part is! PluginMessagePartText) return part;
-    final text = stripWorktreeSystemContext(text: part.text);
+    final text = stripSystemContext(text: part.text);
     if (text == null) return null;
     return identical(text, part.text) ? part : part.copyWith(text: text);
   }

@@ -20,4 +20,4 @@ export "src/project_directory.dart";
 export "src/semantic_version.dart";
 export "src/sesori_agent_instructions.dart";
 export "src/sesori_data_directory.dart";
-export "src/worktree_system_context.dart";
+export "src/system_context.dart";

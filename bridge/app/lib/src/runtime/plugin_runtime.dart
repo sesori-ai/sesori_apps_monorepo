@@ -270,6 +270,9 @@ class PluginRuntime({
   bool supportsPromptAttachments({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.supportsPromptAttachments ?? false;
 
+  bool injectsSesoriTools({required String pluginId}) =>
+      _slots[pluginId]?.registration.descriptor.injectsSesoriTools ?? false;
+
   bool namesCommandInvocations({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.namesCommandInvocations ?? false;
 

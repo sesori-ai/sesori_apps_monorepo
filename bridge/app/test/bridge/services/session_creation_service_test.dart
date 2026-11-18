@@ -30,6 +30,8 @@ import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show buildScheduledRunContext, buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -444,6 +446,7 @@ void main() {
             command: "review",
           ),
           scheduledRun: (taskId: "stk_nightly", approvalOverride: SessionApprovalMode.yolo),
+          runContext: null,
         ),
         throwsA(isA<StaleSessionPromptOptionsException>()),
       );
@@ -516,13 +519,19 @@ void main() {
         nextDueAt: null,
         now: DateTime.utc(2026, 11, 15),
       );
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/session-one",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+      final runNote = buildScheduledRunContext(taskName: "Nightly", taskId: task.id);
 
       final created = await service.createScheduledRunSession(
         request: const CreateSessionRequest(
           commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
-          dedicatedWorktree: false,
+          dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Build it")],
           variant: null,
           agent: "build",
@@ -530,6 +539,7 @@ void main() {
           command: null,
         ),
         scheduledRun: (taskId: task.id, approvalOverride: SessionApprovalMode.yolo),
+        runContext: runNote,
       );
       await pumpEventQueue();
 
@@ -537,6 +547,14 @@ void main() {
       expect(stored.scheduledTaskId, task.id);
       expect(stored.approvalOverride, SessionApprovalMode.yolo);
       expect(await defaultsRepository.read(pluginId: "fake"), isNull);
+      // The run note follows the worktree note, for the harness only.
+      expect(plugin.lastCreateParts, [
+        PluginPromptPart.text(
+          text: buildWorktreeSystemContext(worktreePath: "/repo/.worktrees/session-one", baseBranch: "main"),
+        ),
+        PluginPromptPart.text(text: runNote),
+        const PluginPromptPart.text(text: "Build it"),
+      ]);
       expect(plugin.lastCreateUserVisibleText, "Build it");
     });
 
@@ -554,6 +572,7 @@ void main() {
           command: null,
         ),
         scheduledRun: (taskId: "stk_deleted", approvalOverride: SessionApprovalMode.yolo),
+        runContext: null,
       );
 
       final stored = await db.sessionDao.getSession(sessionId: created.id) ?? fail("missing stored session");

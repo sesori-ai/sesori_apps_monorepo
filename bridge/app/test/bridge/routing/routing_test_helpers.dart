@@ -319,6 +319,12 @@ class FakeSessionRepository({
   @override
   bool inlineImagesSupported({required String pluginId}) => true;
 
+  /// Whether the plugin declares Sesori's own tools.
+  bool sesoriTools = false;
+
+  @override
+  bool sesoriToolsSupported({required String pluginId}) => sesoriTools;
+
   @override
   bool isPluginEligible({required String pluginId}) => eligiblePluginIds.contains(pluginId);
 
