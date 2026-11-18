@@ -12,6 +12,8 @@ extension AgentApprovalMapper on AgentApproval {
       sessionID: sessionId,
       displaySessionId: displaySessionId,
       tool: switch (change) {
+        CreateTaskChange() => "Sesori: create task",
+        UpdateTaskChange() => "Sesori: update task",
         SetTaskEnabledChange(enabled: true) => "Sesori: resume task",
         SetTaskEnabledChange(enabled: false) => "Sesori: pause task",
         RunTaskNowChange() => "Sesori: run task now",
