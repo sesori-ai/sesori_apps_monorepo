@@ -8,7 +8,8 @@ import "mappers/agent_approval_mapper.dart";
 import "models/agent_approval.dart";
 import "models/scheduled_task_agent_change.dart";
 
-/// The in-memory approvals agents are waiting on, at most one per session.
+/// The in-memory approvals agents are waiting on. A session may have several
+/// waiting at once, and each is answered on its own.
 ///
 /// Nothing is persisted: a bridge restart drops every approval. Request ids
 /// are random, so a stale request a phone still shows after a restart can
@@ -16,23 +17,20 @@ import "models/scheduled_task_agent_change.dart";
 class AgentApprovalRepository({required final Random _random}) {
   static const int _idBytes = 16;
 
-  /// Pending approvals by the session that asked.
-  final Map<String, AgentApproval> _bySession = {};
+  /// Pending approvals by request id, oldest first.
+  final Map<String, AgentApproval> _byRequest = {};
   final StreamController<AgentApprovalEvent> _events = StreamController.broadcast();
 
   /// Every request asked and settled, already in the shared permission shape.
   Stream<AgentApprovalEvent> get events => _events.stream;
 
-  /// Asks for [change] on [sessionId], withdrawing the session's previous
-  /// request. Returns whether there was one.
-  bool add({
+  /// Asks for [change] on [sessionId], beside any request already waiting.
+  void add({
     required String sessionId,
     required String? displaySessionId,
     required ScheduledTaskAgentChange change,
     required String description,
   }) {
-    final previous = _bySession.remove(sessionId);
-    if (previous != null) _settled(approval: previous, reply: PermissionReply.reject);
     final approval = AgentApproval(
       requestId: "sesori-approval-${base64Url.encode(List.generate(_idBytes, (_) => _random.nextInt(256)))}",
       sessionId: sessionId,
@@ -40,17 +38,15 @@ class AgentApprovalRepository({required final Random _random}) {
       change: change,
       description: description,
     );
-    _bySession[sessionId] = approval;
+    _byRequest[approval.requestId] = approval;
     _emit(AgentApprovalAsked(permission: approval.toPendingPermission()));
-    return previous != null;
   }
 
   /// Removes and returns the approval [requestId] names, announcing [reply];
   /// null when no pending approval has that id.
   AgentApproval? take({required String requestId, required PermissionReply reply}) {
-    final approval = _bySession.values.where((approval) => approval.requestId == requestId).firstOrNull;
+    final approval = _byRequest.remove(requestId);
     if (approval == null) return null;
-    _bySession.remove(approval.sessionId);
     _settled(approval: approval, reply: reply);
     return approval;
   }
@@ -59,14 +55,14 @@ class AgentApprovalRepository({required final Random _random}) {
   /// sessions surfaced under it.
   List<PendingPermission> pendingPermissions({required String sessionId}) {
     return [
-      for (final approval in _bySession.values)
+      for (final approval in _byRequest.values)
         if (approval.sessionId == sessionId || approval.displaySessionId == sessionId) approval.toPendingPermission(),
     ];
   }
 
   /// The root sessions with a pending approval.
   Set<String> get awaitingRootSessionIds => {
-    for (final approval in _bySession.values) approval.displaySessionId ?? approval.sessionId,
+    for (final approval in _byRequest.values) approval.displaySessionId ?? approval.sessionId,
   };
 
   Future<void> dispose() => _events.close();

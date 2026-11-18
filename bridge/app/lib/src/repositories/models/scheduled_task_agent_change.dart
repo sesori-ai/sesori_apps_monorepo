@@ -7,9 +7,12 @@ final class const CreateTaskChange({required final ScheduledTaskDefinition defin
     extends ScheduledTaskAgentChange;
 
 /// A change to a stored task. [before] is the definition the request's
-/// description was built from; Allow applies the change only while the stored
-/// definition still equals it, so the user never approves a task whose
-/// current state they were not shown.
+/// description was built from. Allow applies the change only while what the
+/// description showed still holds: the fields the change sets, the approval
+/// mode its Approve everything warning came from (except for a pause), and a
+/// resume's schedule. Other fields may change meanwhile, for example through
+/// another request of the same session, and an update applies only its own
+/// fields on top of them.
 sealed class const StoredTaskChange({required final String taskId, required final ScheduledTaskDefinition before})
     extends ScheduledTaskAgentChange;
 

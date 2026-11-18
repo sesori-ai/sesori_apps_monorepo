@@ -116,7 +116,8 @@ class SesoriMcpRequestDispatcher({
       "instructions":
           "Sesori's tools for the scheduled tasks on this computer. Start with list_tasks; get_task without a "
           "task_id shows this session's own task when it is a scheduled run. Tools that change a task only send "
-          "the user a request to allow; they return before the user answers.",
+          "the user a request to allow; they return before the user answers. Each request is answered "
+          "separately, so several can wait at once.",
     };
   }
 
@@ -255,11 +256,7 @@ class SesoriMcpRequestDispatcher({
 
   _ToolOutcome _proposal({required AgentProposal proposal, required String sent}) {
     return switch (proposal) {
-      AgentProposalSent(withdrewPrevious: false) => _ToolOutcome(isError: false, text: sent),
-      AgentProposalSent(withdrewPrevious: true) => _ToolOutcome(
-        isError: false,
-        text: "$sent It replaces this session's earlier request, which can no longer be allowed.",
-      ),
+      AgentProposalSent() => _ToolOutcome(isError: false, text: sent),
       AgentProposalTaskNotFound(:final taskId) => _ToolOutcome(isError: true, text: _taskNotFound(taskId: taskId)),
       AgentProposalInvalid(:final code) => _ToolOutcome(isError: true, text: _invalid(code: code)),
       AgentProposalRefused(:final reason) => _ToolOutcome(

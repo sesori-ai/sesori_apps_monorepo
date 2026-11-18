@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/agent_approval_repository.dart";
@@ -216,29 +216,20 @@ class ScheduledTaskAgentService({
   }
 
   /// Answers [requestId] when it is an agent approval. Allow applies the
-  /// change through the app's own service calls, unless the task changed
-  /// since the request was described: the user's edit wins.
+  /// change through the app's own service calls, unless what it was described
+  /// against has changed since (see [StoredTaskChange]): an earlier edit, the
+  /// user's own or another allowed request, wins.
   Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async {
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
     if (reply == PermissionReply.reject) return const AgentApprovalRejected();
-    final change = approval.change;
-    if (change is StoredTaskChange) {
-      final record = await _uncompletedTask(taskId: change.taskId);
-      if (record == null || record.definition != change.before) return const AgentApprovalStale();
-    }
-    switch (change) {
+    switch (approval.change) {
       case CreateTaskChange(:final definition):
         await _tasks.create(definition: definition);
-      case UpdateTaskChange(:final taskId, :final after):
-        await _tasks.update(taskId: taskId, definition: after);
-      case SetTaskEnabledChange(:final taskId, :final enabled):
-        await _tasks.setEnabled(taskId: taskId, enabled: enabled);
-      case RunTaskNowChange(:final taskId):
-        final run = await _runner.runNow(taskId: taskId);
-        if (run.outcome is! ScheduledTaskRunStarted) return const AgentApprovalRunNotStarted();
+        return const AgentApprovalApplied();
+      case final StoredTaskChange change:
+        return await _applyStored(change: change);
     }
-    return const AgentApprovalApplied();
   }
 
   /// The agent approvals to show on [sessionId]'s screen.
@@ -250,6 +241,79 @@ class ScheduledTaskAgentService({
   /// on its attention list.
   Future<List<ProjectActivitySummary>> markAwaitingApproval({required List<ProjectActivitySummary> projects}) {
     return _sessions.markAwaitingInput(projects: projects, rootSessionIds: _approvals.awaitingRootSessionIds);
+  }
+
+  Future<AgentApprovalSettlement> _applyStored({required StoredTaskChange change}) async {
+    final taskId = change.taskId;
+    final record = await _uncompletedTask(taskId: taskId);
+    if (record == null) return const AgentApprovalStale();
+    final current = record.definition;
+    final before = change.before;
+    // The request was described for this project and harness, and its Approve
+    // everything warning was worked out from this mode, so only a pause, which
+    // is always safe, outlives a change to any of them.
+    final sameContext =
+        current.projectId == before.projectId &&
+        current.pluginId == before.pluginId &&
+        current.approvalMode == before.approvalMode;
+    switch (change) {
+      case UpdateTaskChange():
+        final rebased = sameContext ? _rebased(change: change, current: current) : null;
+        if (rebased == null) return const AgentApprovalStale();
+        try {
+          await _tasks.update(taskId: taskId, definition: rebased);
+        } on ScheduledTaskRequestException catch (error, stackTrace) {
+          Log.w("An allowed change to task $taskId no longer validates on the current task", error, stackTrace);
+          return const AgentApprovalStale();
+        }
+      case SetTaskEnabledChange(enabled: false):
+        if (!record.enabled) return const AgentApprovalStale();
+        await _tasks.setEnabled(taskId: taskId, enabled: false);
+      case SetTaskEnabledChange(enabled: true):
+        // A resume request shows the schedule it restarts.
+        final sameSchedule = current.schedule == before.schedule && current.timeZone == before.timeZone;
+        if (record.enabled || !sameContext || !sameSchedule) return const AgentApprovalStale();
+        await _tasks.setEnabled(taskId: taskId, enabled: true);
+      case RunTaskNowChange():
+        if (!sameContext) return const AgentApprovalStale();
+        final run = await _runner.runNow(taskId: taskId);
+        if (run.outcome is! ScheduledTaskRunStarted) return const AgentApprovalRunNotStarted();
+    }
+    return const AgentApprovalApplied();
+  }
+
+  /// [current] with the fields [change] edits set to its values, or null when
+  /// one of them no longer holds the value the request was described with.
+  /// Covers every field [proposeUpdate] can edit.
+  static ScheduledTaskDefinition? _rebased({
+    required UpdateTaskChange change,
+    required ScheduledTaskDefinition current,
+  }) {
+    final UpdateTaskChange(:before, :after) = change;
+    var conflicts = false;
+    T edited<T>(T Function(ScheduledTaskDefinition definition) field) {
+      final proposed = field(after);
+      if (proposed == field(before)) return field(current);
+      if (field(current) != field(before)) conflicts = true;
+      return proposed;
+    }
+
+    // A schedule reads in its time zone, and a variant belongs to its model, so
+    // each pair is approved, and checked, as one value.
+    final (schedule, timeZone) = edited((definition) => (definition.schedule, definition.timeZone));
+    final (model, variant) = edited((definition) => (definition.model, definition.variant));
+    final rebased = current.copyWith(
+      name: edited((definition) => definition.name),
+      prompt: edited((definition) => definition.prompt),
+      schedule: schedule,
+      timeZone: timeZone,
+      missedRunPolicy: edited((definition) => definition.missedRunPolicy),
+      runMode: edited((definition) => definition.runMode),
+      model: model,
+      variant: variant,
+      approvalMode: edited((definition) => definition.approvalMode),
+    );
+    return conflicts ? null : rebased;
   }
 
   Future<AgentProposal> _propose({
@@ -270,7 +334,7 @@ class ScheduledTaskAgentService({
       CreateTaskChange(:final definition) => definition.projectId,
       StoredTaskChange(:final before) => before.projectId,
     };
-    final withdrewPrevious = _approvals.add(
+    _approvals.add(
       sessionId: caller.sessionId,
       // Subagent requests show on the root session, like plugin permissions.
       displaySessionId: rootSessionId == caller.sessionId ? null : rootSessionId,
@@ -281,7 +345,7 @@ class ScheduledTaskAgentService({
         requester: await _requester(caller: caller, change: change),
       ),
     );
-    return AgentProposalSent(withdrewPrevious: withdrewPrevious);
+    return const AgentProposalSent();
   }
 
   /// Why [definition] could not be saved, as the app's editor would be told,
@@ -458,9 +522,9 @@ final class const AgentTaskEdits({
 
 sealed class const AgentProposal();
 
-/// The request is on the user's phone. [withdrewPrevious] tells whether it
-/// replaced an earlier request of the same session.
-final class const AgentProposalSent({required final bool withdrewPrevious}) extends AgentProposal;
+/// The request is on the user's phone, beside any the session already has
+/// waiting.
+final class const AgentProposalSent() extends AgentProposal;
 
 final class const AgentProposalTaskNotFound({required final String taskId}) extends AgentProposal;
 
@@ -496,8 +560,8 @@ final class const AgentApprovalApplied() extends AgentApprovalSettlement;
 
 final class const AgentApprovalRejected() extends AgentApprovalSettlement;
 
-/// Allowed, but the task was deleted or changed since the request was
-/// described, so nothing was applied.
+/// Allowed, but the task was deleted, or what the request was described
+/// against changed since, so nothing was applied.
 final class const AgentApprovalStale() extends AgentApprovalSettlement;
 
 /// Allowed, but the run did not start; its run record holds the reason.
