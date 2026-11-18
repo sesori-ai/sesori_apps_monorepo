@@ -70,9 +70,10 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   declares false until its injection step (Claude Code declares true). A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
   hides both.
-- Claude Code: every session launch, resume, rewind and idle respawn passes the server in an inline `--mcp-config`
-  whose `Authorization` header names `${SESORI_MCP_TOKEN}`; the token itself is only in the child's environment. The
-  launch adds `mcp__sesori_bridge` to `--allowedTools`, so the bridge's approval is the only prompt, and leaves out
+- Claude Code: every session launch, resume, rewind and idle respawn passes the server through `--mcp-config <file>`.
+  Only that file holds the token. It sits in a 0700 folder under the plugin's state directory and is deleted once the
+  stdin handshake ends. Neither argv nor the child's environment holds the token, so `env` in the agent's Bash shows
+  none. The launch adds `mcp__sesori_bridge` to `--allowedTools`, so the bridge's approval is the only prompt, and leaves out
   `--strict-mcp-config`, so the user's own servers still load. Each launch mints a fresh token bound to the Claude
   session id. Catalog probes get no server. The session's MCP list shows `sesori_bridge` without controls.
 
@@ -81,7 +82,7 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). Claude Code: `claude_launch_spec_test.dart` (the config, the env-only token, `--allowedTools`, no strict flag, nothing without a launch), `claude_session_process_repository_test.dart` (a bound token per launch, none for a probe) and `claude_mcp_mapper_test.dart` (the server without controls). |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). Claude Code: `claude_launch_spec_test.dart` (the config file argument, a token-free environment, `--allowedTools`, no strict flag, nothing without a launch), `claude_session_process_repository_test.dart` (a bound token per launch in a file deleted after the handshake, none for a probe) and `claude_mcp_mapper_test.dart` (the server without controls). |
 | L3 Release | Per injected harness, on an isolated home with the local test proxy: the server is listed and connected in the session's MCP list beside a user-scope server; a scheduled run calls `get_task` and resolves to its own task while a concurrent plain session resolves to itself; an `update_task` raises the approval on the run's session, Allow changes the next run's prompt, and that run's note reaches the harness but not the app; no token in argv, the bridge log or harness files; resuming the session in the harness's own CLI lists only the user's servers and leaves the user config unchanged. Claude Code 2.1.325 passed on 2026-11-17. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -95,7 +96,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 ## Material Failure Signals
 
 - The endpoint answers on a non-loopback address, or accepts a request carrying `Origin` or a foreign `Host`.
-- A token appears in argv, a URL, a log line or a harness config file.
+- A token appears in argv, a URL, a log line, a harness config file or the agent's environment, or a Claude
+  `--mcp-config` file outlives its launch handshake.
 - A user's own MCP server stops loading in a Sesori-started session, or a session resumed in the harness's own CLI
   still has `sesori_bridge`.
 - An unknown or pre-restart token gets anything but 401, or an unbound token reads any task data.

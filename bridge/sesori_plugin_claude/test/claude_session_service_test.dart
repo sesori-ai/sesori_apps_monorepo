@@ -1613,6 +1613,7 @@ final class _ServiceHarness({
       transcriptsDirectory: "/tmp/sesori/transcripts",
       uploadsDirectory: "/tmp/sesori/uploads",
       sesoriMcp: FakeSesoriMcpAccess(),
+      sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

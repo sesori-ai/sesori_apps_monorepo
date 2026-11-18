@@ -87,6 +87,7 @@ void main() {
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
         sesoriMcp: FakeSesoriMcpAccess(),
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
         environment: const {},
       );
       var probeCount = 0;
@@ -228,6 +229,7 @@ void main() {
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
         sesoriMcp: FakeSesoriMcpAccess(),
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
         environment: const {},
       );
       return ClaudeCatalogService(

@@ -2176,6 +2176,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       transcriptsDirectory: "/tmp/sesori/transcripts",
       uploadsDirectory: "/tmp/sesori/uploads",
       sesoriMcp: FakeSesoriMcpAccess(),
+      sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

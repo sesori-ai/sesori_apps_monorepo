@@ -179,7 +179,7 @@ configuration, and declares `injectsSesoriTools` once it does.
 
 | Harness | Sesori availability |
 |---|---|
-| Claude Code | ✅ Inline `--mcp-config` on every launch, resume and respawn, without `--strict-mcp-config`, so the user's servers still load. The header reads `${SESORI_MCP_TOKEN}` from the child's environment, so the token is not in argv or any file. `--allowedTools mcp__sesori_bridge` skips Claude's own prompt, since the bridge asks for each proposal. The server lists with source `dynamic` and shows without controls. A plain `claude --resume` loads no Sesori server and the user config stays unchanged. Claude keeps a `mcp-logs-sesori-bridge` folder in its cache. A user server of the same name is replaced for the session. Verified live on 2.1.325, 2026-11-17. |
+| Claude Code | ✅ `--mcp-config <file>` on every launch, resume and respawn, without `--strict-mcp-config`, so the user's servers still load. The token is only in that file, inside a 0700 folder under the plugin's state directory, which the plugin deletes once the stdin handshake ends. Claude reads the file only at startup, so tools and reconnects keep working. The token is never in argv or the child's environment, so the agent's Bash cannot read it with `env`. `--allowedTools mcp__sesori_bridge` skips Claude's own prompt, since the bridge asks for each proposal. The server lists with source `dynamic` and shows without controls. A plain `claude --resume` loads no Sesori server and the user config stays unchanged. Claude keeps a `mcp-logs-sesori-bridge` folder in its cache. A user server of the same name is replaced for the session. Verified live on 2.1.325, 2026-11-17. |
 | Other harnesses | ⬜ Not injected yet. |
 
 ## Transcript turn boundaries
