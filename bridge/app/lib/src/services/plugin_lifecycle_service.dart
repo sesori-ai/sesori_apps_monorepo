@@ -207,6 +207,11 @@ class PluginLifecycleService({
     ]);
   }
 
+  /// What [pluginId]'s harness does with a prompt sent while a turn runs, or
+  /// null when no such plugin is registered.
+  PluginBusyPromptHandling? busyPromptHandling({required String pluginId}) =>
+      _registeredPlugins.where((plugin) => plugin.id == pluginId).firstOrNull?.busyPromptHandling;
+
   PluginManagementResponse get managementSnapshot {
     final snapshot = _requireManagementSnapshot();
     return _buildManagementResponse(snapshot: snapshot, bridgeId: _requireBridgeId());

@@ -1,0 +1,134 @@
+import "dart:async";
+
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildSessionNotice;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgeSseSessionIdle, Log, PluginBusyPromptHandling;
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../repositories/models/normalized_bridge_event.dart";
+import "../repositories/models/session_notice.dart";
+import "../repositories/models/session_operation.dart";
+import "../repositories/models/session_quietness.dart";
+import "../repositories/session_repository.dart";
+import "../repositories/trackers/prompt_stamp.dart";
+import "plugin_lifecycle_service.dart";
+import "session_event_dispatcher.dart";
+import "session_operation_dispatcher.dart";
+import "session_prompt_service.dart";
+
+/// Tells the session where a request was shown, once, how that request ended.
+///
+/// The notice is a bridge prompt marked [PromptStampNotice], so it shows as a
+/// Sesori row with only its summary. It never stops the agent's work or cuts
+/// across input the user has not given: a harness that steers takes it into
+/// the running turn, and otherwise it waits until the session is quiet.
+/// Nothing is kept across a bridge restart. Logs carry the session id and
+/// the reason, never the notice text.
+class const SessionNoticeService({
+  required final SessionRepository _sessions,
+  required final SessionOperationDispatcher _operations,
+  required final SessionPromptService _prompts,
+  required final SessionEventDispatcher _events,
+  required final PluginLifecycleService _plugins,
+}) {
+  /// Sends [notice] into [sessionId], skipping an archived or deleted
+  /// session. Completes once it is sent, skipped or dropped; never throws.
+  Future<void> deliver({required String sessionId, required SessionNotice notice}) async {
+    if (await _promptableSession(sessionId: sessionId) == null) {
+      Log.i("Skipped a notice for session $sessionId: it is archived or deleted");
+      return;
+    }
+    // Listening before the first check keeps an idle that lands between a
+    // busy check and the wait from being missed.
+    var idle = Completer<void>();
+    final subscription = _events.events.listen(
+      (sourced) {
+        if (_isIdle(event: sourced.event, sessionId: sessionId) && !idle.isCompleted) idle.complete();
+      },
+      onDone: () {
+        if (!idle.isCompleted) idle.completeError(StateError("the bridge is shutting down"));
+      },
+    );
+    try {
+      while (true) {
+        final attempt = await _operations.dispatch(
+          sessionId: sessionId,
+          operation: SessionOperation.deliverNotice,
+          body: () => _sendIfReady(sessionId: sessionId, notice: notice),
+        );
+        switch (attempt) {
+          case _Attempt.sent:
+            return;
+          case _Attempt.skipped:
+            Log.i("Skipped a notice for session $sessionId: it was archived or deleted while it waited");
+            return;
+          case _Attempt.waiting:
+            await idle.future;
+            idle = Completer<void>();
+        }
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("Dropped a notice for session $sessionId", error, stackTrace);
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
+  /// Runs on the session's lane, so no other prompt starts between the check
+  /// and the send. A session that turned busy since its idle waits again.
+  Future<_Attempt> _sendIfReady({required String sessionId, required SessionNotice notice}) async {
+    final session = await _promptableSession(sessionId: sessionId);
+    if (session == null) return _Attempt.skipped;
+    final ready = switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
+      SessionQuietness.quiet || SessionQuietness.unknown => true,
+      SessionQuietness.working =>
+        _plugins.busyPromptHandling(pluginId: session.pluginId) == PluginBusyPromptHandling.steer,
+      SessionQuietness.awaitingUser => false,
+    };
+    if (!ready) return _Attempt.waiting;
+    final text = buildSessionNotice(summary: notice.summary, guidance: notice.guidance);
+    await _prompts.sendWithDefaults(
+      sessionId: sessionId,
+      defaults: session.promptDefaults,
+      send: (settings) => _prompts.sendPromptAlreadyReserved(
+        sessionId: sessionId,
+        promptId: SessionPromptService.generatePromptId(),
+        parts: [PromptPart.text(text: text)],
+        variant: settings.variant,
+        fastMode: settings.fastMode,
+        agent: settings.agent,
+        model: settings.model,
+        command: null,
+        commandSource: null,
+        mark: const PromptStampNotice(),
+        runContext: null,
+      ),
+    );
+    return _Attempt.sent;
+  }
+
+  /// [sessionId]'s stored session, or null when it is deleted or archived.
+  Future<Session?> _promptableSession({required String sessionId}) async {
+    final session = await _sessions.getCatalogSession(sessionId: sessionId);
+    return session == null || session.time?.archived != null ? null : session;
+  }
+
+  static bool _isIdle({required NormalizedBridgeEvent event, required String sessionId}) {
+    final payload = switch (event) {
+      NormalizedTerminalHandoff(:final payload) => payload,
+      final NormalizedBridgePayload payload => payload,
+    };
+    // Harnesses report the end of a turn as either event.
+    return switch (payload) {
+      NormalizedStatusEvent(sessionId: final idleSessionId, status: SessionStatusIdle()) ||
+      NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: final idleSessionId)) => idleSessionId == sessionId,
+      _ => false,
+    };
+  }
+}
+
+enum _Attempt() {
+  sent,
+  skipped,
+  waiting,
+}

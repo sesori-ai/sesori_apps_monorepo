@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
 import "package:sesori_bridge/src/routing/reply_to_permission_handler.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -68,8 +69,11 @@ void main() {
 
     test("returns 409 and leaves the plugin alone when an allowed agent approval did not apply", () async {
       for (final (settlement, message) in [
-        (const AgentApprovalStale(), "nothing was applied"),
-        (const AgentApprovalRunNotStarted(), "could not start"),
+        (const AgentApprovalAnswered(outcome: AgentApprovalStale()), "nothing was applied"),
+        (
+          const AgentApprovalAnswered(outcome: AgentApprovalRunNotStarted(outcome: ScheduledTaskRunOutcome.skipped())),
+          "could not start",
+        ),
       ]) {
         final failingHandler = ReplyToPermissionHandler(
           pendingInteractionService: buildTestPendingInteractionService(database: db, plugin: plugin).service,

@@ -198,6 +198,12 @@ send an empty list.
 | DeepSeek | 🚫 The adapter rejects any MCP server ("MCP servers are not supported"). Checked on 0.2.3. |
 | Other harnesses | ⬜ Not injected yet. |
 
+Once the user answers a request, the bridge sends the session a notice with the
+outcome, using each plugin's `busyPromptHandling`. Harnesses that steer (Claude
+Code, Codex, Pi, Oh My Pi, OpenCode) take it into a running turn. On Grok,
+GitHub Copilot, Cursor, Hermes, Antigravity and DeepSeek, a prompt would stop
+the turn, so the notice waits until the session is quiet. Not yet verified live.
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a
