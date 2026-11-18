@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../utils/markdown_plain_text.dart";
 import "../session_detail_presentation_scope.dart";
 import "edit_message_dialogs.dart";
 import "handoff_session_link.dart";
@@ -162,7 +163,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                     ? loc.pendingRequestBannerSingle
                     : loc.pendingRequestBannerMultiple(state.pendingQuestions.length))
               : (questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount)),
-          request: _firstLine(question.question),
+          request: needsYouRequestLine(text: question.question),
           action: hasTypedRequest ? loc.needsYouReview : loc.needsYouAnswer,
           leads: true,
           onPressed: onShowPendingQuestions,
@@ -175,7 +176,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           label: state.pendingPermissions.length == 1
               ? loc.permissionBannerSingle
               : loc.permissionBannerMultiple(state.pendingPermissions.length),
-          request: _firstLine(permission.description),
+          request: needsYouRequestLine(text: permission.description),
           action: loc.needsYouReview,
           leads: !showsQuestionCard || state.pendingQuestions.firstOrNull?.questions.firstOrNull == null,
           onPressed: onShowPendingPermissions,
@@ -474,7 +475,16 @@ class _TranscriptHeldWhileRequestSettlesState() extends State<_TranscriptHeldWhi
   Widget build(BuildContext context) => widget.builder(_shown);
 }
 
-String _firstLine(String text) => text.trim().split("\n").first;
+/// A needs-you card's preview of a request: its first line as the words the
+/// request's modal renders, so a bridge's `**bold**` warning reads without its
+/// markers.
+@visibleForTesting
+String needsYouRequestLine({required String text}) {
+  final firstLine = text.trim().split("\n").first;
+  // The card shows words beside a label, never a picture.
+  final plain = markdownPlainText(markdown: firstLine, nameImage: null);
+  return plain.isEmpty ? firstLine : plain;
+}
 
 bool hasActiveWork({
   required SessionStatus sessionStatus,
