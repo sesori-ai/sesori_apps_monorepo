@@ -9,8 +9,8 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-No plugin injects the server yet, so no harness can reach it; until a plugin does, every check below runs headlessly
-against the endpoint. The per-harness injection is a later step of the plan.
+Codex injects the server into the threads Sesori starts (see Harness Scope). The other harnesses do not inject it
+yet, so they cannot reach it; the remaining plan steps add their injection.
 
 | Tool | Effect |
 |---|---|
@@ -66,8 +66,8 @@ against the endpoint. The per-harness injection is a later step of the plan.
 - Transcript content, prompts and tool arguments are never logged.
 - A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
   improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
-  task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
-  declares false until its injection step. A command task gets no note. The note goes to the harness only: the run's
+  task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); Codex declares
+  it, and every other plugin declares false until its injection step. A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
   hides both.
 
@@ -75,9 +75,9 @@ against the endpoint. The per-harness injection is a later step of the plan.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Not included: no harness reaches the server yet. |
+| L1 Smoke | Not included. |
 | L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
-| L3 Release | No additional coverage: no plugin injects the server yet. Each injection step adds its live harness check here (the server listed, a call resolving to the right session, no token in argv, URLs or harness session files). |
+| L3 Release | Each injecting harness, live on a bridge with an isolated home and harness config, the local test model and a user stdio MCP server in the harness config. Codex: a scheduled run gets the note, calls `get_task` and `update_task` with no Codex prompt, and the request names the run's own task; Allow changes the next run's prompt; the thread inventory lists `sesori_bridge` and the user's server; a concurrent plain session's `get_task` answers that it is not a scheduled run; after a bridge restart a resumed thread's tool call works; a resume in Codex's own app-server lists only the user's server, `config.toml` is unchanged, and no token or server URL is in `CODEX_HOME`. Automated: the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -101,7 +101,7 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Known Limitations
 
-- No harness injects the server yet; per-harness support lands with the injection steps and is recorded in
+- Only Codex injects the server so far; per-harness support lands with the injection steps and is recorded in
   [harness capabilities](../HARNESS_CAPABILITIES.md).
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
 - A bridge restart drops waiting requests; the phone's modal for one then fails to reply.
@@ -111,6 +111,10 @@ task to its start and compare it with the app's view of the session. Use fixture
 ## Harness Scope
 
 Harness-neutral: the endpoint and tools live in `bridge/app`. Each injection step adds its harness here.
+
+- Codex: per-thread `config` on `thread/start`, `thread/resume` and `thread/fork` (`CodexSessionService`,
+  `CodexAppServerApi`), never process-wide `-c`. An already-loaded thread keeps the token it was loaded with; the
+  bridge and its app-server restart together.
 
 ## Related Coverage and Sources
 

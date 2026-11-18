@@ -25,6 +25,7 @@ import "package:sesori_shared/sesori_shared.dart" show Session;
 import "package:test/test.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   group("CodexSessionMapper", () {
@@ -821,6 +822,7 @@ CodexSessionService _newService({
     toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
     subAgentTracker: subAgentTracker ?? CodexSubAgentTracker(),
     sessionMapper: const CodexSessionMapper(),
+    sesoriMcp: FakeSesoriMcpAccess(enabled: false),
     launchDirectory: "/repo/launch",
   );
   final api = CodexAppServerApi(

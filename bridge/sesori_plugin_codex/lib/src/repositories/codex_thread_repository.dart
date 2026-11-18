@@ -72,6 +72,7 @@ class CodexThreadRepository({
     required String? model,
     required bool fastMode,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     final dto = await _request(
       operation: "thread/start",
@@ -80,6 +81,7 @@ class CodexThreadRepository({
         model: model,
         fastMode: fastMode,
         developerInstructions: developerInstructions,
+        sesoriMcp: sesoriMcp,
       ),
     );
     return _mapRequired(dto: dto, operation: "thread/start");
@@ -109,10 +111,15 @@ class CodexThreadRepository({
   Future<CodexResumedThread> resumeThread({
     required String threadId,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     final dto = await _request(
       operation: "thread/resume",
-      request: () => _appServerApi.resumeThread(threadId: threadId, developerInstructions: developerInstructions),
+      request: () => _appServerApi.resumeThread(
+        threadId: threadId,
+        developerInstructions: developerInstructions,
+        sesoriMcp: sesoriMcp,
+      ),
     );
     return CodexResumedThread(
       thread: _mapRequired(dto: dto, operation: "thread/resume"),
@@ -222,6 +229,7 @@ class CodexThreadRepository({
     required String threadId,
     required String lastTurnId,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     const operation = "thread/fork";
     try {
@@ -229,6 +237,7 @@ class CodexThreadRepository({
         threadId: threadId,
         lastTurnId: lastTurnId,
         developerInstructions: developerInstructions,
+        sesoriMcp: sesoriMcp,
       );
       return _mapRequired(dto: dto, operation: operation);
     } on CodexRpcException catch (error, stackTrace) {

@@ -46,6 +46,7 @@ class CodexSessionService({
   required final CodexToolOutcomeRepository _toolOutcomeRepository,
   required final CodexSubAgentTracker _subAgentTracker,
   required final CodexSessionMapper _sessionMapper,
+  required final SesoriMcpAccess _sesoriMcp,
   required final String _launchDirectory,
 }) {
   static const String compactionCommandName = "compact";
@@ -568,12 +569,15 @@ class CodexSessionService({
     required String? model,
     required bool fastMode,
   }) async {
+    final sesoriMcp = _sesoriMcp.mint();
     final thread = await _connectedThreadRepository.startThread(
       cwd: cwd,
       model: model,
       fastMode: fastMode,
       developerInstructions: await _developerInstructions(cwd: cwd),
+      sesoriMcp: sesoriMcp,
     );
+    if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: thread.id);
     _loadedThreads.add(thread.id);
     _rememberThreadModel(threadId: thread.id, model: thread.model ?? model);
     return thread;
@@ -587,9 +591,12 @@ class CodexSessionService({
     // The rollout's directory adds the thread's project config layers, whose
     // developer_instructions the resume would otherwise replace.
     final cwd = (await _catalogRepository.findSessionById(sessionId: threadId))?.cwd;
+    final sesoriMcp = _sesoriMcp.mint();
+    if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: threadId);
     final resumed = await _connectedThreadRepository.resumeThread(
       threadId: threadId,
       developerInstructions: await _developerInstructions(cwd: cwd),
+      sesoriMcp: sesoriMcp,
     );
     _loadedThreads.add(threadId);
     _rememberThreadModel(threadId: threadId, model: resumed.thread.model);
@@ -655,11 +662,14 @@ class CodexSessionService({
       read: _messageRepository.prepareMessageRead(rolloutPath: source.rolloutPath, sessionId: threadId),
       messageId: throughMessageId,
     );
+    final sesoriMcp = _sesoriMcp.mint();
     final fork = await _connectedThreadRepository.forkThread(
       threadId: threadId,
       lastTurnId: lastTurnId,
       developerInstructions: await _developerInstructions(cwd: source.cwd),
+      sesoriMcp: sesoriMcp,
     );
+    if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: fork.id);
     _loadedThreads.add(fork.id);
     _rememberThreadModel(threadId: fork.id, model: fork.model);
     // The fork wrote its rollout; history reads must find it before the next

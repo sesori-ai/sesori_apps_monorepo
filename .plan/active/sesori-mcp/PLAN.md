@@ -565,6 +565,7 @@ There is no migration, no wire change and no client code change.
    `docs/HARNESS_CAPABILITIES.md`.
 8. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
    the flag, and live verification.
+   - Status: done; verified live on Codex 0.169.0 (2026-11-17).
 9. ⚙️ **ACP injection.**
    - The shared seam with a descriptor flag, the resident-history reload, and
      the stale comment.
