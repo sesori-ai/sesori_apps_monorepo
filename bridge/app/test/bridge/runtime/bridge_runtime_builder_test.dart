@@ -1,10 +1,12 @@
 import "dart:convert";
+import "dart:math";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
@@ -58,6 +60,8 @@ void main() {
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
+      sesoriMcpRequests: const Stream.empty(),
+      sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

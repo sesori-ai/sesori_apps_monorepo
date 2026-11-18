@@ -6,7 +6,10 @@ Slug: `sesori-mcp`.
 
 - **Date:** 2026-11-17. Code facts come from `origin/main` at `062376863b`
   (product version 1.14.1, bridge drift schema 30).
-- **Stage:** plan published as step 1. Nothing is implemented.
+- **Stage:** steps 1–2 done: the endpoint, caller identity and bridge setting
+  exist, but no plugin injects, so no harness reaches them yet. Step 2 was
+  split in two for size, so the series now has 10 steps and the read tools
+  are step 3.
 - **Settled by the owner:**
   - Any agent create or modify of a task asks the user for approval. That
     includes a scheduled run editing its own prompt, so self-improvement
@@ -224,8 +227,8 @@ ScheduledTaskService / ScheduledTaskRunService / ChatHistoryService
     before it builds `PluginGenerationFactory`. Plugins need the URL at their
     first launch.
   - It closes at shutdown.
-  - It exposes a stream of inbound requests: bearer token, decoded JSON-RPC
-    body, and a respond handle. The Orchestrator subscribes and hands each
+  - It exposes a stream of inbound requests: bearer token, raw body, and a
+    respond handle. The Orchestrator subscribes and hands each
     request to the dispatcher.
   - It accepts `POST /mcp` and answers with `application/json`; it has no SSE
     stream and no `Mcp-Session-Id`.
@@ -242,9 +245,9 @@ ScheduledTaskService / ScheduledTaskRunService / ChatHistoryService
   - Notifications are acknowledged.
   - An unknown token gets HTTP 401. Harnesses report the server as failed or
     the call as an error; nothing crash-loops.
-  - Protocol types: evaluate `package:dart_mcp` in step 2. A hand-written
-    minimal JSON-RPC layer is fine if the package pulls in unwanted
-    dependencies.
+  - Protocol types are hand-written (step 2). `package:dart_mcp` assumes one
+    long-lived stream per client and has no HTTP transport or per-request
+    caller.
 - Literally replaying app routes through `RequestRouter` was rejected. It
   would expose every route (session deletion, settings) to agents and has no
   caller identity.
@@ -264,7 +267,7 @@ ScheduledTaskService / ScheduledTaskRunService / ChatHistoryService
   - `repositories/sesori_mcp_grant_repository.dart`:
     `SesoriMcpGrantRepository` holds the in-memory map from token to plugin id
     plus an optional backend id, as a `repositories/models/` grant record. It
-    can mint, bind, look up and drop. It is constructed in
+    can mint, bind and look up; tokens live until the bridge stops. It is constructed in
     `BridgeRuntimeRunner` before `PluginGenerationFactory`.
   - `server/host/bridge_sesori_mcp_access_impl.dart`:
     `BridgeSesoriMcpAccessImpl` is one per plugin, like `BridgeHostPortService`
@@ -280,8 +283,11 @@ ScheduledTaskService / ScheduledTaskRunService / ChatHistoryService
 - **Resolution.** The caller is only the Sesori session id. Project and
   scheduled task are read from the session row at each call, so nothing is
   cached.
-- **Unknown tokens.** An unbound, unknown or post-restart token is refused.
-  Tokens die with the bridge, which restarts its harness processes anyway.
+- **Unknown tokens.** An unknown or post-restart token gets HTTP 401 for every
+  method. Tokens die with the bridge, which restarts its harness processes
+  anyway. A minted token not yet bound may `initialize` and list tools, since
+  Codex and ACP connect before the backend id exists, but every tool call
+  answers "not linked to a Sesori session yet".
 - **Plugin contract.** `PluginHost.sesoriMcp` exposes `SesoriMcpAccess`.
   `SesoriMcpAccess`, `SesoriMcpLaunch` and the server-name constant live in
   `sesori_plugin_interface`; the app implements the interface.
@@ -339,7 +345,8 @@ ScheduledTaskService / ScheduledTaskRunService / ChatHistoryService
 
 ### Phase 1 tools
 
-Results are compact text plus structured content. Long text is truncated with
+Results are compact text only: Codex forwards `structuredContent` in place of
+the text, which would hide transcripts. Long text is truncated with
 a visible marker, and times use the task's time zone, like the app. Scope is
 every task on this computer (Q6).
 
@@ -377,8 +384,9 @@ existing wire, push, client modal and reply route unchanged.
 
 - **Model** (`bridge/app/lib/src/repositories/models/`):
   - `ScheduledTaskAgentChange` is sealed: `CreateTask(definition)`,
-    `UpdateTask(taskId, before, after)`, `SetTaskEnabled(taskId, enabled)`,
-    `RunTaskNow(taskId)`.
+    `UpdateTask(taskId, before, after)`, `SetTaskEnabled(taskId, before,
+    enabled)`, `RunTaskNow(taskId, before)`. Every variant that names a stored
+    task carries `before`, the definition its description was built from.
   - `AgentApproval{requestId, sessionId, displaySessionId, change,
     description}` holds it.
   - `AgentApprovalEvent` is sealed: `asked` or `settled`.
@@ -399,10 +407,14 @@ existing wire, push, client modal and reply route unchanged.
     definition, and get the description from the builder. Then
     `AgentApprovalRepository.add`. A session holds at most one pending
     approval; a new one withdraws the previous one, and the agent is told.
-  - **Settle on Allow (`once` or `always`):** first re-read the task. A
-    deleted task, or an update whose `before` no longer matches the stored
-    definition, fails with "The task changed since this was proposed". The
-    user's edit wins, and there is no merge. Otherwise apply through
+  - **Settle on Allow (`once` or `always`):** first re-read the task. One
+    shared check covers every variant that names a task: a deleted task, or a
+    `before` that no longer matches the stored definition, fails with "The
+    task changed since this was proposed". The user's edit wins, and there is
+    no merge. Without the check on resume, run now and pause, another approved
+    change could turn on "Approve everything" before the user allows an older
+    run-now request, which would then run a task whose warning was never
+    shown. Otherwise apply through
     `ScheduledTaskService.create`, `update` or `setEnabled`, or through
     `ScheduledTaskRunService.runNow`. Those calls emit
     `scheduledTasks.changed` as today.
@@ -416,8 +428,20 @@ existing wire, push, client modal and reply route unchanged.
   - Both go through the same delivery path as plugin events: local observers
     (push), the wire, unseen activity and project activity. A bridge-origin
     entry point skips the plugin source and generation check.
-  - Push and "needs you" therefore work on every released app that has
+  - Push and the modal therefore work on every released app that has
     `allowAlways` (v1.8.0+).
+- **"Needs you":** `permissionAsked` alone does not put a session on the
+  app's attention list. The app's `SseEventTracker` ignores permission events
+  (`client/module_core/lib/src/services/sse_event_tracker.dart`) and takes
+  `awaitingInput` from project summaries. Those come from
+  `plugin.getActiveSessionsSummary()` (`SessionRepository`'s project activity
+  collection), which cannot see the agent-approval repository. A finished
+  scheduled run with a pending approval would drop off the list, including
+  after a reconnect.
+  - So the bridge overlays pending agent approvals on the summaries it
+    builds: a session with one is marked awaiting input, and an asked or
+    settled event triggers a fresh summary. Step 4 picks the owner of the
+    overlay with its architecture review; no wire or client change.
 - **Reads:** `GetSessionPermissionsHandler` appends
   `ScheduledTaskAgentService.pendingPermissions(sessionId)` after
   `resolveSnapshot`. The handler does no mapping.
@@ -505,39 +529,41 @@ existing wire, push, client modal and reply route unchanged.
 
 ## Delivery series (phase 1)
 
-Every PR title has the form `<emoji> [sesori-mcp] <description> [step x/9]`.
+Every PR title has the form `<emoji> [sesori-mcp] <description> [step x/10]`.
 There is no migration, no wire change and no client code change.
 
 1. 🌱 **Publish the plan.** No user-visible or database change.
-2. 🚧 **Endpoint, identity and read tools.**
-   - `SesoriMcpServer`, the dispatcher, the grant repository,
-     `BridgeSesoriMcpAccessImpl`, and `PluginHost.sesoriMcp`. All plugins are
-     updated in lockstep to receive it; none inject yet.
+2. 🚧 **Endpoint and identity.**
+   - `SesoriMcpServer`, the dispatcher with the protocol handshake and an
+     empty tool list, the grant repository, `BridgeSesoriMcpAccessImpl`, and
+     `PluginHost.sesoriMcp`. All plugins are updated in lockstep to receive
+     it; none inject yet.
    - The bridge setting.
-   - `ScheduledTaskAgentService` reads: `list_tasks`, `get_task`,
-     `list_task_runs`, `get_task_run_transcript`.
-   - Headless tests drive the endpoint with an MCP client.
+   - Headless tests drive the endpoint over HTTP.
    - New `docs/regression/sesori-mcp.md`.
-   - About 1,100–1,500 lines.
-3. 🚧 **Approvals and proposing tools.**
+3. ⚙️ **Read tools.** `ScheduledTaskAgentService` reads and the text
+   formatter: `list_tasks`, `get_task`, `list_task_runs`,
+   `get_task_run_transcript`, with paging and archived runs.
+4. 🚧 **Approvals and proposing tools.**
    - The approval model, repository, mapper and description builder.
    - Proposal and settle in the agent service.
-   - Orchestrator delivery, the permissions-handler merge, reply routing.
+   - Orchestrator delivery, the permissions-handler merge, reply routing,
+     and the awaiting-input overlay on project summaries.
    - `create_task`, `update_task`, `pause_task`, `resume_task`,
      `run_task_now`.
    - About 1,000–1,300 lines.
-4. 🌿 **Scheduled-run note.**
+5. 🌿 **Scheduled-run note.**
    - `buildScheduledRunContext`, generalising the strip to
      `stripSystemContext`, the `runContext` parameter on both run start
      paths, and the `sesoriToolsSupported` read.
    - Every plugin flag is still off, so nothing changes for users yet.
    - About 300–500 lines.
-5. ⚙️ **Claude injection.** Launch-spec arguments, `--allowedTools`, the
+6. ⚙️ **Claude injection.** Launch-spec arguments, `--allowedTools`, the
    inventory mapper, turning the flag on, and live verification. Updates
    `docs/HARNESS_CAPABILITIES.md`.
-6. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
+7. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
    the flag, and live verification.
-7. ⚙️ **ACP injection.**
+8. ⚙️ **ACP injection.**
    - The shared seam with a descriptor flag, the resident-history reload, and
      the stale comment.
    - Enabled for OMP, Grok, Copilot and Antigravity.
@@ -545,14 +571,14 @@ There is no migration, no wire change and no client code change.
      gap.
    - Cursor is enabled when verified, otherwise recorded as unverified.
    - DeepSeek is recorded as not supported.
-8. 🌿 **Pi forwarder** in the startup extension, the flag, and live
+9. 🌿 **Pi forwarder** in the startup extension, the flag, and live
    verification.
-9. 🌱 **Run the regression and retire the plan.**
+10. 🌱 **Run the regression and retire the plan.**
 
 - **Order:**
-  - Steps 5–8 depend on 3 and 4, so no harness ever sees write tools without
+  - Steps 6–9 depend on 4 and 5, so no harness ever sees write tools without
     the gate, and the note arrives with the tools.
-  - Steps 5–8 are independent of each other.
+  - Steps 6–9 are independent of each other.
   - Each injection step updates its rows in `docs/HARNESS_CAPABILITIES.md`
     and `sesori-mcp.md`.
 - **Estimates:** injection steps run 200–500 lines each.
@@ -564,7 +590,7 @@ approval flow on the iOS simulator. Security cases run in every relevant step.
 
 | Boundary | Cases |
 |---|---|
-| Bridge unit and headless | Token mint, bind, unknown and post-restart cases. Caller resolution from session rows. Origin, Host, bearer and size rejection. Transcript paging, including an archived run. Validation before asking, including an unknown `project_id`. Description order: Approve everything first, then project. The run note appears only for text prompts on flagged harnesses with the setting on, and is stripped on reload and in titles, including alongside a worktree note. One pending approval per session. Stale-before refusal. A deleted task. Allow applies through the same service (next run time and `scheduledTasks.changed`). Reject drops. Auto-approval never answers an agent approval, even with Approve everything on. The handler merge. Reply routing. |
+| Bridge unit and headless | Token mint, bind, unknown and post-restart cases. Caller resolution from session rows. Origin, Host, bearer and size rejection. Transcript paging, including an archived run. Validation before asking, including an unknown `project_id`. Description order: Approve everything first, then project. The run note appears only for text prompts on flagged harnesses with the setting on, and is stripped on reload and in titles, including alongside a worktree note. One pending approval per session. Stale-before refusal for update, pause, resume and run now. A deleted task. A session with a pending agent approval is awaiting input in project summaries, after settling it is not, and a reconnect's summary still shows it. Allow applies through the same service (next run time and `scheduledTasks.changed`). Reject drops. Auto-approval never answers an agent approval, even with Approve everything on. The handler merge. Reply routing. |
 | Live harness (macOS, isolated HOME, local test proxy) | For each enabled harness: the server is listed; a scheduled run that receives the note calls `get_task`, and `update_task` raises a permission request; Allow changes the next run's prompt; a user's own MCP server still loads; resuming the session in the harness's own CLI shows no `sesori_bridge` and leaves no config change; a second concurrent session gets its own identity. |
 | Client (iOS simulator only) | A released app shows the task approval in the existing modal without "Always", with the Approve-everything line first. Allow and Reject work. The push arrives for a scheduled run's approval. The run's user message shows no note, both live and after reload. |
 | Security | A cross-project proposal names its project before the action. A switch to Approve everything leads the request. A direct curl with a session's token still produces only an approval request. Another slot's bridge rejects the token. A browser-origin request is rejected. No token appears in argv, URLs or harness session files. |
@@ -576,7 +602,7 @@ the `README.md` index.
 ## Cleanup assessment
 
 - The ACP comment "The bridge never injects MCP servers" and the constant
-  empty list are replaced in step 6.
+  empty list are replaced in step 8.
 - Claude's catalog-probe `--strict-mcp-config` stays: probes must load no MCP
   server, Sesori's included.
 - The scheduled-tasks "Later Phases" bullet is superseded by this plan. No code

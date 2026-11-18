@@ -185,6 +185,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Questions and permissions](questions-and-permissions.md)
 - [Quota auto continuation](quota-auto-continuation.md)
 - [Scheduled tasks](scheduled-tasks.md)
+- [Sesori MCP for agents](sesori-mcp.md)
 - [Session archiving and deletion](session-archiving-and-deletion.md)
 - [Session creation and options](session-creation-and-options.md)
 - [Session edit and fork](session-edit-and-fork.md)

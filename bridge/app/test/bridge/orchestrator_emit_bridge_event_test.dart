@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
@@ -14,6 +15,7 @@ import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_continuation_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeDegraded;
@@ -1634,6 +1636,8 @@ class const _OrchestratorHarness({
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
+      sesoriMcpRequests: const Stream.empty(),
+      sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

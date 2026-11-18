@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
@@ -11,6 +12,7 @@ import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
@@ -348,6 +350,8 @@ class _ReauthHarness._({
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
+      sesoriMcpRequests: const Stream.empty(),
+      sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
       reconnectBackoff: backoffPolicy,
     );
 

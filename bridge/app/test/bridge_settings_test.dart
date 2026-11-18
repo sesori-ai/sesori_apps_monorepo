@@ -12,6 +12,7 @@ void main() {
       expect(settings.releaseTrack, ReleaseTrack.stable);
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
       expect(settings.warmUpPluginsOnSessionOpen, isTrue);
+      expect(settings.agentTools, isTrue);
       expect(settings.plugins.disabledPluginIds, isEmpty);
       expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), 45);
       expect(settings.toJson(), {
@@ -20,6 +21,7 @@ void main() {
         'releaseTrack': 'stable',
         'pullRequestRefreshIntervalSeconds': defaultPullRequestRefreshIntervalSeconds,
         'warmUpPluginsOnSessionOpen': true,
+        'agentTools': true,
       });
     });
 
@@ -30,6 +32,7 @@ void main() {
         'releaseTrack': 'internal',
         'pullRequestRefreshIntervalSeconds': 45,
         'warmUpPluginsOnSessionOpen': false,
+        'agentTools': false,
       });
 
       expect(settings.sleepPrevention, SleepPreventionMode.off);
@@ -37,6 +40,7 @@ void main() {
       expect(settings.releaseTrack, ReleaseTrack.internal);
       expect(settings.pullRequestRefreshIntervalSeconds, 45);
       expect(settings.warmUpPluginsOnSessionOpen, isFalse);
+      expect(settings.agentTools, isFalse);
     });
 
     test('uses the default for a missing PR refresh interval', () {

@@ -427,6 +427,16 @@ class ConfigCommand() extends cli.Command<void> {
         enabledWarning: null,
       ),
     );
+    addSubcommand(
+      ConfigSwitchCommand(
+        name: 'agent-tools',
+        description: "Show or set Sesori's tools for agents in harness sessions (on|off)",
+        label: 'Agent tools',
+        read: (settings) => settings.agentTools,
+        write: (repository, {required enabled}) => repository.updateAgentTools(enabled: enabled),
+        enabledWarning: null,
+      ),
+    );
     addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }

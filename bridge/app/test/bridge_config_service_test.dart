@@ -117,6 +117,9 @@ class _FakeBridgeSettingsRepository({
   Future<void> updateYolo({required bool enabled}) async {}
 
   @override
+  Future<void> updateAgentTools({required bool enabled}) async {}
+
+  @override
   Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {
     return settings = settings.copyWith(warmUpPluginsOnSessionOpen: enabled);
   }

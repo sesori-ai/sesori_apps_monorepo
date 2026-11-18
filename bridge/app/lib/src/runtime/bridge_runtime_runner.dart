@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io" as io;
+import "dart:math";
 
 import "package:http/http.dart" as http;
 import "package:meta/meta.dart";
@@ -57,6 +58,7 @@ import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
+import "../foundation/sesori_mcp_server.dart";
 import "../listeners/catalog_import_console_listener.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
@@ -66,6 +68,7 @@ import "../repositories/app_onboarding_state_repository.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../repositories/sesori_mcp_grant_repository.dart";
 import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
@@ -618,6 +621,11 @@ class const BridgeRuntimeRunner._() {
           ),
         );
       }
+      // Bound before any plugin starts, so every launch can name its URL.
+      final sesoriMcpServer = await SesoriMcpServer.bindLoopback();
+      shutdownCoordinator.addPhase(phase: BridgeShutdownPhase.pluginDispose, action: sesoriMcpServer.close);
+      // Tokens live in memory only, so a restarted bridge refuses old ones.
+      final sesoriMcpGrants = SesoriMcpGrantRepository(random: Random.secure());
       final generationFactory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -631,6 +639,9 @@ class const BridgeRuntimeRunner._() {
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
         settingsChanges: bridgeSettingsRepository.settingsChanges,
+        sesoriMcpUrl: sesoriMcpServer.url,
+        sesoriMcpGrants: sesoriMcpGrants,
+        agentToolsEnabled: () => bridgeSettingsRepository.currentSettings.agentTools,
       );
       final activePluginRuntime = PluginRuntime(
         registrations: pluginRuntimeRegistrations,
@@ -816,6 +827,8 @@ class const BridgeRuntimeRunner._() {
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
         startupRetryService: startupRetryService,
+        sesoriMcpRequests: sesoriMcpServer.requests,
+        sesoriMcpGrants: sesoriMcpGrants,
       ).create();
       runtime = BridgeRuntime(
         database: database,

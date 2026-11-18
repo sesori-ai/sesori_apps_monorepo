@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -12,6 +13,7 @@ import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -563,6 +565,8 @@ class _RegistrationHarness._({
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
+      sesoriMcpRequests: const Stream.empty(),
+      sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
       reconnectBackoff: backoffPolicy,
     );
 

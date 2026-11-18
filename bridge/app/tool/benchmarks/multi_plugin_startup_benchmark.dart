@@ -4,6 +4,7 @@ import "dart:io";
 import "dart:math";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
@@ -106,6 +107,9 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     processes: const _UnusedHostProcessService(),
     resolveIdleTimeoutMins: ({required pluginId}) => 10,
     settingsChanges: const Stream<Object?>.empty(),
+    sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
+    sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+    agentToolsEnabled: () => false,
   );
   final runtime =
       PluginRuntime(

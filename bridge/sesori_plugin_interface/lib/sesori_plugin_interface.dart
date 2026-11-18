@@ -8,6 +8,7 @@ export "src/host/host_json_store.dart";
 export "src/host/host_port_service.dart";
 export "src/host/host_process_service.dart";
 export "src/host/plugin_host.dart";
+export "src/host/sesori_mcp_access.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
 export "src/lifecycle/plugin_activation_policy.dart";

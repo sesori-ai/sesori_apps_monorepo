@@ -1,6 +1,8 @@
 import "dart:async";
 import "dart:io";
+import "dart:math";
 
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_residency.dart";
@@ -83,6 +85,9 @@ void main() {
         processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
+        sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
+        sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        agentToolsEnabled: () => true,
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
@@ -128,6 +133,9 @@ void main() {
         processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
+        sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
+        sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        agentToolsEnabled: () => true,
       );
     }
 
@@ -414,6 +422,9 @@ void main() {
         processes: const _UnusedHostProcessService(),
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
         settingsChanges: settingsChanges.stream,
+        sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
+        sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        agentToolsEnabled: () => true,
       );
       await factory.enforceBridgeOwnership();
 

@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginConfig,
         PluginHost,
         ServerClock,
+        SesoriMcpAccess,
         StartAbortSignal;
 
 import "../api/runtime_file_api.dart";
@@ -33,6 +34,7 @@ class BridgePluginHostImpl({
   @override required final HostProcessService processes,
   @override required final HostPortService ports,
   @override required final HostJsonStore store,
+  @override required final SesoriMcpAccess sesoriMcp,
   required final Duration? Function() _resolveIdleTimeout,
   required final Stream<Duration?> _pluginIdleTimeoutChanges,
 }) implements PluginHost {

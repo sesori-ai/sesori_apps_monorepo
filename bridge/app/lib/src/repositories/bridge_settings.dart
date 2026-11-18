@@ -189,6 +189,9 @@ class const BridgeSettings({
 
   /// Whether opening a session should start its plugin before the first operation needs it.
   final bool warmUpPluginsOnSessionOpen = defaultWarmUpPluginsOnSessionOpen,
+
+  /// Whether harness sessions get Sesori's own MCP tools. Read at each launch.
+  final bool agentTools = true,
 }) {
   factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
@@ -206,6 +209,7 @@ class const BridgeSettings({
         isPresent: json.containsKey('warmUpPluginsOnSessionOpen'),
         rawValue: json['warmUpPluginsOnSessionOpen'],
       ),
+      agentTools: json['agentTools'] != false,
     );
   }
 
@@ -219,6 +223,7 @@ class const BridgeSettings({
       'releaseTrack': releaseTrack.wireValue,
       'pullRequestRefreshIntervalSeconds': pullRequestRefreshIntervalSeconds,
       'warmUpPluginsOnSessionOpen': warmUpPluginsOnSessionOpen,
+      'agentTools': agentTools,
       if (!plugins.isEmpty) 'plugins': plugins.toJson(),
     };
   }
@@ -231,6 +236,7 @@ class const BridgeSettings({
     ReleaseTrack? releaseTrack,
     int? pullRequestRefreshIntervalSeconds,
     bool? warmUpPluginsOnSessionOpen,
+    bool? agentTools,
   }) {
     return BridgeSettings(
       sleepPrevention: sleepPrevention ?? this.sleepPrevention,
@@ -239,6 +245,7 @@ class const BridgeSettings({
       releaseTrack: releaseTrack ?? this.releaseTrack,
       pullRequestRefreshIntervalSeconds: pullRequestRefreshIntervalSeconds ?? this.pullRequestRefreshIntervalSeconds,
       warmUpPluginsOnSessionOpen: warmUpPluginsOnSessionOpen ?? this.warmUpPluginsOnSessionOpen,
+      agentTools: agentTools ?? this.agentTools,
     );
   }
 

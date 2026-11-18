@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
@@ -11,6 +12,7 @@ import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
+import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
@@ -68,6 +70,8 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     bridgeKind: BridgeKind.cli,
     statusNotifier: null,
     startupRetryService: BridgeStartupRetryService(),
+    sesoriMcpRequests: const Stream.empty(),
+    sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
     reconnectBackoff: ReconnectBackoffPolicy.standard,
   ).create();
   final runtime = BridgeRuntime(

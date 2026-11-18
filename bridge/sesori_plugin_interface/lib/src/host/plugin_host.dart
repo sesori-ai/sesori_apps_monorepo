@@ -5,6 +5,7 @@ import "bridge_host_info.dart";
 import "host_json_store.dart";
 import "host_port_service.dart";
 import "host_process_service.dart";
+import "sesori_mcp_access.dart";
 
 /// Services the bridge offers to a starting plugin.
 ///
@@ -75,4 +76,8 @@ abstract class PluginHost() {
   /// The stream does not emit an initial value; read [pluginIdleTimeout] for
   /// the current value when starting. A null event disables idle cleanup.
   Stream<Duration?> get pluginIdleTimeoutChanges;
+
+  /// Per-launch access to Sesori's own MCP server, which a plugin injects
+  /// through its harness's per-session launch seam.
+  SesoriMcpAccess get sesoriMcp;
 }
