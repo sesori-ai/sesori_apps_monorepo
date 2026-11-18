@@ -1768,12 +1768,13 @@ void main() {
     });
   });
 
-  testWidgets("renders system and unknown senders as automation instead of agent output", (tester) async {
+  testWidgets("renders system, Sesori and unknown senders as automation instead of agent output", (tester) async {
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
         initialMessages: [
           _message(messageId: "agent", role: "assistant", text: "Agent reply"),
           _automatedMessage(messageId: "system", text: "Automation report", sender: MessageSender.system),
+          _automatedMessage(messageId: "sesori", text: "You allowed pausing it.", sender: MessageSender.sesori),
           _automatedMessage(messageId: "unknown", text: "Future sender", sender: MessageSender.unknown),
         ],
         initialStreamingText: const {},
@@ -1781,12 +1782,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(AssistantMessageCard), findsNWidgets(3));
-    expect(find.byType(SystemMessageCard), findsNWidgets(2));
-    expect(find.byType(PregoTag), findsNWidgets(2));
+    expect(find.byType(AssistantMessageCard), findsNWidgets(4));
+    expect(find.byType(SystemMessageCard), findsNWidgets(3));
+    expect(find.byType(PregoTag), findsNWidgets(3));
     expect(find.text("Automation"), findsNWidgets(2));
+    expect(find.text("Sesori Automation"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.robot), findsNWidgets(2));
+    expect(find.byIcon(TablerRegular.bell), findsOneWidget);
     expect(find.text("Agent reply"), findsOneWidget);
     expect(find.text("Automation report"), findsOneWidget);
+    expect(find.text("You allowed pausing it."), findsOneWidget);
     expect(find.text("Future sender"), findsOneWidget);
   });
 

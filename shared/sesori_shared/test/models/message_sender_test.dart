@@ -18,23 +18,25 @@ void main() {
       expect((message as MessageAssistant).sender, MessageSender.agent);
     });
 
-    test("round-trips system attribution on the assistant wire envelope", () {
-      const message = Message.assistant(
-        id: "msg-1",
-        sessionID: "session-1",
-        agent: null,
-        modelID: null,
-        providerID: null,
-        sender: MessageSender.system,
-        time: null,
-      );
+    for (final (sender, wire) in [(MessageSender.system, "system"), (MessageSender.sesori, "sesori")]) {
+      test("round-trips $wire attribution on the assistant wire envelope", () {
+        final message = Message.assistant(
+          id: "msg-1",
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: sender,
+          time: null,
+        );
 
-      final json = message.toJson();
+        final json = message.toJson();
 
-      expect(json["role"], "assistant");
-      expect(json["sender"], "system");
-      expect(Message.fromJson(json), message);
-    });
+        expect(json["role"], "assistant");
+        expect(json["sender"], wire);
+        expect(Message.fromJson(json), message);
+      });
+    }
 
     test("decodes a future sender as unknown", () {
       final message = Message.fromJson({

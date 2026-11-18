@@ -129,25 +129,29 @@ _No messages._
     expect(markdown, contains("## 1. User\n"));
   });
 
-  test("automation messages are labelled System", () {
+  test("automation messages are labelled System, and Sesori's own Sesori", () {
+    MessageWithParts automated({required String id, required MessageSender sender}) => MessageWithParts(
+      info: Message.assistant(
+        id: id,
+        sessionID: "ses_1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        sender: sender,
+        time: null,
+      ),
+      parts: const [],
+    );
+
     final markdown = build(
       messages: [
-        const MessageWithParts(
-          info: Message.assistant(
-            id: "m",
-            sessionID: "ses_1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-            sender: MessageSender.system,
-            time: null,
-          ),
-          parts: [],
-        ),
+        automated(id: "m1", sender: MessageSender.system),
+        automated(id: "m2", sender: MessageSender.sesori),
       ],
     );
 
     expect(markdown, contains("## 1. System\n"));
+    expect(markdown, contains("## 2. Sesori\n"));
   });
 
   test("text is kept verbatim and blank text is left out", () {

@@ -2,13 +2,14 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../extensions/build_context_x.dart";
-
 import "assistant_message_card.dart";
 
-/// A neutral inline surface for transcript messages authored by automation.
+/// A neutral inline surface for transcript messages authored by automation,
+/// tagged with who wrote it.
 class const SystemMessageCard({
   super.key,
+  required final IconData tagIcon,
+  required final String tagLabel,
   required final String? projectId,
   required final List<TranscriptBlock> blocks,
   required final Map<String, String> streamingText,
@@ -35,10 +36,7 @@ class const SystemMessageCard({
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              PregoTag(
-                icon: TablerRegular.robot,
-                label: context.loc.sessionDetailAutomation,
-              ),
+              PregoTag(icon: tagIcon, label: tagLabel),
               const SizedBox(height: PregoSpacing.md),
               AssistantMessageCard(
                 projectId: projectId,

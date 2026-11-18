@@ -73,6 +73,7 @@ Map<String, dynamic> _$MessageAssistantToJson(MessageAssistant instance) =>
 const _$MessageSenderEnumMap = {
   MessageSender.agent: 'agent',
   MessageSender.system: 'system',
+  MessageSender.sesori: 'sesori',
   MessageSender.unknown: 'unknown',
 };
 

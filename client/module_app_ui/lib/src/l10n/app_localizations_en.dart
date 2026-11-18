@@ -1342,6 +1342,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAutomation => 'Automation';
 
   @override
+  String get sessionDetailSesoriAutomation => 'Sesori Automation';
+
+  @override
   String get sessionDetailRetry => 'Retry';
 
   @override
