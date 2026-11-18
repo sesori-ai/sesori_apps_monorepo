@@ -65,6 +65,11 @@ them or can't start. Same-session tasks can compact their session between runs (
 - Before firing, the task's model is checked against the harness's option list when one is readable; a model no longer
   offered fails the run ("its model isn't offered anymore") instead of falling back. An unreadable list lets the run go
   ahead. Stale agent, effort or fast mode is corrected once against the rediscovered catalog.
+- On a harness that gives sessions Sesori's MCP server, with `agent-tools` on, a text run's prompt opens with a
+  bridge-owned note that names the task and invites the agent to propose one improvement through `update_task`. The
+  run's user message shows only the task's prompt, live and after reload. Agents can also read tasks, runs and run
+  transcripts and propose task changes, each of which waits for the user's Allow; see
+  [Sesori MCP for agents](sesori-mcp.md).
 - A run that can't start records "Couldn't start: <reason>" (project gone, harness unavailable, model not offered, the
   session didn't start) and logs the error with task and project context but no prompt text. A scheduled run also
   pushes. A recurring task stays enabled and tries again next time.
@@ -234,7 +239,8 @@ See [Compaction on request](../HARNESS_CAPABILITIES.md#compaction-on-request) an
 
 - [Notifications](notifications.md), [Session archiving and deletion](session-archiving-and-deletion.md),
   [Permission auto-approval](permission-auto-approval.md), [Projects and sessions](projects-and-sessions.md),
-  [Analytics](analytics.md), [Session creation and options](session-creation-and-options.md).
+  [Analytics](analytics.md), [Session creation and options](session-creation-and-options.md),
+  [Sesori MCP for agents](sesori-mcp.md).
 - Bridge: `ScheduledTaskService`, `ScheduledTaskRunService`, `ScheduledTaskCompactionService`,
   `ScheduledTaskActivityTracker`, `ScheduledTaskOccurrenceCalculator`, `ScheduledTaskTimerListener`,
   `ScheduledTaskFailurePushListener` and the `scheduled_task` handlers under `bridge/app`, with tests under
