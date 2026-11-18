@@ -76,8 +76,7 @@ enum SesoriMcpTool({
     readOnly: false,
     description:
         "Propose a new scheduled task in this session's project (or project_id) with this session's harness. The "
-        "user allows or rejects it on their phone; nothing is created until they allow it. Each request is "
-        "answered separately, so several can wait at once.",
+        "user allows or rejects it on their phone; nothing is created until they allow it. $_answeredOnItsOwn",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -101,8 +100,7 @@ enum SesoriMcpTool({
     readOnly: false,
     description:
         "Propose changes to a scheduled task. $_leaveOutUnchanged The user allows or rejects it on their phone. "
-        "Each request is answered separately, so several can wait at once; if the fields it changes are changed "
-        "first, nothing is applied.",
+        "If the fields it changes are changed first, nothing is applied. $_answeredOnItsOwn",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -131,7 +129,7 @@ enum SesoriMcpTool({
   pauseTask(
     wireName: "pause_task",
     readOnly: false,
-    description: "Propose pausing a scheduled task. The user allows or rejects it on their phone.",
+    description: "Propose pausing a scheduled task. The user allows or rejects it on their phone. $_answeredOnItsOwn",
     inputSchema: _taskIdSchema,
   ),
   resumeTask(
@@ -139,13 +137,14 @@ enum SesoriMcpTool({
     readOnly: false,
     description:
         "Propose resuming a paused scheduled task from its next time. The user allows or rejects it on their "
-        "phone.",
+        "phone. $_answeredOnItsOwn",
     inputSchema: _taskIdSchema,
   ),
   runTaskNow(
     wireName: "run_task_now",
     readOnly: false,
-    description: "Propose running a scheduled task once now. The user allows or rejects it on their phone.",
+    description:
+        "Propose running a scheduled task once now. The user allows or rejects it on their phone. $_answeredOnItsOwn",
     inputSchema: _taskIdSchema,
   );
 
@@ -170,6 +169,10 @@ const Map<String, Object?> _taskIdSchema = {
 /// model that fills every field would otherwise propose changes nobody asked
 /// for, such as a new schedule when only the prompt should change.
 const String _leaveOutUnchanged = "Leave out every field you are not changing; left-out fields keep their value.";
+
+const String _answeredOnItsOwn =
+    "Each request is answered on its own; Sesori messages this session with the user's answer, so don't poll "
+    "get_task for it.";
 
 // The setting schemas below leave out their description: create_task and
 // update_task each add their own, built from these texts.

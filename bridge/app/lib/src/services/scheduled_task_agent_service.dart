@@ -1,11 +1,15 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/agent_approval_repository.dart";
+import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/history_window.dart";
 import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
+import "../repositories/models/session_notice.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
@@ -15,6 +19,7 @@ import "scheduled_task_change_description_builder.dart";
 import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_service.dart";
 import "scheduled_task_service.dart";
+import "session_notice_service.dart";
 
 /// What agents may do with scheduled tasks, through the same services the
 /// app's task routes call. Reads cover every task on this computer.
@@ -32,10 +37,11 @@ class ScheduledTaskAgentService({
   required final ChatHistoryService _history,
   required final AgentApprovalRepository _approvals,
   required final ScheduledTaskChangeDescriptionBuilder _descriptions,
+  required final SessionNoticeService _notices,
 }) {
   /// Messages read to find a run's final reply. The reply closes the turn,
-  /// so it is among the newest few.
-  static const int _finalReplyWindow = 6;
+  /// so it is among the newest few, even after a short notice turn.
+  static const int _finalReplyWindow = 10;
 
   /// Every task not yet done, or those of [projectId]. A task can outlive
   /// its project, so [projectId] is unknown only when no task has it either.
@@ -219,17 +225,29 @@ class ScheduledTaskAgentService({
   /// change through the app's own service calls, unless what it was described
   /// against has changed since (see [StoredTaskChange]): an earlier edit, the
   /// user's own or another allowed request, wins.
+  ///
+  /// The session where the request showed is then told the outcome; the
+  /// reply does not wait for that.
   Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async {
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
-    if (reply == PermissionReply.reject) return const AgentApprovalRejected();
-    switch (approval.change) {
-      case CreateTaskChange(:final definition):
-        await _tasks.create(definition: definition);
-        return const AgentApprovalApplied();
-      case final StoredTaskChange change:
-        return await _applyStored(change: change);
-    }
+    final outcome = await _outcome(change: approval.change, reply: reply);
+    final sessionId = approval.displaySessionId ?? approval.sessionId;
+    // A scheduled run hears the outcome only after its turn, so the turn the
+    // notice starts is its own and the run's final reply stays the run's.
+    final isRun = (await _taskRepository.marksOfSessions(sessionIds: {sessionId})).containsKey(sessionId);
+    unawaited(
+      _notices.deliver(
+        sessionId: sessionId,
+        notice: _descriptions.outcome(
+          change: approval.change,
+          outcome: outcome,
+          bySubagent: approval.displaySessionId != null,
+        ),
+        timing: isRun ? SessionNoticeTiming.afterTurn : SessionNoticeTiming.intoRunningTurn,
+      ),
+    );
+    return AgentApprovalAnswered(outcome: outcome);
   }
 
   /// The agent approvals to show on [sessionId]'s screen.
@@ -243,7 +261,20 @@ class ScheduledTaskAgentService({
     return _sessions.markAwaitingInput(projects: projects, rootSessionIds: _approvals.awaitingRootSessionIds);
   }
 
-  Future<AgentApprovalSettlement> _applyStored({required StoredTaskChange change}) async {
+  Future<AgentApprovalOutcome> _outcome({
+    required ScheduledTaskAgentChange change,
+    required PermissionReply reply,
+  }) async {
+    if (reply == PermissionReply.reject) return const AgentApprovalRejected();
+    switch (change) {
+      case CreateTaskChange(:final definition):
+        return AgentApprovalCreated(taskId: (await _tasks.create(definition: definition)).id);
+      case final StoredTaskChange change:
+        return await _applyStored(change: change);
+    }
+  }
+
+  Future<AgentApprovalOutcome> _applyStored({required StoredTaskChange change}) async {
     final taskId = change.taskId;
     final record = await _uncompletedTask(taskId: taskId);
     if (record == null) return const AgentApprovalStale();
@@ -277,7 +308,7 @@ class ScheduledTaskAgentService({
       case RunTaskNowChange():
         if (!sameContext) return const AgentApprovalStale();
         final run = await _runner.runNow(taskId: taskId);
-        if (run.outcome is! ScheduledTaskRunStarted) return const AgentApprovalRunNotStarted();
+        if (run.outcome is! ScheduledTaskRunStarted) return AgentApprovalRunNotStarted(outcome: run.outcome);
     }
     return const AgentApprovalApplied();
   }
@@ -404,20 +435,33 @@ class ScheduledTaskAgentService({
     }
   }
 
+  /// The agent's last reply in a turn the run's prompt started. A turn a
+  /// Sesori notice started (the agent's answer to an outcome) is skipped, so
+  /// the run's own reply stays its final reply; a notice never steers into a
+  /// run's turn (see [settle]), so every Sesori row here starts one.
   Future<String?> _finalReply({required String sessionId}) async {
     final page = await _storedPage(
       sessionId: sessionId,
       window: const HistoryWindowNewest(limit: _finalReplyWindow, before: null),
     );
+    String? reply;
     for (final message in page.messages.reversed) {
-      if (message.info is! MessageAssistant) continue;
-      final text = [
-        for (final part in message.parts)
-          if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
-      ].join("\n\n");
-      if (text.isNotEmpty) return text;
+      switch (message.info) {
+        case MessageAssistant(sender: MessageSender.sesori):
+          reply = null;
+        case MessageAssistant(sender: MessageSender.agent) when reply == null:
+          final text = [
+            for (final part in message.parts)
+              if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
+          ].join("\n\n");
+          if (text.isNotEmpty) reply = text;
+        case MessageUser() when reply != null:
+          return reply;
+        case MessageAssistant() || MessageUser() || MessageError():
+          break;
+      }
     }
-    return null;
+    return reply;
   }
 
   /// Reads only what the bridge stored, archived sessions included, so a read
@@ -556,13 +600,4 @@ sealed class const AgentApprovalSettlement();
 /// The request was not an agent approval; a plugin owns it.
 final class const NotAgentApproval() extends AgentApprovalSettlement;
 
-final class const AgentApprovalApplied() extends AgentApprovalSettlement;
-
-final class const AgentApprovalRejected() extends AgentApprovalSettlement;
-
-/// Allowed, but the task was deleted, or what the request was described
-/// against changed since, so nothing was applied.
-final class const AgentApprovalStale() extends AgentApprovalSettlement;
-
-/// Allowed, but the run did not start; its run record holds the reason.
-final class const AgentApprovalRunNotStarted() extends AgentApprovalSettlement;
+final class const AgentApprovalAnswered({required final AgentApprovalOutcome outcome}) extends AgentApprovalSettlement;
