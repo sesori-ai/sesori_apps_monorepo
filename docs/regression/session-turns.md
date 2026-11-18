@@ -623,6 +623,12 @@ defaults and queued client sends coherent.
   on failure. An envelope that does not parse keeps the whole text. A report
   missing its agent or description keeps the plain Automation text row. Live
   delivery and history reload produce the same message id and part.
+- A Sesori notice prompt (the bridge's `[SESORI NOTICE]` frame) shows as a
+  Sesori Automation row holding only its summary line, live and after a reload
+  or re-import, under the same message id; the agent guidance never shows. It
+  opens no prompt turn, never lists as a queued prompt (so Stop never returns
+  it to the composer), and leaves the session's last user message time as it
+  was. A user prompt that merely quotes a notice stays user input.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
@@ -1122,6 +1128,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 ## Failure Signals
 
+- A Sesori notice shows its frame or agent guidance, shows as a user bubble or
+  queued prompt, returns to the composer on Stop, or changes into a different
+  row on reload.
 - A user Stop on Pi or OpenCode shows a red row or the harness's abort text ("Pi response aborted", an OpenCode
   abort message) instead of the grey "Stopped" line, live or after a reload; a Claude Code Stop shows an interrupt
   bubble or "No response requested."; a Stop on an ACP harness or OMP shows no

@@ -10,7 +10,7 @@ void main() {
 
   String? nameOf(PromptStamp? stamp) => switch (stamp) {
     PromptStampCommand(:final invocation) => invocation.name,
-    PromptStampHandoff() || null => null,
+    PromptStampHandoff() || PromptStampNotice() || null => null,
   };
 
   test("stamps a recorded prompt only in its own session", () {

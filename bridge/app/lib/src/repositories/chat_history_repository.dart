@@ -308,8 +308,14 @@ class ChatHistoryRepository({
 
   /// [update] with the command invocation and handoff [stored] already
   /// carries, for each that [update] lacks: a later update or a replay of the
-  /// same user turn doesn't know the stamps the bridge applied live.
+  /// same user turn doesn't know the stamps the bridge applied live. A notice
+  /// stored as a Sesori row stays one when a later update of its echo arrives
+  /// unstamped.
   Message _withStoredStamps({required Message update, required Message? stored}) {
+    if ((update, stored) case (MessageUser(), final MessageAssistant sesori)
+        when sesori.sender == MessageSender.sesori) {
+      return sesori;
+    }
     if ((update, stored) case (final MessageUser user, final MessageUser storedUser)
         when (user.invocation == null && storedUser.invocation != null) ||
             (user.handoff == null && storedUser.handoff != null)) {

@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -555,6 +556,84 @@ void main() {
       );
     });
 
+    test("a notice's live echo becomes a Sesori row and never lists as queued", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await repository.sendPrompt(
+        sessionId: "s1",
+        promptId: "notice",
+        parts: const [DeliverablePromptPart.text(text: "Fixture notice")],
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+        mark: const PromptStampNotice(),
+      );
+      Message echo({required String promptId}) => Message.user(
+        id: "m-$promptId",
+        sessionID: "s1",
+        agent: "build",
+        time: const MessageTime(created: 1234, completed: null),
+        promptId: promptId,
+        invocation: null,
+        handoff: null,
+      );
+
+      expect(
+        repository.stampLiveMessage(message: echo(promptId: "notice")),
+        const Message.assistant(
+          id: "m-notice",
+          sessionID: "s1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.sesori,
+          time: MessageTime(created: 1234, completed: null),
+        ),
+      );
+      expect(repository.stampLiveMessage(message: echo(promptId: "typed")), echo(promptId: "typed"));
+
+      QueuedSessionPrompt queued({required String id}) => QueuedSessionPrompt(
+        id: id,
+        text: "Fixture prompt",
+        command: null,
+        commandSource: null,
+        handoff: null,
+        createdAt: 1,
+      );
+      expect(
+        repository.stampQueuedPrompts(
+          sessionId: "s1",
+          prompts: [
+            queued(id: "notice"),
+            queued(id: "typed"),
+          ],
+        ),
+        [queued(id: "typed")],
+      );
+    });
+
     test("sendPrompt stamps its handoff on the live echo unless the send was definitely refused", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -588,7 +667,7 @@ void main() {
         fastMode: false,
         agent: null,
         model: null,
-        handoff: sent,
+        mark: const PromptStampHandoff(handoff: sent),
       );
       MessageHandoff? stampedHandoff({required String promptId}) => switch (repository.stampLiveMessage(
         message: Message.user(
@@ -1184,7 +1263,7 @@ void main() {
           variant: variant,
           agent: null,
           model: null,
-          handoff: null,
+          mark: null,
         );
         expect(plugin.lastSendPromptVariant, equals(variant?.id));
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -1225,7 +1304,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -1252,7 +1331,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
@@ -2271,7 +2350,7 @@ void main() {
         variant: null,
         agent: null,
         model: null,
-        handoff: null,
+        mark: null,
       );
       expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
@@ -2305,7 +2384,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -2611,7 +2690,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
-          handoff: null,
+          mark: null,
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),

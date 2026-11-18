@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_tool.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
@@ -1186,7 +1187,7 @@ class _FakePrompts() implements SessionPromptService {
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
     required String? runContext,
   }) async {
     if (error case final error?) throw error;

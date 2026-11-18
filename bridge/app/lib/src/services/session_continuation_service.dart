@@ -179,7 +179,7 @@ class const SessionContinuationService({
           fastMode: settings.fastMode,
           command: null,
           commandSource: null,
-          handoff: null,
+          mark: null,
           runContext: null,
         ),
       );

@@ -103,7 +103,7 @@ void main() {
         agent: null,
         model: null,
         command: command,
-        handoff: null,
+        mark: null,
       );
     }
 
@@ -163,7 +163,7 @@ void main() {
                 model: null,
                 command: null,
                 commandSource: null,
-                handoff: null,
+                mark: null,
               )
             : service.sendPromptAlreadyReserved(
                 sessionId: "s1",
@@ -175,7 +175,7 @@ void main() {
                 model: null,
                 command: null,
                 commandSource: null,
-                handoff: null,
+                mark: null,
                 runContext: null,
               );
       }
@@ -203,7 +203,7 @@ void main() {
           model: null,
           command: null,
           commandSource: null,
-          handoff: null,
+          mark: null,
           runContext: "run note",
         );
 
@@ -225,7 +225,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
       continuations.cancellationError = StateError("fixture persistence failure");
       await expectLater(send(), throwsStateError);
@@ -252,7 +252,7 @@ void main() {
           agent: null,
           model: null,
           command: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(
           isA<SessionArchivedReadOnlyException>().having(
@@ -314,7 +314,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4o"),
         command: "review",
-        handoff: null,
+        mark: null,
       );
 
       final dbSession =
@@ -352,7 +352,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
-        handoff: null,
+        mark: null,
       );
 
       final change = await changeFuture;
@@ -376,7 +376,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
-        handoff: null,
+        mark: null,
       );
       await service.sendPrompt(
         commandSource: null,
@@ -388,7 +388,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: "review",
-        handoff: null,
+        mark: null,
       );
 
       expect(plugin.lastSendPromptFastMode, isTrue);
@@ -408,7 +408,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
-        handoff: null,
+        mark: null,
       );
 
       // Backend prompt-default events and history replay persist through this path.
@@ -455,7 +455,7 @@ void main() {
         agent: "first",
         model: null,
         command: "review",
-        handoff: null,
+        mark: null,
       );
       while (plugin.lastSendCommandSessionId == null) {
         await Future<void>.delayed(Duration.zero);
@@ -475,7 +475,7 @@ void main() {
         agent: "second",
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
       await Future<void>.delayed(Duration.zero);
       expect(events, ["abort"]);
@@ -499,7 +499,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -517,7 +517,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
       await sendCommand();
       await sendHello();
@@ -556,7 +556,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
 
       plugin.sendPromptError = StateError("backend unavailable");
@@ -579,7 +579,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
-        handoff: null,
+        mark: null,
       );
       plugin.sendPromptError = StateError("backend unavailable");
       await expectLater(sendHello(), throwsA(isA<StateError>()));
@@ -623,7 +623,7 @@ void main() {
           agent: "removed-agent",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-x"),
           command: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(
           isA<StaleSessionPromptOptionsException>().having(
@@ -652,7 +652,7 @@ void main() {
           agent: "removed-agent",
           model: null,
           command: null,
-          handoff: null,
+          mark: null,
         ),
         throwsA(
           isA<StaleSessionPromptOptionsException>().having(
@@ -875,7 +875,7 @@ void main() {
         agent: null,
         model: null,
         command: command,
-        handoff: null,
+        mark: null,
       );
     }
 

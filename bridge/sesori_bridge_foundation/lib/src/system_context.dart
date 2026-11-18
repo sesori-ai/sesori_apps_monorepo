@@ -67,3 +67,31 @@ String? _stripOneNote({required String text}) {
   if (rest.trim().isEmpty) return token.isEmpty ? null : token;
   return token.isEmpty ? rest : "$token $rest";
 }
+
+const _noticeStart = "[SESORI NOTICE]\n";
+const _noticeAgentPart = "\n[FOR THE AGENT]\n";
+const _noticeEnd = "\n[END SESORI NOTICE]";
+
+/// A message Sesori sends into a session on its own behalf: [summary] is the
+/// line the user sees, addressed to them, and [guidance] tells the agent what
+/// to do about it. [parseSessionNotice] reads the [summary] back wherever the
+/// message surfaces.
+String buildSessionNotice({required String summary, required String guidance}) {
+  return "$_noticeStart$summary$_noticeAgentPart"
+      "Sesori wrote this message, not the user. The user sees only the line above,\n"
+      "addressed to them.\n"
+      "$guidance$_noticeEnd";
+}
+
+/// The summary of the notice [buildSessionNotice] wrote, when [text] is
+/// exactly one notice apart from surrounding whitespace, otherwise null.
+String? parseSessionNotice({required String text}) {
+  final notice = text.trim();
+  if (!notice.startsWith(_noticeStart) || !notice.endsWith(_noticeEnd)) return null;
+  // Another frame inside means several messages were joined into one.
+  final isOneNotice =
+      notice.indexOf(_noticeStart, 1) < 0 && notice.indexOf(_noticeEnd) == notice.length - _noticeEnd.length;
+  final agentPartIndex = notice.indexOf(_noticeAgentPart, _noticeStart.length);
+  if (!isOneNotice || agentPartIndex < 0) return null;
+  return notice.substring(_noticeStart.length, agentPartIndex);
+}

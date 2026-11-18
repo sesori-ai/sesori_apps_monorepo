@@ -24,6 +24,7 @@ import "package:sesori_bridge/src/repositories/pending_interaction_support.dart"
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_repository.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/request_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/pending_interaction_service.dart";
@@ -939,7 +940,7 @@ class FakeSessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
   }) async {
     await _plugin.sendPrompt(
       fastMode: fastMode,

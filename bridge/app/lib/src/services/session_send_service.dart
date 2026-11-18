@@ -16,6 +16,7 @@ import "../repositories/permission_repository.dart";
 import "../repositories/prompt_upload_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/trackers/prompt_stamp.dart";
 import "chat_history_service.dart";
 import "plugin_lifecycle_service.dart";
 import "session_abort_service.dart";
@@ -324,7 +325,7 @@ class SessionSendService({
             model: settings.model,
             command: null,
             commandSource: null,
-            handoff: sent,
+            mark: PromptStampHandoff(handoff: sent),
             runContext: null,
           ),
         );
@@ -635,11 +636,13 @@ class SessionSendService({
           model: settings.model,
           command: null,
           commandSource: null,
-          handoff: MessageHandoff.received(
-            sourceSessionId: source.id,
-            sourceTitle: _nonBlank(text: source.title),
-            summary: summary,
-            transcriptPath: transcriptPath,
+          mark: PromptStampHandoff(
+            handoff: MessageHandoff.received(
+              sourceSessionId: source.id,
+              sourceTitle: _nonBlank(text: source.title),
+              summary: summary,
+              transcriptPath: transcriptPath,
+            ),
           ),
         ),
       );
