@@ -14,6 +14,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/fake_pi_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
@@ -84,6 +85,55 @@ void main() {
     );
     await pump();
     expect(frames.where((frame) => frame.frame is PiExtensionUiFrame), hasLength(2));
+  });
+
+  test("only a resident process gets Sesori's tools, bound to its session", () async {
+    final sesoriMcp = FakeSesoriMcpAccess(enabled: true);
+    final specs = <PiLaunchSpec>[];
+    final processes = [FakePiProcess(), FakePiProcess()];
+    final repository = _repository(
+      sesoriMcp: sesoriMcp,
+      processFactory: ({required spec}) async {
+        specs.add(spec);
+        return processes[specs.length - 1];
+      },
+    );
+    addTearDown(repository.dispose);
+
+    final history = repository.loadHistory(sessionId: "session", resolved: _resolved());
+    final historyCommand = await waitForCommand(process: processes[0], type: "get_entries");
+    processes[0].emitResponse(
+      id: historyCommand.requestId,
+      command: "get_entries",
+      data: _historyJson(text: "a"),
+    );
+    await history;
+    final connecting = repository.ensureResident(
+      sessionId: "session",
+      resolved: _resolved(),
+      knownDirectories: const {},
+      model: null,
+      variant: null,
+    );
+    final residentCommand = await waitForCommand(process: processes[1], type: "get_entries");
+    processes[1].emitResponse(
+      id: residentCommand.requestId,
+      command: "get_entries",
+      data: _historyJson(text: "a"),
+    );
+    await connecting;
+
+    expect(specs[0].environment, {"EXTRA": "value", "PI_SKIP_VERSION_CHECK": "1"});
+    expect(specs[1].environment, {
+      "EXTRA": "value",
+      "SESORI_MCP_URL": "http://127.0.0.1:4711/mcp",
+      "SESORI_MCP_TOKEN": "token-1",
+      "SESORI_MCP_SERVER": sesoriMcpServerName,
+      "PI_SKIP_VERSION_CHECK": "1",
+    });
+    expect(specs[1].arguments, isNot(contains(contains("token-1"))));
+    expect(sesoriMcp.bound.single.launch, same(sesoriMcp.minted.single));
+    expect(sesoriMcp.bound.single.backendSessionId, "session");
   });
 
   group("PiSessionProcessRepository.loadHistory", () {
@@ -563,6 +613,7 @@ void main() {
 PiSessionProcessRepository _repository({
   PiSessionStorageApi? storageApi,
   required PiProcessFactory processFactory,
+  SesoriMcpAccess? sesoriMcp,
   PiMessageIdentityTracker? identityTracker,
   Duration startupExitTimeout = const Duration(seconds: 5),
   Duration historyRpcTimeout = const Duration(minutes: 2),
@@ -575,6 +626,7 @@ PiSessionProcessRepository _repository({
     binaryPath: "/runtime/pi",
     environment: const {"EXTRA": "value"},
     processFactory: processFactory,
+    sesoriMcp: sesoriMcp ?? FakeSesoriMcpAccess(enabled: false),
     historyMapper: PiHistoryMapper(pluginId: "pi"),
     identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
