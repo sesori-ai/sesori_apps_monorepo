@@ -217,6 +217,10 @@ abstract class AcpPlugin({
     return _lastTurnSessionId;
   }
 
+  /// Whether [sessionId] was given Sesori's MCP server, so a `sesori_bridge`
+  /// tool in it is Sesori's own rather than a user server of that name.
+  bool holdsSesoriServer({required String sessionId}) => _sesoriMcpLaunches.containsKey(sessionId);
+
   /// Sessions resident in the live agent process (created via `session/new` or
   /// resumed via `session/load` this run). ACP agents hold sessions in memory
   /// per process, so a session from a prior bridge run must be re-loaded before

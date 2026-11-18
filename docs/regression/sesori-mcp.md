@@ -78,13 +78,16 @@ stay off, and until then their checks run headlessly against the endpoint. Per-h
   session, including the live-process history reload, re-sends that same entry, because OMP and Grok replace a
   session's servers on each load. Catalog probes and the short-lived history process send an empty list. One agent
   process serves many sessions, and each call resolves to its own session.
+- Grok: the plugin answers Grok's own permission request allow-once for a `use_tool` call named
+  `sesori_bridge__<tool>` in a session it gave the server; every other tool, and the same name in a session without
+  Sesori's server, still asks the user.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `acp_sesori_mcp_test.dart` (the server on new, load and the live-process reload, none for the history process or with agent tools off), `grok_approval_registry_test.dart` (Grok's prompt allowed only for Sesori's tools), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
 | L3 Release | Per injected harness, on an isolated home with the local test proxy: a scheduled run calls `get_task` and resolves to its own task while a concurrent run resolves to its own; an `update_task` (or `pause_task`) raises the approval on the run's session and Allow applies it; no token in argv, the agent's environment or harness files, and the harness config is unchanged. Oh My Pi 18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 passed on 2026-11-17; on Copilot with an OpenAI-compatible test provider, `update_task` arguments came back with every optional field empty and were rejected. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -112,8 +115,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 - Only Oh My Pi, Grok and GitHub Copilot inject the server so far; the other harnesses land with their injection
   steps or stay off, as recorded in [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity, Hermes and
   Cursor stay off until a live check passes; DeepSeek's adapter rejects MCP servers.
-- Grok asks its own permission before every Sesori tool and Copilot before each proposing tool, so an unattended run
-  that uses them waits for the user twice.
+- Copilot asks its own permission before each proposing tool, so an unattended Copilot run that proposes a change
+  waits for the user twice. Grok's own prompt for a Sesori tool is answered by the plugin.
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
 - A bridge restart drops waiting requests; the phone's modal for one then fails to reply.
 - Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
