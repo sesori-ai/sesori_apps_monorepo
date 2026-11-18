@@ -50,24 +50,29 @@ class const ClaudeMcpMapper() {
     required bool supportsAuthentication,
   }) {
     final title = _presentText(value: server.serverInfo?.title);
+    // Sesori's own server comes from the launch, not from user config, so a
+    // control on it would act on configuration that does not contain it.
+    final isSesoriServer = server.name == sesoriMcpServerName && server.scope == ClaudeMcpConfigurationScope.dynamic;
     return PluginMcpServerSnapshot(
       target: PluginMcpServerTarget(scope: scope, serverKey: server.name),
       authentication: authenticationCapability(server: server, supportsAuthentication: supportsAuthentication),
       credentialForgetting: authenticationCapability(server: server, supportsAuthentication: supportsAuthentication),
-      actions: const [
-        PluginMcpServerActionCapability(
-          action: PluginMcpServerAction.reconnect,
-          effectScope: PluginMcpActionEffectScope.session,
-        ),
-        PluginMcpServerActionCapability(
-          action: PluginMcpServerAction.enable,
-          effectScope: PluginMcpActionEffectScope.session,
-        ),
-        PluginMcpServerActionCapability(
-          action: PluginMcpServerAction.disable,
-          effectScope: PluginMcpActionEffectScope.session,
-        ),
-      ],
+      actions: isSesoriServer
+          ? const []
+          : const [
+              PluginMcpServerActionCapability(
+                action: PluginMcpServerAction.reconnect,
+                effectScope: PluginMcpActionEffectScope.session,
+              ),
+              PluginMcpServerActionCapability(
+                action: PluginMcpServerAction.enable,
+                effectScope: PluginMcpActionEffectScope.session,
+              ),
+              PluginMcpServerActionCapability(
+                action: PluginMcpServerAction.disable,
+                effectScope: PluginMcpActionEffectScope.session,
+              ),
+            ],
       name: title ?? server.name,
       description: _presentText(value: server.serverInfo?.description),
       endpointOrigin: _endpointOrigin(value: server.config?.url),
@@ -89,7 +94,12 @@ class const ClaudeMcpMapper() {
         ClaudeMcpStatus.disabled ||
         ClaudeMcpStatus.failed => PluginMcpAuthorizationState.unknown,
       },
-      configuration: _configuration(scope: server.scope),
+      configuration: isSesoriServer
+          ? const PluginMcpConfigurationSource(
+              scope: PluginMcpConfigurationScope.session,
+              mutability: PluginMcpConfigurationMutability.readOnly,
+            )
+          : _configuration(scope: server.scope),
       tools: switch ((server.tools, server.status)) {
         (final tools?, _) when tools.isNotEmpty => PluginMcpToolsAvailable(
           tools: List.unmodifiable(

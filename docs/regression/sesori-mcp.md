@@ -9,7 +9,7 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-Codex threads and Pi, Oh My Pi, Grok and GitHub Copilot sessions get the server; the other harnesses get it in later
+Claude Code sessions, Codex threads and Pi, Oh My Pi, Grok and GitHub Copilot sessions get the server; the other harnesses get it in later
 steps of the plan or stay off, and until then their checks run headlessly against the endpoint. Per-harness status
 is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 
@@ -71,7 +71,7 @@ is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 - A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
   improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
   task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
-  declares false until its injection step (Codex, Pi, Oh My Pi, Grok and GitHub Copilot declare true). A command task gets no note. The note goes to the harness only: the run's
+  declares false until its injection step (Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot declare true). A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
   hides both.
 - ACP harnesses (Oh My Pi, Grok, GitHub Copilot): `session/new`, `session/load` and `session/resume` carry the server
@@ -89,14 +89,20 @@ is in [harness capabilities](../HARNESS_CAPABILITIES.md).
   fresh token, bound at once to its session id, through its environment; history, rename and catalog processes get
   none. The extension removes the variables at load, keeping them for a `/reload`. A refused or unreachable tool list
   leaves the session without Sesori tools and logs only the status.
+- Claude Code: every session launch, resume, rewind and idle respawn passes the server through `--mcp-config <file>`.
+  Only that file holds the token. It sits in a 0700 folder under the plugin's state directory and is deleted once the
+  stdin handshake ends. Neither argv nor the child's environment holds the token, so `env` in the agent's Bash shows
+  none. The launch adds `mcp__sesori_bridge` to `--allowedTools`, so the bridge's approval is the only prompt, and leaves out
+  `--strict-mcp-config`, so the user's own servers still load. Each launch mints a fresh token bound to the Claude
+  session id. Catalog probes get no server. The session's MCP list shows `sesori_bridge` without controls.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it), `acp_sesori_mcp_test.dart` (the server on new, load and the live-process reload, none for the history process or with agent tools off) and `grok_approval_registry_test.dart` (Grok's prompt allowed only for Sesori's tools), for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list), and for Codex the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. |
-| L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. Codex: a scheduled run gets the note, calls `get_task` and `update_task` with no Codex prompt, and the request names the run's own task; Allow changes the next run's prompt; the thread inventory lists `sesori_bridge` and the user's server; a concurrent plain session's `get_task` answers that it is not a scheduled run; after a bridge restart a resumed thread's tool call works; a resume in Codex's own app-server lists only the user's server, `config.toml` is unchanged, and no token or server URL is in `CODEX_HOME`; the agent's own `env` shows no token. ACP harnesses: also two concurrent runs each resolve to their own task and the agent's `env` shows no token. Oh My Pi 18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 passed on 2026-11-17, except that a user server and resuming in the harness's own CLI were not rechecked; on Copilot with an OpenAI-compatible test provider, `update_task` arguments came back with every optional field empty and were rejected. |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it), `acp_sesori_mcp_test.dart` (the server on new, load and the live-process reload, none for the history process or with agent tools off) and `grok_approval_registry_test.dart` (Grok's prompt allowed only for Sesori's tools), for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list), and for Codex the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. Claude Code: `claude_launch_spec_test.dart` (the config file argument, a token-free environment, `--allowedTools`, no strict flag, nothing without a launch), `claude_session_process_repository_test.dart` (a bound token per launch in a file deleted after the handshake, none for a probe) and `claude_mcp_mapper_test.dart` (the server without controls). |
+| L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. Codex: a scheduled run gets the note, calls `get_task` and `update_task` with no Codex prompt, and the request names the run's own task; Allow changes the next run's prompt; the thread inventory lists `sesori_bridge` and the user's server; a concurrent plain session's `get_task` answers that it is not a scheduled run; after a bridge restart a resumed thread's tool call works; a resume in Codex's own app-server lists only the user's server, `config.toml` is unchanged, and no token or server URL is in `CODEX_HOME`; the agent's own `env` shows no token. ACP harnesses: also two concurrent runs each resolve to their own task and the agent's `env` shows no token. Oh My Pi 18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 passed on 2026-11-17, except that a user server and resuming in the harness's own CLI were not rechecked; on Copilot with an OpenAI-compatible test provider, `update_task` arguments came back with every optional field empty and were rejected. Claude Code: also the agent's own `env` shows no token. Claude Code 2.1.325 passed on 2026-11-17. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -109,7 +115,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 ## Material Failure Signals
 
 - The endpoint answers on a non-loopback address, or accepts a request carrying `Origin` or a foreign `Host`.
-- A token appears in argv, a URL, a log line or a harness config file.
+- A token appears in argv, a URL, a log line, a harness config file or the agent's environment, or a Claude
+  `--mcp-config` file outlives its launch handshake.
 - A user's own MCP server stops loading in a Sesori-started session, or a session resumed in the harness's own CLI
   still has `sesori_bridge`.
 - An unknown or pre-restart token gets anything but 401, or an unbound token reads any task data.
@@ -122,9 +129,11 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Known Limitations
 
-- Only Codex, Pi, Oh My Pi, Grok and GitHub Copilot inject the server so far; the other harnesses land with their
+- Only Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot inject the server so far; the other harnesses land with their
   injection steps or stay off, as recorded in [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity, Hermes
   and Cursor stay off until a live check passes; DeepSeek's adapter rejects MCP servers.
+- On Claude Code, a session's server keeps the token it launched with until the process exits or is reaped; a
+  resumed process gets a new one. Claude keeps a per-server MCP log folder (`mcp-logs-sesori-bridge`) in its cache.
 - On Pi, the token stays in the process's initial environment block, which only the same OS user can read.
 - Copilot asks its own permission before each proposing tool, so an unattended Copilot run that proposes a change
   waits for the user twice. Grok's own prompt for a Sesori tool is answered by the plugin.
@@ -135,7 +144,7 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Harness Scope
 
-The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: Pi (`bridge/sesori_plugin_pi`,
+The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: Claude Code (`bridge/sesori_plugin_claude`, `ClaudeLaunchSpec`), Pi (`bridge/sesori_plugin_pi`,
 `piRpcStartupExtensionSource`, `PiSessionProcessRepository`), Codex (below), and Oh My Pi, Grok and GitHub Copilot through the shared ACP seam
 (`bridge/sesori_plugin_acp`, `AcpAgentApi` and `AcpPlugin`). Each later injection step adds its harness here.
 

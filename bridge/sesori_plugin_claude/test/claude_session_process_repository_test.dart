@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -7,6 +8,7 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 import "support/fake_claude_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   group("ClaudeSessionProcessRepository", () {
@@ -21,6 +23,8 @@ void main() {
         binaryPath: "claude",
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: FakeSesoriMcpAccess(),
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
         environment: const {},
       );
     });
@@ -445,6 +449,50 @@ void main() {
       expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
     });
 
+    test("gives every session launch its own bound Sesori token and probes none", () async {
+      final access = FakeSesoriMcpAccess(enabled: true);
+      final state = await Directory.systemTemp.createTemp("claude-sesori-mcp-");
+      addTearDown(() => state.delete(recursive: true));
+      final injecting = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
+        processFactory: harness.spawn,
+        binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: access,
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: state.path),
+        environment: const {},
+      );
+      addTearDown(injecting.dispose);
+
+      await _ensure(injecting, createNew: true);
+      await injecting.teardown(sessionId: testSessionId);
+      await _ensure(injecting, createNew: false);
+      await injecting.ensureResident(
+        sessionId: otherTestSessionId,
+        directory: "/tmp/project",
+        createNew: true,
+        purpose: ClaudeProcessPurpose.catalogProbe,
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: false,
+        allowedTools: const [],
+      );
+
+      expect(access.minted, hasLength(2));
+      expect(access.bound.map((binding) => binding.backendSessionId), [testSessionId, testSessionId]);
+      expect(access.bound.map((binding) => binding.launch), access.minted);
+      expect(harness.specs.map((spec) => spec.sesoriMcp?.serverName), [
+        sesoriMcpServerName,
+        sesoriMcpServerName,
+        isNull,
+      ]);
+      expect(harness.sesoriMcpConfigs, [contains('"Bearer token-1"'), contains('"Bearer token-2"')]);
+      // The token lives on disk only until the handshake.
+      expect(state.listSync(), isEmpty);
+    });
+
     test("settles steering input with the result after its replay", () async {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
@@ -816,11 +864,17 @@ Map<String, Object?> _reencodedImageEcho({required Map<String, Object?> written,
 final class _ProcessHarness() {
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
+
+  /// The Sesori MCP config each injecting launch could read when it started.
+  final List<String> sesoriMcpConfigs = [];
   Future<void>? beforeInitialize;
 
   Future<ClaudeProcessHandle> spawn(ClaudeLaunchSpec spec) async {
     final process = FakeClaudeProcess();
     specs.add(spec);
+    if (spec.sesoriMcp case final config?) {
+      sesoriMcpConfigs.add(File(config.path).readAsStringSync());
+    }
     processes.add(process);
     unawaited(() async {
       await beforeInitialize;

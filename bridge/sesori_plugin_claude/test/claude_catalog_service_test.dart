@@ -8,6 +8,7 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 import "support/fake_claude_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   group("ClaudeCatalogService", () {
@@ -85,6 +86,8 @@ void main() {
         binaryPath: "claude",
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: FakeSesoriMcpAccess(),
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
         environment: const {},
       );
       var probeCount = 0;
@@ -225,6 +228,8 @@ void main() {
         binaryPath: "claude",
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: FakeSesoriMcpAccess(),
+        sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: "/tmp/sesori/state"),
         environment: const {},
       );
       return ClaudeCatalogService(

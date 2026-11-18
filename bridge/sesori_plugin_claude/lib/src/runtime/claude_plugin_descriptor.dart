@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/claude_command_files_api.dart";
 import "../api/claude_process_factory.dart";
+import "../api/claude_sesori_mcp_config_api.dart";
 import "../api/claude_settings_api.dart";
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_auth_status_dto.dart";
@@ -125,6 +126,11 @@ final class const ClaudePluginDescriptor({
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,
   };
+
+  /// Every session process gets Sesori's server through `--mcp-config`
+  /// (see `ClaudeLaunchSpec`).
+  @override
+  bool get injectsSesoriTools => true;
 
   /// MCP is read from a live resident session; harness-wide and project
   /// inventory answer unsupported scope.
@@ -319,6 +325,8 @@ final class const ClaudePluginDescriptor({
       binaryPath: binaryPath,
       transcriptsDirectory: sesoriTranscriptsDirectory(),
       uploadsDirectory: sesoriUploadsDirectory(),
+      sesoriMcp: host.sesoriMcp,
+      sesoriMcpConfig: ClaudeSesoriMcpConfigApi(directory: host.stateDirectory),
       // The host factory already inherits this environment. Launch specs carry
       // only explicit overrides so they never shadow HOME and break keychain auth.
       environment: const {},

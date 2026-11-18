@@ -6,7 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/claude_launch_spec.dart";
 import "../api/claude_process_factory.dart";
+import "../api/claude_sesori_mcp_config_api.dart";
 import "../api/claude_stream_client.dart";
+import "../api/models/claude_sesori_mcp_config_file.dart";
 import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
@@ -101,6 +103,8 @@ final class ClaudeSessionProcessRepository({
   required final String _binaryPath,
   required final String _transcriptsDirectory,
   required final String _uploadsDirectory,
+  required final SesoriMcpAccess _sesoriMcp,
+  required final ClaudeSesoriMcpConfigApi _sesoriMcpConfig,
   required Map<String, String> environment,
 }) {
   /// The CLI's own side-question deadline is 11 minutes; nobody waits that
@@ -632,6 +636,11 @@ final class ClaudeSessionProcessRepository({
     required List<String> allowedTools,
     required int generation,
   }) async {
+    // Every session launch, resume and respawn gets its own token. Claude's
+    // session id is known before the launch, so the binding is immediate.
+    final sesoriMcpLaunch = purpose == ClaudeProcessPurpose.session ? _sesoriMcp.mint() : null;
+    if (sesoriMcpLaunch != null) _sesoriMcp.bind(launch: sesoriMcpLaunch, backendSessionId: sessionId);
+    final sesoriMcp = sesoriMcpLaunch == null ? null : await _sesoriMcpConfig.write(launch: sesoriMcpLaunch);
     final client = ClaudeStreamClient(
       launchSpec: ClaudeLaunchSpec(
         binaryPath: _binaryPath,
@@ -644,6 +653,7 @@ final class ClaudeSessionProcessRepository({
         allowedTools: allowedTools,
         transcriptsDirectory: _transcriptsDirectory,
         uploadsDirectory: _uploadsDirectory,
+        sesoriMcp: sesoriMcp,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -655,6 +665,9 @@ final class ClaudeSessionProcessRepository({
       if (identical(_connectingClients[sessionId], client)) {
         _connectingClients.remove(sessionId);
       }
+      // Claude has read the file by the end of the handshake, and the token
+      // must not outlive that on disk.
+      if (sesoriMcp != null) await _deleteSesoriMcpConfig(config: sesoriMcp);
     }
     if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
       await client.dispose();
@@ -702,6 +715,14 @@ final class ClaudeSessionProcessRepository({
     });
     _resident[sessionId] = process;
     unawaited(client.processExit.then((_) => _handleExit(sessionId: sessionId, process: process)));
+  }
+
+  Future<void> _deleteSesoriMcpConfig({required ClaudeSesoriMcpConfigFile config}) async {
+    try {
+      await _sesoriMcpConfig.delete(config: config);
+    } on Object catch (error, stack) {
+      Log.w("[claude] failed to delete the Sesori MCP config ${config.path}", error, stack);
+    }
   }
 
   Future<void> _handleExit({required String sessionId, required _ResidentProcess process}) async {

@@ -1,5 +1,6 @@
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show sesoriMcpServerName;
 import "package:test/test.dart";
 
 // Real UUIDs: the launch contract rejects anything else.
@@ -17,6 +18,7 @@ void main() {
       ClaudeProcessPurpose purpose = ClaudeProcessPurpose.session,
       String transcriptsDirectory = "/tmp/sesori/transcripts",
       String uploadsDirectory = "/tmp/sesori/uploads",
+      ClaudeSesoriMcpConfigFile? sesoriMcp,
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -29,6 +31,7 @@ void main() {
         effort: effort,
         permissionMode: permissionMode,
         allowedTools: allowedTools,
+        sesoriMcp: sesoriMcp,
       );
     }
 
@@ -203,6 +206,36 @@ void main() {
       expect(session, isNot(contains("--settings")));
     });
 
+    test("injects Sesori's server through its config file", () {
+      const server = ClaudeSesoriMcpConfigFile(
+        serverName: sesoriMcpServerName,
+        path: "/tmp/sesori/sesori-mcp-1/mcp.json",
+      );
+      for (final launch in [
+        ClaudeNewSession(sessionId: _newSessionId),
+        ClaudeResumedSession(sessionId: _oldSessionId),
+        ClaudeRewoundSession(sessionId: _oldSessionId, entryUuid: _newSessionId),
+      ]) {
+        final spec = specFor(launch, allowedTools: const ["Bash(git status)"], sesoriMcp: server);
+        final arguments = spec.arguments;
+
+        expect(arguments, containsAllInOrder(["--mcp-config", "/tmp/sesori/sesori-mcp-1/mcp.json"]));
+        // Without `--strict-mcp-config` the user's own servers still load.
+        expect(arguments, isNot(contains("--strict-mcp-config")));
+        expect(arguments, containsAllInOrder(["--allowedTools", "mcp__sesori_bridge", "Bash(git status)"]));
+        // The agent's Bash tool inherits the environment, so the token stays out of it.
+        expect(spec.processLaunch.environment, isEmpty);
+      }
+    });
+
+    test("injects nothing without a Sesori launch", () {
+      final spec = specFor(ClaudeNewSession(sessionId: _newSessionId));
+
+      expect(spec.arguments, isNot(contains("--mcp-config")));
+      expect(spec.arguments.where((argument) => argument.startsWith("mcp__")), isEmpty);
+      expect(spec.processLaunch.environment, isEmpty);
+    });
+
     test("rejects a HOME override when describing its child process", () {
       final spec = ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -215,6 +248,7 @@ void main() {
         effort: null,
         permissionMode: null,
         allowedTools: const [],
+        sesoriMcp: null,
         environment: const {"HOME": "/tmp/test-home"},
       );
 
@@ -234,6 +268,7 @@ void main() {
         effort: null,
         permissionMode: null,
         allowedTools: const [],
+        sesoriMcp: null,
         environment: environment,
       );
 

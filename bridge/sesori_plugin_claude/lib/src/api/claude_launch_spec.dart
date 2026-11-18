@@ -4,6 +4,7 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
 import "../models/claude_process_purpose.dart";
 import "claude_process_launch.dart";
+import "models/claude_sesori_mcp_config_file.dart";
 
 /// Whether a launch starts a brand-new session or continues an existing one.
 ///
@@ -98,6 +99,10 @@ class ClaudeLaunchSpec({
   /// Sesori's prompt uploads folder (`sesoriUploadsDirectory()`), which the
   /// agent may read without asking.
   required final String uploadsDirectory,
+
+  /// The config file that gives this launch Sesori's own MCP server, or null
+  /// to inject none: agent tools are off, or the process is a catalog probe.
+  required final ClaudeSesoriMcpConfigFile? sesoriMcp,
   Map<String, String> environment = const {},
 }) {
   /// Extra environment entries merged over the bridge's own environment.
@@ -156,6 +161,10 @@ class ClaudeLaunchSpec({
 
   static final RegExp _windowsDrivePathPattern = RegExp(r"^[A-Za-z]:[\\/]");
 
+  /// Pre-allows every tool of Sesori's server. The bridge asks the user for
+  /// each proposing tool itself, so a native prompt would ask twice.
+  static String _sesoriMcpToolRule({required ClaudeSesoriMcpConfigFile server}) => "mcp__${server.serverName}";
+
   /// The child process this spec starts.
   ClaudeProcessLaunch get processLaunch => ClaudeProcessLaunch(
     binaryPath: binaryPath,
@@ -196,7 +205,12 @@ class ClaudeLaunchSpec({
     "--allowedTools",
     _readOnlyDirectoryRule(directory: transcriptsDirectory),
     _readOnlyDirectoryRule(directory: uploadsDirectory),
+    if (sesoriMcp case final server?) _sesoriMcpToolRule(server: server),
     ...allowedTools,
+    // Without `--strict-mcp-config` Claude adds Sesori's server to the user's
+    // own, and nothing reaches the user's configuration, so a later plain
+    // `claude --resume` loads no Sesori server.
+    if (sesoriMcp case final server?) ...["--mcp-config", server.path],
     if (purpose == ClaudeProcessPurpose.catalogProbe) ...catalogProbeIsolationArguments,
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
