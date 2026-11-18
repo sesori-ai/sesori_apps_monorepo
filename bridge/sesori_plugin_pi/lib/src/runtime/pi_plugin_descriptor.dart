@@ -20,6 +20,7 @@ typedef PiPluginFactory = PiPlugin Function({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
+  required SesoriMcpAccess sesoriMcp,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
@@ -35,6 +36,7 @@ PiPlugin _buildPiPlugin({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
+  required SesoriMcpAccess sesoriMcp,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
@@ -48,6 +50,7 @@ PiPlugin _buildPiPlugin({
   storageEnvironment: storageEnvironment,
   processEnvironment: processEnvironment,
   processFactory: processFactory,
+  sesoriMcp: sesoriMcp,
   clock: clock,
   launchDirectory: launchDirectory,
   startupExitTimeout: startupExitTimeout,
@@ -103,6 +106,10 @@ final class const PiPluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  /// The startup extension forwards Sesori's tools to each session process.
+  @override
+  bool get injectsSesoriTools => true;
 
   /// Pi's echo of a sent command, expanded template or skill included, carries
   /// the command's prompt id (`PiEventDispatcher` gives it the oldest pending
@@ -337,6 +344,7 @@ final class const PiPluginDescriptor({
         storageEnvironment: host.environment,
         processEnvironment: const {},
         processFactory: processFactory.spawn,
+        sesoriMcp: host.sesoriMcp,
         clock: host.clock,
         launchDirectory: io.Directory.current.path,
         startupExitTimeout: const Duration(seconds: 5),
