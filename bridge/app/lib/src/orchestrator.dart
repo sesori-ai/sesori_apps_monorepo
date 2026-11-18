@@ -237,6 +237,7 @@ import "services/session_event_service.dart";
 import "services/session_fork_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
+import "services/session_notice_service.dart";
 import "services/session_operation_dispatcher.dart";
 import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
@@ -831,6 +832,13 @@ class Orchestrator({
       history: chatHistoryService,
       approvals: agentApprovalRepository,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
+      notices: SessionNoticeService(
+        sessions: sessionRepository,
+        operations: sessionOperationDispatcher,
+        prompts: sessionPromptService,
+        events: sessionEventDispatcher,
+        plugins: _pluginLifecycleService,
+      ),
     );
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),

@@ -198,6 +198,19 @@ send an empty list.
 | DeepSeek | 🚫 The adapter rejects any MCP server ("MCP servers are not supported"). Checked on 0.2.3. |
 | Other harnesses | ⬜ Not injected yet. |
 
+Once the user answers a request, the bridge sends the session a notice with the
+outcome, using each plugin's `busyPromptHandling`. Harnesses that steer (Claude
+Code, Codex, Pi, Oh My Pi, OpenCode) take it into a running turn. On Grok,
+GitHub Copilot, Cursor, Hermes, Antigravity and DeepSeek, a prompt would stop
+the turn, so the notice waits until the session is quiet. A scheduled run's
+session waits for the turn on every harness, so the run's final reply stays its
+own. Verified live on
+2026-11-18 with Claude Code (mid-turn, at the next tool boundary) and Grok
+(after the turn ended). Grok fails a turn whose reply has no visible text
+(`empty response from model (no_visible_content)`, shown as "ACP prompt failed"
+after several minutes), so the notice asks the agent for a one-line reply
+rather than none.
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

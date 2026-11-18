@@ -1,8 +1,11 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/scheduled_task_agent_change.dart";
+import "../repositories/models/session_notice.dart";
 
-/// Writes the Markdown a user reads before allowing an agent's task change.
+/// Writes the Markdown a user reads before allowing an agent's task change,
+/// and the notice its session gets once they answered.
 ///
 /// The security model relies on this text: it opens with the Approve
 /// everything warning whenever the resulting task acts without asking, names
@@ -48,6 +51,76 @@ class const ScheduledTaskChangeDescriptionBuilder() {
       },
     ].join("\n\n");
   }
+
+  /// What the session that asked for [change] is told once the user answered:
+  /// a short line for the user and the agent's guidance. [bySubagent] means a
+  /// sub-agent asked, so the notice lands on its root session.
+  SessionNotice outcome({
+    required ScheduledTaskAgentChange change,
+    required AgentApprovalOutcome outcome,
+    required bool bySubagent,
+  }) {
+    final (action, name) = switch (change) {
+      CreateTaskChange(:final definition) => ("creating", definition.name),
+      UpdateTaskChange(:final before, :final after) when before.copyWith(name: after.name) == after => (
+        "renaming",
+        before.name,
+      ),
+      UpdateTaskChange(:final before) => ("changing", before.name),
+      SetTaskEnabledChange(:final before, enabled: true) => ("resuming", before.name),
+      SetTaskEnabledChange(:final before, enabled: false) => ("pausing", before.name),
+      RunTaskNowChange(:final before) => ("running", before.name),
+    };
+    final request = "$action ${_quoted(text: name)}${change is RunTaskNowChange ? " now" : ""}";
+    final (summary, guidance) = switch (outcome) {
+      AgentApprovalCreated(:final taskId) => (
+        "You allowed $request.",
+        "The change is saved and applies from the next run. The new task's id is $taskId.",
+      ),
+      AgentApprovalApplied() => (
+        "You allowed $request.",
+        switch (change) {
+          RunTaskNowChange() => "The run started.",
+          SetTaskEnabledChange(enabled: false) => "The change is saved.",
+          CreateTaskChange() ||
+          UpdateTaskChange() ||
+          SetTaskEnabledChange() => "The change is saved and applies from the next run.",
+        },
+      ),
+      AgentApprovalStale() => (
+        "You allowed $request, but it had changed since, so nothing was applied.",
+        "Read it with get_task before proposing anything else.",
+      ),
+      AgentApprovalRunNotStarted(outcome: final run) => (
+        "You allowed $request, but it didn’t start.",
+        "${_notStartedReason(outcome: run)}.",
+      ),
+      AgentApprovalRejected() => (
+        "You didn’t allow $request.",
+        "Nothing changed. Don't propose it again unless they ask.",
+      ),
+    };
+    return SessionNotice(
+      summary: summary,
+      guidance: [
+        if (bySubagent) "A sub-agent of this session made this request.",
+        guidance,
+        "Reply in one short line.",
+      ].join(" "),
+    );
+  }
+
+  String _notStartedReason({required ScheduledTaskRunOutcome outcome}) => switch (outcome) {
+    ScheduledTaskRunSkipped() => "The previous run was still going",
+    ScheduledTaskRunMissed() => "The bridge was off or asleep",
+    ScheduledTaskRunFailed(reason: TaskRunFailureReason.projectMissing) => "The project folder is missing",
+    ScheduledTaskRunFailed(reason: TaskRunFailureReason.harnessUnavailable) => "The harness is unavailable",
+    ScheduledTaskRunFailed(reason: TaskRunFailureReason.modelUnavailable) => "The task's model is no longer offered",
+    ScheduledTaskRunFailed(reason: TaskRunFailureReason.startFailed) => "The session failed to start",
+    ScheduledTaskRunFailed(reason: TaskRunFailureReason.unknown) ||
+    ScheduledTaskRunStarted() ||
+    ScheduledTaskRunOutcomeUnknown() => "Its run history shows why",
+  };
 
   /// The schedule in plain words, with its time zone.
   String schedule({required ScheduledTaskDefinition definition}) {

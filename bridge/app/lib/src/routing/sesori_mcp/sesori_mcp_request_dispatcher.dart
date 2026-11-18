@@ -116,8 +116,8 @@ class SesoriMcpRequestDispatcher({
       "instructions":
           "Sesori's tools for the scheduled tasks on this computer. Start with list_tasks; get_task without a "
           "task_id shows this session's own task when it is a scheduled run. Tools that change a task only send "
-          "the user a request to allow; they return before the user answers. Each request is answered "
-          "separately, so several can wait at once.",
+          "the user a request to allow and return at once. Each request is answered on its own; Sesori messages "
+          "this session with the user's answer, so don't poll get_task for it.",
     };
   }
 
@@ -251,8 +251,10 @@ class SesoriMcpRequestDispatcher({
   }
 
   static const String _appliesToNextRun =
-      "Sent to the user for approval. If they allow it, it applies to the next run.";
-  static const String _appliesOnAllow = "Sent to the user for approval. Nothing happens unless they allow it.";
+      "Sent to the user for approval. If they allow it, it applies to the next run. $_answerFollows";
+  static const String _appliesOnAllow =
+      "Sent to the user for approval. Nothing happens unless they allow it. $_answerFollows";
+  static const String _answerFollows = "Sesori will message this session with their answer.";
 
   _ToolOutcome _proposal({required AgentProposal proposal, required String sent}) {
     return switch (proposal) {

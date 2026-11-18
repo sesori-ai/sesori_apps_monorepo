@@ -10,6 +10,8 @@ import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
 import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
+import "package:sesori_bridge/src/repositories/models/session_notice.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
@@ -22,6 +24,7 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
+import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -65,6 +68,7 @@ void main() {
   late ScheduledTaskService tasks;
   late ScheduledTaskAgentService agent;
   late _FakeRunService runner;
+  late _Notices notices;
   late List<AgentApprovalEvent> approvalEvents;
   var nextId = 1;
 
@@ -114,6 +118,7 @@ void main() {
       history: history.service,
       approvals: approvals,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
+      notices: notices = _Notices(),
     );
     final dispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: grants, sessions: sessions),
@@ -221,6 +226,13 @@ void main() {
       }
     }
   }
+
+  /// The user's answer to agent approval [requestId].
+  Future<AgentApprovalOutcome> answer({required String requestId, required PermissionReply reply}) async =>
+      switch (await agent.settle(requestId: requestId, reply: reply)) {
+        AgentApprovalAnswered(:final outcome) => outcome,
+        NotAgentApproval() => fail("$requestId is not an agent approval"),
+      };
 
   Future<http.Response> post({required String bearer, required Map<String, Object?> message}) {
     return http.post(
@@ -425,6 +437,54 @@ void main() {
       expect(result.text, contains("more characters)"));
     });
 
+    test("a run's final reply skips Sesori notices and the agent's answer to them", () async {
+      var index = 0;
+      Future<void> capture({required MessageSender? sender, required String text}) async {
+        final id = "n${index++}";
+        await history.service.captureMessage(
+          sessionId: "s1",
+          message: switch (sender) {
+            null => Message.user(
+              id: id,
+              sessionID: "s1",
+              agent: null,
+              time: null,
+              promptId: null,
+              invocation: null,
+              handoff: null,
+            ),
+            final sender => Message.assistant(
+              id: id,
+              sessionID: "s1",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              time: null,
+              sender: sender,
+            ),
+          },
+        );
+        await history.service.capturePart(
+          sessionId: "s1",
+          part: MessagePart.text(id: "$id-text", sessionID: "s1", messageID: id, text: text),
+        );
+      }
+
+      Future<String> runs() async => (await call(tool: "list_task_runs", arguments: {"task_id": taskId})).text;
+
+      await capture(sender: null, text: "Run prompt");
+      await capture(sender: MessageSender.agent, text: "Run reply");
+      await capture(sender: MessageSender.sesori, text: "You allowed pausing it.");
+      expect(await runs(), contains("final reply: Run reply"));
+
+      await capture(sender: MessageSender.agent, text: "Noted");
+      expect(await runs(), contains("final reply: Run reply"));
+
+      await capture(sender: null, text: "Next run prompt");
+      await capture(sender: MessageSender.agent, text: "Next run reply");
+      expect(await runs(), contains("final reply: Next run reply"));
+    });
+
     test("invalid arguments come back as a tool error naming the field", () async {
       final missing = await call(tool: "list_task_runs", arguments: {});
       final empty = await call(tool: "list_task_runs", arguments: {"task_id": ""});
@@ -521,7 +581,10 @@ void main() {
       final result = await call(tool: "pause_task", arguments: {"task_id": taskId});
 
       expect(result.isError, isFalse);
-      expect(result.text, "Sent to the user for approval. Nothing happens unless they allow it.");
+      expect(
+        result.text,
+        "Sent to the user for approval. Nothing happens unless they allow it. Sesori will message this session with their answer.",
+      );
       final approval = asked();
       expect(approval.sessionID, "s1");
       expect(approval.tool, "Sesori: pause task");
@@ -532,9 +595,41 @@ void main() {
       );
       expect((await tasks.list()).items.single.enabled, isTrue);
 
-      expect(await agent.settle(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
       expect((await tasks.list()).items.single.enabled, isFalse);
       expect(agent.pendingPermissions(sessionId: "s1"), isEmpty);
+      final delivered = notices.delivered.single;
+      expect(delivered.sessionId, "s1");
+      expect(delivered.notice.summary, "You allowed pausing “Morning summary”.");
+      expect(delivered.notice.guidance, "The change is saved. Reply in one short line.");
+      // s1 is a scheduled run: the outcome waits for its turn to end.
+      expect(delivered.timing, SessionNoticeTiming.afterTurn);
+    });
+
+    test("a session that is not a scheduled run hears the outcome in its running turn", () async {
+      await insertTestSession(
+        db: db,
+        sessionId: "s-chat",
+        backendSessionId: "backend-s-chat",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      final chat = grants.mint(pluginId: "fake");
+      grants.bind(token: chat, backendSessionId: "backend-s-chat");
+
+      await call(tool: "pause_task", arguments: {"task_id": taskId}, bearer: chat);
+      await answer(requestId: asked().id, reply: PermissionReply.reject);
+
+      final delivered = notices.delivered.single;
+      expect(delivered.sessionId, "s-chat");
+      expect(delivered.timing, SessionNoticeTiming.intoRunningTurn);
     });
 
     test("update_task asks the user and Allow applies it", () async {
@@ -544,13 +639,16 @@ void main() {
       );
 
       expect(result.isError, isFalse);
-      expect(result.text, "Sent to the user for approval. If they allow it, it applies to the next run.");
+      expect(
+        result.text,
+        "Sent to the user for approval. If they allow it, it applies to the next run. Sesori will message this session with their answer.",
+      );
       final approval = asked();
       expect(approval.tool, "Sesori: update task");
       expect(approval.description, startsWith("**Turns on Approve everything"));
       expect((await tasks.list()).items.single.definition.approvalMode, TaskApprovalMode.ask);
 
-      expect(await agent.settle(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
       final updated = (await tasks.list()).items.single.definition;
       expect(updated.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
       expect(updated.approvalMode, TaskApprovalMode.approveAll);
@@ -576,7 +674,7 @@ void main() {
 
       expect(result.isError, isFalse, reason: result.text);
       expect(asked().tool, "Sesori: update task");
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
       final updated = (await tasks.list()).items.single.definition;
       expect(updated.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
       expect(updated.name, "Morning summary");
@@ -731,7 +829,7 @@ void main() {
         await userEdit();
 
         expect(
-          await agent.settle(requestId: asked().id, reply: PermissionReply.once),
+          await answer(requestId: asked().id, reply: PermissionReply.once),
           isA<AgentApprovalStale>(),
           reason: tool,
         );
@@ -745,8 +843,12 @@ void main() {
         (definition) =>
             definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 8, minute: 0))),
       );
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
       expect((await tasks.list()).items.single.enabled, isFalse);
+      expect(
+        notices.delivered.last.notice.summary,
+        "You allowed resuming “Night summary”, but it had changed since, so nothing was applied.",
+      );
     });
 
     test("Allow applies a request on top of changes to fields it does not touch", () async {
@@ -760,8 +862,8 @@ void main() {
         definition: current.copyWith(name: "Weekly summary"),
       );
 
-      expect(await agent.settle(requestId: pause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
-      expect(await agent.settle(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: pause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
 
       final task = (await tasks.list()).items.single;
       expect(task.enabled, isFalse);
@@ -775,8 +877,8 @@ void main() {
       await call(tool: "update_task", arguments: {"task_id": taskId, "approval_mode": "approveAll"});
       final approveAll = asked();
 
-      expect(await agent.settle(requestId: approveAll.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
-      expect(await agent.settle(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: approveAll.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
       expect(
         (await tasks.list()).items.single.definition.prompt,
         const ScheduledTaskPrompt.text(text: "Summarize yesterday"),
@@ -796,7 +898,7 @@ void main() {
         ),
       );
 
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
       expect((await tasks.list()).items.single.definition.timeZone, "Europe/Bucharest");
     });
 
@@ -804,24 +906,35 @@ void main() {
       await call(tool: "pause_task", arguments: {"task_id": taskId});
       await tasks.delete(taskId: taskId);
 
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
     });
 
     test("run_task_now runs the task on Allow, and Reject drops a request", () async {
       await call(tool: "run_task_now", arguments: {"task_id": taskId});
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
       expect(runner.ranNow, [taskId]);
 
       runner.outcome = const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing, attempt: null);
       await call(tool: "run_task_now", arguments: {"task_id": taskId});
       expect(
-        await agent.settle(requestId: asked().id, reply: PermissionReply.once),
+        await answer(requestId: asked().id, reply: PermissionReply.once),
         isA<AgentApprovalRunNotStarted>(),
       );
 
       await call(tool: "pause_task", arguments: {"task_id": taskId});
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.reject), isA<AgentApprovalRejected>());
+      expect(await answer(requestId: asked().id, reply: PermissionReply.reject), isA<AgentApprovalRejected>());
       expect((await tasks.list()).items.single.enabled, isTrue);
+
+      expect(notices.delivered.map((delivered) => delivered.notice.summary), [
+        "You allowed running “Morning summary” now.",
+        "You allowed running “Morning summary” now, but it didn’t start.",
+        "You didn’t allow pausing “Morning summary”.",
+      ]);
+      expect(notices.delivered.map((delivered) => delivered.notice.guidance), [
+        "The run started. Reply in one short line.",
+        "The project folder is missing. Reply in one short line.",
+        "Nothing changed. Don't propose it again unless they ask. Reply in one short line.",
+      ]);
     });
 
     test("several requests wait on one session and each is answered on its own", () async {
@@ -833,11 +946,14 @@ void main() {
         final result = await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": prompt});
         final edit = asked();
 
-        expect(result.text, "Sent to the user for approval. If they allow it, it applies to the next run.");
+        expect(
+          result.text,
+          "Sent to the user for approval. If they allow it, it applies to the next run. Sesori will message this session with their answer.",
+        );
         expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [pause.id, edit.id]);
         for (final request in pauseFirst ? [pause, edit] : [edit, pause]) {
           expect(
-            await agent.settle(requestId: request.id, reply: PermissionReply.once),
+            await answer(requestId: request.id, reply: PermissionReply.once),
             isA<AgentApprovalApplied>(),
             reason: "pause first: $pauseFirst",
           );
@@ -859,10 +975,10 @@ void main() {
       await call(tool: "pause_task", arguments: {"task_id": taskId});
       final secondPause = asked();
 
-      expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
-      expect(await agent.settle(requestId: second.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
-      expect(await agent.settle(requestId: firstPause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
-      expect(await agent.settle(requestId: secondPause.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: first.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: second.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await answer(requestId: firstPause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await answer(requestId: secondPause.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
       expect(
         (await tasks.list()).items.single.definition.prompt,
         const ScheduledTaskPrompt.text(text: "Summarize the week"),
@@ -887,10 +1003,12 @@ void main() {
       expect(result.isError, isFalse);
       expect(asked().tool, "Sesori: create task");
 
-      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
-      final created = (await tasks.list()).items
-          .map((task) => task.definition)
-          .singleWhere((definition) => definition.name == "Weekly cleanup");
+      final outcome = await answer(requestId: asked().id, reply: PermissionReply.once);
+      final createdTask = (await tasks.list()).items.singleWhere((task) => task.definition.name == "Weekly cleanup");
+      expect(outcome, isA<AgentApprovalCreated>().having((created) => created.taskId, "taskId", createdTask.id));
+      expect(notices.delivered.single.notice.summary, "You allowed creating “Weekly cleanup”.");
+      expect(notices.delivered.single.notice.guidance, contains("The new task's id is ${createdTask.id}."));
+      final created = createdTask.definition;
       expect(created.projectId, "/repo");
       expect(created.pluginId, "fake");
       expect(created.model, const PromptModel(providerID: "anthropic", modelID: "claude-sonnet"));
@@ -976,6 +1094,17 @@ void main() {
       expect(fromGrandchild.displaySessionId, "s1");
       expect(fromRoot.sessionID, "s1");
       expect(fromRoot.displaySessionId, isNull);
+
+      await answer(requestId: fromGrandchild.id, reply: PermissionReply.once);
+      await answer(requestId: fromRoot.id, reply: PermissionReply.once);
+      final [toGrandchild, toRoot] = notices.delivered;
+      expect(toGrandchild.sessionId, "s1");
+      expect(
+        toGrandchild.notice.guidance,
+        "A sub-agent of this session made this request. The change is saved. Reply in one short line.",
+      );
+      expect(toRoot.sessionId, "s1");
+      expect(toRoot.notice.guidance, "The run started. Reply in one short line.");
     });
 
     test("a proposal for a missing task or a task already in that state asks nobody", () async {
@@ -989,6 +1118,21 @@ void main() {
       expect(approvalEvents, isEmpty);
     });
   });
+}
+
+/// Records the notices instead of prompting sessions.
+class _Notices() implements SessionNoticeService {
+  final List<({String sessionId, SessionNotice notice, SessionNoticeTiming timing})> delivered = [];
+
+  @override
+  Future<void> deliver({
+    required String sessionId,
+    required SessionNotice notice,
+    required SessionNoticeTiming timing,
+  }) async => delivered.add((sessionId: sessionId, notice: notice, timing: timing));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Records the tasks run now instead of starting sessions.

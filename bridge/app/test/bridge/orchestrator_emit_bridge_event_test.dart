@@ -1129,6 +1129,44 @@ void main() {
       reason: "the reply and a summary without the request",
     );
 
+    // Sesori tells the quiet session the answer, as a notice the user did not send.
+    final plugin = harness.plugins.single;
+    await _waitFor(() => plugin.sentPromptIds.isNotEmpty, reason: "the outcome notice");
+    final noticeText = [
+      for (final part in plugin.lastSendPromptParts ?? const <PluginPromptPart>[])
+        if (part case PluginPromptPartText(:final text)) text,
+    ].join();
+    expect(noticeText, contains("[SESORI NOTICE]"));
+    expect(noticeText, contains("You allowed pausing “Nightly”."));
+    final lastUserMessageAt = (await harness.database.sessionDao.getSession(
+      sessionId: "stable-session",
+    ))?.lastUserMessageAt;
+    plugin.emitEvent(
+      BridgeSseMessageUpdated(
+        info: PluginMessage.user(
+          promptId: plugin.sentPromptIds.single,
+          invocation: null,
+          id: "notice-echo",
+          sessionID: "backend-session",
+          agent: null,
+          time: const PluginMessageTime(created: 4102444800000, completed: null),
+        ),
+      ),
+    );
+    await _waitFor(
+      () => events.any(
+        (event) => switch (event) {
+          SesoriMessageUpdated(info: MessageAssistant(id: "notice-echo", sender: MessageSender.sesori)) => true,
+          _ => false,
+        },
+      ),
+      reason: "the notice echo as a Sesori row",
+    );
+    expect(
+      (await harness.database.sessionDao.getSession(sessionId: "stable-session"))?.lastUserMessageAt,
+      lastUserMessageAt,
+    );
+
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
     await messages.cancel();
