@@ -64,13 +64,19 @@ against the endpoint. The per-harness injection is a later step of the plan.
   use only what the bridge stored, archived audit files included, and never start a harness. Reasoning is left out and
   tool results are cut to a short excerpt.
 - Transcript content, prompts and tool arguments are never logged.
+- A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
+  improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
+  task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
+  declares false until its injection step. A command task gets no note. The note goes to the harness only: the run's
+  user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
+  hides both.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included: no harness reaches the server yet. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping) and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
 | L3 Release | No additional coverage: no plugin injects the server yet. Each injection step adds its live harness check here (the server listed, a call resolving to the right session, no token in argv, URLs or harness session files). |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -88,6 +94,7 @@ task to its start and compare it with the app's view of the session. Use fixture
 - An unknown or pre-restart token gets anything but 401, or an unbound token reads any task data.
 - A call resolves to the wrong session or another plugin's session.
 - A transcript page repeats or drops a message, or a read starts a harness or fails on an archived session.
+- The run note shows in the app, reaches a command's arguments, or reaches a harness that has no Sesori server.
 - A proposal changes a task before the user allows it, YOLO answers it, Allow applies a change after the user edited
   the task, or the request text omits the Approve everything warning.
 - Transcript text, a prompt or tool arguments show up in bridge logs.

@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_tool.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -279,6 +280,14 @@ void main() {
       await service.runDue();
 
       expect(creation.runContexts, [null]);
+    });
+
+    test("the note names tools Sesori's server offers", () {
+      final note = buildScheduledRunContext(taskName: "Morning summary", taskId: "task_1");
+
+      for (final tool in [SesoriMcpTool.updateTask, SesoriMcpTool.getTask, SesoriMcpTool.listTaskRuns]) {
+        expect(note, contains("${tool.wireName} "));
+      }
     });
 
     test("no note for a command prompt", () async {
