@@ -55,6 +55,7 @@ CodexPlugin buildCodexPlugin({
   required Future<void> runtimeExit,
   required Duration keepaliveInterval,
   required Duration rolloutPollInterval,
+  required SesoriMcpAccess sesoriMcp,
 }) {
   final configReader = CodexConfigReader(environment: environment);
   final rolloutApi = CodexRolloutApi(environment: environment);
@@ -82,6 +83,7 @@ CodexPlugin buildCodexPlugin({
       toolOutcomeRepository: toolOutcomeRepository,
       subAgentTracker: CodexSubAgentTracker(),
       sessionMapper: const CodexSessionMapper(),
+      sesoriMcp: sesoriMcp,
       launchDirectory: launchDirectory,
     ),
     messageRepository: messageRepository,
@@ -143,6 +145,11 @@ class const CodexPluginDescriptor({
 
   @override
   bool get supportsSideQuestions => true;
+
+  /// Each thread gets the server through its `thread/start`, `thread/resume`
+  /// or `thread/fork` config, so threads started outside Sesori never see it.
+  @override
+  bool get injectsSesoriTools => true;
 
   @override
   bool get namesCommandInvocations => true;
@@ -710,6 +717,7 @@ class const CodexPluginDescriptor({
       runtimeExit: handle.process.exitCode,
       keepaliveInterval: const Duration(seconds: 30),
       rolloutPollInterval: const Duration(milliseconds: 50),
+      sesoriMcp: host.sesoriMcp,
     );
 
     final plugin = ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexPlugin>(

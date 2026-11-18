@@ -1,3 +1,7 @@
+// Freezed forwards `@JsonSerializable` on a factory to the generated class.
+// Checked decoding names the key that failed, so a tool error can name it.
+// ignore_for_file: invalid_annotation_target
+
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart" show TaskApprovalMode, TaskMissedRunPolicy, TaskRunMode, TaskSchedule;
 
@@ -6,6 +10,7 @@ part "sesori_mcp_tool_arguments.g.dart";
 
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class ListTasksArguments with _$ListTasksArguments {
+  @JsonSerializable(checked: true)
   const factory({@JsonKey(name: "project_id") required String? projectId}) = _ListTasksArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$ListTasksArgumentsFromJson(json);
@@ -13,6 +18,7 @@ sealed class ListTasksArguments with _$ListTasksArguments {
 
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class GetTaskArguments with _$GetTaskArguments {
+  @JsonSerializable(checked: true)
   const factory({@JsonKey(name: "task_id") required String? taskId}) = _GetTaskArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$GetTaskArgumentsFromJson(json);
@@ -21,6 +27,7 @@ sealed class GetTaskArguments with _$GetTaskArguments {
 /// The arguments of the tools that take only a task.
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class TaskIdArguments with _$TaskIdArguments {
+  @JsonSerializable(checked: true)
   const factory({@JsonKey(name: "task_id") required String taskId}) = _TaskIdArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$TaskIdArgumentsFromJson(json);
@@ -28,6 +35,7 @@ sealed class TaskIdArguments with _$TaskIdArguments {
 
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class GetTaskRunTranscriptArguments with _$GetTaskRunTranscriptArguments {
+  @JsonSerializable(checked: true)
   const factory({
     @JsonKey(name: "task_id") required String taskId,
     @JsonKey(name: "run_id") required String runId,
@@ -43,6 +51,7 @@ sealed class GetTaskRunTranscriptArguments with _$GetTaskRunTranscriptArguments 
 /// `provider/model`.
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class CreateTaskArguments with _$CreateTaskArguments {
+  @JsonSerializable(checked: true)
   const factory({
     required String name,
     required String prompt,
@@ -64,6 +73,7 @@ sealed class CreateTaskArguments with _$CreateTaskArguments {
 /// Every field but the task is optional; a missing one keeps its value.
 @Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
 sealed class UpdateTaskArguments with _$UpdateTaskArguments {
+  @JsonSerializable(checked: true)
   const factory({
     @JsonKey(name: "task_id") required String taskId,
     required String? name,

@@ -13,6 +13,7 @@ import "package:path/path.dart" as p;
 import "package:test/test.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   group("Codex metadata", () {
@@ -59,6 +60,7 @@ void main() {
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
           subAgentTracker: CodexSubAgentTracker(),
           sessionMapper: const CodexSessionMapper(),
+          sesoriMcp: FakeSesoriMcpAccess(enabled: false),
           launchDirectory: launchProject.path,
         ),
       );

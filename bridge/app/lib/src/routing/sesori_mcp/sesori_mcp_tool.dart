@@ -163,6 +163,8 @@ const Map<String, Object?> _taskIdSchema = {
   "additionalProperties": false,
 };
 
+/// Lists every kind's fields, not just `kind`: a strict-schema provider lets
+/// the model send only listed properties. A kind ignores the others.
 const Map<String, Object?> _scheduleSchema = {
   "type": "object",
   "description":
@@ -175,8 +177,41 @@ const Map<String, Object?> _scheduleSchema = {
       "type": "string",
       "enum": ["once", "daily", "weekdays", "weekly", "everyHours"],
     },
+    "at": {..._localDateTimeSchema, "description": "once: when it runs."},
+    "time": {..._timeOfDaySchema, "description": "daily, weekdays and weekly: the time of day."},
+    "days": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      },
+      "description": "weekly: the days it runs.",
+    },
+    "hours": {"type": "integer", "description": "everyHours: 1 to 12 hours between runs."},
+    "start": {..._localDateTimeSchema, "description": "everyHours: the first run."},
   },
   "required": ["kind"],
+};
+
+const Map<String, Object?> _timeOfDaySchema = {
+  "type": "object",
+  "properties": {
+    "hour": {"type": "integer"},
+    "minute": {"type": "integer"},
+  },
+  "required": ["hour", "minute"],
+};
+
+const Map<String, Object?> _localDateTimeSchema = {
+  "type": "object",
+  "properties": {
+    "year": {"type": "integer"},
+    "month": {"type": "integer"},
+    "day": {"type": "integer"},
+    "hour": {"type": "integer"},
+    "minute": {"type": "integer"},
+  },
+  "required": ["year", "month", "day", "hour", "minute"],
 };
 
 const Map<String, Object?> _timeZoneSchema = {

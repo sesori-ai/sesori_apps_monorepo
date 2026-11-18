@@ -67,7 +67,13 @@ class CodexMcpMapper({required SemanticVersion? codexVersion}) {
           CodexMcpAuthStatus.notLoggedIn => PluginMcpAuthorizationState.required,
           CodexMcpAuthStatus.unknown || CodexMcpAuthStatus.unsupported => PluginMcpAuthorizationState.unknown,
         },
-        authentication: server.authStatus == CodexMcpAuthStatus.unsupported
+        // Sesori's own server lives only in the thread's launch config, so a
+        // native sign-in would target user config that does not contain it.
+        authentication: server.name == sesoriMcpServerName
+            ? const PluginMcpAuthenticationCapabilityUnavailable(
+                reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+              )
+            : server.authStatus == CodexMcpAuthStatus.unsupported
             ? const PluginMcpAuthenticationCapabilityUnavailable(
                 reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
               )
