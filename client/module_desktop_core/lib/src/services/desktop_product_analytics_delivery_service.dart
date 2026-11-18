@@ -121,8 +121,6 @@ class DesktopProductAnalyticsDeliveryService({
     FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() => null,
-    // The auth server does not accept it yet.
-    SessionForkedEvent() => null,
     SessionMessageSentEvent() ||
     SessionCreatedWithMessageEvent() ||
     AnalyticsSchemaReadyEvent() ||
@@ -155,6 +153,7 @@ class DesktopProductAnalyticsDeliveryService({
     VoiceTranscriptionCompletedEvent() ||
     SessionMessageEditedEvent() ||
     SessionSentToSessionEvent() ||
+    SessionForkedEvent() ||
     ScheduledTaskSavedEvent() => event.parameters,
   };
 }
