@@ -323,6 +323,8 @@ void main() {
       );
       expect((jsonDecode(malformed.body) as Map<String, dynamic>)["error"], containsPair("code", -32700));
       expect((await rpc(method: "resources/list", params: null))["error"], containsPair("code", -32601));
+      // Claude Code probes this before initialize.
+      expect((await rpc(method: "server/discover", params: null))["error"], containsPair("code", -32601));
       expect(
         (await rpc(method: "tools/call", params: {"name": "delete_everything"}))["error"],
         containsPair("code", -32602),
@@ -381,6 +383,10 @@ void main() {
       expect(own.text, contains("Summarize yesterday"));
       expect(own.text, contains("runs in: one session for every run"));
 
+      final emptyId = await call(tool: "get_task", arguments: {"task_id": ""});
+      expect(emptyId.isError, isFalse);
+      expect(emptyId.text, contains("the task this session runs for"));
+
       final missing = await call(tool: "get_task", arguments: {"task_id": "stk_missing"});
       expect(missing.isError, isTrue);
       expect(missing.text, contains("No scheduled task stk_missing"));
@@ -397,11 +403,18 @@ void main() {
       expect(result.text, contains("more characters)"));
     });
 
-    test("invalid arguments come back as a tool error", () async {
-      final result = await call(tool: "list_task_runs", arguments: {});
+    test("invalid arguments come back as a tool error naming the field", () async {
+      final missing = await call(tool: "list_task_runs", arguments: {});
+      final empty = await call(tool: "list_task_runs", arguments: {"task_id": ""});
+      final wrongType = await call(
+        tool: "get_task_run_transcript",
+        arguments: {"task_id": taskId, "run_id": runId, "page": "2"},
+      );
 
-      expect(result.isError, isTrue);
-      expect(result.text, contains("Invalid arguments for list_task_runs"));
+      expect(missing.isError, isTrue);
+      expect(missing.text, "Invalid arguments for list_task_runs: task_id is required.");
+      expect(empty.text, "Invalid arguments for list_task_runs: task_id is required.");
+      expect(wrongType.text, "Invalid arguments for get_task_run_transcript: page is not valid; see its input schema.");
     });
 
     test("get_task_run_transcript pages from newest to oldest without gaps or overlaps", () async {
@@ -519,6 +532,92 @@ void main() {
       final updated = (await tasks.list()).items.single.definition;
       expect(updated.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
       expect(updated.approvalMode, TaskApprovalMode.approveAll);
+    });
+
+    test("update_task reads the empty fields a strict-schema model fills in as left out", () async {
+      final result = await call(
+        tool: "update_task",
+        arguments: {
+          "task_id": taskId,
+          "name": "",
+          "prompt": "Summarize the week",
+          "command_arguments": "",
+          "schedule": "",
+          "time_zone": "",
+          "missed_run_policy": "",
+          "run_mode": "",
+          "model": "",
+          "effort": "",
+          "approval_mode": "",
+        },
+      );
+
+      expect(result.isError, isFalse, reason: result.text);
+      expect(asked().tool, "Sesori: update task");
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      final updated = (await tasks.list()).items.single.definition;
+      expect(updated.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
+      expect(updated.name, "Morning summary");
+      expect(updated.model, isNull);
+      expect(updated.approvalMode, TaskApprovalMode.ask);
+    });
+
+    test("arguments that do not parse name the field and ask nobody", () async {
+      Future<String> createWith({required Map<String, Object?> overrides}) async {
+        final result = await call(
+          tool: "create_task",
+          arguments: {
+            "name": "Daily check",
+            "prompt": "Check the build",
+            "schedule": {
+              "kind": "daily",
+              "time": {"hour": 9, "minute": 0},
+            },
+            "time_zone": "Europe/Bucharest",
+            ...overrides,
+          },
+        );
+        expect(result.isError, isTrue, reason: result.text);
+        return result.text;
+      }
+
+      expect(
+        await createWith(
+          overrides: {
+            "schedule": {"kind": "daily"},
+          },
+        ),
+        "Invalid arguments for create_task: schedule.time is required when schedule.kind is daily.",
+      );
+      expect(
+        await createWith(
+          overrides: {
+            "schedule": {"kind": "hourly"},
+          },
+        ),
+        "Invalid arguments for create_task: schedule.kind must be one of once, daily, weekdays, weekly, everyHours.",
+      );
+      expect(
+        await createWith(
+          overrides: {
+            "run_mode": {"kind": "sameSession"},
+          },
+        ),
+        "Invalid arguments for create_task: run_mode.autoCompact is required when run_mode.kind is sameSession.",
+      );
+      expect(
+        await createWith(overrides: {"time_zone": ""}),
+        "Invalid arguments for create_task: time_zone is required.",
+      );
+      expect(
+        await createWith(overrides: {"approval_mode": "sometimes"}),
+        "Invalid arguments for create_task: approval_mode is not valid; see its input schema.",
+      );
+      expect(
+        await createWith(overrides: {"project_id": "current"}),
+        "Unknown project_id; find project ids with list_tasks.",
+      );
+      expect(approvalEvents, isEmpty);
     });
 
     test("Allow applies nothing once the user changed the task", () async {
@@ -643,13 +742,13 @@ void main() {
       final badModel = await call(tool: "update_task", arguments: {"task_id": taskId, "model": "no-provider"});
 
       expect(invalid.isError, isTrue);
-      expect(invalid.text, contains("Unknown time zone"));
+      expect(invalid.text, contains("Unknown time_zone"));
       expect(unchanged.isError, isTrue);
       expect(unchanged.text, contains("nothing would change"));
       expect(command.isError, isTrue);
       expect(command.text, contains("This task sends text"));
       expect(badModel.isError, isTrue);
-      expect(badModel.text, contains("Invalid arguments for update_task"));
+      expect(badModel.text, "Invalid arguments for update_task: model must be provider/model.");
       expect(approvalEvents, isEmpty);
     });
 

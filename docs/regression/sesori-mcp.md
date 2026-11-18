@@ -42,6 +42,9 @@ against the endpoint. The per-harness injection is a later step of the plan.
 - Tool failures an agent can act on (bad arguments, an unknown task or run, a run without a session) come back as
   `isError` text results, not protocol errors. An unexpected failure is logged by tool name only and answered with a
   generic error.
+- An empty string in any tool argument reads as left out, since strict-schema providers make the model fill every
+  field. Arguments that still do not parse are refused with the field and the reason, for example
+  `schedule.time is required when schedule.kind is daily.`
 - Results are text only, with no `structuredContent`. Read tools are advertised with `readOnlyHint: true`, proposing
   tools with `false`.
 - A proposing tool changes nothing by itself. A create or update is first validated as the app's editor would, so the

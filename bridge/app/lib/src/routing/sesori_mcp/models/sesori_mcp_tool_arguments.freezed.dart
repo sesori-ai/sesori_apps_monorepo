@@ -36,8 +36,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _ListTasksArguments implements ListTasksArguments {
   const _ListTasksArguments({@JsonKey(name: "project_id") required this.projectId});
   factory _ListTasksArguments.fromJson(Map<String, dynamic> json) => _$ListTasksArgumentsFromJson(json);
@@ -84,8 +84,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _GetTaskArguments implements GetTaskArguments {
   const _GetTaskArguments({@JsonKey(name: "task_id") required this.taskId});
   factory _GetTaskArguments.fromJson(Map<String, dynamic> json) => _$GetTaskArgumentsFromJson(json);
@@ -132,8 +132,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _TaskIdArguments implements TaskIdArguments {
   const _TaskIdArguments({@JsonKey(name: "task_id") required this.taskId});
   factory _TaskIdArguments.fromJson(Map<String, dynamic> json) => _$TaskIdArgumentsFromJson(json);
@@ -181,8 +181,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _GetTaskRunTranscriptArguments implements GetTaskRunTranscriptArguments {
   const _GetTaskRunTranscriptArguments({@JsonKey(name: "task_id") required this.taskId, @JsonKey(name: "run_id") required this.runId, required this.page});
   factory _GetTaskRunTranscriptArguments.fromJson(Map<String, dynamic> json) => _$GetTaskRunTranscriptArgumentsFromJson(json);
@@ -233,8 +233,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _CreateTaskArguments implements CreateTaskArguments {
   const _CreateTaskArguments({required this.name, required this.prompt, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "project_id") required this.projectId, @JsonKey(name: "missed_run_policy") this.missedRunPolicy = TaskMissedRunPolicy.runWhenBack, @JsonKey(name: "run_mode") this.runMode = const TaskRunMode.newSession(), required this.model, required this.effort, @JsonKey(name: "approval_mode") this.approvalMode = TaskApprovalMode.ask});
   factory _CreateTaskArguments.fromJson(Map<String, dynamic> json) => _$CreateTaskArgumentsFromJson(json);
@@ -291,8 +291,8 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true)
 class _UpdateTaskArguments implements UpdateTaskArguments {
   const _UpdateTaskArguments({@JsonKey(name: "task_id") required this.taskId, required this.name, required this.prompt, @JsonKey(name: "command_arguments") required this.commandArguments, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "missed_run_policy") required this.missedRunPolicy, @JsonKey(name: "run_mode") required this.runMode, required this.model, required this.effort, @JsonKey(name: "approval_mode") required this.approvalMode});
   factory _UpdateTaskArguments.fromJson(Map<String, dynamic> json) => _$UpdateTaskArgumentsFromJson(json);
