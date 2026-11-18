@@ -24,6 +24,9 @@ retain inspection when native data is available and grant no session mutation.
 
 ## Required Behavior
 
+- Sesori's own `sesori_bridge` server ([Sesori MCP for agents](sesori-mcp.md)) reaches sessions through each
+  harness's launch seam, never through configuration this feature reads or edits. Where a session inventory lists it
+  (Claude Code, Codex), it shows without controls, sign-in or actions, and a user's own servers still load beside it.
 - Codex inventory reads all native pages for the exact session or harness on
   the attached app-server connection. A project scope is explicitly unsupported;
   inspection issues no app-server connect, session start/resume, tool call or

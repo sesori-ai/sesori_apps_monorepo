@@ -130,7 +130,7 @@ class ScheduledTaskAgentService({
       runMode: task.runMode,
       approvalMode: task.approvalMode,
     );
-    final invalid = await _invalid(definition: definition);
+    final invalid = await _invalid(definition: definition, previousModel: null);
     if (invalid != null) return invalid;
     return await _propose(
       caller: caller,
@@ -182,7 +182,7 @@ class ScheduledTaskAgentService({
       approvalMode: edits.approvalMode ?? before.approvalMode,
     );
     if (after == before) return const AgentProposalRefused(reason: AgentProposalRefusal.nothingChanged);
-    final invalid = await _invalid(definition: after);
+    final invalid = await _invalid(definition: after, previousModel: before.model);
     if (invalid != null) return invalid;
     return await _propose(
       caller: caller,
@@ -284,16 +284,28 @@ class ScheduledTaskAgentService({
     return AgentProposalSent(withdrewPrevious: withdrewPrevious);
   }
 
-  /// Why [definition] could not be saved, as the app's editor would be told.
+  /// Why [definition] could not be saved, as the app's editor would be told,
+  /// or why its runs could not start: the editor offers only the harness's
+  /// models, so a model other than [previousModel] must be one of them.
   /// Pause, resume and run now skip this: pausing a broken task must still
   /// be possible.
-  Future<AgentProposalInvalid?> _invalid({required ScheduledTaskDefinition definition}) async {
+  Future<AgentProposal?> _invalid({
+    required ScheduledTaskDefinition definition,
+    required PromptModel? previousModel,
+  }) async {
     try {
       await _tasks.validate(definition: definition);
-      return null;
     } on ScheduledTaskRequestException catch (error) {
       return AgentProposalInvalid(code: error.code);
     }
+    final model = definition.model;
+    if (model == null || model == previousModel) return null;
+    final offered = await _runner.offersModel(
+      definition: definition,
+      model: model,
+      context: "A proposed task for ${definition.pluginId} in project ${definition.projectId}",
+    );
+    return offered ? null : const AgentProposalRefused(reason: AgentProposalRefusal.modelNotOffered);
   }
 
   Future<AgentRequester> _requester({required SesoriMcpCaller caller, required ScheduledTaskAgentChange change}) async {
@@ -470,6 +482,9 @@ enum AgentProposalRefusal() {
 
   /// Pausing a paused task, or resuming a running one.
   alreadyInState,
+
+  /// A model the task's harness does not offer, so its runs could not start.
+  modelNotOffered,
 }
 
 sealed class const AgentApprovalSettlement();

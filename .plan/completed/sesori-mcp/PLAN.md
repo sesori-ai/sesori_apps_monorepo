@@ -6,11 +6,23 @@ Slug: `sesori-mcp`.
 
 - **Date:** 2026-11-17. Code facts come from `origin/main` at `062376863b`
   (product version 1.14.1, bridge drift schema 30).
-- **Stage:** steps 1–5 done (the endpoint, caller identity, bridge setting,
-  read tools, and approvals for every proposing tool); step 6 (the
-  scheduled-run note) is in review. No plugin injects yet, so no harness
-  reaches the server. Steps 2 and 4 were each split in two for size, so the
-  series has 11 steps.
+- **Stage:** done. All 11 steps merged; the plan is retired. Durable truth
+  lives in `docs/regression/sesori-mcp.md` and the "Sesori agent tools" section
+  of `docs/HARNESS_CAPABILITIES.md`.
+- **Closing regression (step 11, 2026-11-17):** run on a bridge built from
+  `origin/main` plus the step-11 fix, slot 2, isolated home, local test proxy.
+  - Copilot 1.0.113 `update_task` raised the approval and Allow changed the
+    next run's prompt. The test model also guessed a model the harness does
+    not offer, so the allowed task's next run failed with "model not
+    offered". Step 11 makes proposals refuse such a model before asking.
+  - Claude Code 2.1.325 accepted `update_task` with empty optional strings.
+  - Client on the headless iOS simulator: the existing modal without
+    "Always", the Approve everything line first, Allow and Don't allow, and
+    no run note in the user message on first open or after an app restart.
+    The push was not checked (no real APNs on the simulator).
+  - Security: a direct request with a session token only raised an approval,
+    another slot's bridge answered 401, and any `Origin` got 403.
+  - Antigravity, Hermes and Cursor stay off and unverified.
 - **Settled by the owner:**
   - Any agent create or modify of a task asks the user for approval. That
     includes a scheduled run editing its own prompt, so self-improvement

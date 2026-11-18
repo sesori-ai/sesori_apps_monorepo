@@ -216,7 +216,7 @@ class ScheduledTaskRunService({
       return TaskRunFailureReason.harnessUnavailable;
     }
     final model = definition.model;
-    if (model != null && !await _offersModel(definition: definition, model: model, context: context)) {
+    if (model != null && !await offersModel(definition: definition, model: model, context: context)) {
       Log.w("$context cannot run: model ${model.providerID}/${model.modelID} is no longer offered");
       return TaskRunFailureReason.modelUnavailable;
     }
@@ -225,8 +225,8 @@ class ScheduledTaskRunService({
 
   /// Whether the harness's current option list still offers [model]. A list
   /// that cannot be read lets the run go ahead; the harness then reports any
-  /// problem in the session.
-  Future<bool> _offersModel({
+  /// problem in the session. [context] prefixes the log line for that case.
+  Future<bool> offersModel({
     required ScheduledTaskDefinition definition,
     required PromptModel model,
     required String context,
@@ -243,7 +243,7 @@ class ScheduledTaskRunService({
         _ => true,
       };
     } on Object catch (error, stackTrace) {
-      Log.w("$context could not read the harness's models; starting the run anyway", error, stackTrace);
+      Log.w("$context could not read the harness's models; assuming it offers the model", error, stackTrace);
       return true;
     }
   }

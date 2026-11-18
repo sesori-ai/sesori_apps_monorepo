@@ -784,6 +784,22 @@ void main() {
       expect(approvalEvents, isEmpty);
     });
 
+    test("a model the harness does not offer is refused before anyone is asked", () async {
+      runner.offeredModels = {const PromptModel(providerID: "anthropic", modelID: "claude-sonnet")};
+
+      final unknown = await call(tool: "update_task", arguments: {"task_id": taskId, "model": "github/copilot"});
+      expect(unknown.isError, isTrue);
+      expect(unknown.text, contains("model is not one this task's harness offers"));
+      expect(approvalEvents, isEmpty);
+
+      final offered = await call(
+        tool: "update_task",
+        arguments: {"task_id": taskId, "model": "anthropic/claude-sonnet"},
+      );
+      expect(offered.isError, isFalse);
+      expect(asked().description, contains("anthropic/claude-sonnet"));
+    });
+
     test("a subagent's request shows on its root session", () async {
       for (final (child, parent) in [("s2", "s1"), ("s3", "s2")]) {
         await insertTestSession(
@@ -837,6 +853,16 @@ void main() {
 class _FakeRunService() implements ScheduledTaskRunService {
   final List<String> ranNow = [];
   ScheduledTaskRunOutcome outcome = const ScheduledTaskRunOutcome.started(session: null, late: false);
+
+  /// The models the harness offers; null offers every model.
+  Set<PromptModel>? offeredModels;
+
+  @override
+  Future<bool> offersModel({
+    required ScheduledTaskDefinition definition,
+    required PromptModel model,
+    required String context,
+  }) async => offeredModels?.contains(model) ?? true;
 
   @override
   Future<ScheduledTaskRun> runNow({required String taskId}) async {

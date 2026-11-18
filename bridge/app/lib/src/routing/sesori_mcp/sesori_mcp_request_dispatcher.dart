@@ -271,6 +271,8 @@ class SesoriMcpRequestDispatcher({
             "This task runs a command, so its prompt cannot be text. Change command_arguments instead.",
           AgentProposalRefusal.promptIsText => "This task sends text, so it has no command_arguments. Change prompt.",
           AgentProposalRefusal.alreadyInState => "The task is already in that state.",
+          AgentProposalRefusal.modelNotOffered =>
+            "model is not one this task's harness offers. Leave it out unless the user named a model.",
         },
       ),
     };
