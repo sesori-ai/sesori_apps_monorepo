@@ -9,6 +9,7 @@ import "../repositories/models/history_window.dart";
 import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
+import "../repositories/models/session_notice.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
@@ -231,14 +232,19 @@ class ScheduledTaskAgentService({
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
     final outcome = await _outcome(change: approval.change, reply: reply);
+    final sessionId = approval.displaySessionId ?? approval.sessionId;
+    // A scheduled run hears the outcome only after its turn, so the turn the
+    // notice starts is its own and the run's final reply stays the run's.
+    final isRun = (await _taskRepository.marksOfSessions(sessionIds: {sessionId})).containsKey(sessionId);
     unawaited(
       _notices.deliver(
-        sessionId: approval.displaySessionId ?? approval.sessionId,
+        sessionId: sessionId,
         notice: _descriptions.outcome(
           change: approval.change,
           outcome: outcome,
           bySubagent: approval.displaySessionId != null,
         ),
+        timing: isRun ? SessionNoticeTiming.afterTurn : SessionNoticeTiming.intoRunningTurn,
       ),
     );
     return AgentApprovalAnswered(outcome: outcome);
@@ -431,7 +437,8 @@ class ScheduledTaskAgentService({
 
   /// The agent's last reply in a turn the run's prompt started. A turn a
   /// Sesori notice started (the agent's answer to an outcome) is skipped, so
-  /// the run's own reply stays its final reply.
+  /// the run's own reply stays its final reply; a notice never steers into a
+  /// run's turn (see [settle]), so every Sesori row here starts one.
   Future<String?> _finalReply({required String sessionId}) async {
     final page = await _storedPage(
       sessionId: sessionId,

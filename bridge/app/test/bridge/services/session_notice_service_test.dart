@@ -41,7 +41,7 @@ void main() {
   });
 
   test("a quiet session gets the notice at once, as a bridge notice prompt", () async {
-    await service.deliver(sessionId: "s1", notice: _notice);
+    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
 
     final sent = prompts.sent.single;
     expect(sent.mark, isA<PromptStampNotice>());
@@ -52,7 +52,7 @@ void main() {
   test("a steering harness takes the notice into the running turn", () async {
     sessions.quietness = SessionQuietness.working;
 
-    await service.deliver(sessionId: "s1", notice: _notice);
+    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
 
     expect(prompts.sent, hasLength(1));
   });
@@ -61,7 +61,9 @@ void main() {
     plugins.handling = PluginBusyPromptHandling.stopTurn;
     sessions.quietness = SessionQuietness.working;
     var done = false;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice).then((_) => done = true);
+    final delivery = service
+        .deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn)
+        .then((_) => done = true);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
@@ -84,7 +86,7 @@ void main() {
   test("a source error while the notice waits neither escapes nor drops it", () async {
     plugins.handling = PluginBusyPromptHandling.stopTurn;
     sessions.quietness = SessionQuietness.working;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
     await pumpEventQueue();
 
     events.fail();
@@ -95,9 +97,21 @@ void main() {
     expect(prompts.sent, hasLength(1));
   });
 
+  test("a notice for after the turn waits even on a steering harness", () async {
+    sessions.quietness = SessionQuietness.working;
+    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.afterTurn);
+    await pumpEventQueue();
+    expect(prompts.sent, isEmpty);
+
+    sessions.quietness = SessionQuietness.quiet;
+    events.idle(sessionId: "s1");
+    await delivery;
+    expect(prompts.sent, hasLength(1));
+  });
+
   test("a session waiting on the user gets the notice after it is answered", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
@@ -109,16 +123,16 @@ void main() {
 
   test("an archived or deleted session gets nothing", () async {
     sessions.archived = true;
-    await service.deliver(sessionId: "s1", notice: _notice);
+    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
     sessions.archived = false;
-    await service.deliver(sessionId: "missing", notice: _notice);
+    await service.deliver(sessionId: "missing", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
 
     expect(prompts.sent, isEmpty);
   });
 
   test("a session archived while the notice waits gets nothing", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
     await pumpEventQueue();
 
     sessions.archived = true;
@@ -129,7 +143,7 @@ void main() {
 
   test("a waiting notice is dropped without throwing when the bridge shuts down", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
     await pumpEventQueue();
 
     await events.close();

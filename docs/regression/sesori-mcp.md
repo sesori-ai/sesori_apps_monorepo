@@ -77,7 +77,9 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   short line (Grok fails a turn that ends with no visible text). Proposal results and tool descriptions say this message follows, so agents do not poll `get_task`.
 - A harness that steers (Claude Code, Codex, Pi, Oh My Pi, OpenCode) takes the notice into a running turn; on the
   others it waits until the session is quiet and nothing waits on the user. The session's lane re-checks just before
-  sending, so a turn started meanwhile makes it wait again. A finished scheduled run is woken by it. Archived and
+  sending, so a turn started meanwhile makes it wait again. A scheduled run's session always hears it after the turn,
+  so a notice never lands inside the run's own turn and the run's final reply stays its own. A finished scheduled run
+  is woken by it. Archived and
   deleted sessions get nothing; a bridge restart drops a notice still waiting. The notice is not user activity: it
   leaves the session's last user message time alone.
 - A run's final reply (`list_task_runs`) is the agent's last text in the newest turn a user prompt started, read from

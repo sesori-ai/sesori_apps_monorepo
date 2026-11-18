@@ -31,9 +31,14 @@ class const SessionNoticeService({
   required final SessionEventDispatcher _events,
   required final PluginLifecycleService _plugins,
 }) {
-  /// Sends [notice] into [sessionId], skipping an archived or deleted
-  /// session. Completes once it is sent, skipped or dropped; never throws.
-  Future<void> deliver({required String sessionId, required SessionNotice notice}) async {
+  /// Sends [notice] into [sessionId] as [timing] allows, skipping an archived
+  /// or deleted session. Completes once it is sent, skipped or dropped; never
+  /// throws.
+  Future<void> deliver({
+    required String sessionId,
+    required SessionNotice notice,
+    required SessionNoticeTiming timing,
+  }) async {
     if (await _promptableSession(sessionId: sessionId) == null) {
       Log.i("Skipped a notice for session $sessionId: it is archived or deleted");
       return;
@@ -57,7 +62,7 @@ class const SessionNoticeService({
         final attempt = await _operations.dispatch(
           sessionId: sessionId,
           operation: SessionOperation.deliverNotice,
-          body: () => _sendIfReady(sessionId: sessionId, notice: notice),
+          body: () => _sendIfReady(sessionId: sessionId, notice: notice, timing: timing),
         );
         switch (attempt) {
           case _Attempt.sent:
@@ -79,13 +84,20 @@ class const SessionNoticeService({
 
   /// Runs on the session's lane, so no other prompt starts between the check
   /// and the send. A session that turned busy since its idle waits again.
-  Future<_Attempt> _sendIfReady({required String sessionId, required SessionNotice notice}) async {
+  Future<_Attempt> _sendIfReady({
+    required String sessionId,
+    required SessionNotice notice,
+    required SessionNoticeTiming timing,
+  }) async {
     final session = await _promptableSession(sessionId: sessionId);
     if (session == null) return _Attempt.skipped;
     final ready = switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
       SessionQuietness.quiet || SessionQuietness.unknown => true,
-      SessionQuietness.working =>
-        _plugins.busyPromptHandling(pluginId: session.pluginId) == PluginBusyPromptHandling.steer,
+      SessionQuietness.working => switch (timing) {
+        SessionNoticeTiming.intoRunningTurn =>
+          _plugins.busyPromptHandling(pluginId: session.pluginId) == PluginBusyPromptHandling.steer,
+        SessionNoticeTiming.afterTurn => false,
+      },
       SessionQuietness.awaitingUser => false,
     };
     if (!ready) return _Attempt.waiting;

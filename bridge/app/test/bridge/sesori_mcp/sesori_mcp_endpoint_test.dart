@@ -602,6 +602,34 @@ void main() {
       expect(delivered.sessionId, "s1");
       expect(delivered.notice.summary, "You allowed pausing “Morning summary”.");
       expect(delivered.notice.guidance, "The change is saved. Reply in one short line.");
+      // s1 is a scheduled run: the outcome waits for its turn to end.
+      expect(delivered.timing, SessionNoticeTiming.afterTurn);
+    });
+
+    test("a session that is not a scheduled run hears the outcome in its running turn", () async {
+      await insertTestSession(
+        db: db,
+        sessionId: "s-chat",
+        backendSessionId: "backend-s-chat",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      final chat = grants.mint(pluginId: "fake");
+      grants.bind(token: chat, backendSessionId: "backend-s-chat");
+
+      await call(tool: "pause_task", arguments: {"task_id": taskId}, bearer: chat);
+      await answer(requestId: asked().id, reply: PermissionReply.reject);
+
+      final delivered = notices.delivered.single;
+      expect(delivered.sessionId, "s-chat");
+      expect(delivered.timing, SessionNoticeTiming.intoRunningTurn);
     });
 
     test("update_task asks the user and Allow applies it", () async {
@@ -1094,11 +1122,14 @@ void main() {
 
 /// Records the notices instead of prompting sessions.
 class _Notices() implements SessionNoticeService {
-  final List<({String sessionId, SessionNotice notice})> delivered = [];
+  final List<({String sessionId, SessionNotice notice, SessionNoticeTiming timing})> delivered = [];
 
   @override
-  Future<void> deliver({required String sessionId, required SessionNotice notice}) async =>
-      delivered.add((sessionId: sessionId, notice: notice));
+  Future<void> deliver({
+    required String sessionId,
+    required SessionNotice notice,
+    required SessionNoticeTiming timing,
+  }) async => delivered.add((sessionId: sessionId, notice: notice, timing: timing));
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
