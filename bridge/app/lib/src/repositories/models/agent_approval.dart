@@ -22,8 +22,7 @@ sealed class const AgentApprovalEvent();
 
 final class const AgentApprovalAsked({required final PendingPermission permission}) extends AgentApprovalEvent;
 
-/// Answered by the user, or withdrawn by a newer proposal from the same
-/// session ([reply] is then [PermissionReply.reject]).
+/// Answered by the user.
 final class const AgentApprovalSettled({
   required final String requestId,
   required final String sessionId,

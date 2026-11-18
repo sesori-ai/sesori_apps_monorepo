@@ -668,26 +668,33 @@ void main() {
       expect(approvalEvents, isEmpty);
     });
 
-    test("Allow applies nothing once the user changed the task", () async {
-      Future<void> userEdits() async {
-        final current = (await tasks.list()).items.single;
-        await tasks.update(
-          taskId: taskId,
-          definition: current.definition.copyWith(name: "${current.definition.name}!"),
-        );
+    test("Allow applies nothing once what the request showed changed", () async {
+      Future<ScheduledTaskDefinition> definition() async => (await tasks.list()).items.single.definition;
+      Future<void> edit(ScheduledTaskDefinition Function(ScheduledTaskDefinition definition) change) async {
+        await tasks.update(taskId: taskId, definition: change(await definition()));
       }
 
-      for (final (tool, arguments) in [
-        ("update_task", {"task_id": taskId, "name": "Evening summary"}),
-        ("pause_task", {"task_id": taskId}),
-        ("run_task_now", {"task_id": taskId}),
+      for (final (tool, arguments, userEdit) in [
+        (
+          "update_task",
+          {"task_id": taskId, "name": "Evening summary"},
+          () => edit((definition) => definition.copyWith(name: "Night summary")),
+        ),
+        ("pause_task", {"task_id": taskId}, () => tasks.setEnabled(taskId: taskId, enabled: false)),
+        (
+          "run_task_now",
+          {"task_id": taskId},
+          () => edit((definition) => definition.copyWith(approvalMode: TaskApprovalMode.approveAll)),
+        ),
       ]) {
+        await tasks.setEnabled(taskId: taskId, enabled: true);
+        await edit((definition) => definition.copyWith(approvalMode: TaskApprovalMode.ask));
         expect(
           (await call(tool: tool, arguments: arguments)).isError,
           isFalse,
           reason: tool,
         );
-        await userEdits();
+        await userEdit();
 
         expect(
           await agent.settle(requestId: asked().id, reply: PermissionReply.once),
@@ -695,16 +702,68 @@ void main() {
           reason: tool,
         );
       }
-      final task = (await tasks.list()).items.single;
-      expect(task.definition.name, "Morning summary!!!");
-      expect(task.enabled, isTrue);
+      expect((await definition()).name, "Night summary");
       expect(runner.ranNow, isEmpty);
 
       await tasks.setEnabled(taskId: taskId, enabled: false);
       expect((await call(tool: "resume_task", arguments: {"task_id": taskId})).isError, isFalse);
-      await userEdits();
+      await edit(
+        (definition) =>
+            definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 8, minute: 0))),
+      );
       expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
       expect((await tasks.list()).items.single.enabled, isFalse);
+    });
+
+    test("Allow applies a request on top of changes to fields it does not touch", () async {
+      await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": "Summarize the week"});
+      final edit = asked();
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      final pause = asked();
+      final current = (await tasks.list()).items.single.definition;
+      await tasks.update(
+        taskId: taskId,
+        definition: current.copyWith(name: "Weekly summary"),
+      );
+
+      expect(await agent.settle(requestId: pause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await agent.settle(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+
+      final task = (await tasks.list()).items.single;
+      expect(task.enabled, isFalse);
+      expect(task.definition.name, "Weekly summary");
+      expect(task.definition.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
+    });
+
+    test("a prompt edit asked without the Approve everything warning is stale once the warning applies", () async {
+      await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": "Summarize the week"});
+      final edit = asked();
+      await call(tool: "update_task", arguments: {"task_id": taskId, "approval_mode": "approveAll"});
+      final approveAll = asked();
+
+      expect(await agent.settle(requestId: approveAll.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await agent.settle(requestId: edit.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(
+        (await tasks.list()).items.single.definition.prompt,
+        const ScheduledTaskPrompt.text(text: "Summarize yesterday"),
+      );
+    });
+
+    test("an allowed change that no longer validates on the current task is stale", () async {
+      await call(tool: "update_task", arguments: {"task_id": taskId, "time_zone": "Pacific/Kiritimati"});
+      final current = (await tasks.list()).items.single.definition;
+      // 18:00 in Bucharest is still ahead; 18:00 in Kiritimati has passed.
+      await tasks.update(
+        taskId: taskId,
+        definition: current.copyWith(
+          schedule: const TaskSchedule.once(
+            at: TaskLocalDateTime(year: 2026, month: 11, day: 15, hour: 18, minute: 0),
+          ),
+        ),
+      );
+
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect((await tasks.list()).items.single.definition.timeZone, "Europe/Bucharest");
     });
 
     test("Allow applies nothing once the task is deleted", () async {
@@ -731,16 +790,49 @@ void main() {
       expect((await tasks.list()).items.single.enabled, isTrue);
     });
 
-    test("a new request replaces the session's earlier one", () async {
-      await call(tool: "pause_task", arguments: {"task_id": taskId});
+    test("several requests wait on one session and each is answered on its own", () async {
+      for (final pauseFirst in [true, false]) {
+        await tasks.setEnabled(taskId: taskId, enabled: true);
+        final prompt = "Summarize ${pauseFirst ? "the week" : "the month"}";
+        await call(tool: "pause_task", arguments: {"task_id": taskId});
+        final pause = asked();
+        final result = await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": prompt});
+        final edit = asked();
+
+        expect(result.text, "Sent to the user for approval. If they allow it, it applies to the next run.");
+        expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [pause.id, edit.id]);
+        for (final request in pauseFirst ? [pause, edit] : [edit, pause]) {
+          expect(
+            await agent.settle(requestId: request.id, reply: PermissionReply.once),
+            isA<AgentApprovalApplied>(),
+            reason: "pause first: $pauseFirst",
+          );
+        }
+        final task = (await tasks.list()).items.single;
+        expect(task.enabled, isFalse);
+        expect(task.definition.prompt, ScheduledTaskPrompt.text(text: prompt));
+        expect(agent.pendingPermissions(sessionId: "s1"), isEmpty);
+      }
+    });
+
+    test("of two requests that change the same field, the second is stale", () async {
+      await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": "Summarize the week"});
       final first = asked();
+      await call(tool: "update_task", arguments: {"task_id": taskId, "prompt": "Summarize the month"});
+      final second = asked();
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      final firstPause = asked();
+      await call(tool: "pause_task", arguments: {"task_id": taskId});
+      final secondPause = asked();
 
-      final second = await call(tool: "run_task_now", arguments: {"task_id": taskId});
-
-      expect(second.text, contains("replaces this session's earlier request"));
-      expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [asked().id]);
-      expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<NotAgentApproval>());
-      expect((await tasks.list()).items.single.enabled, isTrue);
+      expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await agent.settle(requestId: second.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(await agent.settle(requestId: firstPause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      expect(await agent.settle(requestId: secondPause.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+      expect(
+        (await tasks.list()).items.single.definition.prompt,
+        const ScheduledTaskPrompt.text(text: "Summarize the week"),
+      );
     });
 
     test("create_task makes a task in the caller's project and harness on Allow", () async {
