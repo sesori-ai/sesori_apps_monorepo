@@ -55,7 +55,8 @@ against the endpoint. The per-harness injection is a later step of the plan.
   titles are escaped; a prompt sits in a fence it cannot close.
 - Allow applies the change through the same service calls as the app. Every change to an existing task carries the
   definition its text was built from; when the stored task differs or is gone, Allow applies nothing and the reply
-  route answers 409 "The task changed since this was proposed". Reject drops it.
+  route answers 409 "The task changed since this was proposed". An allowed run now that does not start (failed or
+  skipped) also answers 409, and its run record holds the reason. Reject drops it.
 - A session with a waiting request is listed as awaiting input in project summaries, including the first summary
   after a reconnect, even when its run has finished.
 - YOLO and per-session auto-approval never answer these requests.
@@ -69,7 +70,7 @@ against the endpoint. The per-harness injection is a later step of the plan.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included: no harness reaches the server yet. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping) and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping) and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
 | L3 Release | No additional coverage: no plugin injects the server yet. Each injection step adds its live harness check here (the server listed, a call resolving to the right session, no token in argv, URLs or harness session files). |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |

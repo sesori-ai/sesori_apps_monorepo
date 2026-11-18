@@ -66,29 +66,34 @@ void main() {
       expect(plugin.lastReplyToPermissionRequestId, isNull);
     });
 
-    test("returns 409 and leaves the plugin alone when an agent approval went stale", () async {
-      final staleHandler = ReplyToPermissionHandler(
-        pendingInteractionService: buildTestPendingInteractionService(database: db, plugin: plugin).service,
-        scheduledTaskAgentService: _StaleAgentApprovals(),
-      );
+    test("returns 409 and leaves the plugin alone when an allowed agent approval did not apply", () async {
+      for (final (settlement, message) in [
+        (const AgentApprovalStale(), "nothing was applied"),
+        (const AgentApprovalRunNotStarted(), "could not start"),
+      ]) {
+        final failingHandler = ReplyToPermissionHandler(
+          pendingInteractionService: buildTestPendingInteractionService(database: db, plugin: plugin).service,
+          scheduledTaskAgentService: _SettlingAgentApprovals(settlement: settlement),
+        );
 
-      final response = await staleHandler.routeForTest(
-        makeRequest(
-          "POST",
-          "/permission/reply",
-          body: jsonEncode(
-            const ReplyToPermissionRequest(
-              requestId: "sesori-approval-1",
-              sessionId: "ses-456",
-              reply: PermissionReply.once,
-            ).toJson(),
+        final response = await failingHandler.routeForTest(
+          makeRequest(
+            "POST",
+            "/permission/reply",
+            body: jsonEncode(
+              const ReplyToPermissionRequest(
+                requestId: "sesori-approval-1",
+                sessionId: "ses-456",
+                reply: PermissionReply.once,
+              ).toJson(),
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(response.status, 409);
-      expect(response.body, contains("nothing was applied"));
-      expect(plugin.lastReplyToPermissionRequestId, isNull);
+        expect(response.status, 409);
+        expect(response.body, contains(message));
+        expect(plugin.lastReplyToPermissionRequestId, isNull);
+      }
     });
 
     test("canHandle POST /permission/reply", () {
@@ -157,8 +162,8 @@ void main() {
   });
 }
 
-class _StaleAgentApprovals() extends NoAgentApprovalsService {
+class _SettlingAgentApprovals({required final AgentApprovalSettlement settlement}) extends NoAgentApprovalsService {
   @override
   Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async =>
-      const AgentApprovalStale();
+      settlement;
 }
