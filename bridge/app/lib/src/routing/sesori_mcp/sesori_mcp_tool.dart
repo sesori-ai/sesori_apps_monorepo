@@ -83,14 +83,14 @@ enum SesoriMcpTool({
       "properties": {
         "name": {"type": "string"},
         "prompt": {"type": "string", "description": "The text each run sends."},
-        "schedule": _scheduleSchema,
-        "time_zone": _timeZoneSchema,
+        "schedule": {..._scheduleSchema, "description": _scheduleDescription},
+        "time_zone": {"type": "string", "description": _timeZoneDescription},
         "project_id": {"type": "string", "description": "A project id from list_tasks; this session's by default."},
-        "missed_run_policy": _missedRunPolicySchema,
-        "run_mode": _runModeSchema,
-        "model": _modelSchema,
-        "effort": _effortSchema,
-        "approval_mode": _approvalModeSchema,
+        "missed_run_policy": {..._missedRunPolicySchema, "description": _missedRunPolicyDescription},
+        "run_mode": {..._runModeSchema, "description": _runModeDescription},
+        "model": {"type": "string", "description": "$_modelDescription Left out, the harness picks."},
+        "effort": {"type": "string", "description": "$_effortDescription Left out, the harness picks."},
+        "approval_mode": {..._approvalModeSchema, "description": _approvalModeDescription},
       },
       "required": ["name", "prompt", "schedule", "time_zone"],
       "additionalProperties": false,
@@ -100,9 +100,9 @@ enum SesoriMcpTool({
     wireName: "update_task",
     readOnly: false,
     description:
-        "Propose changes to a scheduled task; fields you leave out keep their value. The user allows or rejects "
-        "it on their phone, and a change the user makes to the task first wins. A session has one request "
-        "waiting at a time: a new one replaces it.",
+        "Propose changes to a scheduled task. $_leaveOutUnchanged The user allows or rejects it on their phone, "
+        "and a change the user makes to the task first wins. A session has one request waiting at a time: a new "
+        "one replaces it.",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -113,13 +113,16 @@ enum SesoriMcpTool({
           "type": "string",
           "description": "New arguments for a task that runs a command; the command stays.",
         },
-        "schedule": _scheduleSchema,
-        "time_zone": _timeZoneSchema,
-        "missed_run_policy": _missedRunPolicySchema,
-        "run_mode": _runModeSchema,
-        "model": _modelSchema,
-        "effort": _effortSchema,
-        "approval_mode": _approvalModeSchema,
+        "schedule": {..._scheduleSchema, "description": "$_scheduleDescription $_leaveOutUnchanged"},
+        "time_zone": {"type": "string", "description": "$_timeZoneDescription $_leaveOutUnchanged"},
+        "missed_run_policy": {
+          ..._missedRunPolicySchema,
+          "description": "$_missedRunPolicyDescription $_leaveOutUnchanged",
+        },
+        "run_mode": {..._runModeSchema, "description": "$_runModeDescription $_leaveOutUnchanged"},
+        "model": {"type": "string", "description": "$_modelDescription $_leaveOutUnchanged"},
+        "effort": {"type": "string", "description": "$_effortDescription $_leaveOutUnchanged"},
+        "approval_mode": {..._approvalModeSchema, "description": "$_approvalModeDescription $_leaveOutUnchanged"},
       },
       "required": ["task_id"],
       "additionalProperties": false,
@@ -163,15 +166,24 @@ const Map<String, Object?> _taskIdSchema = {
   "additionalProperties": false,
 };
 
+/// Ends update_task's description and each of its setting descriptions: a
+/// model that fills every field would otherwise propose changes nobody asked
+/// for, such as a new schedule when only the prompt should change.
+const String _leaveOutUnchanged = "Leave out every field you are not changing; left-out fields keep their value.";
+
+// The setting schemas below leave out their description: create_task and
+// update_task each add their own, built from these texts.
+
+const String _scheduleDescription =
+    'One of {"kind":"once","at":DATE_TIME}, {"kind":"daily","time":TIME}, {"kind":"weekdays","time":TIME} '
+    '(Monday to Friday), {"kind":"weekly","days":["monday",...],"time":TIME} or '
+    '{"kind":"everyHours","hours":1-12,"start":DATE_TIME}. TIME is {"hour":0-23,"minute":0-59}; DATE_TIME is '
+    '{"year","month","day","hour","minute"}; both are wall-clock time in time_zone.';
+
 /// Lists every kind's fields, not just `kind`: a strict-schema provider lets
 /// the model send only listed properties. A kind ignores the others.
 const Map<String, Object?> _scheduleSchema = {
   "type": "object",
-  "description":
-      'One of {"kind":"once","at":DATE_TIME}, {"kind":"daily","time":TIME}, {"kind":"weekdays","time":TIME} '
-      '(Monday to Friday), {"kind":"weekly","days":["monday",...],"time":TIME} or '
-      '{"kind":"everyHours","hours":1-12,"start":DATE_TIME}. TIME is {"hour":0-23,"minute":0-59}; DATE_TIME is '
-      '{"year","month","day","hour","minute"}; both are wall-clock time in time_zone.',
   "properties": {
     "kind": {
       "type": "string",
@@ -214,22 +226,22 @@ const Map<String, Object?> _localDateTimeSchema = {
   "required": ["year", "month", "day", "hour", "minute"],
 };
 
-const Map<String, Object?> _timeZoneSchema = {
-  "type": "string",
-  "description": "An IANA time zone, such as Europe/Bucharest.",
-};
+const String _timeZoneDescription = "An IANA time zone, such as Europe/Bucharest.";
+
+const String _missedRunPolicyDescription =
+    "When the computer was off at a run's time: run once when back (the default), or wait for the next.";
 
 const Map<String, Object?> _missedRunPolicySchema = {
   "type": "string",
   "enum": ["runWhenBack", "waitForNext"],
-  "description": "When the computer was off at a run's time: run once when back (the default), or wait for the next.",
 };
+
+const String _runModeDescription =
+    '{"kind":"newSession"} starts a session per run (the default); {"kind":"sameSession","autoCompact":true} '
+    "continues one session, compacting it before each run when autoCompact is true.";
 
 const Map<String, Object?> _runModeSchema = {
   "type": "object",
-  "description":
-      '{"kind":"newSession"} starts a session per run (the default); {"kind":"sameSession","autoCompact":true} '
-      "continues one session, compacting it before each run when autoCompact is true.",
   "properties": {
     "kind": {
       "type": "string",
@@ -240,18 +252,14 @@ const Map<String, Object?> _runModeSchema = {
   "required": ["kind"],
 };
 
-const Map<String, Object?> _modelSchema = {
-  "type": "string",
-  "description": "provider/model, as this harness names it. Left out, the harness picks.",
-};
+const String _modelDescription = "provider/model, as this harness names it.";
 
-const Map<String, Object?> _effortSchema = {
-  "type": "string",
-  "description": "The harness's effort (variant) id. Left out, the harness picks.",
-};
+const String _effortDescription = "The harness's effort (variant) id.";
+
+const String _approvalModeDescription =
+    "ask (the default) waits for the user on every permission; approveAll lets runs act without asking.";
 
 const Map<String, Object?> _approvalModeSchema = {
   "type": "string",
   "enum": ["ask", "approveAll"],
-  "description": "ask (the default) waits for the user on every permission; approveAll lets runs act without asking.",
 };

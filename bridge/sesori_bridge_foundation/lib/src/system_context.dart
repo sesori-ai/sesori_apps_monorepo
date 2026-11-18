@@ -31,7 +31,7 @@ String buildScheduledRunContext({required String taskName, required String taskI
 $_marker
 This message is a scheduled run of the Sesori task "$taskName" (id $taskId). It repeats on a schedule, usually while nobody is watching.
 
-Do the task below. If you learn something that would make future runs better, such as a clearer instruction, a step that keeps failing or a schedule that no longer fits, propose a change to this task with the update_task tool from the $sesoriMcpServerName server. The user approves each change on their phone, so propose at most one focused change per run. get_task and list_task_runs show the current task and how recent runs went.
+Do the task below. If you learn something that would make future runs better, such as a clearer instruction, a step that keeps failing or a schedule that no longer fits, propose a change to this task with the update_task tool from the $sesoriMcpServerName server, leaving out every field you are not changing. The user approves each change on their phone, so propose at most one focused change per run. get_task and list_task_runs show the current task and how recent runs went.
 
 ---
 ''';
