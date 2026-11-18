@@ -42,6 +42,12 @@ class ReplyToPermissionHandler({
           status: 409,
           message: "The task changed since this was proposed, so nothing was applied.",
         );
+      case AgentApprovalRunNotStarted():
+        throw buildErrorResponse(
+          request: request,
+          status: 409,
+          message: "Allowed, but the task could not start. Its run history shows why.",
+        );
       case AgentApprovalApplied() || AgentApprovalRejected():
         break;
     }

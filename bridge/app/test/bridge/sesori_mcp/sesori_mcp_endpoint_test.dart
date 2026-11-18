@@ -550,6 +550,13 @@ void main() {
       expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
       expect(runner.ranNow, [taskId]);
 
+      runner.outcome = const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing, attempt: null);
+      await call(tool: "run_task_now", arguments: {"task_id": taskId});
+      expect(
+        await agent.settle(requestId: asked().id, reply: PermissionReply.once),
+        isA<AgentApprovalRunNotStarted>(),
+      );
+
       await call(tool: "pause_task", arguments: {"task_id": taskId});
       expect(await agent.settle(requestId: asked().id, reply: PermissionReply.reject), isA<AgentApprovalRejected>());
       expect((await tasks.list()).items.single.enabled, isTrue);
@@ -565,6 +572,42 @@ void main() {
       expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [asked().id]);
       expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<NotAgentApproval>());
       expect((await tasks.list()).items.single.enabled, isTrue);
+    });
+
+    test("a subagent's request shows on its root session", () async {
+      for (final (child, parent) in [("s2", "s1"), ("s3", "s2")]) {
+        await insertTestSession(
+          db: db,
+          sessionId: child,
+          backendSessionId: "backend-$child",
+          pluginId: "fake",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+        await db.customStatement("UPDATE sessions_table SET parent_session_id = ? WHERE session_id = ?", [
+          parent,
+          child,
+        ]);
+      }
+      final grandchild = grants.mint(pluginId: "fake");
+      grants.bind(token: grandchild, backendSessionId: "backend-s3");
+
+      await call(tool: "pause_task", arguments: {"task_id": taskId}, bearer: grandchild);
+      await call(tool: "run_task_now", arguments: {"task_id": taskId});
+
+      final [fromGrandchild, fromRoot] = [
+        for (final event in approvalEvents.whereType<AgentApprovalAsked>()) event.permission,
+      ];
+      expect(fromGrandchild.sessionID, "s3");
+      expect(fromGrandchild.displaySessionId, "s1");
+      expect(fromRoot.sessionID, "s1");
+      expect(fromRoot.displaySessionId, isNull);
     });
 
     test("a proposal for a missing task or a task already in that state asks nobody", () async {
@@ -583,14 +626,15 @@ void main() {
 /// Records the tasks run now instead of starting sessions.
 class _FakeRunService() implements ScheduledTaskRunService {
   final List<String> ranNow = [];
+  ScheduledTaskRunOutcome outcome = const ScheduledTaskRunOutcome.started(session: null, late: false);
 
   @override
   Future<ScheduledTaskRun> runNow({required String taskId}) async {
     ranNow.add(taskId);
-    return const ScheduledTaskRun(
+    return ScheduledTaskRun(
       id: "run-now",
-      scheduledFor: ScheduledTaskInstant(at: 0, offsetMinutes: 0),
-      outcome: ScheduledTaskRunOutcome.skipped(),
+      scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
+      outcome: outcome,
     );
   }
 

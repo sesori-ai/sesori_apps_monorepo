@@ -1,3 +1,4 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/agent_approval_repository.dart";
@@ -5,7 +6,7 @@ import "../repositories/models/history_window.dart";
 import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
-import "../repositories/models/stored_session.dart";
+import "../repositories/models/session_operation.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
@@ -109,11 +110,8 @@ class ScheduledTaskAgentService({
     final record = await _uncompletedTask(taskId: taskId);
     if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
     if (record.enabled == enabled) return const AgentProposalRefused(reason: AgentProposalRefusal.alreadyInState);
-    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
-    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
     return await _propose(
       caller: caller,
-      session: session,
       change: SetTaskEnabledChange(taskId: taskId, before: record.definition, enabled: enabled),
     );
   }
@@ -122,11 +120,8 @@ class ScheduledTaskAgentService({
   Future<AgentProposal> proposeRunNow({required SesoriMcpCaller caller, required String taskId}) async {
     final record = await _uncompletedTask(taskId: taskId);
     if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
-    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
-    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
     return await _propose(
       caller: caller,
-      session: session,
       change: RunTaskNowChange(taskId: taskId, before: record.definition),
     );
   }
@@ -145,7 +140,8 @@ class ScheduledTaskAgentService({
       case SetTaskEnabledChange(:final taskId, :final enabled):
         await _tasks.setEnabled(taskId: taskId, enabled: enabled);
       case RunTaskNowChange(:final taskId):
-        await _runner.runNow(taskId: taskId);
+        final run = await _runner.runNow(taskId: taskId);
+        if (run.outcome is! ScheduledTaskRunStarted) return const AgentApprovalRunNotStarted();
     }
     return const AgentApprovalApplied();
   }
@@ -163,13 +159,23 @@ class ScheduledTaskAgentService({
 
   Future<AgentProposal> _propose({
     required SesoriMcpCaller caller,
-    required StoredSession session,
     required ScheduledTaskAgentChange change,
   }) async {
+    final SessionFamilyScope family;
+    try {
+      family = await _sessions.resolveSessionFamily(
+        sessionId: caller.sessionId,
+        operation: SessionOperation.proposeTaskChange,
+      );
+    } on PluginOperationException {
+      return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
+    }
+    final rootSessionId = family.rootSessionId;
     final projectId = change.before.projectId;
     final withdrewPrevious = _approvals.add(
       sessionId: caller.sessionId,
-      displaySessionId: session.parentSessionId,
+      // Subagent requests show on the root session, like plugin permissions.
+      displaySessionId: rootSessionId == caller.sessionId ? null : rootSessionId,
       change: change,
       description: _descriptions.build(
         change: change,
@@ -319,3 +325,6 @@ final class const AgentApprovalRejected() extends AgentApprovalSettlement;
 /// Allowed, but the task was deleted or changed since the request was
 /// described, so nothing was applied.
 final class const AgentApprovalStale() extends AgentApprovalSettlement;
+
+/// Allowed, but the run did not start; its run record holds the reason.
+final class const AgentApprovalRunNotStarted() extends AgentApprovalSettlement;

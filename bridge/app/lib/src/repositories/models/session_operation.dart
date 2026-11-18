@@ -47,4 +47,5 @@ enum SessionOperation() {
   compactSession,
   getSessionQuietness,
   getPromptCacheLife,
+  proposeTaskChange,
 }
