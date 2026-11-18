@@ -37,14 +37,18 @@ class ScheduledTaskAgentService({
   /// so it is among the newest few.
   static const int _finalReplyWindow = 6;
 
-  /// Every task not yet done, or those of [projectId].
-  Future<AgentTaskList> listTasks({required SesoriMcpCaller caller, required String? projectId}) async {
-    final tasks = (await _tasks.list()).items;
+  /// Every task not yet done, or those of [projectId]. A task can outlive
+  /// its project, so [projectId] is unknown only when no task has it either.
+  Future<AgentTaskListLookup> listTasks({required SesoriMcpCaller caller, required String? projectId}) async {
+    final tasks = [
+      for (final task in (await _tasks.list()).items)
+        if (projectId == null || task.definition.projectId == projectId) task,
+    ];
+    if (projectId != null && tasks.isEmpty && await _projects.projectPath(projectId: projectId) == null) {
+      return AgentTaskListUnknownProject(projectId: projectId);
+    }
     return AgentTaskList(
-      tasks: [
-        for (final task in tasks)
-          if (projectId == null || task.definition.projectId == projectId) task,
-      ],
+      tasks: tasks,
       callerProjectId: (await _sessions.getStoredSession(sessionId: caller.sessionId))?.projectId,
     );
   }
@@ -354,12 +358,16 @@ class ScheduledTaskAgentService({
   }
 }
 
+sealed class const AgentTaskListLookup();
+
 final class const AgentTaskList({
   required final List<ScheduledTask> tasks,
 
   /// Null when the caller's session row is gone.
   required final String? callerProjectId,
-});
+}) extends AgentTaskListLookup;
+
+final class const AgentTaskListUnknownProject({required final String projectId}) extends AgentTaskListLookup;
 
 sealed class const AgentTaskLookup();
 

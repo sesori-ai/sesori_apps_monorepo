@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations, bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, sesoriMcpServerName;
 import "package:sesori_shared/sesori_shared.dart" show PromptModel, ScheduledTaskErrorCode, SessionVariant;
@@ -150,8 +151,8 @@ class SesoriMcpRequestDispatcher({
         );
       }
       outcome = await _run(tool: tool, caller: caller, arguments: arguments);
-    } on _InvalidArguments {
-      return _toolResult(text: "Invalid arguments for ${tool.wireName}; see its input schema.", isError: true);
+    } on _InvalidArguments catch (error) {
+      return _toolResult(text: "Invalid arguments for ${tool.wireName}: ${error.reason}", isError: true);
     } on Object catch (error, stackTrace) {
       // The tool name only: results and arguments can hold transcripts.
       Log.w("Sesori MCP tool ${tool.wireName} failed", error, stackTrace);
@@ -168,8 +169,12 @@ class SesoriMcpRequestDispatcher({
     switch (tool) {
       case SesoriMcpTool.listTasks:
         final args = _parse(json: arguments, fromJson: ListTasksArguments.fromJson);
-        final list = await _agent.listTasks(caller: caller, projectId: args.projectId);
-        return _ToolOutcome(isError: false, text: _formatter.taskList(list: list));
+        return switch (await _agent.listTasks(caller: caller, projectId: args.projectId)) {
+          final AgentTaskList list => _ToolOutcome(isError: false, text: _formatter.taskList(list: list)),
+          AgentTaskListUnknownProject() => throw const _InvalidArguments(
+            reason: "project_id is not a known project; leave it out to list every task.",
+          ),
+        };
       case SesoriMcpTool.getTask:
         final args = _parse(json: arguments, fromJson: GetTaskArguments.fromJson);
         return switch (await _agent.getTask(caller: caller, taskId: args.taskId)) {
@@ -276,12 +281,12 @@ class SesoriMcpRequestDispatcher({
       ScheduledTaskErrorCode.taskNotFound => "The task no longer exists. Find task ids with list_tasks.",
       ScheduledTaskErrorCode.emptyName => "The task needs a name.",
       ScheduledTaskErrorCode.emptyPrompt => "The task needs a prompt.",
-      ScheduledTaskErrorCode.unknownProject => "No such project on this computer. Find project ids with list_tasks.",
+      ScheduledTaskErrorCode.unknownProject => "Unknown project_id; find project ids with list_tasks.",
       ScheduledTaskErrorCode.unknownHarness => "This session's harness cannot run scheduled tasks.",
-      ScheduledTaskErrorCode.unknownTimeZone => "Unknown time zone; use an IANA name such as Europe/Bucharest.",
+      ScheduledTaskErrorCode.unknownTimeZone => "Unknown time_zone; use an IANA name such as Europe/Bucharest.",
       ScheduledTaskErrorCode.invalidSchedule => "The schedule has an invalid date or time.",
-      ScheduledTaskErrorCode.hoursOutOfRange => "An every-hours schedule runs every 1 to 12 hours.",
-      ScheduledTaskErrorCode.onceTimeInPast => "A one-off task's time must be in the future.",
+      ScheduledTaskErrorCode.hoursOutOfRange => "schedule.hours must be 1 to 12.",
+      ScheduledTaskErrorCode.onceTimeInPast => "schedule.at must be in the future.",
       ScheduledTaskErrorCode.unsupportedByBridge ||
       ScheduledTaskErrorCode.previousRunActive ||
       ScheduledTaskErrorCode.unknown => "This bridge cannot save that task.",
@@ -292,7 +297,9 @@ class SesoriMcpRequestDispatcher({
   PromptModel? _model({required String? text}) {
     if (text == null) return null;
     final slash = text.indexOf("/");
-    if (slash <= 0 || slash == text.length - 1) throw const _InvalidArguments();
+    if (slash <= 0 || slash == text.length - 1) {
+      throw const _InvalidArguments(reason: "model must be provider/model.");
+    }
     return PromptModel(providerID: text.substring(0, slash), modelID: text.substring(slash + 1));
   }
 
@@ -337,11 +344,65 @@ class SesoriMcpRequestDispatcher({
 
   String _taskNotFound({required String taskId}) => "No scheduled task $taskId. Find task ids with list_tasks.";
 
+  /// Reads [json] as a tool's arguments, or throws [_InvalidArguments]
+  /// naming the field that is wrong.
+  ///
+  /// Strict-schema providers make the model fill every field, and it fills
+  /// the ones it means to leave out with "". No argument has a meaningful
+  /// empty value, so an empty string reads as absent.
   T _parse<T>({required Map<String, dynamic> json, required T Function(Map<String, dynamic> json) fromJson}) {
+    final present = {
+      for (final MapEntry(:key, :value) in json.entries)
+        if (value != "") key: value,
+    };
+    _checkKinds(json: present);
     try {
-      return fromJson(json);
+      return fromJson(present);
+    } on CheckedFromJsonException catch (error) {
+      final reason = switch (error.key) {
+        final key? when present[key] == null => "$key is required.",
+        final key? => "$key is not valid; see its input schema.",
+        null => _seeSchema,
+      };
+      throw _InvalidArguments(reason: reason);
     } on Object {
-      throw const _InvalidArguments();
+      throw const _InvalidArguments(reason: _seeSchema);
+    }
+  }
+
+  static const String _seeSchema = "see its input schema.";
+
+  /// The fields each kind of a nested argument needs, as its schema
+  /// describes them. The shared models read an unknown kind as unknown and
+  /// fail on a missing field without naming it, so both are checked here.
+  static const Map<String, Map<String, List<String>>> _kindFields = {
+    "schedule": {
+      "once": ["at"],
+      "daily": ["time"],
+      "weekdays": ["time"],
+      "weekly": ["days", "time"],
+      "everyHours": ["hours", "start"],
+    },
+    "run_mode": {
+      "newSession": [],
+      "sameSession": ["autoCompact"],
+    },
+  };
+
+  void _checkKinds({required Map<String, dynamic> json}) {
+    for (final MapEntry(key: field, value: kinds) in _kindFields.entries) {
+      if (json[field] case final Map<String, dynamic> value) {
+        final kind = value["kind"];
+        final needed = kinds[kind];
+        if (needed == null) {
+          throw _InvalidArguments(reason: "$field.kind must be one of ${kinds.keys.join(", ")}.");
+        }
+        for (final subfield in needed) {
+          if (value[subfield] == null) {
+            throw _InvalidArguments(reason: "$field.$subfield is required when $field.kind is $kind.");
+          }
+        }
+      }
     }
   }
 
@@ -371,4 +432,5 @@ class SesoriMcpRequestDispatcher({
 
 final class const _ToolOutcome({required final String text, required final bool isError});
 
-final class const _InvalidArguments() implements Exception;
+/// [reason] names the field and is shown to the agent.
+final class const _InvalidArguments({required final String reason}) implements Exception;

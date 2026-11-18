@@ -386,6 +386,22 @@ void main() {
     });
   }
 
+  test("Sesori's own thread server is listed without native sign-in or actions", () {
+    final entry = _mapped(server: {..._server, "name": sesoriMcpServerName, "authStatus": "bearerToken"});
+
+    expect(entry.target.serverKey, sesoriMcpServerName);
+    expect(entry.authorization, PluginMcpAuthorizationState.authenticated);
+    expect(
+      entry.authentication,
+      isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
+        (value) => value.reason,
+        "reason",
+        PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+      ),
+    );
+    expect(entry.actions, isEmpty);
+  });
+
   test("reads every native page using the exact thread without starting agent work", () async {
     final transport = _Transport(
       responses: [

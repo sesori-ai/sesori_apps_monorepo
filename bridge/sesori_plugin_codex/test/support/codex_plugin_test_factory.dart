@@ -5,6 +5,7 @@ import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "fake_sesori_mcp_access.dart";
 import "memory_host_json_store.dart";
 
 CodexPlugin createInjectedCodexPlugin({
@@ -15,6 +16,7 @@ CodexPlugin createInjectedCodexPlugin({
   required Duration keepaliveInterval,
   required CodexToolOutcomeRepository toolOutcomeRepository,
   required Future<void> runtimeExit,
+  SesoriMcpAccess? sesoriMcp,
 }) {
   return buildCodexPlugin(
     serverUrl: serverUrl,
@@ -28,6 +30,7 @@ CodexPlugin createInjectedCodexPlugin({
     runtimeExit: runtimeExit,
     keepaliveInterval: keepaliveInterval,
     rolloutPollInterval: const Duration(milliseconds: 10),
+    sesoriMcp: sesoriMcp ?? FakeSesoriMcpAccess(enabled: false),
   );
 }
 

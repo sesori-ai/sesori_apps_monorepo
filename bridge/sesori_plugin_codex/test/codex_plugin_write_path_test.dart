@@ -21,6 +21,7 @@ import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/fake_sesori_mcp_access.dart";
 import "support/stub_web_socket_channel.dart";
 
 void main() {
@@ -29,8 +30,10 @@ void main() {
     late _FakeAppServer fake;
     late CodexPlugin plugin;
     late CodexToolOutcomeRepository toolOutcomeRepository;
+    late FakeSesoriMcpAccess sesoriMcp;
 
     setUp(() {
+      sesoriMcp = FakeSesoriMcpAccess(enabled: true);
       codexHome = Directory.systemTemp.createTempSync("codex-home-write-");
       fake = _FakeAppServer();
       toolOutcomeRepository = createMemoryCodexToolOutcomeRepository();
@@ -47,6 +50,7 @@ void main() {
         keepaliveInterval: const Duration(seconds: 30),
         toolOutcomeRepository: toolOutcomeRepository,
         runtimeExit: runningCodexRuntime,
+        sesoriMcp: sesoriMcp,
       );
     });
 
@@ -498,6 +502,28 @@ void main() {
           );
         });
       }
+      group("Sesori MCP server", () {
+        Map<String, Object> config({required String token}) => {
+          "mcp_servers.sesori_bridge.url": "http://127.0.0.1:4100/mcp",
+          "mcp_servers.sesori_bridge.http_headers": {"Authorization": "Bearer $token"},
+          "mcp_servers.sesori_bridge.default_tools_approval_mode": "approve",
+        };
+
+        test("thread/start carries it as dotted config keys and binds the new thread", () async {
+          await createSession();
+
+          expect(fake.sentParamsFor("thread/start")["config"], equals(config(token: "token-1")));
+          expect(sesoriMcp.bound.single.backendSessionId, "t-note");
+          expect(identical(sesoriMcp.bound.single.launch, sesoriMcp.minted.single), isTrue);
+        });
+
+        test("thread/resume carries a fresh one bound to the resumed thread", () async {
+          await resumeSession();
+
+          expect(fake.sentParamsFor("thread/resume")["config"], equals(config(token: "token-1")));
+          expect(sesoriMcp.bound.single.backendSessionId, "t-existing");
+        });
+      });
     });
 
     test("createSession forwards inline image data to Codex turn input", () async {

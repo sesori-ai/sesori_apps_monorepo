@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 /// The 0.167.2 rollouts of `codex_revert_fork_history_test.dart`: the source
 /// thread answered "one", "two", "three", was reverted before "three" and
@@ -150,6 +151,20 @@ void main() {
       expect(await server.texts(sessionId: _sourceId), hasLength(6));
       final listed = await server.plugin.listAllSessions(knownDirectories: const {"/workspace/demo"});
       expect(listed.where((session) => session.id == _forkId), hasLength(1));
+    });
+
+    test("gives the fork its own Sesori MCP server, bound to the fork", () async {
+      final sesoriMcp = FakeSesoriMcpAccess(enabled: true);
+      final server = await _AppServer.start(revertError: null, sesoriMcp: sesoriMcp);
+
+      await server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _replyOne);
+
+      expect(server.paramsOf("thread/fork")?["config"], {
+        "mcp_servers.sesori_bridge.url": "http://127.0.0.1:4100/mcp",
+        "mcp_servers.sesori_bridge.http_headers": {"Authorization": "Bearer token-1"},
+        "mcp_servers.sesori_bridge.default_tools_approval_mode": "approve",
+      });
+      expect(sesoriMcp.bound.single.backendSessionId, _forkId);
     });
 
     test("deleting the source archives the rollouts its forks keep, which still read", () async {
@@ -298,6 +313,7 @@ class _AppServer({
     ({int code, String message})? forkError,
     String userAgent = "codex-cli/0.167.2",
     bool steeredRollout = false,
+    SesoriMcpAccess? sesoriMcp,
   }) async {
     final codexHome = Directory.systemTemp.createTempSync("codex-home-rewind-");
     addTearDown(() => codexHome.delete(recursive: true));
@@ -366,6 +382,7 @@ class _AppServer({
       keepaliveInterval: const Duration(seconds: 30),
       toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
       runtimeExit: runningCodexRuntime,
+      sesoriMcp: sesoriMcp,
     );
     addTearDown(plugin.dispose);
     await plugin.initialize();
