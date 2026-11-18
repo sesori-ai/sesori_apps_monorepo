@@ -100,6 +100,91 @@ class ScheduledTaskAgentService({
     return AgentRunTranscriptNoSession(run: run);
   }
 
+  /// Asks to create [task] in the caller's project, or in [projectId], with
+  /// the caller's harness.
+  Future<AgentProposal> proposeCreate({
+    required SesoriMcpCaller caller,
+    required String? projectId,
+    required AgentNewTask task,
+  }) async {
+    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
+    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
+    final definition = ScheduledTaskDefinition(
+      name: task.name,
+      prompt: ScheduledTaskPrompt.text(text: task.promptText),
+      projectId: projectId ?? session.projectId,
+      pluginId: session.pluginId,
+      agent: null,
+      model: task.model,
+      variant: task.variant,
+      fastMode: false,
+      dedicatedWorktree: false,
+      schedule: task.schedule,
+      timeZone: task.timeZone,
+      missedRunPolicy: task.missedRunPolicy,
+      runMode: task.runMode,
+      approvalMode: task.approvalMode,
+    );
+    return await _propose(
+      caller: caller,
+      session: session,
+      change: CreateTaskChange(definition: definition),
+    );
+  }
+
+  /// Asks to apply [edits] to [taskId]; fields [edits] leaves null keep their
+  /// value.
+  Future<AgentProposal> proposeUpdate({
+    required SesoriMcpCaller caller,
+    required String taskId,
+    required AgentTaskEdits edits,
+  }) async {
+    final record = await _uncompletedTask(taskId: taskId);
+    if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
+    final before = record.definition;
+    final ScheduledTaskPrompt prompt;
+    switch (before.prompt) {
+      case ScheduledTaskPromptText():
+        if (edits.commandArguments != null) {
+          return const AgentProposalRefused(reason: AgentProposalRefusal.promptIsText);
+        }
+        prompt = switch (edits.promptText) {
+          final text? => ScheduledTaskPrompt.text(text: text),
+          null => before.prompt,
+        };
+      case ScheduledTaskPromptCommand(:final name, :final source):
+        if (edits.promptText != null) {
+          return const AgentProposalRefused(reason: AgentProposalRefusal.promptIsCommand);
+        }
+        prompt = switch (edits.commandArguments) {
+          final arguments? => ScheduledTaskPrompt.command(name: name, source: source, arguments: arguments),
+          null => before.prompt,
+        };
+      case ScheduledTaskPromptUnknown():
+        // Validation refuses a prompt kind this bridge does not know.
+        prompt = before.prompt;
+    }
+    final after = before.copyWith(
+      name: edits.name ?? before.name,
+      prompt: prompt,
+      schedule: edits.schedule ?? before.schedule,
+      timeZone: edits.timeZone ?? before.timeZone,
+      missedRunPolicy: edits.missedRunPolicy ?? before.missedRunPolicy,
+      runMode: edits.runMode ?? before.runMode,
+      model: edits.model ?? before.model,
+      variant: edits.variant ?? before.variant,
+      approvalMode: edits.approvalMode ?? before.approvalMode,
+    );
+    if (after == before) return const AgentProposalRefused(reason: AgentProposalRefusal.nothingChanged);
+    final session = await _sessions.getStoredSession(sessionId: caller.sessionId);
+    if (session == null) return const AgentProposalRefused(reason: AgentProposalRefusal.callerGone);
+    return await _propose(
+      caller: caller,
+      session: session,
+      change: UpdateTaskChange(taskId: taskId, before: before, after: after),
+    );
+  }
+
   /// Asks to pause or resume [taskId].
   Future<AgentProposal> proposeSetEnabled({
     required SesoriMcpCaller caller,
@@ -139,9 +224,15 @@ class ScheduledTaskAgentService({
     if (approval == null) return const NotAgentApproval();
     if (reply == PermissionReply.reject) return const AgentApprovalRejected();
     final change = approval.change;
-    final record = await _uncompletedTask(taskId: change.taskId);
-    if (record == null || record.definition != change.before) return const AgentApprovalStale();
+    if (change is StoredTaskChange) {
+      final record = await _uncompletedTask(taskId: change.taskId);
+      if (record == null || record.definition != change.before) return const AgentApprovalStale();
+    }
     switch (change) {
+      case CreateTaskChange(:final definition):
+        await _tasks.create(definition: definition);
+      case UpdateTaskChange(:final taskId, :final after):
+        await _tasks.update(taskId: taskId, definition: after);
       case SetTaskEnabledChange(:final taskId, :final enabled):
         await _tasks.setEnabled(taskId: taskId, enabled: enabled);
       case RunTaskNowChange(:final taskId):
@@ -166,14 +257,27 @@ class ScheduledTaskAgentService({
     required StoredSession session,
     required ScheduledTaskAgentChange change,
   }) async {
-    final projectId = change.before.projectId;
+    final resulting = switch (change) {
+      CreateTaskChange(:final definition) => definition,
+      UpdateTaskChange(:final after) => after,
+      StoredTaskChange(:final before) => before,
+    };
+    // Pause, resume and run now keep the stored definition, which may no
+    // longer validate; pausing a broken task must still be possible.
+    if (change is CreateTaskChange || change is UpdateTaskChange) {
+      try {
+        await _tasks.validate(definition: resulting);
+      } on ScheduledTaskRequestException catch (error) {
+        return AgentProposalInvalid(code: error.code);
+      }
+    }
     final withdrewPrevious = _approvals.add(
       sessionId: caller.sessionId,
       displaySessionId: session.parentSessionId,
       change: change,
       description: _descriptions.build(
         change: change,
-        projectName: await _projects.getProjectName(projectId: projectId) ?? projectId,
+        projectName: await _projects.getProjectName(projectId: resulting.projectId) ?? resulting.projectId,
         requester: await _requester(caller: caller, change: change),
       ),
     );
@@ -183,7 +287,7 @@ class ScheduledTaskAgentService({
   Future<AgentRequester> _requester({required SesoriMcpCaller caller, required ScheduledTaskAgentChange change}) async {
     final ownTaskId = await _ownTaskId(caller: caller);
     if (ownTaskId != null) {
-      if (change.taskId == ownTaskId) return const RequestedByOwnRun();
+      if (change is StoredTaskChange && change.taskId == ownTaskId) return const RequestedByOwnRun();
       if (await _taskRepository.get(taskId: ownTaskId) case final ownTask?) {
         return RequestedByTaskRun(taskName: ownTask.definition.name);
       }
@@ -289,6 +393,41 @@ final class const AgentRunTranscriptRunNotFound({required final String runId}) e
 /// The run never started a session, or its session was deleted.
 final class const AgentRunTranscriptNoSession({required final ScheduledTaskRun run}) extends AgentRunTranscriptLookup;
 
+/// A new task's fields an agent sets; the bridge fills in the rest.
+final class const AgentNewTask({
+  required final String name,
+  required final String promptText,
+  required final TaskSchedule schedule,
+  required final String timeZone,
+  required final TaskMissedRunPolicy missedRunPolicy,
+  required final TaskRunMode runMode,
+
+  /// Null leaves the model to the harness.
+  required final PromptModel? model,
+
+  /// Null leaves the effort to the harness.
+  required final SessionVariant? variant,
+  required final TaskApprovalMode approvalMode,
+});
+
+/// The fields an agent changes on a task; null keeps the current value.
+final class const AgentTaskEdits({
+  required final String? name,
+
+  /// A text task's new prompt.
+  required final String? promptText,
+
+  /// A command task's new argument text; its command stays.
+  required final String? commandArguments,
+  required final TaskSchedule? schedule,
+  required final String? timeZone,
+  required final TaskMissedRunPolicy? missedRunPolicy,
+  required final TaskRunMode? runMode,
+  required final PromptModel? model,
+  required final SessionVariant? variant,
+  required final TaskApprovalMode? approvalMode,
+});
+
 sealed class const AgentProposal();
 
 /// The request is on the user's phone. [withdrewPrevious] tells whether it
@@ -297,11 +436,21 @@ final class const AgentProposalSent({required final bool withdrewPrevious}) exte
 
 final class const AgentProposalTaskNotFound({required final String taskId}) extends AgentProposal;
 
+/// The resulting task could not be saved, as the app's editor would be told.
+final class const AgentProposalInvalid({required final ScheduledTaskErrorCode code}) extends AgentProposal;
+
 final class const AgentProposalRefused({required final AgentProposalRefusal reason}) extends AgentProposal;
 
 enum AgentProposalRefusal() {
   /// The calling session's row is gone.
   callerGone,
+  nothingChanged,
+
+  /// A prompt text for a task that runs a command.
+  promptIsCommand,
+
+  /// Command arguments for a task that sends text.
+  promptIsText,
 
   /// Pausing a paused task, or resuming a running one.
   alreadyInState,

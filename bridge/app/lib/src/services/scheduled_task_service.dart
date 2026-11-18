@@ -102,6 +102,13 @@ class ScheduledTaskService({
     return ScheduledTaskRunListResponse(items: await _repository.listRuns(taskId: taskId));
   }
 
+  /// Throws the [ScheduledTaskRequestException] that [create] or [update]
+  /// would for [definition], so a proposal is checked before anyone approves
+  /// it.
+  Future<void> validate({required ScheduledTaskDefinition definition}) async {
+    await _validate(definition: definition, now: _clock.now());
+  }
+
   Future<void> dispose() => _changes.close();
 
   /// A done one-off task has left the list, so it can no longer be edited.

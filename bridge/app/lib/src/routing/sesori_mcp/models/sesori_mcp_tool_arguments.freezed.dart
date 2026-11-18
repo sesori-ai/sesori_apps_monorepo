@@ -208,4 +208,121 @@ String toString() {
 
 
 
+
+/// @nodoc
+mixin _$CreateTaskArguments {
+
+ String get name; String get prompt; TaskSchedule get schedule;@JsonKey(name: "time_zone") String get timeZone;/// Null for the caller's project.
+@JsonKey(name: "project_id") String? get projectId;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode get approvalMode;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as CreateTaskArguments;
+  return 'CreateTaskArguments(name: ${_this.name}, prompt: ${_this.prompt}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, projectId: ${_this.projectId}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CreateTaskArguments implements CreateTaskArguments {
+  const _CreateTaskArguments({required this.name, required this.prompt, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "project_id") required this.projectId, @JsonKey(name: "missed_run_policy") this.missedRunPolicy = TaskMissedRunPolicy.runWhenBack, @JsonKey(name: "run_mode") this.runMode = const TaskRunMode.newSession(), required this.model, required this.effort, @JsonKey(name: "approval_mode") this.approvalMode = TaskApprovalMode.ask});
+  factory _CreateTaskArguments.fromJson(Map<String, dynamic> json) => _$CreateTaskArgumentsFromJson(json);
+
+@override final  String name;
+@override final  String prompt;
+@override final  TaskSchedule schedule;
+@override@JsonKey(name: "time_zone") final  String timeZone;
+/// Null for the caller's project.
+@override@JsonKey(name: "project_id") final  String? projectId;
+@override@JsonKey(name: "missed_run_policy") final  TaskMissedRunPolicy missedRunPolicy;
+@override@JsonKey(name: "run_mode") final  TaskRunMode runMode;
+@override final  String? model;
+@override final  String? effort;
+@override@JsonKey(name: "approval_mode") final  TaskApprovalMode approvalMode;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'CreateTaskArguments(name: $name, prompt: $prompt, schedule: $schedule, timeZone: $timeZone, projectId: $projectId, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$UpdateTaskArguments {
+
+@JsonKey(name: "task_id") String get taskId; String? get name; String? get prompt;@JsonKey(name: "command_arguments") String? get commandArguments; TaskSchedule? get schedule;@JsonKey(name: "time_zone") String? get timeZone;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy? get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode? get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode? get approvalMode;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as UpdateTaskArguments;
+  return 'UpdateTaskArguments(taskId: ${_this.taskId}, name: ${_this.name}, prompt: ${_this.prompt}, commandArguments: ${_this.commandArguments}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _UpdateTaskArguments implements UpdateTaskArguments {
+  const _UpdateTaskArguments({@JsonKey(name: "task_id") required this.taskId, required this.name, required this.prompt, @JsonKey(name: "command_arguments") required this.commandArguments, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "missed_run_policy") required this.missedRunPolicy, @JsonKey(name: "run_mode") required this.runMode, required this.model, required this.effort, @JsonKey(name: "approval_mode") required this.approvalMode});
+  factory _UpdateTaskArguments.fromJson(Map<String, dynamic> json) => _$UpdateTaskArgumentsFromJson(json);
+
+@override@JsonKey(name: "task_id") final  String taskId;
+@override final  String? name;
+@override final  String? prompt;
+@override@JsonKey(name: "command_arguments") final  String? commandArguments;
+@override final  TaskSchedule? schedule;
+@override@JsonKey(name: "time_zone") final  String? timeZone;
+@override@JsonKey(name: "missed_run_policy") final  TaskMissedRunPolicy? missedRunPolicy;
+@override@JsonKey(name: "run_mode") final  TaskRunMode? runMode;
+@override final  String? model;
+@override final  String? effort;
+@override@JsonKey(name: "approval_mode") final  TaskApprovalMode? approvalMode;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'UpdateTaskArguments(taskId: $taskId, name: $name, prompt: $prompt, commandArguments: $commandArguments, schedule: $schedule, timeZone: $timeZone, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode)';
+}
+
+
+}
+
+
+
+
 // dart format on

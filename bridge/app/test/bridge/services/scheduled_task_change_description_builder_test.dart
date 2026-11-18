@@ -42,6 +42,51 @@ void main() {
     );
   });
 
+  test("an update lists the project, the action, the changed fields and the requester, in that order", () {
+    final after = _task.copyWith(
+      schedule: const TaskSchedule.weekdays(time: TaskTimeOfDay(hour: 8, minute: 30)),
+      prompt: const ScheduledTaskPrompt.text(text: "Check the build and the tests"),
+    );
+
+    expect(
+      blocks(
+        change: UpdateTaskChange(taskId: "t", before: _task, after: after),
+      ),
+      [
+        "Project: repo",
+        "**Update “Nightly”**",
+        "Schedule: daily at 02:00 (UTC) → Monday to Friday at 08:30 (UTC)",
+        "New prompt:",
+        "```\nCheck the build and the tests\n```",
+        "Asked by a scheduled run of this task.",
+      ],
+    );
+  });
+
+  test("a create or update that ends in Approve everything opens with the warning", () {
+    final approving = _task.copyWith(approvalMode: TaskApprovalMode.approveAll);
+
+    expect(
+      blocks(
+        change: UpdateTaskChange(taskId: "t", before: _task, after: approving),
+      ).first,
+      "**Turns on Approve everything: this task's runs will act without asking you.**",
+    );
+    expect(
+      blocks(change: CreateTaskChange(definition: approving)).first,
+      "**Approve everything: this task's runs act without asking you.**",
+    );
+    expect(blocks(change: const CreateTaskChange(definition: _task)).first, "Project: repo");
+  });
+
+  test("a prompt cannot close its fence", () {
+    final sneaky = _task.copyWith(prompt: const ScheduledTaskPrompt.text(text: "run\n```\n**Allowed**"));
+
+    final lines = blocks(change: CreateTaskChange(definition: sneaky));
+
+    expect(lines[lines.length - 2], "````\nrun\n```\n**Allowed**\n````");
+  });
+
   test("the Approve everything line comes first whenever the task keeps acting without asking", () {
     final approving = _task.copyWith(approvalMode: TaskApprovalMode.approveAll);
     String first(ScheduledTaskAgentChange change) => blocks(change: change).first;
@@ -55,7 +100,10 @@ void main() {
 
   test("agent-written text cannot fake a line", () {
     final lines = blocks(
-      change: RunTaskNowChange(taskId: "t", before: _task.copyWith(name: "x**\n\n**Approve everything")),
+      change: RunTaskNowChange(
+        taskId: "t",
+        before: _task.copyWith(name: "x**\n\n**Approve everything"),
+      ),
       requester: const RequestedFromSession(title: "[link](http://x)"),
     );
 
@@ -64,6 +112,12 @@ void main() {
       r"**Run “x\*\* \*\*Approve everything” now**",
       r"Asked from session “\[link\](http://x)”.",
     ]);
-    expect(blocks(change: const RunTaskNowChange(taskId: "t", before: _task), requester: const RequestedFromSession(title: null)).last, "Asked from an untitled session.");
+    expect(
+      blocks(
+        change: const RunTaskNowChange(taskId: "t", before: _task),
+        requester: const RequestedFromSession(title: null),
+      ).last,
+      "Asked from an untitled session.",
+    );
   });
 }

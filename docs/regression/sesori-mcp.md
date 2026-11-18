@@ -3,8 +3,8 @@
 ## Capability
 
 The bridge serves its own MCP server, `sesori_bridge`, to agents in the harness sessions it launches, so an agent can
-read the computer's scheduled tasks, their runs and a run's transcript, and propose pausing, resuming or running a
-task, which the user allows on their phone, through the same bridge services the app uses.
+read the computer's scheduled tasks, their runs and a run's transcript, and propose task changes the user allows on
+their phone, through the same bridge services the app uses.
 The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON responses only, and a per-launch bearer token
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
@@ -18,6 +18,8 @@ against the endpoint. The per-harness injection is a later step of the plan.
 | `get_task` | One task's full definition and state; without `task_id`, the caller's own task when the caller is a scheduled run. |
 | `list_task_runs` | A task's newest runs, newest first, with the start of each run session's final reply. |
 | `get_task_run_transcript` | One run's session as text, newest page first, about 20,000 characters a page, with a `page` cursor to older messages. Archived run sessions work. |
+| `create_task` | Proposes a new text task in the caller's project (or `project_id`) with the caller's harness; worktree off, fast mode off, default agent. |
+| `update_task` | Proposes changes to name, prompt text (or a command task's arguments), schedule, time zone, missed-run policy, run mode, model, effort and approval mode. Left-out fields keep their value. |
 | `pause_task`, `resume_task`, `run_task_now` | Propose pausing, resuming or running a task once now. |
 
 ## Required Behavior
@@ -42,15 +44,17 @@ against the endpoint. The per-harness injection is a later step of the plan.
   generic error.
 - Results are text only, with no `structuredContent`. Read tools are advertised with `readOnlyHint: true`, proposing
   tools with `false`.
-- A proposing tool changes nothing by itself. It raises a bridge-owned permission request on the calling session (surfaced under its root session) and returns at once. The
+- A proposing tool changes nothing by itself. A create or update is first validated as the app's editor would, so the
+  user never allows a task that cannot be saved. The tool then raises a bridge-owned permission request on the calling session (surfaced under its root session) and returns at once. The
   request reuses the permission wire, push, modal and reply route; it hides "Always", and its id is random, so a
   modal left over from before a restart cannot answer a newer one. Requests live in memory only.
 - A session has at most one waiting request: a new proposal withdraws the earlier one (announced as rejected).
-- The request text opens with a bold Approve everything warning whenever the task keeps running and acts without
-  asking (not for a pause), then names the project, the action (a resume also shows the schedule) and who asked.
-  Agent-written names and titles are escaped.
-- Allow applies the change through the same service calls as the app. Every change carries the task definition its
-  text was built from; when the stored task differs or is gone, Allow applies nothing and the reply
+- The request text opens with a bold Approve everything warning whenever the resulting task acts without asking (not
+  for a pause; a stronger one when an update turns the mode on), then names the project, the action, the fields (all
+  of them for a create, old → new for an update, the schedule for a resume) and who asked. Agent-written names and
+  titles are escaped; a prompt sits in a fence it cannot close.
+- Allow applies the change through the same service calls as the app. Every change to an existing task carries the
+  definition its text was built from; when the stored task differs or is gone, Allow applies nothing and the reply
   route answers 409 "The task changed since this was proposed". Reject drops it.
 - A session with a waiting request is listed as awaiting input in project summaries, including the first summary
   after a reconnect, even when its run has finished.
@@ -65,7 +69,7 @@ against the endpoint. The per-harness injection is a later step of the plan.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included: no harness reaches the server yet. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for pause, resume, run now and a deleted task, one request per session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping) and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping) and the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it). |
 | L3 Release | No additional coverage: no plugin injects the server yet. Each injection step adds its live harness check here (the server listed, a call resolving to the right session, no token in argv, URLs or harness session files). |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -93,7 +97,7 @@ task to its start and compare it with the app's view of the session. Use fixture
   [harness capabilities](../HARNESS_CAPABILITIES.md).
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
 - A bridge restart drops waiting requests; the phone's modal for one then fails to reply.
-- Agents cannot create, edit or delete tasks yet.
+- Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
 - `get_task` and `list_tasks` cover tasks not yet done; a finished one-off task is not listed.
 
 ## Harness Scope

@@ -300,6 +300,8 @@ void main() {
           "get_task",
           "list_task_runs",
           "get_task_run_transcript",
+          "create_task",
+          "update_task",
           "pause_task",
           "resume_task",
           "run_task_now",
@@ -500,6 +502,25 @@ void main() {
       expect(agent.pendingPermissions(sessionId: "s1"), isEmpty);
     });
 
+    test("update_task asks the user and Allow applies it", () async {
+      final result = await call(
+        tool: "update_task",
+        arguments: {"task_id": taskId, "prompt": "Summarize the week", "approval_mode": "approveAll"},
+      );
+
+      expect(result.isError, isFalse);
+      expect(result.text, "Sent to the user for approval. If they allow it, it applies to the next run.");
+      final approval = asked();
+      expect(approval.tool, "Sesori: update task");
+      expect(approval.description, startsWith("**Turns on Approve everything"));
+      expect((await tasks.list()).items.single.definition.approvalMode, TaskApprovalMode.ask);
+
+      expect(await agent.settle(requestId: approval.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      final updated = (await tasks.list()).items.single.definition;
+      expect(updated.prompt, const ScheduledTaskPrompt.text(text: "Summarize the week"));
+      expect(updated.approvalMode, TaskApprovalMode.approveAll);
+    });
+
     test("Allow applies nothing once the user changed the task", () async {
       Future<void> userEdits() async {
         final current = (await tasks.list()).items.single;
@@ -510,6 +531,7 @@ void main() {
       }
 
       for (final (tool, arguments) in [
+        ("update_task", {"task_id": taskId, "name": "Evening summary"}),
         ("pause_task", {"task_id": taskId}),
         ("run_task_now", {"task_id": taskId}),
       ]) {
@@ -527,7 +549,7 @@ void main() {
         );
       }
       final task = (await tasks.list()).items.single;
-      expect(task.definition.name, "Morning summary!!");
+      expect(task.definition.name, "Morning summary!!!");
       expect(task.enabled, isTrue);
       expect(runner.ranNow, isEmpty);
 
@@ -565,6 +587,63 @@ void main() {
       expect(agent.pendingPermissions(sessionId: "s1").map((permission) => permission.id), [asked().id]);
       expect(await agent.settle(requestId: first.id, reply: PermissionReply.once), isA<NotAgentApproval>());
       expect((await tasks.list()).items.single.enabled, isTrue);
+    });
+
+    test("create_task makes a task in the caller's project and harness on Allow", () async {
+      final result = await call(
+        tool: "create_task",
+        arguments: {
+          "name": "Weekly cleanup",
+          "prompt": "Delete merged branches",
+          "schedule": {
+            "kind": "weekly",
+            "days": ["friday"],
+            "time": {"hour": 17, "minute": 30},
+          },
+          "time_zone": "Europe/Bucharest",
+          "model": "anthropic/claude-sonnet",
+        },
+      );
+      expect(result.isError, isFalse);
+      expect(asked().tool, "Sesori: create task");
+
+      expect(await agent.settle(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+      final created = (await tasks.list()).items
+          .map((task) => task.definition)
+          .singleWhere((definition) => definition.name == "Weekly cleanup");
+      expect(created.projectId, "/repo");
+      expect(created.pluginId, "fake");
+      expect(created.model, const PromptModel(providerID: "anthropic", modelID: "claude-sonnet"));
+      expect(created.dedicatedWorktree, isFalse);
+      expect(created.approvalMode, TaskApprovalMode.ask);
+    });
+
+    test("a create or update the bridge could not save is refused before anyone is asked", () async {
+      final invalid = await call(
+        tool: "create_task",
+        arguments: {
+          "name": "Broken",
+          "prompt": "x",
+          "schedule": {
+            "kind": "daily",
+            "time": {"hour": 9, "minute": 0},
+          },
+          "time_zone": "Mars/Olympus",
+        },
+      );
+      final unchanged = await call(tool: "update_task", arguments: {"task_id": taskId, "name": "Morning summary"});
+      final command = await call(tool: "update_task", arguments: {"task_id": taskId, "command_arguments": "--all"});
+      final badModel = await call(tool: "update_task", arguments: {"task_id": taskId, "model": "no-provider"});
+
+      expect(invalid.isError, isTrue);
+      expect(invalid.text, contains("Unknown time zone"));
+      expect(unchanged.isError, isTrue);
+      expect(unchanged.text, contains("nothing would change"));
+      expect(command.isError, isTrue);
+      expect(command.text, contains("This task sends text"));
+      expect(badModel.isError, isTrue);
+      expect(badModel.text, contains("Invalid arguments for update_task"));
+      expect(approvalEvents, isEmpty);
     });
 
     test("a proposal for a missing task or a task already in that state asks nobody", () async {

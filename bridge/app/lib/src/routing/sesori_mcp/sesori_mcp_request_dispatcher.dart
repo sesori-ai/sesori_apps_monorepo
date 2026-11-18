@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations, bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, sesoriMcpServerName;
+import "package:sesori_shared/sesori_shared.dart" show PromptModel, ScheduledTaskErrorCode, SessionVariant;
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../repositories/models/sesori_mcp_caller.dart";
@@ -191,6 +192,43 @@ class SesoriMcpRequestDispatcher({
       case SesoriMcpTool.getTaskRunTranscript:
         final args = _parse(json: arguments, fromJson: GetTaskRunTranscriptArguments.fromJson);
         return await _transcript(args: args);
+      case SesoriMcpTool.createTask:
+        final args = _parse(json: arguments, fromJson: CreateTaskArguments.fromJson);
+        final proposal = await _agent.proposeCreate(
+          caller: caller,
+          projectId: args.projectId,
+          task: AgentNewTask(
+            name: args.name,
+            promptText: args.prompt,
+            schedule: args.schedule,
+            timeZone: args.timeZone,
+            missedRunPolicy: args.missedRunPolicy,
+            runMode: args.runMode,
+            model: _model(text: args.model),
+            variant: _variant(id: args.effort),
+            approvalMode: args.approvalMode,
+          ),
+        );
+        return _proposal(proposal: proposal, sent: _appliesToNextRun);
+      case SesoriMcpTool.updateTask:
+        final args = _parse(json: arguments, fromJson: UpdateTaskArguments.fromJson);
+        final proposal = await _agent.proposeUpdate(
+          caller: caller,
+          taskId: args.taskId,
+          edits: AgentTaskEdits(
+            name: args.name,
+            promptText: args.prompt,
+            commandArguments: args.commandArguments,
+            schedule: args.schedule,
+            timeZone: args.timeZone,
+            missedRunPolicy: args.missedRunPolicy,
+            runMode: args.runMode,
+            model: _model(text: args.model),
+            variant: _variant(id: args.effort),
+            approvalMode: args.approvalMode,
+          ),
+        );
+        return _proposal(proposal: proposal, sent: _appliesToNextRun);
       case SesoriMcpTool.pauseTask || SesoriMcpTool.resumeTask:
         final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
         final proposal = await _agent.proposeSetEnabled(
@@ -198,32 +236,67 @@ class SesoriMcpRequestDispatcher({
           taskId: args.taskId,
           enabled: tool == SesoriMcpTool.resumeTask,
         );
-        return _proposal(proposal: proposal);
+        return _proposal(proposal: proposal, sent: _appliesOnAllow);
       case SesoriMcpTool.runTaskNow:
         final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
         final proposal = await _agent.proposeRunNow(caller: caller, taskId: args.taskId);
-        return _proposal(proposal: proposal);
+        return _proposal(proposal: proposal, sent: _appliesOnAllow);
     }
   }
 
-  _ToolOutcome _proposal({required AgentProposal proposal}) {
-    const sent = "Sent to the user for approval. Nothing happens unless they allow it.";
+  static const String _appliesToNextRun =
+      "Sent to the user for approval. If they allow it, it applies to the next run.";
+  static const String _appliesOnAllow = "Sent to the user for approval. Nothing happens unless they allow it.";
+
+  _ToolOutcome _proposal({required AgentProposal proposal, required String sent}) {
     return switch (proposal) {
-      AgentProposalSent(withdrewPrevious: false) => const _ToolOutcome(isError: false, text: sent),
-      AgentProposalSent(withdrewPrevious: true) => const _ToolOutcome(
+      AgentProposalSent(withdrewPrevious: false) => _ToolOutcome(isError: false, text: sent),
+      AgentProposalSent(withdrewPrevious: true) => _ToolOutcome(
         isError: false,
         text: "$sent It replaces this session's earlier request, which can no longer be allowed.",
       ),
       AgentProposalTaskNotFound(:final taskId) => _ToolOutcome(isError: true, text: _taskNotFound(taskId: taskId)),
+      AgentProposalInvalid(:final code) => _ToolOutcome(isError: true, text: _invalid(code: code)),
       AgentProposalRefused(:final reason) => _ToolOutcome(
         isError: true,
         text: switch (reason) {
           AgentProposalRefusal.callerGone => "This session is no longer known to Sesori.",
+          AgentProposalRefusal.nothingChanged => "That is the task as it is; nothing would change.",
+          AgentProposalRefusal.promptIsCommand =>
+            "This task runs a command, so its prompt cannot be text. Change command_arguments instead.",
+          AgentProposalRefusal.promptIsText => "This task sends text, so it has no command_arguments. Change prompt.",
           AgentProposalRefusal.alreadyInState => "The task is already in that state.",
         },
       ),
     };
   }
+
+  String _invalid({required ScheduledTaskErrorCode code}) {
+    return switch (code) {
+      ScheduledTaskErrorCode.taskNotFound => "The task no longer exists. Find task ids with list_tasks.",
+      ScheduledTaskErrorCode.emptyName => "The task needs a name.",
+      ScheduledTaskErrorCode.emptyPrompt => "The task needs a prompt.",
+      ScheduledTaskErrorCode.unknownProject => "No such project on this computer. Find project ids with list_tasks.",
+      ScheduledTaskErrorCode.unknownHarness => "This session's harness cannot run scheduled tasks.",
+      ScheduledTaskErrorCode.unknownTimeZone => "Unknown time zone; use an IANA name such as Europe/Bucharest.",
+      ScheduledTaskErrorCode.invalidSchedule => "The schedule has an invalid date or time.",
+      ScheduledTaskErrorCode.hoursOutOfRange => "An every-hours schedule runs every 1 to 12 hours.",
+      ScheduledTaskErrorCode.onceTimeInPast => "A one-off task's time must be in the future.",
+      ScheduledTaskErrorCode.unsupportedByBridge ||
+      ScheduledTaskErrorCode.previousRunActive ||
+      ScheduledTaskErrorCode.unknown => "This bridge cannot save that task.",
+    };
+  }
+
+  /// `provider/model`; the model id may itself contain slashes.
+  PromptModel? _model({required String? text}) {
+    if (text == null) return null;
+    final slash = text.indexOf("/");
+    if (slash <= 0 || slash == text.length - 1) throw const _InvalidArguments();
+    return PromptModel(providerID: text.substring(0, slash), modelID: text.substring(slash + 1));
+  }
+
+  SessionVariant? _variant({required String? id}) => id == null ? null : SessionVariant(id: id);
 
   /// The newest messages before `page` that fit one page. A page that
   /// overflows is read again with fewer messages, so `next_page` points just
