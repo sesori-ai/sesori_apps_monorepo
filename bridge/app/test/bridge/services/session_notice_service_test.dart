@@ -81,6 +81,20 @@ void main() {
     expect(prompts.sent, hasLength(1));
   });
 
+  test("a source error while the notice waits neither escapes nor drops it", () async {
+    plugins.handling = PluginBusyPromptHandling.stopTurn;
+    sessions.quietness = SessionQuietness.working;
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
+    await pumpEventQueue();
+
+    events.fail();
+    await pumpEventQueue();
+    sessions.quietness = SessionQuietness.quiet;
+    events.idle(sessionId: "s1");
+    await delivery;
+    expect(prompts.sent, hasLength(1));
+  });
+
   test("a session waiting on the user gets the notice after it is answered", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
     final delivery = service.deliver(sessionId: "s1", notice: _notice);
@@ -200,6 +214,8 @@ final class _Prompts() implements SessionPromptService {
 
 final class _Events() implements SessionEventDispatcher {
   final StreamController<NormalizedSourcedBridgeEvent> _controller = StreamController.broadcast();
+
+  void fail() => _controller.addError(StateError("a source failed"));
 
   void idle({required String sessionId}) => _controller.add((
     pluginId: "claude",

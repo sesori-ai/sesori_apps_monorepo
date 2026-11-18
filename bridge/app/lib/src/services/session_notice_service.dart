@@ -45,6 +45,9 @@ class const SessionNoticeService({
       (sourced) {
         if (_isIdle(event: sourced.event, sessionId: sessionId) && !idle.isCompleted) idle.complete();
       },
+      // The dispatcher's own consumers report source errors; the wait simply
+      // has nothing to observe for a failed event.
+      onError: (Object _) {},
       onDone: () {
         if (!idle.isCompleted) idle.completeError(StateError("the bridge is shutting down"));
       },
