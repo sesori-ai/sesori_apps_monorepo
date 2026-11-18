@@ -11,7 +11,7 @@ import "models/claude_sesori_mcp_config_file.dart";
 ///
 /// The token goes in a file rather than the child's environment because
 /// Claude's Bash tool inherits that environment, so `env` would show it to the
-/// agent and its transcript. Verified live on 2026-11-18 with Claude Code
+/// agent and its transcript. Verified live on 2026-11-17 with Claude Code
 /// 2.1.325: Claude reads the file before it answers the stdin `initialize`
 /// handshake and keeps the header in memory, so a tool call and an
 /// `mcp_reconnect` after the file was deleted still sent it, and `env` in the
