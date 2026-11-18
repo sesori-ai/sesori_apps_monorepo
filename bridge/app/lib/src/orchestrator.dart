@@ -37,6 +37,7 @@ import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
 import "foundation/relay_plaintext_codec.dart";
+import "foundation/sesori_mcp_server.dart";
 import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
@@ -93,6 +94,7 @@ import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
+import "repositories/sesori_mcp_grant_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_interruption_repository.dart";
@@ -180,6 +182,7 @@ import "routing/run_scheduled_task_now_handler.dart";
 import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/send_to_session_handler.dart";
+import "routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_scheduled_task_enabled_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -218,6 +221,7 @@ import "services/scheduled_task_compaction_service.dart";
 import "services/scheduled_task_occurrence_calculator.dart";
 import "services/scheduled_task_run_service.dart";
 import "services/scheduled_task_service.dart";
+import "services/sesori_mcp_access_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_continuation_service.dart";
 import "services/session_creation_service.dart";
@@ -286,6 +290,8 @@ class Orchestrator({
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
   required final BridgeStartupRetryService _startupRetryService,
+  required final Stream<SesoriMcpInboundRequest> _sesoriMcpRequests,
+  required final SesoriMcpGrantRepository _sesoriMcpGrants,
 }) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -809,6 +815,9 @@ class Orchestrator({
         clock: clock,
       ),
     );
+    final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
+      access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
+    );
     final normalizedPluginEvents = sessionEventDispatcher.events;
     final router = RequestRouter(
       handlers: [
@@ -928,6 +937,8 @@ class Orchestrator({
       sessionMutationListener: sessionMutationListener,
       chatHistoryListener: chatHistoryListener,
       chatHistoryActivityListener: chatHistoryActivityListener,
+      sesoriMcpRequests: _sesoriMcpRequests,
+      sesoriMcpRequestDispatcher: sesoriMcpRequestDispatcher,
       runningTurnListener: runningTurnListener,
       interruptedTurnListener: interruptedTurnListener,
       chatHistoryService: chatHistoryService,
@@ -1069,6 +1080,8 @@ class OrchestratorSession._({
   required final SessionMutationListener _sessionMutationListener,
   required final ChatHistoryListener _chatHistoryListener,
   required final ChatHistoryActivityListener _chatHistoryActivityListener,
+  required Stream<SesoriMcpInboundRequest> sesoriMcpRequests,
+  required final SesoriMcpRequestDispatcher _sesoriMcpRequestDispatcher,
   required final RunningTurnListener _runningTurnListener,
   required final InterruptedTurnListener _interruptedTurnListener,
   required final ChatHistoryService _chatHistoryService,
@@ -1152,6 +1165,14 @@ class OrchestratorSession._({
   this {
     connectionNotificationPolicies
         .listen((policy) => _client.updateConnectionNotificationPolicy(policy: policy))
+        .addTo(_subscriptions);
+    // The dispatcher turns every failure into a reply, and respond logs its own.
+    sesoriMcpRequests
+        .listen((request) async {
+          await request.respond(
+            reply: await _sesoriMcpRequestDispatcher.dispatch(token: request.token, body: request.body),
+          );
+        })
         .addTo(_subscriptions);
     _mcpAuthenticationService.changes
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
@@ -1490,7 +1511,11 @@ class OrchestratorSession._({
       attempt(_interruptedTurnListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
-    await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_inFlightRelayCompletions.drain)]);
+    await Future.wait([
+      attempt(_routedRequestDispatcher.drain),
+      attempt(_inFlightRelayCompletions.drain),
+      attempt(_sesoriMcpRequestDispatcher.drain),
+    ]);
     await Future.wait([
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),

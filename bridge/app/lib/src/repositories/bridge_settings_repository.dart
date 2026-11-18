@@ -127,6 +127,10 @@ class BridgeSettingsRepository({
     await mutateSettings(mutation: ({required current}) => current.copyWith(yolo: enabled));
   }
 
+  Future<void> updateAgentTools({required bool enabled}) async {
+    await mutateSettings(mutation: ({required current}) => current.copyWith(agentTools: enabled));
+  }
+
   Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {
     return await mutateSettings(
       mutation: ({required current}) => current.warmUpPluginsOnSessionOpen == enabled

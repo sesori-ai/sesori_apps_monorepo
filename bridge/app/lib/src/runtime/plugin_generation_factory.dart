@@ -4,10 +4,12 @@ import "dart:io" as io;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../repositories/sesori_mcp_grant_repository.dart";
 import "../server/api/loopback_port_api.dart";
 import "../server/host/bridge_host_info_impl.dart";
 import "../server/host/bridge_host_port_service.dart";
 import "../server/host/bridge_plugin_host_impl.dart";
+import "../server/host/bridge_sesori_mcp_access_impl.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/process_repository.dart";
 import "../server/repositories/startup_mutex_repository.dart";
@@ -62,6 +64,14 @@ class PluginGenerationFactory({
   /// settings changes reach plugins without a restart.
   required final int Function({required String pluginId}) _resolveIdleTimeoutMins,
   required final Stream<Object?> _settingsChanges,
+
+  /// Sesori's MCP endpoint and its token map, which every plugin host offers
+  /// through [PluginHost.sesoriMcp].
+  required final Uri _sesoriMcpUrl,
+  required final SesoriMcpGrantRepository _sesoriMcpGrants,
+
+  /// The `agent-tools` setting, read at each launch.
+  required final bool Function() _agentToolsEnabled,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
@@ -289,6 +299,12 @@ class PluginGenerationFactory({
       processes: _processes,
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: request.registration.store,
+      sesoriMcp: BridgeSesoriMcpAccessImpl(
+        pluginId: descriptor.id,
+        url: _sesoriMcpUrl,
+        grants: _sesoriMcpGrants,
+        agentToolsEnabled: _agentToolsEnabled,
+      ),
       resolveIdleTimeout: () => _idleTimeoutForPlugin(
         pluginId: descriptor.id,
         residency: request.residency.value,

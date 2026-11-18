@@ -307,7 +307,7 @@ void main() {
 }
 
 const _defaultJson =
-    '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30,\n  "warmUpPluginsOnSessionOpen": true\n}';
+    '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30,\n  "warmUpPluginsOnSessionOpen": true,\n  "agentTools": true\n}';
 
 class FakeBridgeSettingsApi({
   required var String? readResult,

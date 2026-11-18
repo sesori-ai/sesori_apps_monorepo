@@ -1580,6 +1580,9 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
   @override
   final _MemoryJsonStore store = _MemoryJsonStore();
 
+  @override
+  SesoriMcpAccess get sesoriMcp => throw UnimplementedError();
+
   Map<String, dynamic>? ownershipRecord(String ownerSessionId) {
     final contents = store.files["opencode-processes.json"];
     if (contents == null) {
