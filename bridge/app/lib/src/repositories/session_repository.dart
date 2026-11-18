@@ -42,6 +42,7 @@ import "package:sesori_shared/sesori_shared.dart"
         MessageHandoffNotSent,
         MessageHandoffSent,
         MessagePartSubtask,
+        MessageSender,
         MessageUser,
         MessageWithParts,
         ProjectActivitySummary,
@@ -657,7 +658,8 @@ class SessionRepository({
     }
   }
 
-  /// [message] with the stamp this bridge recorded under its prompt id.
+  /// [message] with the stamp this bridge recorded under its prompt id. A
+  /// notice's echo becomes a Sesori row, which opens no prompt turn.
   ///
   /// A plugin that named the invocation itself keeps its own value.
   Message stampLiveMessage({required Message message}) {
@@ -667,6 +669,16 @@ class SessionRepository({
           return message.copyWith(invocation: invocation);
         case PromptStampHandoff(:final handoff):
           return message.copyWith(handoff: handoff);
+        case PromptStampNotice():
+          return Message.assistant(
+            id: message.id,
+            sessionID: sessionID,
+            agent: null,
+            modelID: null,
+            providerID: null,
+            sender: MessageSender.sesori,
+            time: message.time,
+          );
         case PromptStampCommand() || null:
           break;
       }
@@ -718,7 +730,9 @@ class SessionRepository({
   /// [prompts] with the stamps this bridge recorded for its sends to
   /// [sessionId]: the source of each command, and the handoff of each prompt
   /// that sends one session into another, so a client never shows a handoff
-  /// prompt as a plain message while it waits for its echo.
+  /// prompt as a plain message while it waits for its echo. A notice is left
+  /// out: it is not the user's message, and Stop must never return it to the
+  /// composer.
   ///
   /// A request [holdRequest] keeps is listed too, when [prompts] lacks it.
   List<QueuedSessionPrompt> stampQueuedPrompts({
@@ -726,11 +740,13 @@ class SessionRepository({
     required List<QueuedSessionPrompt> prompts,
   }) => [
     for (final prompt in prompts)
-      switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
-        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null =>
+      ...switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null => [
           prompt.copyWith(commandSource: invocation.source),
-        PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
-        PromptStampCommand() || null => prompt,
+        ],
+        PromptStampHandoff(:final handoff) => [prompt.copyWith(handoff: handoff)],
+        PromptStampNotice() => const [],
+        PromptStampCommand() || null => [prompt],
       },
     if (_heldRequests[sessionId] case final held? when prompts.every((prompt) => prompt.id != held.id)) held,
   ];
@@ -744,7 +760,7 @@ class SessionRepository({
   /// Stops listing the request [holdRequest] kept for [sessionId].
   void releaseRequest({required String sessionId}) => _heldRequests.remove(sessionId);
 
-  /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
+  /// Sends [parts] as the prompt [promptId]. A [mark] is remembered under
   /// [promptId], so the user message that fulfils it is stamped by
   /// [stampLiveMessage].
   Future<void> sendPrompt({
@@ -755,7 +771,7 @@ class SessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
   }) async {
     try {
       await _useSessionPlugin(
@@ -764,13 +780,7 @@ class SessionRepository({
         body: (plugin, binding) {
           // Recorded before the plugin call: its echo can arrive before the
           // call returns. A definitely refused send forgets it again.
-          if (handoff != null) {
-            _stamps.record(
-              sessionId: sessionId,
-              promptId: promptId,
-              stamp: PromptStampHandoff(handoff: handoff),
-            );
-          }
+          if (mark != null) _stamps.record(sessionId: sessionId, promptId: promptId, stamp: mark);
           return plugin.sendPrompt(
             sessionId: binding.backendSessionId,
             promptId: promptId,

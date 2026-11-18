@@ -2131,7 +2131,7 @@ class OrchestratorSession._({
     required bool Function() shouldCapture,
   }) async {
     if (part.type == PluginMessagePartType.unknown) return null;
-    final visiblePart = part.withoutSystemContext();
+    final visiblePart = part.withoutSystemContext()?.withoutNoticeFrame();
     if (visiblePart == null) return null;
     final sharedPart = _mapper.mapMessagePart(part: visiblePart);
     final visible = _mapper.isMessagePartVisible(part: visiblePart);

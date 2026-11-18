@@ -2283,6 +2283,28 @@ void main() {
         expect(await storedHandoffs(history: history), [sent]);
       });
 
+      test("a later unstamped update of a notice's echo keeps its stored Sesori row", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+        final echo = stamped(id: "m1", handoff: null);
+        const sesori = Message.assistant(
+          id: "m1",
+          sessionID: "ses_a",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.sesori,
+          time: MessageTime(created: 100, completed: null),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: MessageWithParts(info: sesori, parts: echo.parts),
+        );
+        await _captureMessageWithParts(history: history, message: echo);
+
+        final stored = await _storedMessages(history: history, sessionId: "ses_a");
+        expect([for (final message in stored) message.info], [sesori]);
+      });
+
       test("a replay keeps the stored handoff, under the same id or another one", () async {
         for (final replayId in ["live", "replay"]) {
           final history = createTestChatHistory(

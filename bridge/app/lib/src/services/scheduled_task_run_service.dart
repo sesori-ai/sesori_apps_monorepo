@@ -415,7 +415,7 @@ class ScheduledTaskRunService({
           model: settings.model,
           command: command,
           commandSource: commandSource,
-          handoff: null,
+          mark: null,
           runContext: _runContextOf(task: task),
         ),
       ),

@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
@@ -1126,7 +1127,7 @@ final class _Prompts() implements SessionPromptService {
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
     required String? runContext,
   }) async {
     if (summaryFailure case final failure?) throw failure;
@@ -1140,7 +1141,7 @@ final class _Prompts() implements SessionPromptService {
         fastMode: fastMode,
         agent: agent,
         model: model,
-        handoff: handoff,
+        mark: mark,
       ),
     );
     onSummaryAccepted?.call(promptId);
@@ -1164,7 +1165,7 @@ final class _Prompts() implements SessionPromptService {
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
   }) async {
     if (targetFailure case final failure?) throw failure;
     sends.add(
@@ -1177,7 +1178,7 @@ final class _Prompts() implements SessionPromptService {
         fastMode: fastMode,
         agent: agent,
         model: model,
-        handoff: handoff,
+        mark: mark,
       ),
     );
   }
@@ -1191,7 +1192,7 @@ final class _Prompts() implements SessionPromptService {
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
   }) => (
     sessionId: sessionId,
     promptId: promptId,
@@ -1204,7 +1205,10 @@ final class _Prompts() implements SessionPromptService {
     model: model,
     variant: variant,
     fastMode: fastMode,
-    handoff: handoff,
+    handoff: switch (mark) {
+      PromptStampHandoff(:final handoff) => handoff,
+      PromptStampNotice() || null => null,
+    },
   );
 
   @override

@@ -31,7 +31,7 @@ class SendPromptHandler({required final SessionPromptService _sessionPromptServi
       model: body.model,
       command: body.command,
       commandSource: body.commandSource,
-      handoff: null,
+      mark: null,
     );
 
     return const SuccessEmptyResponse();

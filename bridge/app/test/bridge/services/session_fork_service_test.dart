@@ -565,7 +565,7 @@ void main() {
         model: null,
         command: null,
         commandSource: null,
-        handoff: null,
+        mark: null,
       );
       return [
         for (final part in plugin.lastSendPromptParts ?? fail("no prompt sent"))
@@ -603,7 +603,7 @@ void main() {
       model: null,
       command: "review",
       commandSource: CommandSource.command,
-      handoff: null,
+      mark: null,
     );
 
     final context = buildWorktreeSystemContext(worktreePath: _worktree, baseBranch: "main").trimRight();

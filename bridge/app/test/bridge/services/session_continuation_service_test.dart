@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/services/session_continuation_service.dart";
@@ -485,10 +486,10 @@ class _Prompts({required final SessionContinuationRepository records}) implement
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
     required String? runContext,
   }) async {
-    expect(handoff, isNull);
+    expect(mark, isNull);
     expect(
       (await records.read(sessionId: sessionId)).outcome,
       isA<SessionContinuationConsumed>().having((value) => value.promptId, "promptId", promptId),

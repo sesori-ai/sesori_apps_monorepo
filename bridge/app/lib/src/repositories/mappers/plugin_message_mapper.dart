@@ -84,15 +84,29 @@ extension on PluginMessageTime? {
 
 extension PluginMessageWithPartsMapper on PluginMessageWithParts {
   MessageWithParts toSharedMessageWithParts({required String sessionId}) {
+    // Backends emit unknown parts for content blocks they cannot model
+    // (e.g. Claude's server_tool_use); skip them like the live event path.
+    final visibleParts = [
+      for (final part in parts)
+        if (part is! PluginMessagePartUnknown) ?part.withoutSystemContext(),
+    ];
     return MessageWithParts(
-      info: info.toSharedMessage(sessionId: sessionId),
-      // Backends emit unknown parts for content blocks they cannot model
-      // (e.g. Claude's server_tool_use); skip them like the live event path.
-      parts: [
-        for (final part in parts)
-          if (part is! PluginMessagePartUnknown)
-            if (part.withoutSystemContext() case final visible?) visible.toShared(sessionId: sessionId),
-      ],
+      info: switch ((info, visibleParts.whereType<PluginMessagePartText>().toList(growable: false))) {
+        // The notice the bridge sent shows as the Sesori row its live echo
+        // became, as no harness records the bridge's stamp.
+        (PluginMessageUser(:final id, :final time), [final text]) when parseSessionNotice(text: text.text) != null =>
+          Message.assistant(
+            id: id,
+            sessionID: sessionId,
+            agent: null,
+            modelID: null,
+            providerID: null,
+            sender: MessageSender.sesori,
+            time: time.toShared(),
+          ),
+        (final message, _) => message.toSharedMessage(sessionId: sessionId),
+      },
+      parts: [for (final part in visibleParts) part.withoutNoticeFrame().toShared(sessionId: sessionId)],
     );
   }
 }
@@ -108,6 +122,16 @@ extension PluginMessagePartSystemContext on PluginMessagePart {
     final text = stripSystemContext(text: part.text);
     if (text == null) return null;
     return identical(text, part.text) ? part : part.copyWith(text: text);
+  }
+
+  /// This part with only its summary when it is a Sesori notice, which shows
+  /// to the user as that one line. Text-based for the same reason as
+  /// [withoutSystemContext].
+  PluginMessagePart withoutNoticeFrame() {
+    final part = this;
+    if (part is! PluginMessagePartText) return part;
+    final summary = parseSessionNotice(text: part.text);
+    return summary == null ? part : part.copyWith(text: summary);
   }
 }
 

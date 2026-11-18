@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildSessionNotice;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -256,6 +257,48 @@ void main() {
       ];
 
       expect(messages.latestPromptDefaults(), isNull);
+    });
+  });
+
+  group("PluginMessageWithPartsMapper.toSharedMessageWithParts()", () {
+    final notice = buildSessionNotice(summary: "Fixture summary", guidance: "Fixture guidance");
+    PluginMessageWithParts userTurn({required List<String> texts}) => PluginMessageWithParts(
+      info: const PluginMessage.user(
+        promptId: null,
+        invocation: null,
+        id: "m1",
+        sessionID: "s1",
+        agent: "build",
+        time: PluginMessageTime(created: 1234, completed: null),
+      ),
+      parts: [
+        for (final (index, text) in texts.indexed)
+          PluginMessagePart.text(id: "p$index", sessionID: "s1", messageID: "m1", text: text),
+      ],
+    );
+
+    test("replays a notice as a Sesori row showing only its summary", () {
+      expect(
+        userTurn(texts: [notice]).toSharedMessageWithParts(sessionId: "stable-session"),
+        const MessageWithParts(
+          info: Message.assistant(
+            id: "m1",
+            sessionID: "stable-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            sender: MessageSender.sesori,
+            time: MessageTime(created: 1234, completed: null),
+          ),
+          parts: [MessagePart.text(id: "p0", sessionID: "stable-session", messageID: "m1", text: "Fixture summary")],
+        ),
+      );
+    });
+
+    test("keeps a user turn that only quotes a notice", () {
+      final shared = userTurn(texts: [notice, "Why did this arrive?"]).toSharedMessageWithParts(sessionId: "s1");
+
+      expect(shared.info, isA<MessageUser>());
     });
   });
 }

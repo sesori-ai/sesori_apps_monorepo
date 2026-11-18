@@ -56,4 +56,37 @@ void main() {
       expect(stripSystemContext(text: unterminated), unterminated);
     });
   });
+
+  group("session notices", () {
+    final notice = buildSessionNotice(
+      summary: "You didn't allow pausing “Daily digest”.",
+      guidance: "Don't propose it again unless they ask.",
+    );
+
+    test("frame the summary for the user and the guidance for the agent", () {
+      expect(
+        notice,
+        "[SESORI NOTICE]\n"
+        "You didn't allow pausing “Daily digest”.\n"
+        "[FOR THE AGENT]\n"
+        "Sesori wrote this message, not the user. The user sees only the line above,\n"
+        "addressed to them.\n"
+        "Don't propose it again unless they ask.\n"
+        "[END SESORI NOTICE]",
+      );
+    });
+
+    test("read back their summary, surrounding whitespace allowed", () {
+      expect(parseSessionNotice(text: notice), "You didn't allow pausing “Daily digest”.");
+      expect(parseSessionNotice(text: "\n  $notice\n\n"), "You didn't allow pausing “Daily digest”.");
+    });
+
+    test("match only text that is exactly one notice", () {
+      expect(parseSessionNotice(text: "Please read: $notice"), isNull);
+      expect(parseSessionNotice(text: "$notice\nAnd one more thing"), isNull);
+      expect(parseSessionNotice(text: "$notice\n\n$notice"), isNull);
+      expect(parseSessionNotice(text: notice.replaceFirst("[FOR THE AGENT]\n", "")), isNull);
+      expect(parseSessionNotice(text: "Fix the login bug"), isNull);
+    });
+  });
 }

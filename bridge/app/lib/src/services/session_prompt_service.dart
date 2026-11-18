@@ -14,6 +14,7 @@ import "../repositories/random_hex_id.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/trackers/prompt_stamp.dart";
 import "archived_session_validator.dart";
 import "chat_history_service.dart";
 import "prompt_part_delivery_service.dart";
@@ -36,10 +37,11 @@ typedef PromptSettings = ({SessionVariant? variant, bool fastMode, String? agent
 /// What a send asks its session's plugin to do with the prompt.
 sealed class const _PromptSend();
 
-/// A prompt; [handoff] marks one Sesori wrote to send another session here,
-/// and a [runContext] note leads its parts for the harness only.
+/// A prompt; [mark] marks one the bridge wrote itself, such as a handoff from
+/// another session or a notice, and a [runContext] note leads its parts for
+/// the harness only.
 final class const _PromptSendPrompt({
-  required final MessageHandoff? handoff,
+  required final BridgePromptMark? mark,
   required final String? runContext,
 }) extends _PromptSend;
 
@@ -79,9 +81,9 @@ class SessionPromptService({
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
   }) {
-    final send = _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff, runContext: null);
+    final send = _promptOrCommand(command: command, commandSource: commandSource, mark: mark, runContext: null);
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: switch (send) {
@@ -234,7 +236,8 @@ class SessionPromptService({
   /// Sends as [sendPrompt] does, for a caller that already holds the session's
   /// lane. It is the bridge's own send (a scheduled run, a quota continuation,
   /// a send-to-session summary request), never a person's prompt. A
-  /// [runContext] note leads a text prompt, never a command's arguments.
+  /// [runContext] note leads a text prompt, never a command's arguments, and a
+  /// [mark] names what the bridge wrote.
   Future<void> sendPromptAlreadyReserved({
     required String sessionId,
     required String promptId,
@@ -245,7 +248,7 @@ class SessionPromptService({
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
     required String? runContext,
   }) => _sendPrompt(
     sessionId: sessionId,
@@ -258,7 +261,7 @@ class SessionPromptService({
     send: _promptOrCommand(
       command: command,
       commandSource: commandSource,
-      handoff: handoff,
+      mark: mark,
       runContext: runContext,
     ),
     byUser: false,
@@ -267,12 +270,12 @@ class SessionPromptService({
   static _PromptSend _promptOrCommand({
     required String? command,
     required CommandSource? commandSource,
-    required MessageHandoff? handoff,
+    required BridgePromptMark? mark,
     required String? runContext,
   }) {
     final normalizedCommand = command?.trim();
     return normalizedCommand == null || normalizedCommand.isEmpty
-        ? _PromptSendPrompt(handoff: handoff, runContext: runContext)
+        ? _PromptSendPrompt(mark: mark, runContext: runContext)
         : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
   }
 
@@ -303,7 +306,7 @@ class SessionPromptService({
     // Built before the quota cancellation below, so an edit its own checks
     // refuse leaves a pending continuation alone.
     final sendToPlugin = switch (send) {
-      _PromptSendPrompt(:final handoff, :final runContext) => () async => await _sessionRepository.sendPrompt(
+      _PromptSendPrompt(:final mark, :final runContext) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
         parts: await _withFirstPromptContext(
@@ -317,7 +320,7 @@ class SessionPromptService({
         fastMode: fastMode,
         agent: agent,
         model: model,
-        handoff: handoff,
+        mark: mark,
       ),
       _PromptSendCommand(:final command, :final commandSource) => () async {
         final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
