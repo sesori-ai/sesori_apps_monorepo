@@ -327,6 +327,14 @@ void main() {
         params: const {"harness": "pi", "outcome": "unconfirmed"},
       ),
       (
+        event: const ProductAnalyticsEvent.sessionForked(
+          harness: AnalyticsHarness.codex,
+          outcome: AnalyticsSessionForkOutcome.branchPointUnavailable,
+        ),
+        name: "session_forked",
+        params: const {"harness": "codex", "outcome": "branch_point_unavailable"},
+      ),
+      (
         // A one-off, new-session task carries neither missed_run_policy nor
         // auto_compact.
         event: const ProductAnalyticsEvent.scheduledTaskSaved(
@@ -342,8 +350,8 @@ void main() {
       ),
     ];
 
-    test("covers all 33 event names in the contract", () {
-      expect(sentEvents.map((event) => event.name).toSet(), hasLength(33));
+    test("covers all 34 event names in the contract", () {
+      expect(sentEvents.map((event) => event.name).toSet(), hasLength(34));
     });
 
     for (final sent in sentEvents) {
@@ -525,6 +533,10 @@ void main() {
       (
         client: AnalyticsSessionSendOutcome.values.map((value) => value.wireValue),
         contract: const {"sent", "refused_busy", "refused_other", "failed", "unsupported", "unconfirmed"},
+      ),
+      (
+        client: AnalyticsSessionForkOutcome.values.map((value) => value.wireValue),
+        contract: const {"succeeded", "branch_point_unavailable", "refused", "failed"},
       ),
       (
         client: AnalyticsScheduledTaskAction.values.map((value) => value.wireValue),
