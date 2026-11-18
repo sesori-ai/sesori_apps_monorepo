@@ -628,7 +628,9 @@ defaults and queued client sends coherent.
   or re-import, under the same message id; the agent guidance never shows. It
   opens no prompt turn, never lists as a queued prompt (so Stop never returns
   it to the composer), and leaves the session's last user message time as it
-  was. A user prompt that merely quotes a notice stays user input.
+  was. A user prompt that merely quotes a notice stays user input. While the
+  agent works on a notice, the Working timer counts from the notice, not from
+  the earlier user prompt.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
