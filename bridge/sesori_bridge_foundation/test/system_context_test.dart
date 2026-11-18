@@ -10,6 +10,7 @@ void main() {
     test("names the task and the tools from the Sesori server", () {
       expect(runNote, contains('the Sesori task "Nightly deps" (id task_1)'));
       expect(runNote, contains("update_task tool from the sesori_bridge server"));
+      expect(runNote, contains("leaving out every field you are not changing"));
     });
   });
 

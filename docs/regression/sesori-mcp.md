@@ -135,9 +135,10 @@ task to its start and compare it with the app's view of the session. Use fixture
 - Only Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot inject the server, as recorded in
   [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity, Hermes and Cursor stay off until a live check
   passes; OpenCode has no per-session seam; DeepSeek's adapter rejects MCP servers.
-- A model that fills every schema field (seen with the OpenAI-compatible test provider through Claude Code and
-  Copilot) sends a whole `schedule` object even when only the prompt should change, so its proposal can include a
-  schedule change nobody asked for. The request lists it, so the user sees it before allowing.
+- `update_task` and the scheduled-run note ask agents to leave out every field they are not changing, but a model
+  that fills every schema field (seen with the OpenAI-compatible test provider through Claude Code and Copilot) can
+  still send a whole `schedule` object when only the prompt should change. The request lists every field that
+  differs from the task, so the user sees such a change before allowing.
 - On Claude Code, a session's server keeps the token it launched with until the process exits or is reaped; a
   resumed process gets a new one. Claude keeps a per-server MCP log folder (`mcp-logs-sesori-bridge`) in its cache.
 - On Pi, the token stays in the process's initial environment block, which only the same OS user can read.

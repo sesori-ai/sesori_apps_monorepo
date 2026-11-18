@@ -315,6 +315,22 @@ void main() {
       }
     });
 
+    test("update_task asks agents to leave out the fields they are not changing", () async {
+      final tools = ((await rpc(method: "tools/list", params: null))["result"] as Map<String, dynamic>)["tools"];
+      Map<String, dynamic> tool(String name) =>
+          (tools as List<dynamic>).cast<Map<String, dynamic>>().singleWhere((tool) => tool["name"] == name);
+      Map<String, dynamic> properties(String name) =>
+          (tool(name)["inputSchema"] as Map<String, dynamic>)["properties"] as Map<String, dynamic>;
+      const hint = "Leave out every field you are not changing; left-out fields keep their value.";
+      const settings = ["schedule", "time_zone", "missed_run_policy", "run_mode", "model", "effort", "approval_mode"];
+
+      expect(tool("update_task")["description"], contains(hint));
+      for (final setting in settings) {
+        expect((properties("update_task")[setting] as Map<String, dynamic>)["description"], endsWith(hint));
+        expect((properties("create_task")[setting] as Map<String, dynamic>)["description"], isNot(contains(hint)));
+      }
+    });
+
     test("malformed JSON, unknown methods and unknown tools are JSON-RPC errors", () async {
       final malformed = await http.post(
         server.url,
