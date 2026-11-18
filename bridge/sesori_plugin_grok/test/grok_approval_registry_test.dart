@@ -116,10 +116,16 @@ void main() {
         grokTool: "run_terminal_command",
         rawInput: {"command": "sesori_bridge__get_task", "tool_name": "sesori_bridge__get_task"},
       );
+      requestPermission(
+        id: 5,
+        sessionId: "with-sesori",
+        grokTool: "use_tool",
+        rawInput: {"tool_name": 42},
+      );
       await pump();
 
       expect(fake.written, isEmpty);
-      expect(emitted.whereType<BridgeSsePermissionAsked>(), hasLength(4));
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), hasLength(5));
     });
   });
 }

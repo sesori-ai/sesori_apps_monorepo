@@ -176,3 +176,28 @@ sealed class GrokTerminalInputDto with _$GrokTerminalInputDto {
   const factory({required String? command}) = _GrokTerminalInputDto;
   factory fromJson(Map<String, dynamic> json) => _$GrokTerminalInputDtoFromJson(json);
 }
+
+/// The part of Grok's `session/request_permission` params that names the tool.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokPermissionRequestDto with _$GrokPermissionRequestDto {
+  const factory({required GrokPermissionToolCallDto? toolCall}) = _GrokPermissionRequestDto;
+  factory fromJson(Map<String, dynamic> json) => _$GrokPermissionRequestDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokPermissionToolCallDto with _$GrokPermissionToolCallDto {
+  const factory({
+    @JsonKey(name: "_meta") required GrokToolCallMetaDto? meta,
+    required GrokUseToolInputDto? rawInput,
+  }) = _GrokPermissionToolCallDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokPermissionToolCallDtoFromJson(json);
+}
+
+/// The input of Grok's `use_tool`, which runs an MCP tool named
+/// `<server>__<tool>`.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokUseToolInputDto with _$GrokUseToolInputDto {
+  const factory({@JsonKey(name: "tool_name") required String? toolName}) = _GrokUseToolInputDto;
+  factory fromJson(Map<String, dynamic> json) => _$GrokUseToolInputDtoFromJson(json);
+}

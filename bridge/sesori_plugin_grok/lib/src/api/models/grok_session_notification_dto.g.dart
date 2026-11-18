@@ -110,3 +110,29 @@ _GrokToolIdentityDto _$GrokToolIdentityDtoFromJson(Map json) =>
 
 _GrokTerminalInputDto _$GrokTerminalInputDtoFromJson(Map json) =>
     _GrokTerminalInputDto(command: json['command'] as String?);
+
+_GrokPermissionRequestDto _$GrokPermissionRequestDtoFromJson(Map json) =>
+    _GrokPermissionRequestDto(
+      toolCall: json['toolCall'] == null
+          ? null
+          : GrokPermissionToolCallDto.fromJson(
+              Map<String, dynamic>.from(json['toolCall'] as Map),
+            ),
+    );
+
+_GrokPermissionToolCallDto _$GrokPermissionToolCallDtoFromJson(Map json) =>
+    _GrokPermissionToolCallDto(
+      meta: json['_meta'] == null
+          ? null
+          : GrokToolCallMetaDto.fromJson(
+              Map<String, dynamic>.from(json['_meta'] as Map),
+            ),
+      rawInput: json['rawInput'] == null
+          ? null
+          : GrokUseToolInputDto.fromJson(
+              Map<String, dynamic>.from(json['rawInput'] as Map),
+            ),
+    );
+
+_GrokUseToolInputDto _$GrokUseToolInputDtoFromJson(Map json) =>
+    _GrokUseToolInputDto(toolName: json['tool_name'] as String?);

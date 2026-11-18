@@ -1,6 +1,8 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/grok_session_notification_dto.dart";
+
 /// Grok asks its own permission before every MCP tool. For Sesori's tools the
 /// bridge already asks before any change, so this registry allows those calls
 /// once without asking again.
@@ -27,13 +29,15 @@ class GrokApprovalRegistry({
 
   @override
   bool preAllowsPermission({required String sessionId, required Map<String, dynamic> params}) {
-    final toolCall = params["toolCall"];
-    if (toolCall is! Map) return false;
-    final rawInput = toolCall["rawInput"];
-    final meta = toolCall["_meta"];
-    final grokTool = meta is Map ? meta["x.ai/tool"] : null;
-    if (rawInput is! Map || grokTool is! Map || grokTool["name"] != "use_tool") return false;
-    final toolName = rawInput["tool_name"];
-    return toolName is String && _sesoriToolName.hasMatch(toolName) && _holdsSesoriServer(sessionId: sessionId);
+    final GrokPermissionToolCallDto? toolCall;
+    try {
+      toolCall = GrokPermissionRequestDto.fromJson(params).toolCall;
+    } on Object catch (error, stackTrace) {
+      Log.w("[grok] permission request could not be parsed; asking the user", error, stackTrace);
+      return false;
+    }
+    if (toolCall?.meta?.tool?.name != "use_tool") return false;
+    final toolName = toolCall?.rawInput?.toolName;
+    return toolName != null && _sesoriToolName.hasMatch(toolName) && _holdsSesoriServer(sessionId: sessionId);
   }
 }
