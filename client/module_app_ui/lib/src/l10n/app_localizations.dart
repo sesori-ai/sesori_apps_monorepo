@@ -2527,6 +2527,12 @@ abstract class AppLocalizations {
   /// **'Automation'**
   String get sessionDetailAutomation;
 
+  /// Label on a transcript message Sesori itself wrote into the session, such as the outcome of a request the agent made.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori Automation'**
+  String get sessionDetailSesoriAutomation;
+
   /// No description provided for @sessionDetailRetry.
   ///
   /// In en, this message translates to:

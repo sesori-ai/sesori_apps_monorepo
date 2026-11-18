@@ -13,7 +13,13 @@ part "message.g.dart";
 @JsonEnum()
 enum MessageSender() {
   agent,
+
+  /// Session automation of the harness, such as a background task's report.
   system,
+
+  /// Sesori itself, such as the outcome of a request an agent made. Apps that
+  /// predate it decode it as [unknown] and show it as automation.
+  sesori,
   unknown,
 }
 

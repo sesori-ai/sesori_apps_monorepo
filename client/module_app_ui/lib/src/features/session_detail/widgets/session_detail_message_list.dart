@@ -1864,9 +1864,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: createdAtMs,
         end: null,
       ),
-      MessageAssistant(:final id) => _endingInterruptedTurn(
+      MessageAssistant(:final id, :final sender) => _endingInterruptedTurn(
         messageId: id,
         child: SystemMessageCard(
+          tagIcon: switch (sender) {
+            MessageSender.sesori => TablerRegular.bell,
+            MessageSender.agent || MessageSender.system || MessageSender.unknown => TablerRegular.robot,
+          },
+          tagLabel: switch (sender) {
+            MessageSender.sesori => context.loc.sessionDetailSesoriAutomation,
+            MessageSender.agent || MessageSender.system || MessageSender.unknown => context.loc.sessionDetailAutomation,
+          },
           projectId: widget.projectId,
           blocks: transcript.blocksFor(messageId: id),
           streamingText: streamingText,

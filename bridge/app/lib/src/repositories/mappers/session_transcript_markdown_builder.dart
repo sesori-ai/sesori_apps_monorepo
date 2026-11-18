@@ -54,6 +54,7 @@ class const SessionTranscriptMarkdownBuilder() {
       MessageAssistant(:final sender, :final agent, :final providerID, :final modelID, :final time) => (
         switch (sender) {
           MessageSender.agent => "Assistant",
+          MessageSender.sesori => "Sesori",
           MessageSender.system || MessageSender.unknown => "System",
         },
         _agentAndModel(agent: agent, providerID: providerID, modelID: modelID),

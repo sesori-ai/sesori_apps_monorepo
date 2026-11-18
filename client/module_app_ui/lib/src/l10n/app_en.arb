@@ -1030,6 +1030,10 @@
   "@sessionDetailAutomation": {
     "description": "Label on a transcript message injected by session automation rather than authored by the user or agent."
   },
+  "sessionDetailSesoriAutomation": "Sesori Automation",
+  "@sessionDetailSesoriAutomation": {
+    "description": "Label on a transcript message Sesori itself wrote into the session, such as the outcome of a request the agent made."
+  },
   "sessionDetailRetry": "Retry",
   "sessionDetailRecheck": "Recheck",
   "@sessionDetailRecheck": {
