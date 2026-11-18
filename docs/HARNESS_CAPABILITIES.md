@@ -169,17 +169,18 @@ resolves relative file paths.
 | GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
 | Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
 
-## Sesori MCP tools
+## Sesori agent tools
 
-Sessions Sesori starts get the bridge's own `sesori_bridge` MCP server through
-each harness's per-session launch seam, while `agent-tools` is on. Each
-harness row says how it gets the server, which token reaches it, and what is
-left behind when the session is resumed outside Sesori. See
-[Sesori MCP for agents](regression/sesori-mcp.md).
+Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with
+tools for scheduled tasks (see
+[Sesori MCP regression coverage](regression/sesori-mcp.md)). Each plugin hands
+it to its harness through a per-session launch seam, never through user
+configuration, and declares `injectsSesoriTools` once it does.
 
-| Harness | Sesori MCP server |
+| Harness | Sesori availability |
 |---|---|
-| Codex | ✅ Per-thread `config` on `thread/start`, `thread/resume` and `thread/fork`, as dotted `mcp_servers.sesori_bridge.*` keys so the user's own servers still load: the URL, an `Authorization` header and `default_tools_approval_mode = "approve"`, so Codex asks nothing before a tool runs (the bridge asks before any change applies). Never `-c`, which would reach every thread on the app-server. Each start, resume and fork gets its own token, bound to the thread id. A side-question sample gets none. The thread-scoped MCP inventory lists it without sign-in or actions. Codex stores neither the token nor the URL: a resume outside Sesori lists only the user's servers and leaves `config.toml` unchanged. Verified live on 0.169.0, 2026-11-17. |
+| Codex | ✅ Per-thread `config` on `thread/start`, `thread/resume` and `thread/fork`, as dotted `mcp_servers.sesori_bridge.*` keys so the user's own servers still load: the URL, an `Authorization` header and `default_tools_approval_mode = "approve"`, so Codex asks nothing before a tool runs (the bridge asks before any change applies). Never `-c`, which would reach every thread on the app-server. Each start, resume and fork gets its own token, bound to the thread id; it travels only in that request, never in the app-server's environment, so the shell tool cannot read it (`env` inside a thread shows no token). A side-question sample gets none. The thread-scoped MCP inventory lists it without sign-in or actions. Codex stores neither the token nor the URL: a resume outside Sesori lists only the user's servers and leaves `config.toml` unchanged. Verified live on 0.169.0, 2026-11-17. |
+| Other harnesses | ⬜ Not injected yet. |
 
 ## Transcript turn boundaries
 
