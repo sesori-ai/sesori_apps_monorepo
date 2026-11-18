@@ -723,7 +723,7 @@ cannot be waiting on the user; this covers requests abandoned silently.
 | DeepSeek | ✅ Already handled: the adapter's `deepseek/input/cancel {sessionId}` retires every pending request of the session when a turn is cancelled, a session stops or a sub-agent is interrupted. It never withdraws a single `session/request_permission` and has no timeout. Source only, not run live (`0.2.2`). |
 | Hermes | 🚫 `0.23.1` sends no withdrawal. Verified live (2026-11-12): after `session/cancel` it fails the real tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. When its own approval timeout fires (`approvals.timeout`, default 300 s) or another Hermes viewer answers, it only fails the tool call, whose id differs from the permission's synthetic `perm-check-N` id, and the turn goes on. That card stays until the turn ends, which retires it through the shared ACP turn-end rule, or until Stop, delete, archive or disposal; an answer before then is dropped. |
 | Grok | 🚫 `1.0.77` sends no `$/cancel_request`. Verified live (2026-11-12): `session/cancel` sends its own `interaction_resolved` for the tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. Its 600 s client-permission backstop did not fire on Sesori's `--no-leader stdio` launch in 660 s. |
-| Cursor | 🚫 `2026.11.11-b912975` has no request withdrawal or permission timeout. Source only, not run live: its ACP client (and the `2026.11.13-eacade1` bundle) has no `$/cancel_request`, and a cancelled prompt leaves the request open. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
+| Cursor | 🚫 `2026.11.11-b912975` has no request withdrawal or permission timeout. Source only, not run live: its ACP client (and the `2026.11.13-eacade1` and `2026.11.17-f532c45` bundles) has no `$/cancel_request`, and a cancelled prompt leaves the request open. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
 | Antigravity | 🚫 `1.4.5` has no request withdrawal or permission timeout (not rechecked on `1.5.0`). Source only, not run live: a cancelled turn drops its pending request without a message. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
 
 ## Stop on archive
@@ -1627,7 +1627,7 @@ subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.113 pin and maps
 no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
 sub-agent identity, lifecycle and per-child stop.
 
-⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.11.13-eacade1`;
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.11.17-f532c45`;
 shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
 wire) runs each sub-agent as a native child session once the client sends
 `clientCapabilities._meta.subagents: true`, which Sesori always does. A Task
