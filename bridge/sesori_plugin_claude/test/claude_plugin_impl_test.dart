@@ -10,6 +10,7 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 import "support/fake_claude_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 const _testIds = [
   "11111111-2222-4333-8444-555555555555",
@@ -2174,6 +2175,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       binaryPath: "claude",
       transcriptsDirectory: "/tmp/sesori/transcripts",
       uploadsDirectory: "/tmp/sesori/uploads",
+      sesoriMcp: FakeSesoriMcpAccess(),
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

@@ -126,6 +126,11 @@ final class const ClaudePluginDescriptor({
     PluginMcpCapability.authentication,
   };
 
+  /// Every session process gets Sesori's server through `--mcp-config`
+  /// (see `ClaudeLaunchSpec`).
+  @override
+  bool get injectsSesoriTools => true;
+
   /// MCP is read from a live resident session; harness-wide and project
   /// inventory answer unsupported scope.
   @override
@@ -319,6 +324,7 @@ final class const ClaudePluginDescriptor({
       binaryPath: binaryPath,
       transcriptsDirectory: sesoriTranscriptsDirectory(),
       uploadsDirectory: sesoriUploadsDirectory(),
+      sesoriMcp: host.sesoriMcp,
       // The host factory already inherits this environment. Launch specs carry
       // only explicit overrides so they never shadow HOME and break keychain auth.
       environment: const {},

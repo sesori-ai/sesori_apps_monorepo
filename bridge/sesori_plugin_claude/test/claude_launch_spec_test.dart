@@ -1,5 +1,8 @@
+import "dart:convert";
+
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriMcpLaunch, sesoriMcpServerName;
 import "package:test/test.dart";
 
 // Real UUIDs: the launch contract rejects anything else.
@@ -17,6 +20,7 @@ void main() {
       ClaudeProcessPurpose purpose = ClaudeProcessPurpose.session,
       String transcriptsDirectory = "/tmp/sesori/transcripts",
       String uploadsDirectory = "/tmp/sesori/uploads",
+      SesoriMcpLaunch? sesoriMcp,
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -29,6 +33,7 @@ void main() {
         effort: effort,
         permissionMode: permissionMode,
         allowedTools: allowedTools,
+        sesoriMcp: sesoriMcp,
       );
     }
 
@@ -203,6 +208,47 @@ void main() {
       expect(session, isNot(contains("--settings")));
     });
 
+    test("injects Sesori's server with the token only in the environment", () {
+      const server = SesoriMcpLaunch(
+        serverName: sesoriMcpServerName,
+        url: "http://127.0.0.1:4242/mcp",
+        token: "secret-token",
+      );
+      for (final launch in [
+        ClaudeNewSession(sessionId: _newSessionId),
+        ClaudeResumedSession(sessionId: _oldSessionId),
+        ClaudeRewoundSession(sessionId: _oldSessionId, entryUuid: _newSessionId),
+      ]) {
+        final spec = specFor(launch, allowedTools: const ["Bash(git status)"], sesoriMcp: server);
+        final arguments = spec.arguments;
+
+        final configIndex = arguments.indexOf("--mcp-config");
+        expect(configIndex, isNonNegative, reason: "$launch must carry the server");
+        expect(jsonDecode(arguments[configIndex + 1]), {
+          "mcpServers": {
+            "sesori_bridge": {
+              "type": "http",
+              "url": "http://127.0.0.1:4242/mcp",
+              "headers": {"Authorization": r"Bearer ${SESORI_MCP_TOKEN}"},
+            },
+          },
+        });
+        // Without `--strict-mcp-config` the user's own servers still load.
+        expect(arguments, isNot(contains("--strict-mcp-config")));
+        expect(arguments, containsAllInOrder(["--allowedTools", "mcp__sesori_bridge", "Bash(git status)"]));
+        expect(arguments.where((argument) => argument.contains("secret-token")), isEmpty);
+        expect(spec.processLaunch.environment, {"SESORI_MCP_TOKEN": "secret-token"});
+      }
+    });
+
+    test("injects nothing without a Sesori launch", () {
+      final spec = specFor(ClaudeNewSession(sessionId: _newSessionId));
+
+      expect(spec.arguments, isNot(contains("--mcp-config")));
+      expect(spec.arguments.where((argument) => argument.startsWith("mcp__")), isEmpty);
+      expect(spec.processLaunch.environment, isEmpty);
+    });
+
     test("rejects a HOME override when describing its child process", () {
       final spec = ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -215,6 +261,7 @@ void main() {
         effort: null,
         permissionMode: null,
         allowedTools: const [],
+        sesoriMcp: null,
         environment: const {"HOME": "/tmp/test-home"},
       );
 
@@ -234,6 +281,7 @@ void main() {
         effort: null,
         permissionMode: null,
         allowedTools: const [],
+        sesoriMcp: null,
         environment: environment,
       );
 

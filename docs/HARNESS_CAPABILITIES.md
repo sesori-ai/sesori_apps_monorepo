@@ -169,6 +169,19 @@ resolves relative file paths.
 | GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
 | Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
 
+## Sesori agent tools
+
+Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with
+tools for scheduled tasks (see
+[Sesori MCP regression coverage](regression/sesori-mcp.md)). Each plugin hands
+it to its harness through a per-session launch seam, never through user
+configuration, and declares `injectsSesoriTools` once it does.
+
+| Harness | Sesori availability |
+|---|---|
+| Claude Code | ✅ Inline `--mcp-config` on every launch, resume and respawn, without `--strict-mcp-config`, so the user's servers still load. The header reads `${SESORI_MCP_TOKEN}` from the child's environment, so the token is not in argv or any file. `--allowedTools mcp__sesori_bridge` skips Claude's own prompt, since the bridge asks for each proposal. The server lists with source `dynamic` and shows without controls. A plain `claude --resume` loads no Sesori server and the user config stays unchanged. Claude keeps a `mcp-logs-sesori-bridge` folder in its cache. A user server of the same name is replaced for the session. Verified live on 2.1.325, 2026-11-17. |
+| Other harnesses | ⬜ Not injected yet. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

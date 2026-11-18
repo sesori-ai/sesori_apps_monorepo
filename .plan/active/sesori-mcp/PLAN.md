@@ -563,6 +563,7 @@ There is no migration, no wire change and no client code change.
 7. ⚙️ **Claude injection.** Launch-spec arguments, `--allowedTools`, the
    inventory mapper, turning the flag on, and live verification. Updates
    `docs/HARNESS_CAPABILITIES.md`.
+   - **Status:** in review; verified live on Claude Code 2.1.325.
 8. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
    the flag, and live verification.
 9. ⚙️ **ACP injection.**

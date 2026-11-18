@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../support/fake_claude_process.dart";
+import "../support/fake_sesori_mcp_access.dart";
 
 void main() {
   const config = PluginConfig(values: {ClaudePluginDescriptor.binOption: "claude"});
@@ -22,6 +23,7 @@ void main() {
       expect(descriptor.namesCommandInvocations, isTrue);
       expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
       expect(descriptor.mcpScopes, {PluginMcpScopeKind.session}, reason: "Claude answers MCP only for a live session");
+      expect(descriptor.injectsSesoriTools, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.326");
@@ -445,6 +447,8 @@ final class _PluginHost({
 
   @override
   ServerClock get clock => const ServerClock();
+  @override
+  SesoriMcpAccess get sesoriMcp => FakeSesoriMcpAccess();
   @override
   Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 

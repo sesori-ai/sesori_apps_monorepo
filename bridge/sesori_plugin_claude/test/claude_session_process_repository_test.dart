@@ -7,6 +7,7 @@ import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
 import "support/fake_claude_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   group("ClaudeSessionProcessRepository", () {
@@ -21,6 +22,7 @@ void main() {
         binaryPath: "claude",
         transcriptsDirectory: "/tmp/sesori/transcripts",
         uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: FakeSesoriMcpAccess(),
         environment: const {},
       );
     });
@@ -443,6 +445,40 @@ void main() {
 
       expect(harness.specs, hasLength(2));
       expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
+    });
+
+    test("gives every session launch its own bound Sesori token and probes none", () async {
+      final access = FakeSesoriMcpAccess(enabled: true);
+      final injecting = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
+        processFactory: harness.spawn,
+        binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
+        sesoriMcp: access,
+        environment: const {},
+      );
+      addTearDown(injecting.dispose);
+
+      await _ensure(injecting, createNew: true);
+      await injecting.teardown(sessionId: testSessionId);
+      await _ensure(injecting, createNew: false);
+      await injecting.ensureResident(
+        sessionId: otherTestSessionId,
+        directory: "/tmp/project",
+        createNew: true,
+        purpose: ClaudeProcessPurpose.catalogProbe,
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: false,
+        allowedTools: const [],
+      );
+
+      expect(access.minted, hasLength(2));
+      expect(access.bound.map((binding) => binding.backendSessionId), [testSessionId, testSessionId]);
+      expect(access.bound.map((binding) => binding.launch), access.minted);
+      expect(harness.specs.map((spec) => spec.sesoriMcp), [access.minted[0], access.minted[1], isNull]);
     });
 
     test("settles steering input with the result after its replay", () async {

@@ -101,6 +101,7 @@ final class ClaudeSessionProcessRepository({
   required final String _binaryPath,
   required final String _transcriptsDirectory,
   required final String _uploadsDirectory,
+  required final SesoriMcpAccess _sesoriMcp,
   required Map<String, String> environment,
 }) {
   /// The CLI's own side-question deadline is 11 minutes; nobody waits that
@@ -632,6 +633,10 @@ final class ClaudeSessionProcessRepository({
     required List<String> allowedTools,
     required int generation,
   }) async {
+    // Every session launch, resume and respawn gets its own token. Claude's
+    // session id is known before the launch, so the binding is immediate.
+    final sesoriMcp = purpose == ClaudeProcessPurpose.session ? _sesoriMcp.mint() : null;
+    if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: sessionId);
     final client = ClaudeStreamClient(
       launchSpec: ClaudeLaunchSpec(
         binaryPath: _binaryPath,
@@ -644,6 +649,7 @@ final class ClaudeSessionProcessRepository({
         allowedTools: allowedTools,
         transcriptsDirectory: _transcriptsDirectory,
         uploadsDirectory: _uploadsDirectory,
+        sesoriMcp: sesoriMcp,
         environment: _environment,
       ),
       processFactory: _processFactory,

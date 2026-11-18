@@ -169,4 +169,20 @@ void main() {
     expect(auth.authorization, PluginMcpAuthorizationState.required);
     expect(auth.tools, isA<PluginMcpToolsUnavailable>());
   });
+
+  test("shows Sesori's launch-injected server without controls", () {
+    final sesori = map({
+      "name": "sesori_bridge",
+      "status": "connected",
+      "scope": "dynamic",
+      "config": {"type": "http", "url": "http://127.0.0.1:4242/mcp"},
+    });
+    expect(sesori.actions, isEmpty);
+    expect(sesori.authentication, isA<PluginMcpAuthenticationCapabilityUnavailable>());
+    expect(sesori.configuration?.scope, PluginMcpConfigurationScope.session);
+    expect(sesori.configuration?.mutability, PluginMcpConfigurationMutability.readOnly);
+
+    final userServer = map({"name": "sesori_bridge", "status": "connected", "scope": "user"});
+    expect(userServer.actions, hasLength(3));
+  });
 }

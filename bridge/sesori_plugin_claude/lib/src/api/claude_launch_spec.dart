@@ -1,4 +1,7 @@
+import "dart:convert";
+
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriMcpLaunch;
 
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
@@ -98,6 +101,10 @@ class ClaudeLaunchSpec({
   /// Sesori's prompt uploads folder (`sesoriUploadsDirectory()`), which the
   /// agent may read without asking.
   required final String uploadsDirectory,
+
+  /// Sesori's own MCP server for this launch, or null to inject none: agent
+  /// tools are off, or the process is a catalog probe.
+  required final SesoriMcpLaunch? sesoriMcp,
   Map<String, String> environment = const {},
 }) {
   /// Extra environment entries merged over the bridge's own environment.
@@ -156,12 +163,41 @@ class ClaudeLaunchSpec({
 
   static final RegExp _windowsDrivePathPattern = RegExp(r"^[A-Za-z]:[\\/]");
 
+  /// The child-environment variable that carries the Sesori MCP token.
+  ///
+  /// Argv is readable by every local user, so the inline `--mcp-config` names
+  /// only this variable and Claude expands it into the header. Verified live
+  /// on 2026-11-17 with Claude Code 2.1.325: the server received the expanded
+  /// bearer token, and the token appeared nowhere under the config directory.
+  static const String sesoriMcpTokenVariable = "SESORI_MCP_TOKEN";
+
+  /// Pre-allows every tool of Sesori's server. The bridge asks the user for
+  /// each proposing tool itself, so a native prompt would ask twice.
+  static String _sesoriMcpToolRule({required SesoriMcpLaunch server}) => "mcp__${server.serverName}";
+
+  /// Inline config for Sesori's server alone. Without `--strict-mcp-config`
+  /// Claude adds it to the user's own servers, and nothing is written to the
+  /// user's configuration, so a later plain `claude --resume` loads no Sesori
+  /// server.
+  static String _sesoriMcpConfig({required SesoriMcpLaunch server}) => jsonEncode({
+    "mcpServers": {
+      server.serverName: {
+        "type": "http",
+        "url": server.url,
+        "headers": {"Authorization": "Bearer \${$sesoriMcpTokenVariable}"},
+      },
+    },
+  });
+
   /// The child process this spec starts.
   ClaudeProcessLaunch get processLaunch => ClaudeProcessLaunch(
     binaryPath: binaryPath,
     arguments: arguments,
     workingDirectory: workingDirectory,
-    environment: environment,
+    environment: {
+      ...environment,
+      if (sesoriMcp case final server?) sesoriMcpTokenVariable: server.token,
+    },
   );
 
   /// The full argument vector, excluding the executable itself.
@@ -196,7 +232,9 @@ class ClaudeLaunchSpec({
     "--allowedTools",
     _readOnlyDirectoryRule(directory: transcriptsDirectory),
     _readOnlyDirectoryRule(directory: uploadsDirectory),
+    if (sesoriMcp case final server?) _sesoriMcpToolRule(server: server),
     ...allowedTools,
+    if (sesoriMcp case final server?) ...["--mcp-config", _sesoriMcpConfig(server: server)],
     if (purpose == ClaudeProcessPurpose.catalogProbe) ...catalogProbeIsolationArguments,
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
