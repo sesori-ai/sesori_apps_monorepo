@@ -8,6 +8,8 @@ import "package:pi_plugin/src/api/pi_rpc_startup_extension.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_sesori_mcp_access.dart";
+
 void main() {
   group("PiPluginDescriptor.needsManagedRuntimeUpgrade", () {
     late Directory stateDir;
@@ -78,6 +80,7 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.namesCommandInvocations, isTrue);
+      expect(descriptor.injectsSesoriTools, isTrue);
       expect(descriptor.residencyPolicy(config: config), PluginResidencyPolicy.resident);
       expect(
         descriptor.managementCapabilities(config: config),
@@ -266,6 +269,7 @@ void main() {
       Map<String, String>? capturedStorageEnvironment;
       Map<String, String>? capturedProcessEnvironment;
       Duration? Function()? capturedIdleTimeoutResolver;
+      SesoriMcpAccess? capturedSesoriMcp;
       final descriptor = _descriptor(
         buildPlugin:
             ({
@@ -273,6 +277,7 @@ void main() {
               required storageEnvironment,
               required processEnvironment,
               required processFactory,
+              required sesoriMcp,
               required clock,
               required launchDirectory,
               required startupExitTimeout,
@@ -286,11 +291,13 @@ void main() {
               capturedStorageEnvironment = storageEnvironment;
               capturedProcessEnvironment = processEnvironment;
               capturedIdleTimeoutResolver = resolveIdleTimeout;
+              capturedSesoriMcp = sesoriMcp;
               return _plugin(
                 binaryPath: binaryPath,
                 storageEnvironment: storageEnvironment,
                 processEnvironment: processEnvironment,
                 processFactory: processFactory,
+                sesoriMcp: sesoriMcp,
                 clock: clock,
                 launchDirectory: launchDirectory,
                 startupExitTimeout: startupExitTimeout,
@@ -313,6 +320,7 @@ void main() {
       expect(capturedStorageEnvironment, containsPair("HOME", "/home/test"));
       expect(capturedProcessEnvironment, isEmpty);
       expect(capturedIdleTimeoutResolver?.call(), const Duration(minutes: 17));
+      expect(capturedSesoriMcp, same(host.sesoriMcp));
       expect(plugin.currentStatus, const PluginReady());
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
@@ -330,6 +338,7 @@ void main() {
               required storageEnvironment,
               required processEnvironment,
               required processFactory,
+              required sesoriMcp,
               required clock,
               required launchDirectory,
               required startupExitTimeout,
@@ -344,6 +353,7 @@ void main() {
                 storageEnvironment: storageEnvironment,
                 processEnvironment: processEnvironment,
                 processFactory: processFactory,
+                sesoriMcp: sesoriMcp,
                 clock: clock,
                 launchDirectory: launchDirectory,
                 startupExitTimeout: startupExitTimeout,
@@ -500,6 +510,7 @@ PiPlugin _plugin({
   required Map<String, String> storageEnvironment,
   required Map<String, String> processEnvironment,
   required PiProcessFactory processFactory,
+  required SesoriMcpAccess sesoriMcp,
   required ServerClock clock,
   required String launchDirectory,
   required Duration startupExitTimeout,
@@ -513,6 +524,7 @@ PiPlugin _plugin({
   storageEnvironment: storageEnvironment,
   processEnvironment: processEnvironment,
   processFactory: processFactory,
+  sesoriMcp: sesoriMcp,
   clock: clock,
   launchDirectory: launchDirectory,
   startupExitTimeout: startupExitTimeout,
@@ -540,6 +552,9 @@ class _Host({
 
   @override
   ServerClock get clock => const ServerClock();
+
+  @override
+  final SesoriMcpAccess sesoriMcp = FakeSesoriMcpAccess(enabled: false);
 
   @override
   String get stateDirectory => "/state";

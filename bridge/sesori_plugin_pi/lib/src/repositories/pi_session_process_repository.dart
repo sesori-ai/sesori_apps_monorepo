@@ -13,6 +13,7 @@ import "../api/models/pi_session_history_dto.dart";
 import "../api/pi_launch_spec.dart";
 import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
+import "../api/pi_rpc_startup_extension.dart";
 import "../api/pi_session_storage_api.dart";
 import "../models/pi_rpc_command.dart";
 import "../models/pi_thinking_level.dart";
@@ -132,6 +133,7 @@ final class PiSessionProcessRepository({
   required final String _binaryPath,
   required Map<String, String> environment,
   required final PiProcessFactory _processFactory,
+  required final SesoriMcpAccess _sesoriMcp,
   required final PiHistoryMapper _historyMapper,
   required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
@@ -272,6 +274,10 @@ final class PiSessionProcessRepository({
         cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
       ),
     };
+    // Only a resident process serves prompts, so only it gets Sesori's tools.
+    // Pi uses the bridge-generated session id, so the launch binds at once.
+    final sesoriMcp = _sesoriMcp.mint();
+    if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: sessionId);
     final client = PiRpcClient(
       launchSpec: PiLaunchSpec(
         binaryPath: _binaryPath,
@@ -279,7 +285,10 @@ final class PiSessionProcessRepository({
         launch: launch,
         model: model,
         thinkingLevel: variant?.id,
-        environment: _environment,
+        environment: {
+          ..._environment,
+          if (sesoriMcp != null) ...piSesoriMcpEnvironment(launch: sesoriMcp),
+        },
       ),
       processFactory: _processFactory,
     );

@@ -13,6 +13,7 @@ import "package:test/test.dart";
 
 import "support/fake_pi_process.dart";
 import "support/fake_pi_session_storage_api.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   late List<PiExtensionUiEvent> events;
@@ -481,6 +482,7 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
     binaryPath: "/runtime/pi",
     environment: const {},
     processFactory: ({required spec}) async => processes.last,
+    sesoriMcp: FakeSesoriMcpAccess(enabled: false),
     historyMapper: PiHistoryMapper(pluginId: "pi"),
     identityTracker: PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: const Duration(milliseconds: 50),
