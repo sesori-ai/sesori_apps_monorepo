@@ -19,12 +19,14 @@ class CopilotPlugin._({
   required super.commandTracker,
   required CopilotSessionOptionsService copilotSessionOptionsService,
   required super.processFactory,
+  required super.sesoriMcp,
 }) extends AcpPlugin {
   factory({
     required String binaryPath,
     required String launchDirectory,
     required Map<String, String> environment,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker(selectionCommands: CopilotCatalogRepository.selectionCommands);
@@ -62,6 +64,7 @@ class CopilotPlugin._({
       commandTracker: commandTracker,
       copilotSessionOptionsService: copilotSessionOptionsService,
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
     );
   }
 

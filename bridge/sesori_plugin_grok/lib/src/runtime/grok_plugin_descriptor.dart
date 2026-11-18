@@ -67,6 +67,9 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   bool get supportsPromptAttachments => false;
 
   @override
+  bool get injectsSesoriTools => true;
+
+  @override
   bool get namesCommandInvocations => true;
 
   @override
@@ -294,6 +297,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
         environment: host.environment,
       ),
       clock: host.clock,
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     return await AcpBridgePlugin.start(plugin: grok, host: host, connectBudget: _connectBudget);
   }

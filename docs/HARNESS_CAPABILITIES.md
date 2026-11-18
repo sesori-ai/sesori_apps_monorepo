@@ -169,6 +169,32 @@ resolves relative file paths.
 | GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
 | Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
 
+## Sesori agent tools
+
+Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with
+tools for scheduled tasks (see
+[Sesori MCP regression coverage](regression/sesori-mcp.md)). Each plugin hands
+it to its harness through a per-session launch seam, never through user
+configuration, and declares `injectsSesoriTools` once it does.
+
+ACP plugins send it in the `mcpServers` list of `session/new`, `session/load`
+and `session/resume` as a streamable-HTTP entry whose token rides in an
+`Authorization` header, never in argv, a URL or the agent's environment. Each
+session keeps one token for the bridge's lifetime, and every later load of that
+session re-sends the same entry. Probes and the short-lived history process
+send an empty list.
+
+| Harness | Sesori availability |
+|---|---|
+| Oh My Pi | ✅ No native prompt before a Sesori tool. One OMP process serves every session, and two concurrent runs each got their own task. ACP mode does not load OMP's configured MCP servers in any session, with or without Sesori's. OMP's config is unchanged and its session files hold only the transcript. Verified live on 18.21.0, 2026-11-17. |
+| Grok | ✅ Grok asks its own permission before each Sesori tool, including reads, and then the bridge asks for each proposal. Two concurrent runs each got their own task. Sesori's server replaces a user server of the same name for the session. Grok's `events.jsonl` keeps the server URL but not the header, and its config is unchanged. Verified live on 1.0.30, 2026-11-17. |
+| GitHub Copilot | ✅ Read tools run without a prompt; proposing tools get Copilot's own permission and then the bridge's. Two concurrent runs each got their own task. A user server of the same name wins over Sesori's. With an OpenAI-compatible test provider, `update_task` failed: the model filled every optional field with empty values, which the tool rejects, while `get_task` and `pause_task` worked. Unverified with a GitHub-hosted model. Verified live on 1.0.113, 2026-11-17. |
+| Antigravity | ⬜ The plugin can pass the server, but it stays off until a live tool call passes; that needs a signed-in Google account. |
+| Hermes | ⬜ Gap: Hermes keeps one MCP registry per process keyed by server name, so a second session may reach Sesori with the first session's identity. Stays off until a live two-session check passes; not run, because starting Hermes in an isolated home runs its self-bootstrap. |
+| Cursor | ⬜ Unverified: `session/new` needs a signed-in account. |
+| DeepSeek | 🚫 The adapter rejects any MCP server ("MCP servers are not supported"). Checked on 0.2.3. |
+| Other harnesses | ⬜ Not injected yet. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a
@@ -1166,7 +1192,8 @@ process, so neither serves resident inventory or Sesori-owned sign-in.
 In the [ACP protocol-1 schema][acp-mcp-schema], `mcpCapabilities.http` and
 `.sse` and the server definitions that `session/new` and `session/load` take
 describe accepted transports only, not inventory, controls, OAuth or connector
-discovery; Sesori passes an empty `mcpServers` list. Vendor extensions and
+discovery; Sesori's list carries only its own `sesori_bridge` server, and only
+on harnesses that inject it (see "Sesori agent tools"). Vendor extensions and
 separate native CLIs are not implemented or audited, so this does not claim
 those harnesses lack MCP internally.
 

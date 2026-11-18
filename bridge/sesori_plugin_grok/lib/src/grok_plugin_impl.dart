@@ -26,6 +26,7 @@ class GrokPlugin._({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
   required GrokSessionOptionsService grokSessionOptionsService,
   required final GrokSessionService _sessionService,
 }) extends AcpPlugin {
@@ -34,6 +35,7 @@ class GrokPlugin._({
     required String launchDirectory,
     required Map<String, String> environment,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
     required ServerClock clock,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
@@ -79,6 +81,7 @@ class GrokPlugin._({
       ),
       commandTracker: commandTracker,
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
       grokSessionOptionsService: grokSessionOptionsService,
       sessionService: GrokSessionService(
         catalogRepository: sessionCatalogRepository,

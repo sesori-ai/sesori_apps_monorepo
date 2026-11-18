@@ -1,5 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriMcpAccess;
 
 import "../antigravity_event_mapper.dart";
 import "../antigravity_plugin_impl.dart";
@@ -26,6 +27,7 @@ class const AntigravityPluginComposer() {
     required AntigravityPreparedProfile profile,
     required String launchDirectory,
     required AcpProcessFactory processFactory,
+    required SesoriMcpAccess? sesoriMcp,
   }) {
     const protocol = AntigravityProtocolMapper();
     final configuration = AcpSessionConfigurationTracker();
@@ -40,6 +42,7 @@ class const AntigravityPluginComposer() {
       ),
       launchDirectory: launchDirectory,
       processFactory: processFactory,
+      sesoriMcp: sesoriMcp,
       eventMapper: AntigravityEventMapper(
         launchDirectory: launchDirectory,
         pluginId: AntigravityIdentity.pluginId,

@@ -523,6 +523,7 @@ HermesPlugin _plugin({
     discoveryTimeout: const Duration(seconds: 2),
   );
   return HermesPlugin(
+    sesoriMcp: null,
     launchSpec: HermesBinary.launchSpec(
       binary: HermesBinary.defaultBinary,
       cwd: "/repo",

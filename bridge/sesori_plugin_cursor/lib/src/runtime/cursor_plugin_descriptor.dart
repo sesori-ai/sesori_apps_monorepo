@@ -33,6 +33,7 @@ typedef CursorPluginFactory = CursorPlugin Function({
   required String? apiEndpoint,
   required AcpProcessFactory processFactory,
   required CursorSessionCleanupService sessionCleanupService,
+  required SesoriMcpAccess? sesoriMcp,
 });
 
 CursorPlugin _defaultBuildPlugin({
@@ -41,6 +42,7 @@ CursorPlugin _defaultBuildPlugin({
   required String? apiEndpoint,
   required AcpProcessFactory processFactory,
   required CursorSessionCleanupService sessionCleanupService,
+  required SesoriMcpAccess? sesoriMcp,
 }) {
   return CursorPlugin(
     binaryPath: binaryPath,
@@ -48,6 +50,7 @@ CursorPlugin _defaultBuildPlugin({
     apiEndpoint: apiEndpoint,
     processFactory: processFactory,
     sessionCleanupService: sessionCleanupService,
+    sesoriMcp: sesoriMcp,
   );
 }
 
@@ -445,6 +448,7 @@ class const CursorPluginDescriptor({
       apiEndpoint: apiEndpoint,
       processFactory: processFactory,
       sessionCleanupService: sessionCleanupService,
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
     // first mobile request is fast and the status reflects reality; a

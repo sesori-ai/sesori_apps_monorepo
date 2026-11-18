@@ -484,6 +484,7 @@ class const AntigravityPluginDescriptor({
       profile: prepared.profile,
       launchDirectory: launchDirectory ?? Directory.current.path,
       processFactory: hostProcessAcpFactory(processes: host.processes, environment: prepared.profile.environment),
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     return await AcpBridgePlugin.start(plugin: plugin, host: host, connectBudget: connectBudget);
   }

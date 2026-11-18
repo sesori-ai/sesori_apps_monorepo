@@ -15,6 +15,7 @@ class _PolicyPlugin({
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
+  required super.sesoriMcp,
   required final AcpResidencyPreference preference,
   required final AcpPendingRegistry<Object>? registry,
   required final AcpOutputInterceptors Function()? outputFactory,
@@ -69,6 +70,7 @@ _PolicyPlugin _compose({
   final commands = AcpCommandTracker(selectionCommands: const {});
   final children = AcpChildSessionTracker();
   return _PolicyPlugin(
+    sesoriMcp: null,
     id: "test",
     agentDisplayName: "Test",
     launchDirectory: "/repo",

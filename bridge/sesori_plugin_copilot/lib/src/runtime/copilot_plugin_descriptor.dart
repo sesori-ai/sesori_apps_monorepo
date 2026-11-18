@@ -19,6 +19,7 @@ typedef CopilotPluginFactory = CopilotPlugin Function({
   required String launchDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
+  required SesoriMcpAccess? sesoriMcp,
 });
 
 CopilotPlugin _buildCopilotPlugin({
@@ -26,11 +27,13 @@ CopilotPlugin _buildCopilotPlugin({
   required String launchDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
+  required SesoriMcpAccess? sesoriMcp,
 }) => CopilotPlugin(
   binaryPath: binaryPath,
   launchDirectory: launchDirectory,
   environment: environment,
   processFactory: processFactory,
+  sesoriMcp: sesoriMcp,
 );
 
 final class const CopilotPluginDescriptor({
@@ -78,6 +81,9 @@ final class const CopilotPluginDescriptor({
 
   @override
   bool get supportsPromptAttachments => true;
+
+  @override
+  bool get injectsSesoriTools => true;
 
   @override
   bool get namesCommandInvocations => true;
@@ -307,6 +313,7 @@ final class const CopilotPluginDescriptor({
         processes: host.processes,
         environment: host.environment,
       ),
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     return await AcpBridgePlugin.start(plugin: copilot, host: host, connectBudget: _connectBudget);
   }
