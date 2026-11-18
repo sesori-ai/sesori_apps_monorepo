@@ -38,7 +38,12 @@ void main() {
     });
 
     // The shape Grok 1.0.30 sends, captured live.
-    void requestPermission({required int id, required String sessionId, required String grokTool, required Map<String, Object?> rawInput}) {
+    void requestPermission({
+      required int id,
+      required String sessionId,
+      required String grokTool,
+      required Map<String, Object?> rawInput,
+    }) {
       fake.emit({
         "jsonrpc": "2.0",
         "id": id,
@@ -68,7 +73,12 @@ void main() {
     Future<void> pump() => Future<void>.delayed(const Duration(milliseconds: 10));
 
     test("a Sesori tool in a session given Sesori's server is allowed once without asking", () async {
-      requestPermission(id: 1, sessionId: "with-sesori", grokTool: "use_tool", rawInput: useTool("sesori_bridge__get_task"));
+      requestPermission(
+        id: 1,
+        sessionId: "with-sesori",
+        grokTool: "use_tool",
+        rawInput: useTool("sesori_bridge__get_task"),
+      );
       await pump();
 
       expect(emitted, isEmpty);
@@ -82,9 +92,24 @@ void main() {
     });
 
     test("other tools and sessions without Sesori's server still ask", () async {
-      requestPermission(id: 1, sessionId: "without", grokTool: "use_tool", rawInput: useTool("sesori_bridge__get_task"));
-      requestPermission(id: 2, sessionId: "with-sesori", grokTool: "use_tool", rawInput: useTool("github__create_issue"));
-      requestPermission(id: 3, sessionId: "with-sesori", grokTool: "use_tool", rawInput: useTool("sesori_bridge__x__y"));
+      requestPermission(
+        id: 1,
+        sessionId: "without",
+        grokTool: "use_tool",
+        rawInput: useTool("sesori_bridge__get_task"),
+      );
+      requestPermission(
+        id: 2,
+        sessionId: "with-sesori",
+        grokTool: "use_tool",
+        rawInput: useTool("github__create_issue"),
+      );
+      requestPermission(
+        id: 3,
+        sessionId: "with-sesori",
+        grokTool: "use_tool",
+        rawInput: useTool("sesori_bridge__x__y"),
+      );
       requestPermission(
         id: 4,
         sessionId: "with-sesori",
