@@ -113,7 +113,8 @@ class SesoriMcpRequestDispatcher({
       "serverInfo": {"name": sesoriMcpServerName, "version": bridgeVersion},
       "instructions":
           "Sesori's tools for the scheduled tasks on this computer. Start with list_tasks; get_task without a "
-          "task_id shows this session's own task when it is a scheduled run.",
+          "task_id shows this session's own task when it is a scheduled run. Tools that change a task only send "
+          "the user a request to allow; they return before the user answers.",
     };
   }
 
@@ -179,7 +180,7 @@ class SesoriMcpRequestDispatcher({
           AgentTaskNotFound(:final taskId) => _ToolOutcome(isError: true, text: _taskNotFound(taskId: taskId)),
         };
       case SesoriMcpTool.listTaskRuns:
-        final args = _parse(json: arguments, fromJson: ListTaskRunsArguments.fromJson);
+        final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
         return switch (await _agent.listTaskRuns(taskId: args.taskId)) {
           final AgentTaskRuns runs => _ToolOutcome(
             isError: false,
@@ -190,7 +191,38 @@ class SesoriMcpRequestDispatcher({
       case SesoriMcpTool.getTaskRunTranscript:
         final args = _parse(json: arguments, fromJson: GetTaskRunTranscriptArguments.fromJson);
         return await _transcript(args: args);
+      case SesoriMcpTool.pauseTask || SesoriMcpTool.resumeTask:
+        final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
+        final proposal = await _agent.proposeSetEnabled(
+          caller: caller,
+          taskId: args.taskId,
+          enabled: tool == SesoriMcpTool.resumeTask,
+        );
+        return _proposal(proposal: proposal);
+      case SesoriMcpTool.runTaskNow:
+        final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
+        final proposal = await _agent.proposeRunNow(caller: caller, taskId: args.taskId);
+        return _proposal(proposal: proposal);
     }
+  }
+
+  _ToolOutcome _proposal({required AgentProposal proposal}) {
+    const sent = "Sent to the user for approval. Nothing happens unless they allow it.";
+    return switch (proposal) {
+      AgentProposalSent(withdrewPrevious: false) => const _ToolOutcome(isError: false, text: sent),
+      AgentProposalSent(withdrewPrevious: true) => const _ToolOutcome(
+        isError: false,
+        text: "$sent It replaces this session's earlier request, which can no longer be allowed.",
+      ),
+      AgentProposalTaskNotFound(:final taskId) => _ToolOutcome(isError: true, text: _taskNotFound(taskId: taskId)),
+      AgentProposalRefused(:final reason) => _ToolOutcome(
+        isError: true,
+        text: switch (reason) {
+          AgentProposalRefusal.callerGone => "This session is no longer known to Sesori.",
+          AgentProposalRefusal.alreadyInState => "The task is already in that state.",
+        },
+      ),
+    };
   }
 
   /// The newest messages before `page` that fit one page. A page that

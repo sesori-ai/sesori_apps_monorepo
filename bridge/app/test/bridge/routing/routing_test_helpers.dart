@@ -27,11 +27,13 @@ import "package:sesori_bridge/src/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/routing/request_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/pending_interaction_service.dart";
+import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/services/session_view_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
+import "package:sesori_shared/sesori_shared.dart" as shared show PermissionReply;
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
@@ -482,6 +484,12 @@ class FakeSessionRepository({
         ],
       ),
   ];
+
+  @override
+  Future<List<ProjectActivitySummary>> markAwaitingInput({
+    required List<ProjectActivitySummary> projects,
+    required Set<String> rootSessionIds,
+  }) async => projects;
 
   @override
   Future<bool> isSessionRunning({required String sessionId}) async => false;
@@ -984,4 +992,18 @@ class FakeSessionRepository({
 
   @override
   Future<String> resolveProjectDirectory({required String projectId}) async => projectId;
+}
+
+/// A [ScheduledTaskAgentService] with no agent approvals, for handler tests
+/// about plugin permissions.
+class NoAgentApprovalsService() implements ScheduledTaskAgentService {
+  @override
+  List<PendingPermission> pendingPermissions({required String sessionId}) => const [];
+
+  @override
+  Future<AgentApprovalSettlement> settle({required String requestId, required shared.PermissionReply reply}) async =>
+      const NotAgentApproval();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

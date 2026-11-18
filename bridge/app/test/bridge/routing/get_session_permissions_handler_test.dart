@@ -37,6 +37,7 @@ void main() {
         parentSessionId: "root",
       );
       handler = GetSessionPermissionsHandler(
+        scheduledTaskAgentService: NoAgentApprovalsService(),
         permissionRepository: singlePluginPermissionRepository(plugin: plugin, sessionDao: db.sessionDao),
         permissionAutoApprovalService: autoApprovalService,
       );
@@ -102,6 +103,7 @@ void main() {
       addTearDown(editsPlugin.close);
       final repository = singlePluginPermissionRepository(plugin: editsPlugin, sessionDao: db.sessionDao);
       final permissionsHandler = GetSessionPermissionsHandler(
+        scheduledTaskAgentService: NoAgentApprovalsService(),
         permissionRepository: repository,
         permissionAutoApprovalService: autoApprovalService,
       );
@@ -162,6 +164,7 @@ void main() {
         sessionDao: db.sessionDao,
       );
       final derivedHandler = GetSessionPermissionsHandler(
+        scheduledTaskAgentService: NoAgentApprovalsService(),
         permissionRepository: repository,
         permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
       );
@@ -237,6 +240,7 @@ void main() {
         );
       }
       final derivedHandler = GetSessionPermissionsHandler(
+        scheduledTaskAgentService: NoAgentApprovalsService(),
         permissionRepository: singlePluginPermissionRepository(
           plugin: derivedPlugin,
           sessionDao: db.sessionDao,

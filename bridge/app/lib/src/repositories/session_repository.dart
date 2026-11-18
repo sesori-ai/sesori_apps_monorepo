@@ -1501,6 +1501,43 @@ class SessionRepository({
     ];
   }
 
+  /// [projects] with each of [rootSessionIds] awaiting input: a listed active
+  /// session gets the flag, and an idle one is added under its stored project.
+  /// Archived and unknown sessions stay out, as in the plugin summaries.
+  Future<List<ProjectActivitySummary>> markAwaitingInput({
+    required List<ProjectActivitySummary> projects,
+    required Set<String> rootSessionIds,
+  }) async {
+    if (rootSessionIds.isEmpty) return projects;
+    final listed = {
+      for (final project in projects)
+        for (final active in project.activeSessions) active.id,
+    };
+    final byProject = <String, List<ActiveSession>>{
+      for (final project in projects)
+        project.id: [
+          for (final active in project.activeSessions)
+            rootSessionIds.contains(active.id) ? active.copyWith(awaitingInput: true) : active,
+        ],
+    };
+    for (final sessionId in rootSessionIds.difference(listed)) {
+      final row = await _sessionDao.getSession(sessionId: sessionId);
+      if (row == null || row.archivedAt != null) continue;
+      (byProject[row.projectId] ??= <ActiveSession>[]).add(
+        ActiveSession(
+          id: row.sessionId,
+          awaitingInput: true,
+          lastUserActivityAt: row.lastUserMessageAt,
+          updatedAt: row.updatedAt,
+          sending: null,
+        ),
+      );
+    }
+    return [
+      for (final entry in byProject.entries) ProjectActivitySummary(id: entry.key, activeSessions: entry.value),
+    ];
+  }
+
   /// Whether [sessionId] is running by the rule the Running filter and the
   /// apps apply. Only active root sessions can be; an archived one never is.
   Future<bool> isSessionRunning({required String sessionId}) async {

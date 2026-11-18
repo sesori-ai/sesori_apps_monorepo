@@ -6,10 +6,10 @@ Slug: `sesori-mcp`.
 
 - **Date:** 2026-11-17. Code facts come from `origin/main` at `062376863b`
   (product version 1.14.1, bridge drift schema 30).
-- **Stage:** steps 1–2 done: the endpoint, caller identity and bridge setting
-  exist, but no plugin injects, so no harness reaches them yet. Step 2 was
-  split in two for size, so the series now has 10 steps and the read tools
-  are step 3.
+- **Stage:** steps 1–3 done (the endpoint, caller identity, bridge setting
+  and read tools); step 4 (approvals with pause, resume and run now) is in
+  review. No plugin injects yet, so no harness reaches the server. Steps 2 and
+  4 were each split in two for size, so the series has 11 steps.
 - **Settled by the owner:**
   - Any agent create or modify of a task asks the user for approval. That
     includes a scheduled run editing its own prompt, so self-improvement
@@ -529,7 +529,7 @@ existing wire, push, client modal and reply route unchanged.
 
 ## Delivery series (phase 1)
 
-Every PR title has the form `<emoji> [sesori-mcp] <description> [step x/10]`.
+Every PR title has the form `<emoji> [sesori-mcp] <description> [step x/11]`.
 There is no migration, no wire change and no client code change.
 
 1. 🌱 **Publish the plan.** No user-visible or database change.
@@ -549,21 +549,21 @@ There is no migration, no wire change and no client code change.
    - Proposal and settle in the agent service.
    - Orchestrator delivery, the permissions-handler merge, reply routing,
      and the awaiting-input overlay on project summaries.
-   - `create_task`, `update_task`, `pause_task`, `resume_task`,
-     `run_task_now`.
-   - About 1,000–1,300 lines.
-5. 🌿 **Scheduled-run note.**
+   - `pause_task`, `resume_task`, `run_task_now`.
+5. ⚙️ **Create and update tools.** `create_task` and `update_task`, the
+   pre-approval validation, and the full field list in the request text.
+6. 🌿 **Scheduled-run note.**
    - `buildScheduledRunContext`, generalising the strip to
      `stripSystemContext`, the `runContext` parameter on both run start
      paths, and the `sesoriToolsSupported` read.
    - Every plugin flag is still off, so nothing changes for users yet.
    - About 300–500 lines.
-6. ⚙️ **Claude injection.** Launch-spec arguments, `--allowedTools`, the
+7. ⚙️ **Claude injection.** Launch-spec arguments, `--allowedTools`, the
    inventory mapper, turning the flag on, and live verification. Updates
    `docs/HARNESS_CAPABILITIES.md`.
-7. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
+8. ⚙️ **Codex injection.** Per-thread config, the approve mode, inventory,
    the flag, and live verification.
-8. ⚙️ **ACP injection.**
+9. ⚙️ **ACP injection.**
    - The shared seam with a descriptor flag, the resident-history reload, and
      the stale comment.
    - Enabled for OMP, Grok, Copilot and Antigravity.
@@ -571,14 +571,14 @@ There is no migration, no wire change and no client code change.
      gap.
    - Cursor is enabled when verified, otherwise recorded as unverified.
    - DeepSeek is recorded as not supported.
-9. 🌿 **Pi forwarder** in the startup extension, the flag, and live
+10. 🌿 **Pi forwarder** in the startup extension, the flag, and live
    verification.
-10. 🌱 **Run the regression and retire the plan.**
+11. 🌱 **Run the regression and retire the plan.**
 
 - **Order:**
-  - Steps 6–9 depend on 4 and 5, so no harness ever sees write tools without
+  - Steps 7–10 depend on 4–6, so no harness ever sees write tools without
     the gate, and the note arrives with the tools.
-  - Steps 6–9 are independent of each other.
+  - Steps 7–10 are independent of each other.
   - Each injection step updates its rows in `docs/HARNESS_CAPABILITIES.md`
     and `sesori-mcp.md`.
 - **Estimates:** injection steps run 200–500 lines each.
@@ -602,7 +602,7 @@ the `README.md` index.
 ## Cleanup assessment
 
 - The ACP comment "The bridge never injects MCP servers" and the constant
-  empty list are replaced in step 8.
+  empty list are replaced in step 9.
 - Claude's catalog-probe `--strict-mcp-config` stays: probes must load no MCP
   server, Sesori's included.
 - The scheduled-tasks "Later Phases" bullet is superseded by this plan. No code

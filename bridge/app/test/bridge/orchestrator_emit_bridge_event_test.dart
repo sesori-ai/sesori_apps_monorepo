@@ -8,13 +8,16 @@ import "package:cryptography/cryptography.dart";
 import "package:drift/native.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
+import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_continuation_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
@@ -989,6 +992,148 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("an agent approval keeps a finished run awaiting input across a reconnect, and YOLO never answers it", () async {
+    final relayServer = await TestRelayServer.start();
+    final mcpServer = await SesoriMcpServer.bindLoopback();
+    final grants = SesoriMcpGrantRepository(random: Random());
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+      sesoriMcpRequests: mcpServer.requests,
+      sesoriMcpGrants: grants,
+    );
+    addTearDown(() async {
+      await harness.close();
+      await mcpServer.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    final roomKey = await _exchangeRoomKey(socket: socket, messages: messages, connID: 405);
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final tasks = ScheduledTaskRepository(dao: ScheduledTaskDao(database: harness.database));
+    final task = await tasks.create(
+      definition: const ScheduledTaskDefinition(
+        name: "Nightly",
+        prompt: ScheduledTaskPrompt.text(text: "Check the build"),
+        projectId: "project",
+        pluginId: "one",
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+        dedicatedWorktree: false,
+        schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 2, minute: 0)),
+        timeZone: "UTC",
+        missedRunPolicy: TaskMissedRunPolicy.runWhenBack,
+        runMode: TaskRunMode.newSession(),
+        approvalMode: TaskApprovalMode.ask,
+      ),
+      nextDueAt: DateTime.utc(2099),
+      now: DateTime.utc(2026),
+    );
+    final yolo = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/settings",
+        body: jsonEncode(const BridgeSettingUpdate.yolo(enabled: true).toJson()),
+      ),
+    );
+    expect(yolo.status, 200);
+    final events = <SesoriSseEvent>[];
+    final subscription = harness.composition.session.localWireEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+    bool awaiting(SesoriProjectsSummary summary) => summary.projects
+        .expand((project) => project.activeSessions)
+        .any((session) => session.id == "stable-session" && session.awaitingInput);
+
+    // The run has finished: the harness reports no active session.
+    final token = grants.mint(pluginId: "one");
+    grants.bind(token: token, backendSessionId: "backend-session");
+    final proposal = await http.post(
+      mcpServer.url,
+      headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
+      body: jsonEncode({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "pause_task",
+          "arguments": {"task_id": task.id},
+        },
+      }),
+    );
+    expect(proposal.body, contains("Sent to the user for approval"));
+    await _waitFor(
+      () => events.whereType<SesoriProjectsSummary>().any(awaiting),
+      reason: "the summary marking the session awaiting",
+    );
+    final asked = events.whereType<SesoriPermissionAsked>().single;
+    expect(asked.sessionID, "stable-session");
+    expect(asked.tool, "Sesori: pause task");
+    expect(asked.allowAlways, isFalse);
+
+    // The session screen lists it beside the harness's own requests.
+    final pending = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/session/permissions",
+        body: jsonEncode(const SessionIdRequest(sessionId: "stable-session").toJson()),
+      ),
+    );
+    expect(pending.body, contains(asked.requestID));
+
+    // A reconnecting phone's first summary still lists it.
+    final summariesBefore = events.whereType<SesoriProjectsSummary>().length;
+    await _sendEncryptedRelayMessage(
+      socket: socket,
+      connID: 405,
+      roomKey: roomKey,
+      message: const RelayMessage.sseSubscribe(path: "/events"),
+    );
+    await _waitFor(
+      () => events.whereType<SesoriProjectsSummary>().length > summariesBefore,
+      reason: "the reconnect summary",
+    );
+    expect(awaiting(events.whereType<SesoriProjectsSummary>().last), isTrue);
+
+    // YOLO is on, yet nothing answered the request.
+    expect(events.whereType<SesoriPermissionReplied>(), isEmpty);
+    expect((await tasks.get(taskId: task.id))?.enabled, isTrue);
+
+    final reply = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/permission/reply",
+        body: jsonEncode(
+          ReplyToPermissionRequest(
+            requestId: asked.requestID,
+            sessionId: "stable-session",
+            reply: PermissionReply.once,
+          ).toJson(),
+        ),
+      ),
+    );
+    expect(reply.status, 200);
+    expect((await tasks.get(taskId: task.id))?.enabled, isFalse);
+    await _waitFor(
+      () =>
+          events.whereType<SesoriPermissionReplied>().isNotEmpty &&
+          !awaiting(events.whereType<SesoriProjectsSummary>().last),
+      reason: "the reply and a summary without the request",
+    );
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await messages.cancel();
+  });
+
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -1592,12 +1737,22 @@ class const _OrchestratorHarness({
   static Future<_OrchestratorHarness> create({
     required List<String> pluginIds,
     String relayUrl = "ws://127.0.0.1:1",
-  }) => createWithDatabase(pluginIds: pluginIds, relayUrl: relayUrl, database: createTestDatabase());
+    Stream<SesoriMcpInboundRequest> sesoriMcpRequests = const Stream.empty(),
+    SesoriMcpGrantRepository? sesoriMcpGrants,
+  }) => createWithDatabase(
+    pluginIds: pluginIds,
+    relayUrl: relayUrl,
+    database: createTestDatabase(),
+    sesoriMcpRequests: sesoriMcpRequests,
+    sesoriMcpGrants: sesoriMcpGrants,
+  );
 
   static Future<_OrchestratorHarness> createWithDatabase({
     required List<String> pluginIds,
     required String relayUrl,
     required AppDatabase database,
+    Stream<SesoriMcpInboundRequest> sesoriMcpRequests = const Stream.empty(),
+    SesoriMcpGrantRepository? sesoriMcpGrants,
   }) async {
     final plugins = [for (final id in pluginIds) _SourcedPlugin(id)];
     final lifecycleService = await createPluginLifecycleService(plugins: plugins);
@@ -1636,8 +1791,8 @@ class const _OrchestratorHarness({
       bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
-      sesoriMcpRequests: const Stream.empty(),
-      sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+      sesoriMcpRequests: sesoriMcpRequests,
+      sesoriMcpGrants: sesoriMcpGrants ?? SesoriMcpGrantRepository(random: Random()),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

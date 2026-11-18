@@ -13,7 +13,7 @@ class const ProjectCatalogMapper() {
   }) {
     return ProjectSummary(
       id: row.projectId,
-      name: _name(row),
+      name: name(row: row),
       path: row.path,
       time: ProjectTime(created: row.createdAt, updated: row.updatedAt),
       hasUnseenChanges: hasUnseenChanges,
@@ -31,7 +31,7 @@ class const ProjectCatalogMapper() {
   }) {
     return Project(
       id: row.projectId,
-      name: _name(row),
+      name: name(row: row),
       path: row.path,
       time: ProjectTime(created: row.createdAt, updated: row.updatedAt),
       hasUnseenChanges: hasUnseenChanges,
@@ -41,7 +41,8 @@ class const ProjectCatalogMapper() {
     );
   }
 
-  String _name(ProjectDto row) {
+  /// The stored display name, or the folder name when there is none.
+  String name({required ProjectDto row}) {
     final fallbackName = p.basename(row.path);
     return row.displayName ?? (fallbackName.isEmpty ? row.path : fallbackName);
   }

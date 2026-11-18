@@ -12,8 +12,8 @@ _ListTasksArguments _$ListTasksArgumentsFromJson(Map json) =>
 _GetTaskArguments _$GetTaskArgumentsFromJson(Map json) =>
     _GetTaskArguments(taskId: json['task_id'] as String?);
 
-_ListTaskRunsArguments _$ListTaskRunsArgumentsFromJson(Map json) =>
-    _ListTaskRunsArguments(taskId: json['task_id'] as String);
+_TaskIdArguments _$TaskIdArgumentsFromJson(Map json) =>
+    _TaskIdArguments(taskId: json['task_id'] as String);
 
 _GetTaskRunTranscriptArguments _$GetTaskRunTranscriptArgumentsFromJson(
   Map json,
