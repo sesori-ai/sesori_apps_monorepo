@@ -9,8 +9,8 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-Pi sessions get the server; the other harnesses get it in later steps of the plan, and until then their checks run
-headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
+Codex threads and Pi sessions get the server; the other harnesses get it in later steps of the plan, and until
+then their checks run headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 
 | Tool | Effect |
 |---|---|
@@ -67,7 +67,7 @@ headlessly against the endpoint. Per-harness status is in [harness capabilities]
 - A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
   improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
   task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
-  declares false until its injection step (Pi declares true). A command task gets no note. The note goes to the harness only: the run's
+  declares false until its injection step (Codex and Pi declare true). A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note
   hides both.
 - Pi: the startup extension that every session process loads registers each listed tool with `pi.registerTool` as
@@ -81,8 +81,8 @@ headlessly against the endpoint. Per-harness status is in [harness capabilities]
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it), and for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list). |
-| L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. |
+| L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, one request per session, a run now that does not start, a grandchild's request on the root session, refused proposals), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it), for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list), and for Codex the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. |
+| L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. Codex: a scheduled run gets the note, calls `get_task` and `update_task` with no Codex prompt, and the request names the run's own task; Allow changes the next run's prompt; the thread inventory lists `sesori_bridge` and the user's server; a concurrent plain session's `get_task` answers that it is not a scheduled run; after a bridge restart a resumed thread's tool call works; a resume in Codex's own app-server lists only the user's server, `config.toml` is unchanged, and no token or server URL is in `CODEX_HOME`; the agent's own `env` shows no token. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -108,7 +108,7 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Known Limitations
 
-- Only Pi injects the server so far; the other harnesses land with their injection steps and are recorded in
+- Only Codex and Pi inject the server so far; the other harnesses land with their injection steps and are recorded in
   [harness capabilities](../HARNESS_CAPABILITIES.md).
 - On Pi, the token stays in the process's initial environment block, which only the same OS user can read.
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
@@ -119,7 +119,11 @@ task to its start and compare it with the app's view of the session. Use fixture
 ## Harness Scope
 
 The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: Pi (`bridge/sesori_plugin_pi`,
-`piRpcStartupExtensionSource`, `PiSessionProcessRepository`). Each later injection step adds its harness here.
+`piRpcStartupExtensionSource`, `PiSessionProcessRepository`) and Codex (below). Each later injection step adds its harness here.
+
+- Codex: per-thread `config` on `thread/start`, `thread/resume` and `thread/fork` (`CodexSessionService`,
+  `CodexAppServerApi`), never process-wide `-c`. An already-loaded thread keeps the token it was loaded with; the
+  bridge and its app-server restart together.
 
 ## Related Coverage and Sources
 

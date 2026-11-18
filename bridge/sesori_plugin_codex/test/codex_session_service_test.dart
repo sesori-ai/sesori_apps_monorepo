@@ -29,6 +29,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/codex_plugin_test_factory.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   test("detaching clears app-server loaded-thread state", () async {
@@ -622,6 +623,7 @@ CodexSessionService _newService({
     toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
     subAgentTracker: subAgentTracker ?? CodexSubAgentTracker(),
     sessionMapper: const CodexSessionMapper(),
+    sesoriMcp: FakeSesoriMcpAccess(enabled: false),
     launchDirectory: "/repo",
   );
 }
@@ -795,7 +797,11 @@ class _StubThreadRepository() extends CodexThreadRepository {
   Future<String?> readDeveloperInstructions({required String? cwd}) async => null;
 
   @override
-  Future<CodexResumedThread> resumeThread({required String threadId, required String developerInstructions}) async {
+  Future<CodexResumedThread> resumeThread({
+    required String threadId,
+    required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
+  }) async {
     resumeCount += 1;
     return CodexResumedThread(
       thread: CodexThreadRecord(

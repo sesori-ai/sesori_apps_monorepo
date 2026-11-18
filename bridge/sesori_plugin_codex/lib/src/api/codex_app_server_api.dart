@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, SesoriMcpLaunch;
 
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
@@ -135,6 +135,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required String? model,
     required bool fastMode,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     // No `modelProvider`: since 0.166.0 Codex rejects input on a thread whose
     // provider differs from the configured one, so a thread must use the
@@ -146,22 +147,43 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     // The first turn/start (below) always carries an explicit tier, so this
     // only matters for a thread created without an immediate turn.
     if (fastMode) params["serviceTier"] = CodexServiceTier.fast;
+    if (sesoriMcp != null) params["config"] = _sesoriMcpConfig(launch: sesoriMcp);
     final result = await _client.request(method: "thread/start", params: params, timeout: codexRequestTimeout);
     return _decodeResponse(result: result, operation: "thread/start");
   }
 
   /// Codex does not persist a thread's developer instructions, so a resume
-  /// sends them again. A resume of a thread that is still running ignores them.
+  /// sends them again, and the same holds for the thread's Sesori MCP server.
+  /// A resume of a thread that is still running ignores both.
   Future<CodexThreadEnvelopeDto> resumeThread({
     required String threadId,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     final result = await _client.request(
       method: "thread/resume",
-      params: {"threadId": threadId, "developerInstructions": developerInstructions},
+      params: {
+        "threadId": threadId,
+        "developerInstructions": developerInstructions,
+        if (sesoriMcp != null) "config": _sesoriMcpConfig(launch: sesoriMcp),
+      },
       timeout: codexRequestTimeout,
     );
     return _decodeResponse(result: result, operation: "thread/resume");
+  }
+
+  /// One thread's Sesori MCP server as per-thread config overrides. Dotted
+  /// keys merge into the user's `mcp_servers` table; a nested `mcp_servers`
+  /// object would replace it and drop the user's own servers. The token goes
+  /// in a header, never the URL. The bridge asks the user before any proposed
+  /// change takes effect, so the tools skip Codex's own approval prompt.
+  static Map<String, Object> _sesoriMcpConfig({required SesoriMcpLaunch launch}) {
+    final server = "mcp_servers.${launch.serverName}";
+    return {
+      "$server.url": launch.url,
+      "$server.http_headers": {"Authorization": "Bearer ${launch.token}"},
+      "$server.default_tools_approval_mode": "approve",
+    };
   }
 
   /// The user's effective config. [cwd] adds the project config layers seen
@@ -298,6 +320,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required String threadId,
     required String lastTurnId,
     required String developerInstructions,
+    required SesoriMcpLaunch? sesoriMcp,
   }) async {
     final result = await _client.request(
       method: "thread/fork",
@@ -305,6 +328,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         "threadId": threadId,
         "lastTurnId": lastTurnId,
         "developerInstructions": developerInstructions,
+        if (sesoriMcp != null) "config": _sesoriMcpConfig(launch: sesoriMcp),
         // Codex deprecates returning a paginated thread's whole history here.
         "excludeTurns": true,
       },
