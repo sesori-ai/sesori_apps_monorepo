@@ -7,8 +7,8 @@ Slug: `sesori-mcp`.
 - **Date:** 2026-11-17. Code facts come from `origin/main` at `062376863b`
   (product version 1.14.1, bridge drift schema 30).
 - **Stage:** steps 1–3 done (the endpoint, caller identity, bridge setting
-  and read tools); step 4 (approvals with pause, resume and run now) is in
-  review. No plugin injects yet, so no harness reaches the server. Steps 2 and
+  and read tools); steps 4 (approvals with pause, resume and run now) and 5
+  (create and update) are in review. No plugin injects yet, so no harness reaches the server. Steps 2 and
   4 were each split in two for size, so the series has 11 steps.
 - **Settled by the owner:**
   - Any agent create or modify of a task asks the user for approval. That
