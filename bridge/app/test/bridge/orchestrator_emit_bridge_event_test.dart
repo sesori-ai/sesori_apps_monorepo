@@ -1172,6 +1172,96 @@ void main() {
     await messages.cancel();
   });
 
+  test("a page an agent sends asks the user as a question, and closing it tells the session", () async {
+    final relayServer = await TestRelayServer.start();
+    final mcpServer = await SesoriMcpServer.bindLoopback();
+    final grants = SesoriMcpGrantRepository(random: Random());
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+      sesoriMcpRequests: mcpServer.requests,
+      sesoriMcpGrants: grants,
+    );
+    addTearDown(() async {
+      await harness.close();
+      await mcpServer.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    await _exchangeRoomKey(socket: socket, messages: messages, connID: 406);
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final events = <SesoriSseEvent>[];
+    final subscription = harness.composition.session.localWireEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+    bool awaiting(SesoriProjectsSummary summary) => summary.projects
+        .expand((project) => project.activeSessions)
+        .any((session) => session.id == "stable-session" && session.awaitingInput);
+
+    final token = grants.mint(pluginId: "one");
+    grants.bind(token: token, backendSessionId: "backend-session");
+    final sent = await http.post(
+      mcpServer.url,
+      headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
+      body: jsonEncode({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "send_page",
+          "arguments": {
+            "title": "Release plan",
+            "sections": [
+              {
+                "questions": [
+                  {"id": "q1", "title": "Anything else?", "kind": "text"},
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    );
+    expect(sent.body, contains("Sent “Release plan” to the user."));
+    await _waitFor(
+      () => events.whereType<SesoriProjectsSummary>().any(awaiting),
+      reason: "the summary marking the session awaiting",
+    );
+    final asked = events.whereType<SesoriQuestionAsked>().single;
+    expect(asked.sessionID, "stable-session");
+    expect(asked.interactionKind, QuestionInteractionKind.page);
+
+    final dismissed = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/question/reject",
+        body: jsonEncode(RejectQuestionRequest(requestId: asked.id, sessionId: "stable-session").toJson()),
+      ),
+    );
+    expect(dismissed.status, 200);
+    await _waitFor(
+      () =>
+          events.whereType<SesoriQuestionRejected>().any((event) => event.requestID == asked.id) &&
+          !awaiting(events.whereType<SesoriProjectsSummary>().last),
+      reason: "the rejection and a summary without the page",
+    );
+    final plugin = harness.plugins.single;
+    await _waitFor(() => plugin.sentPromptIds.isNotEmpty, reason: "the dismissal notice");
+    final noticeText = [
+      for (final part in plugin.lastSendPromptParts ?? const <PluginPromptPart>[])
+        if (part case PluginPromptPartText(:final text)) text,
+    ].join();
+    expect(noticeText, contains("You closed “Release plan” without answering."));
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await messages.cancel();
+  });
+
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
