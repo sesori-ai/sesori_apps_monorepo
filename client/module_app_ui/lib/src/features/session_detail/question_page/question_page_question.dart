@@ -238,8 +238,10 @@ class const QuestionPageFold({super.key, required final bool shown, required fin
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
     duration: context.isReducedMotion ? Duration.zero : _issueDuration,
-    switchInCurve: Curves.easeOutCubic,
-    switchOutCurve: Curves.easeInCubic,
+    // Eased at both ends both ways, so a fold starts gently enough for its
+    // fade to show; a steep curve run backwards spends half of it in a frame.
+    switchInCurve: Curves.easeInOutCubic,
+    switchOutCurve: Curves.easeInOutCubic,
     layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
     transitionBuilder: (child, animation) => SizeTransition(
       sizeFactor: animation,
