@@ -1425,6 +1425,22 @@ message ids was never affected.
 | Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
 | Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
+## History imports during a turn
+
+The bridge stores a running turn under the ids the live stream gives it. When
+a harness replays that turn under other ids, an import while the turn runs
+would show the streaming reply twice, so the bridge waits and imports once the
+turn ends (`replaysHistoryDuringTurn: false`). A change made outside Sesori
+during a turn then shows when the turn ends.
+
+| Harness | Status |
+|---|---|
+| Claude Code, Codex, Pi, OpenCode | ✅ Import during a turn: the same ids live and in replay. |
+| DeepSeek | ✅ Imports during a turn: its own history read names user rows by their ACP message ids. Not verified live. |
+| Oh My Pi, Grok, Copilot | ⏳ Import after the turn: they replay under fresh ids. |
+| Hermes | ⏳ Imports after the turn. From the plugin code: Hermes stamps message ids on live replies only, so the replay names every row differently, and the shared ACP replay never keeps the live user row's prompt id. Not verified live. |
+| Cursor, Antigravity | ⏳ Import after the turn. From the plugin code: the shared ACP replay never keeps the live user row's prompt id, and the reply keeps its live id only if the agent stamps the same message id live and in replay, which no recorded payload shows. Not verified live: both need a real account. |
+
 ## Failed-turn notices sent as text
 
 Some ACP harnesses end a turn that did no work with `stopReason: end_turn` and

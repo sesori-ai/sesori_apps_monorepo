@@ -311,6 +311,10 @@ void main() {
   PluginConfig config({required String? server}) =>
       PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
 
+  test("defers history imports while a turn runs", () {
+    expect(descriptor(http: null).replaysHistoryDuringTurn, isFalse);
+  });
+
   test("inspection validates the explicit version without starting ACP or reading token contents", () async {
     final candidate = descriptor(http: null);
     final missing = await candidate.inspectSetup(

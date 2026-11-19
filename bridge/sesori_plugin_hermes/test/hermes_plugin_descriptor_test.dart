@@ -37,6 +37,7 @@ void main() {
         reason: "Hermes advertises prompt image support",
       );
       expect(const HermesPluginDescriptor().namesCommandInvocations, isTrue);
+      expect(const HermesPluginDescriptor().replaysHistoryDuringTurn, isFalse);
       expect(
         const HermesPluginDescriptor().mcpCapabilities,
         isEmpty,

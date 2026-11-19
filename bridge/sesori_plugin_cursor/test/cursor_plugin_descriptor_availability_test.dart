@@ -137,6 +137,10 @@ void main() {
       expect(const CursorPluginDescriptor().supportsPromptAttachments, isTrue);
     });
 
+    test("defers history imports while a turn runs", () {
+      expect(const CursorPluginDescriptor().replaysHistoryDuringTurn, isFalse);
+    });
+
     test("reports ready after version and read-only authentication probes", () async {
       final processes = _ProbeProcessService(
         processSequence: [
