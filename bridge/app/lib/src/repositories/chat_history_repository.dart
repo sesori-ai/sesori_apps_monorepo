@@ -1029,32 +1029,42 @@ class ChatHistoryRepository({
       semanticPairs[importedIndex] = storedIndex;
     }
 
-    // A page's answer notice names its page, so its replayed row is the one
-    // naming the same page wherever the harness put it: a notice sent while a
-    // turn runs is stored where the bridge sent it, but a harness that queues
-    // it replays it where the turn took it in.
-    final importedNoticeByPage = <String, int>{
-      for (var index = 0; index < messages.length; index++)
-        if (!storedIds.contains(messages[index].info.id) && !semanticPairs.containsKey(index))
-          ?_noticePageRequestId(parts: messages[index].parts): index,
-    };
+    // A notice is the bridge's own words, so its replayed row is the one
+    // saying the same wherever the harness put it: a notice sent while a turn
+    // runs is stored where the bridge sent it, but a harness that queues it
+    // replays it where the turn took it in. Equal notices stay ambiguous.
+    final importedNoticesByContent = <String, List<(int, _SemanticMessageFingerprints)>>{};
+    for (var index = 0; index < messages.length; index++) {
+      if (storedIds.contains(messages[index].info.id) || semanticPairs.containsKey(index)) continue;
+      if ((messages[index].info, importedSemanticFingerprints[index]) case (
+        MessageAssistant(sender: MessageSender.sesori),
+        final fingerprint?,
+      )) {
+        importedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add((index, fingerprint));
+      }
+    }
+    final storedNoticesByContent = <String, List<(int, _SemanticMessageFingerprints)>>{};
     for (var index = 0; index < storedContextRows.length; index++) {
       final row = storedContextRows[index];
+      if (importedIds.contains(row.messageId) || semanticallyImportedStoredIds.contains(row.messageId)) continue;
       // A row the comparison couldn't read can't be decoded here either.
-      if (importedIds.contains(row.messageId) ||
-          semanticallyImportedStoredIds.contains(row.messageId) ||
-          storedSemanticFingerprints[index] == null) {
-        continue;
+      final fingerprint = storedSemanticFingerprints[index];
+      if (fingerprint == null) continue;
+      if (Message.fromJson(jsonDecodeMap(row.infoJson)) case MessageAssistant(sender: MessageSender.sesori)) {
+        storedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add((index, fingerprint));
       }
-      final parts = [
-        for (final json in storedPartJsonByMessage[row.messageId] ?? const <String>[])
-          MessagePart.fromJson(jsonDecodeMap(json)),
-      ];
-      if (_noticePageRequestId(parts: parts) case final page?) {
-        if (importedNoticeByPage.remove(page) case final importedIndex?) {
-          semanticallyImportedStoredIds.add(row.messageId);
-          semanticPairs[importedIndex] = index;
-        }
+    }
+    for (final MapEntry(key: content, value: storedIndexes) in storedNoticesByContent.entries) {
+      // A notice can repeat word for word, so known times that differ mark
+      // two occurrences.
+      if ((storedIndexes, importedNoticesByContent[content])
+          case (
+            [(final storedIndex, final storedFingerprint)],
+            [(final importedIndex, final importedFingerprint)],
+          )
+          when _knownTimesAgree(imported: importedFingerprint, stored: storedFingerprint)) {
+        semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
+        semanticPairs[importedIndex] = storedIndex;
       }
     }
 
@@ -1902,11 +1912,6 @@ class ChatHistoryRepository({
     final digest = await calculateSha256(message: utf8.encode(jsonEncode(value)));
     return base64UrlEncode(digest);
   }
-
-  String? _noticePageRequestId({required List<MessagePart> parts}) => switch (parts) {
-    [MessagePartText(:final noticePageRequestId?)] => noticePageRequestId,
-    _ => null,
-  };
 
   String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
 
