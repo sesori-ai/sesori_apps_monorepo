@@ -479,10 +479,22 @@ void main() {
         final gammaOpen = tester.getSize(_row("Gamma")).height;
 
         await tester.tap(_row("Beta"));
+        await tester.pump();
+        // Through the swap, as the old row shrinks and the new one grows.
+        for (var elapsed = 0; elapsed < 250; elapsed += 25) {
+          await tester.pump(const Duration(milliseconds: 25));
+          expect(tester.getRect(find.byType(ModelPicker)).top, moreOrLessEquals(withLevels.top), reason: "$elapsed ms");
+        }
         await tester.pumpAndSettle();
         expect(_strip(), findsNothing);
         expect(tester.getRect(find.byType(ModelPicker)), withLevels);
         expect(tester.getSize(_row("Beta")).height, gammaOpen);
+        // A collapsed row keeps the row's minimum height, its name centred.
+        expect(tester.getSize(_row("Gamma")).height, mode == PregoInteractionMode.pointer ? 30 : 54);
+        expect(
+          tester.getCenter(find.descendant(of: _row("Gamma"), matching: find.text("Gamma"))).dy,
+          moreOrLessEquals(tester.getCenter(_row("Gamma")).dy),
+        );
       });
     }
 
