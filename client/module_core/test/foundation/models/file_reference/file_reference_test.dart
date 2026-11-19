@@ -43,6 +43,18 @@ void main() {
       expect(_parse("  src/app.tsx  "), const FileReference(absolutePath: "/work/repo/src/app.tsx", line: null));
     });
 
+    test("keeps a hidden directory, a version directory, and an explicit relative path", () {
+      expect(
+        _parse(".github/workflows/ci.yml"),
+        const FileReference(absolutePath: "/work/repo/.github/workflows/ci.yml", line: null),
+      );
+      expect(_parse("v1.2/notes.md"), const FileReference(absolutePath: "/work/repo/v1.2/notes.md", line: null));
+      expect(
+        _parse("./i.redd.it/a.jpg"),
+        const FileReference(absolutePath: "/work/repo/i.redd.it/a.jpg", line: null),
+      );
+    });
+
     test("rejects text that is not a file path", () {
       for (final raw in [
         "foo()",
@@ -55,7 +67,10 @@ void main() {
         "src/**/*.dart",
         "dart run tool/build.dart",
         "~/notes.md",
-        "file://host/a/b.txt",
+        "i.redd.it/e0b0b0b0b0b01.jpg",
+        "i.redd.it/e0b0b0b0b0b01.jpg:3",
+        "github.com/acme/widgets/README.md",
+        "![](https://i.redd.it/e0b0b0b0b0b01.jpg)",
         "",
       ]) {
         expect(_parse(raw), isNull, reason: raw);
