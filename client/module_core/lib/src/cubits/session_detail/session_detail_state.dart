@@ -176,7 +176,6 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// draft and images once each time this grows.
     @Default(0) int composerRestorations,
     required bool isRefreshing,
-    @Default([]) List<SessionVariant> availableVariants,
 
     /// The connected bridge's YOLO setting, as last known by
     /// `BridgeSettingsService`. See [SessionDetailLoadedX.approvalControl].

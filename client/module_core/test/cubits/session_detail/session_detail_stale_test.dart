@@ -355,13 +355,48 @@ void main() {
     });
 
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
+      when(
+        () => mockSessionApi.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          ProviderListResponse(
+            connectedOnly: false,
+            items: [
+              ..._providers().items,
+              const ProviderInfo(
+                id: "openai",
+                name: "OpenAI",
+                defaultModelID: "gpt-4.1",
+                models: {
+                  "gpt-4.1": ProviderModel(
+                    fastMode: null,
+                    id: "gpt-4.1",
+                    providerID: "openai",
+                    name: "GPT-4.1",
+                    variants: ["xhigh"],
+                    defaultVariant: null,
+                    family: null,
+                    releaseDate: null,
+                  ),
+                },
+              ),
+            ],
+          ),
+        ),
+      );
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
-      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1", variant: null);
-      cubit.selectVariant(const SessionVariant(id: "xhigh"));
+      cubit.selectModel(
+        providerID: "openai",
+        modelID: "gpt-4.1",
+        variant: const SessionVariant(id: "xhigh"),
+      );
 
       when(
         () => mockSessionApi.listAgents(
@@ -436,12 +471,22 @@ void main() {
           commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      when(
+        () => mockSessionApi.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(_providersOfferingSonnetVariants(variants: ["low"])));
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
-      cubit.selectVariant(const SessionVariant(id: "low"));
+      cubit.selectModel(
+        providerID: "anthropic",
+        modelID: "claude-3-5-sonnet",
+        variant: const SessionVariant(id: "low"),
+      );
 
       await cubit.sendMessage(
         attachments: const [],
@@ -1669,6 +1714,21 @@ List<AgentInfo> _agents() {
     AgentInfo(name: "oracle", description: "Answers questions", model: null, mode: AgentMode.primary),
     AgentInfo(name: "Plan", description: "Plans before editing", model: null, mode: AgentMode.primary),
   ];
+}
+
+/// [_providers] with its one model offering [variants].
+ProviderListResponse _providersOfferingSonnetVariants({required List<String> variants}) {
+  final anthropic = _providers().items.single;
+  return ProviderListResponse(
+    connectedOnly: false,
+    items: [
+      anthropic.copyWith(
+        models: {
+          for (final entry in anthropic.models.entries) entry.key: entry.value.copyWith(variants: variants),
+        },
+      ),
+    ],
+  );
 }
 
 ProviderListResponse _providers() {

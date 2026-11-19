@@ -428,7 +428,6 @@ void main() {
               selectedAgentModel: null,
               fastMode: false,
               stagedCommand: null,
-              availableVariants: [],
             ),
             source: NewSessionOptionsSource.aggregate,
           ),
@@ -1692,7 +1691,7 @@ void main() {
     });
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant updates state and createSession forwards variant",
+      "a level picked with the model updates state and createSession forwards it",
       skip: 2,
       build: () {
         when(
@@ -1739,7 +1738,11 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        cubit.selectVariant(const SessionVariant(id: "xhigh"));
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "xhigh"),
+        );
         await cubit.submit(
           attachments: const [],
           draft: ComposerDraft.typed(text: "hello"),
@@ -1898,7 +1901,11 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "xhigh"));
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "xhigh"),
+        );
         cubit.selectAgent("Plan");
       },
       expect: () => [
@@ -2198,22 +2205,16 @@ void main() {
           "initial selectedAgentModel",
           const AgentModel(providerID: "openai", modelID: "gpt-4", variant: null),
         ),
-        composingWith<NewSessionPhaseIdle>()
-            .having(
-              (state) => state.availableVariants.map((variant) => variant.id),
-              "availableVariants",
-              ["provisional-effort", "high"],
-            )
-            .having(
-              (state) => state.selectedAgentModel,
-              "selectedAgentModel",
-              const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "provisional-effort"),
-            ),
+        composingWith<NewSessionPhaseIdle>().having(
+          (state) => state.selectedAgentModel,
+          "selectedAgentModel",
+          const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "provisional-effort"),
+        ),
       ],
     );
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "selectVariant switches selectedAgentModel to another available variant",
+      "selectModel switches the current model to another available level",
       skip: 2,
       build: () {
         when(
@@ -2270,7 +2271,11 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "slow"));
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "slow"),
+        );
       },
       expect: () => [
         composingWith<NewSessionPhaseIdle>().having(
@@ -2285,24 +2290,6 @@ void main() {
         ),
       ],
     );
-
-    test("selectVariant ignores a variant absent from the current catalog", () async {
-      when(
-        () => mockSessionApi.listProviders(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(_providerResponseWithVariants(["fast"])));
-      final cubit = buildCubit();
-      addTearDown(cubit.close);
-      await waitForComposer(cubit);
-      final selectionBefore = cubit.state.agentModelData?.agentModel;
-
-      cubit.selectVariant(const SessionVariant(id: "stale"));
-
-      expect(cubit.state.agentModelData?.agentModel, selectionBefore);
-      expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
-    });
 
     test("stageCommand accepts an equivalent current command and rejects a stale one", () async {
       final availableCommand = testCommandInfo();
@@ -2373,7 +2360,7 @@ void main() {
     });
 
     blocTest<NewSessionCubit, NewSessionState>(
-      "persists only the deliberate variant dimension",
+      "remembers a level picked together with the model",
       skip: 2,
       build: () {
         when(
@@ -2405,12 +2392,16 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectVariant(const SessionVariant(id: "xhigh"));
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "xhigh"),
+        );
       },
       verify: (_) {
         final saved = selectionTracker.read(pluginId: "plugin-1");
         expect(saved?.agentName, isNull);
-        expect(saved?.model, isNull);
+        expect(saved?.model?.modelId, "gpt-4");
         expect(
           saved?.variant,
           isA<NewSessionVariantIntent>().having((variant) => variant.id, "id", "xhigh"),

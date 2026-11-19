@@ -1162,8 +1162,8 @@ class NewSessionCubit({
   }
 
   /// Switches to the model, at [variant] when one was picked with it and the
-  /// model offers it. An applied pick is remembered like [selectVariant]'s, so
-  /// a later model switch does not bring back an older level.
+  /// model offers it. An applied pick is remembered, so a later model switch
+  /// does not bring back an older level.
   ///
   /// Returns the selection it applied, so an open model list can show the
   /// level the switch landed on, or null when nothing changed.
@@ -1192,22 +1192,6 @@ class NewSessionCubit({
       }
     }
     return selected.selectedAgentModel;
-  }
-
-  void selectVariant(SessionVariant variant) {
-    if (!_canEditComposer) return;
-    final options = state.agentModelData?.optionsState.data;
-    if (options == null) return;
-    final selected = _newSessionOptionsService.selectVariant(options: options, variant: variant);
-    if (selected == null) return;
-    _replaceOptionsData(options: selected);
-    final pluginId = _selectedPluginId;
-    if (pluginId != null) {
-      _picks.recordVariant(
-        pluginId: pluginId,
-        variant: NewSessionVariantIntent(id: variant.id),
-      );
-    }
   }
 
   /// What tapping the fast-mode control should do, or null while no options
@@ -1561,7 +1545,6 @@ class NewSessionCubit({
         agent: data.agent,
         providers: data.providers,
         agentModel: data.agentModel,
-        availableVariants: data.availableVariants,
         commands: data.commands,
         fastMode: data.runsFastMode,
         supportsPromptAttachments: data.plugin?.supportsPromptAttachments ?? false,

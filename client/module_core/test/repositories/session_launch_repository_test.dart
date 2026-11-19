@@ -123,7 +123,6 @@ void main() {
       agent: "build",
       providers: [],
       agentModel: null,
-      availableVariants: [],
       commands: [],
       fastMode: false,
       supportsPromptAttachments: true,

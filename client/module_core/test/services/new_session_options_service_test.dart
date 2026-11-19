@@ -136,7 +136,6 @@ void main() {
         selectedAgentModel: const AgentModel(providerID: "provider-a", modelID: "model-a", variant: null),
         fastMode: false,
         stagedCommand: null,
-        availableVariants: const [],
       );
       final catalog = SessionOptionsCatalog(
         agents: [_agent(name: "new-agent")],
@@ -279,7 +278,6 @@ void main() {
       expect(result.options.selectedAgent, "review");
       expect(result.options.selectedAgentModel?.modelID, "model-a");
       expect(result.options.selectedAgentModel?.variant, "low");
-      expect(result.options.availableVariants.map((variant) => variant.id), ["high", "low"]);
       expect(result.source, NewSessionOptionsSource.aggregate);
     });
 
@@ -409,7 +407,6 @@ void main() {
         selectedAgentModel: null,
         fastMode: false,
         stagedCommand: priorCommand,
-        availableVariants: const [],
       );
       final catalog = SessionOptionsCatalog(
         agents: [_agent(name: "build")],
@@ -487,7 +484,6 @@ void main() {
         selectedAgentModel: null,
         fastMode: false,
         stagedCommand: null,
-        availableVariants: [],
       );
       when(
         () => repository.loadSessionOptions(

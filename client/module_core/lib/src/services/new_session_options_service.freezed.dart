@@ -17,7 +17,7 @@ mixin _$NewSessionOptionsData {
 
  List<AgentInfo> get agents; List<ProviderInfo> get providers; List<CommandInfo> get commands; String? get selectedAgent; AgentModel? get selectedAgentModel;/// The user's fast-mode choice. It only runs while the selected model's
 /// fast mode is available.
- bool get fastMode; CommandInfo? get stagedCommand; List<SessionVariant> get availableVariants;
+ bool get fastMode; CommandInfo? get stagedCommand;
 /// Create a copy of NewSessionOptionsData
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,20 +29,20 @@ $NewSessionOptionsDataCopyWith<NewSessionOptionsData> get copyWith => _$NewSessi
 @override
 bool operator ==(Object other) {
   final _this = this as NewSessionOptionsData;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _this.agents)&&const DeepCollectionEquality().equals(other.providers, _this.providers)&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&(identical(other.selectedAgent, _this.selectedAgent) || other.selectedAgent == _this.selectedAgent)&&(identical(other.selectedAgentModel, _this.selectedAgentModel) || other.selectedAgentModel == _this.selectedAgentModel)&&(identical(other.fastMode, _this.fastMode) || other.fastMode == _this.fastMode)&&(identical(other.stagedCommand, _this.stagedCommand) || other.stagedCommand == _this.stagedCommand)&&const DeepCollectionEquality().equals(other.availableVariants, _this.availableVariants));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _this.agents)&&const DeepCollectionEquality().equals(other.providers, _this.providers)&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&(identical(other.selectedAgent, _this.selectedAgent) || other.selectedAgent == _this.selectedAgent)&&(identical(other.selectedAgentModel, _this.selectedAgentModel) || other.selectedAgentModel == _this.selectedAgentModel)&&(identical(other.fastMode, _this.fastMode) || other.fastMode == _this.fastMode)&&(identical(other.stagedCommand, _this.stagedCommand) || other.stagedCommand == _this.stagedCommand));
 }
 
 
 @override
 int get hashCode {
   final _this = this as NewSessionOptionsData;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.agents),const DeepCollectionEquality().hash(_this.providers),const DeepCollectionEquality().hash(_this.commands),_this.selectedAgent,_this.selectedAgentModel,_this.fastMode,_this.stagedCommand,const DeepCollectionEquality().hash(_this.availableVariants));
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.agents),const DeepCollectionEquality().hash(_this.providers),const DeepCollectionEquality().hash(_this.commands),_this.selectedAgent,_this.selectedAgentModel,_this.fastMode,_this.stagedCommand);
 }
 
 @override
 String toString() {
   final _this = this as NewSessionOptionsData;
-  return 'NewSessionOptionsData(agents: ${_this.agents}, providers: ${_this.providers}, commands: ${_this.commands}, selectedAgent: ${_this.selectedAgent}, selectedAgentModel: ${_this.selectedAgentModel}, fastMode: ${_this.fastMode}, stagedCommand: ${_this.stagedCommand}, availableVariants: ${_this.availableVariants})';
+  return 'NewSessionOptionsData(agents: ${_this.agents}, providers: ${_this.providers}, commands: ${_this.commands}, selectedAgent: ${_this.selectedAgent}, selectedAgentModel: ${_this.selectedAgentModel}, fastMode: ${_this.fastMode}, stagedCommand: ${_this.stagedCommand})';
 }
 
 
@@ -53,7 +53,7 @@ abstract mixin class $NewSessionOptionsDataCopyWith<$Res>  {
   factory $NewSessionOptionsDataCopyWith(NewSessionOptionsData value, $Res Function(NewSessionOptionsData) _then) = _$NewSessionOptionsDataCopyWithImpl;
 @useResult
 $Res call({
- List<AgentInfo> agents, List<ProviderInfo> providers, List<CommandInfo> commands, String? selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ List<AgentInfo> agents, List<ProviderInfo> providers, List<CommandInfo> commands, String? selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand
 });
 
 
@@ -70,7 +70,7 @@ class _$NewSessionOptionsDataCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionOptionsData
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,}) {
   return _then(NewSessionOptionsData(
 agents: null == agents ? _self.agents : agents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,providers: null == providers ? _self.providers : providers // ignore: cast_nullable_to_non_nullable
@@ -79,8 +79,7 @@ as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAge
 as String?,selectedAgentModel: freezed == selectedAgentModel ? _self.selectedAgentModel : selectedAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,fastMode: null == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
 as bool,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
-as CommandInfo?,availableVariants: null == availableVariants ? _self.availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<SessionVariant>,
+as CommandInfo?,
   ));
 }
 /// Create a copy of NewSessionOptionsData
@@ -116,7 +115,7 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class _NewSessionOptionsData implements NewSessionOptionsData {
-  const _NewSessionOptionsData({required  List<AgentInfo> agents, required  List<ProviderInfo> providers, required  List<CommandInfo> commands, required this.selectedAgent, required this.selectedAgentModel, required this.fastMode, required this.stagedCommand, required  List<SessionVariant> availableVariants}): _agents = agents,_providers = providers,_commands = commands,_availableVariants = availableVariants;
+  const _NewSessionOptionsData({required  List<AgentInfo> agents, required  List<ProviderInfo> providers, required  List<CommandInfo> commands, required this.selectedAgent, required this.selectedAgentModel, required this.fastMode, required this.stagedCommand}): _agents = agents,_providers = providers,_commands = commands;
   
 
  final  List<AgentInfo> _agents;
@@ -146,13 +145,6 @@ class _NewSessionOptionsData implements NewSessionOptionsData {
 /// fast mode is available.
 @override final  bool fastMode;
 @override final  CommandInfo? stagedCommand;
- final  List<SessionVariant> _availableVariants;
-@override List<SessionVariant> get availableVariants {
-  if (_availableVariants is EqualUnmodifiableListView) return _availableVariants;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availableVariants);
-}
-
 
 /// Create a copy of NewSessionOptionsData
 /// with the given fields replaced by the non-null parameter values.
@@ -164,18 +156,18 @@ _$NewSessionOptionsDataCopyWith<_NewSessionOptionsData> get copyWith => __$NewSe
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _agents)&&const DeepCollectionEquality().equals(other.providers, _providers)&&const DeepCollectionEquality().equals(other.commands, _commands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _agents)&&const DeepCollectionEquality().equals(other.providers, _providers)&&const DeepCollectionEquality().equals(other.commands, _commands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),const DeepCollectionEquality().hash(_providers),const DeepCollectionEquality().hash(_commands),selectedAgent,selectedAgentModel,fastMode,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),const DeepCollectionEquality().hash(_providers),const DeepCollectionEquality().hash(_commands),selectedAgent,selectedAgentModel,fastMode,stagedCommand);
 }
 
 @override
 String toString() {
-    return 'NewSessionOptionsData(agents: $agents, providers: $providers, commands: $commands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, fastMode: $fastMode, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+    return 'NewSessionOptionsData(agents: $agents, providers: $providers, commands: $commands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, fastMode: $fastMode, stagedCommand: $stagedCommand)';
 }
 
 
@@ -186,7 +178,7 @@ abstract mixin class _$NewSessionOptionsDataCopyWith<$Res> implements $NewSessio
   factory _$NewSessionOptionsDataCopyWith(_NewSessionOptionsData value, $Res Function(_NewSessionOptionsData) _then) = __$NewSessionOptionsDataCopyWithImpl;
 @override @useResult
 $Res call({
- List<AgentInfo> agents, List<ProviderInfo> providers, List<CommandInfo> commands, String? selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ List<AgentInfo> agents, List<ProviderInfo> providers, List<CommandInfo> commands, String? selectedAgent, AgentModel? selectedAgentModel, bool fastMode, CommandInfo? stagedCommand
 });
 
 
@@ -203,7 +195,7 @@ class __$NewSessionOptionsDataCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionOptionsData
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? fastMode = null,Object? stagedCommand = freezed,}) {
   return _then(_NewSessionOptionsData(
 agents: null == agents ? _self._agents : agents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,providers: null == providers ? _self._providers : providers // ignore: cast_nullable_to_non_nullable
@@ -212,8 +204,7 @@ as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAge
 as String?,selectedAgentModel: freezed == selectedAgentModel ? _self.selectedAgentModel : selectedAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,fastMode: null == fastMode ? _self.fastMode : fastMode // ignore: cast_nullable_to_non_nullable
 as bool,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
-as CommandInfo?,availableVariants: null == availableVariants ? _self._availableVariants : availableVariants // ignore: cast_nullable_to_non_nullable
-as List<SessionVariant>,
+as CommandInfo?,
   ));
 }
 
