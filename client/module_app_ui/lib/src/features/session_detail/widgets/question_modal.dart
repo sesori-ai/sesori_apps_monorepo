@@ -909,7 +909,7 @@ class const _CustomAnswerTile({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl));
+    final shape = requestOptionShape(prego: prego, isSelected: isSelected && !isFreeTextOnly);
     final expanded = isFreeTextOnly || isSelected;
 
     final field = Padding(
@@ -976,7 +976,7 @@ class const _CustomAnswerTile({
                         isMultiple
                             ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
                             : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
-                        color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
+                        color: requestOptionMarkColor(prego: prego, isSelected: isSelected),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
