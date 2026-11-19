@@ -9,7 +9,6 @@ import "../repositories/models/history_window.dart";
 import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
-import "../repositories/models/session_notice.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
@@ -232,19 +231,14 @@ class ScheduledTaskAgentService({
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
     final outcome = await _outcome(change: approval.change, reply: reply);
-    final sessionId = approval.displaySessionId ?? approval.sessionId;
-    // A scheduled run hears the outcome only after its turn, so the turn the
-    // notice starts is its own and the run's final reply stays the run's.
-    final isRun = (await _taskRepository.marksOfSessions(sessionIds: {sessionId})).containsKey(sessionId);
     unawaited(
       _notices.deliver(
-        sessionId: sessionId,
+        sessionId: approval.displaySessionId ?? approval.sessionId,
         notice: _descriptions.outcome(
           change: approval.change,
           outcome: outcome,
           bySubagent: approval.displaySessionId != null,
         ),
-        timing: isRun ? SessionNoticeTiming.afterTurn : SessionNoticeTiming.intoRunningTurn,
       ),
     );
     return AgentApprovalAnswered(outcome: outcome);
@@ -253,13 +247,6 @@ class ScheduledTaskAgentService({
   /// The agent approvals to show on [sessionId]'s screen.
   List<PendingPermission> pendingPermissions({required String sessionId}) =>
       _approvals.pendingPermissions(sessionId: sessionId);
-
-  /// [projects] with every session that waits on an agent approval marked
-  /// awaiting input, even when its harness has gone idle, so the app keeps it
-  /// on its attention list.
-  Future<List<ProjectActivitySummary>> markAwaitingApproval({required List<ProjectActivitySummary> projects}) {
-    return _sessions.markAwaitingInput(projects: projects, rootSessionIds: _approvals.awaitingRootSessionIds);
-  }
 
   Future<AgentApprovalOutcome> _outcome({
     required ScheduledTaskAgentChange change,

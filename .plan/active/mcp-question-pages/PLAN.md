@@ -237,9 +237,10 @@ send_page {
 - Caps: a 200-character title, 20 images, 50 questions, and 12 options per
   question. The whole call stays within the 1 MiB MCP body. There is no cap on
   pages per session.
-- Parsing is strict: Freezed models and `additionalProperties: false`. Ids must
-  be unique within a page. A violation returns an `isError` result that names
-  the field.
+- Parsing is strict: Freezed models and `additionalProperties: false`.
+  Question ids must be unique within a page and option ids within their
+  question, since an answer names both. A violation returns an `isError` result
+  that names the field.
 - `recommended` shows a small label and is never preselected.
 
 ### Wire (shared)
@@ -341,7 +342,10 @@ send_page {
   - **Interception.** Reply and reject interception returns a sealed result
     (`NotAgentPage`, `AgentPageReplyDismissed` or `AgentPageAlreadySettled`),
     mirroring `NotAgentApproval`. `AgentPageDismissed` is already the
-    repository's outcome variant.
+    repository's outcome variant. `AgentPageAlreadySettled` answers 404 "no
+    longer pending", the existing contract for a request answered elsewhere, so
+    only the dismiss that wins succeeds and the client never counts a false
+    dismiss.
 - **`AgentPageAnswerNoticeBuilder`** (new and pure) builds both notices.
   - **Answer notice.** The summary is "You answered “Title”.". The guidance
     carries everything in full: question ids and titles, chosen option ids and
@@ -425,6 +429,13 @@ send_page {
     - Parameters: the outcome (answered or dismissed), a question-count bucket
       (0, 1, 2–5, 6+) and `has_images`.
     - No ids, titles or content.
+    - **Release gate.** The app release that ships question pages waits until
+      the `question_page_finished` warehouse rollout is done: sesori_auth_server#122
+      is deployed (merged 778fc4b079), the BigQuery apply with
+      `--apply-schedules` has run, the export image is rolled, the manual export
+      and assertions have passed, and the SOPS record is updated. A desktop
+      client that sends the event between the #122 deploy and the image roll
+      blocks the whole auth export.
 - **module_app_ui.**
   - **The page screen** slides up over the session, using the file-preview
     `PageRouteBuilder` pattern (easeOutCubic in, easeInCubic out). Desktop shows
@@ -568,8 +579,8 @@ authored lines, with generated lines listed separately.
 | 1/10 | 🌱 Raise the plan | ~450 docs | — | In PR |
 | 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | In PR #2813 |
 | 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | In PR #2814 |
-| 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | Planned |
-| 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | Planned |
+| 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | In PR #2816 |
+| 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | In PR #2817 |
 | 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | In PR #2815 |
 | 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | In PR #2818 |
 | 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Planned |

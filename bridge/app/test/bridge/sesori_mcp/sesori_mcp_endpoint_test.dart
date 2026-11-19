@@ -4,14 +4,15 @@ import "dart:math";
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
+import "package:image/image.dart" as img;
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
 import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
+import "package:sesori_bridge/src/repositories/agent_page_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
-import "package:sesori_bridge/src/repositories/models/session_notice.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
@@ -24,11 +25,11 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
-import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/agent_page_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
@@ -68,7 +69,8 @@ void main() {
   late ScheduledTaskService tasks;
   late ScheduledTaskAgentService agent;
   late _FakeRunService runner;
-  late _Notices notices;
+  late RecordingSessionNotices notices;
+  late AgentPageRepository pages;
   late List<AgentApprovalEvent> approvalEvents;
   var nextId = 1;
 
@@ -118,12 +120,25 @@ void main() {
       history: history.service,
       approvals: approvals,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
-      notices: notices = _Notices(),
+      notices: notices = RecordingSessionNotices(),
     );
     final dispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: grants, sessions: sessions),
       agent: agent,
       formatter: const SesoriMcpResultFormatter(),
+      pages: () {
+        final imagesRoot = Directory.systemTemp.createTempSync("page_images_test_");
+        addTearDown(() => imagesRoot.deleteSync(recursive: true));
+        final built = buildTestAgentPageService(
+          database: db,
+          sessions: sessions,
+          notices: notices,
+          imagesRoot: imagesRoot.path,
+        );
+        pages = built.pages;
+        addTearDown(pages.dispose);
+        return built.service;
+      }(),
     );
     // As the Orchestrator wires it.
     final subscription = server.requests.listen((request) async {
@@ -317,11 +332,12 @@ void main() {
           "pause_task",
           "resume_task",
           "run_task_now",
+          "send_page",
         ],
       );
       for (final tool in tools) {
         final name = (tool as Map<String, dynamic>)["name"] as String;
-        final readOnly = name.startsWith("list_") || name.startsWith("get_");
+        final readOnly = name.startsWith("list_") || name.startsWith("get_") || name == "send_page";
         expect(tool["annotations"], {"readOnlyHint": readOnly});
         expect(tool["inputSchema"], containsPair("type", "object"));
       }
@@ -602,34 +618,6 @@ void main() {
       expect(delivered.sessionId, "s1");
       expect(delivered.notice.summary, "You allowed pausing “Morning summary”.");
       expect(delivered.notice.guidance, "The change is saved. Reply in one short line.");
-      // s1 is a scheduled run: the outcome waits for its turn to end.
-      expect(delivered.timing, SessionNoticeTiming.afterTurn);
-    });
-
-    test("a session that is not a scheduled run hears the outcome in its running turn", () async {
-      await insertTestSession(
-        db: db,
-        sessionId: "s-chat",
-        backendSessionId: "backend-s-chat",
-        pluginId: "fake",
-        projectId: "/repo",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-      final chat = grants.mint(pluginId: "fake");
-      grants.bind(token: chat, backendSessionId: "backend-s-chat");
-
-      await call(tool: "pause_task", arguments: {"task_id": taskId}, bearer: chat);
-      await answer(requestId: asked().id, reply: PermissionReply.reject);
-
-      final delivered = notices.delivered.single;
-      expect(delivered.sessionId, "s-chat");
-      expect(delivered.timing, SessionNoticeTiming.intoRunningTurn);
     });
 
     test("update_task asks the user and Allow applies it", () async {
@@ -1118,21 +1106,290 @@ void main() {
       expect(approvalEvents, isEmpty);
     });
   });
-}
 
-/// Records the notices instead of prompting sessions.
-class _Notices() implements SessionNoticeService {
-  final List<({String sessionId, SessionNotice notice, SessionNoticeTiming timing})> delivered = [];
+  group("send_page", () {
+    late Directory files;
 
-  @override
-  Future<void> deliver({
-    required String sessionId,
-    required SessionNotice notice,
-    required SessionNoticeTiming timing,
-  }) async => delivered.add((sessionId: sessionId, notice: notice, timing: timing));
+    setUp(() {
+      files = Directory.systemTemp.createTempSync("send_page_test_");
+      addTearDown(() => files.deleteSync(recursive: true));
+    });
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+    /// A 3×2 PNG at [name], padded with [padding] bytes after its end.
+    String png(String name, {int padding = 0}) {
+      final file = File("${files.path}/$name")
+        ..writeAsBytesSync([...img.encodePng(img.Image(width: 3, height: 2)), ...List.filled(padding, 0)]);
+      return file.path;
+    }
+
+    Map<String, Object?> choice(String id, {List<Map<String, Object?>>? options}) => {
+      "id": id,
+      "title": "Pick $id",
+      "kind": "single",
+      "options":
+          options ??
+          [
+            {"id": "a", "label": "A"},
+          ],
+    };
+
+    Future<({String text, bool isError})> send({required List<Map<String, Object?>> sections, String? title}) =>
+        call(tool: "send_page", arguments: {"title": title ?? "Release plan", "sections": sections});
+
+    test("stores the page with copied images and their sizes", () async {
+      final shot = png("shot.png");
+
+      final result = await call(
+        tool: "send_page",
+        arguments: {
+          "title": "Release plan",
+          "intro": "Two choices.",
+          "sections": [
+            {
+              "heading": "Scope",
+              "images": [
+                {"path": shot, "caption": "Now"},
+              ],
+              "questions": [
+                {
+                  "id": "q1",
+                  "title": "Ship when?",
+                  "kind": "single",
+                  "required": true,
+                  "options": [
+                    {
+                      "id": "now",
+                      "label": "Now",
+                      "recommended": true,
+                      "image": {"path": shot},
+                    },
+                    {"id": "later", "label": "Later", "description": "Next week"},
+                  ],
+                },
+                {"id": "q2", "title": "Anything else?", "kind": "text"},
+              ],
+            },
+          ],
+        },
+      );
+
+      expect(result, (
+        text: "Sent “Release plan” to the user. Sesori will message this session with their answer.",
+        isError: false,
+      ));
+      final [page] = await pages.pendingPages(sessionId: "s1");
+      expect(page.sessionId, "s1");
+      expect(page.displaySessionId, isNull);
+      expect(page.intro, "Two choices.");
+      final [section] = page.sections;
+      final [image] = section.images;
+      expect(image.path, isNot(shot));
+      expect(File(image.path).readAsBytesSync(), File(shot).readAsBytesSync());
+      expect((image.width, image.height, image.caption), (3, 2, "Now"));
+      final [first, second] = section.questions;
+      expect(first.isRequired, isTrue);
+      final options = switch (first.kind) {
+        PageSingleChoice(:final options) => options,
+        _ => fail("q1 is not a single choice"),
+      };
+      expect(options.first.recommended, isTrue);
+      expect(options.first.image?.path, image.path, reason: "one copy per distinct image");
+      expect(options.last.description, "Next week");
+      expect(second.kind, const PageQuestionKind.text());
+      expect(second.isRequired, isFalse);
+    });
+
+    test("refuses a page over a limit and stores nothing", () async {
+      final results = [
+        await send(title: "x" * 201, sections: []),
+        await send(
+          sections: [
+            {
+              "images": [
+                for (var index = 0; index < 21; index++) {"path": png("i$index.png")},
+              ],
+            },
+          ],
+        ),
+        await send(
+          sections: [
+            {
+              "questions": [for (var index = 0; index < 51; index++) choice("q$index")],
+            },
+          ],
+        ),
+        await send(
+          sections: [
+            {
+              "questions": [
+                choice(
+                  "q1",
+                  options: [
+                    for (var index = 0; index < 13; index++) {"id": "o$index", "label": "O$index"},
+                  ],
+                ),
+              ],
+            },
+          ],
+        ),
+        await send(
+          sections: [
+            {
+              "questions": [choice("q1")],
+            },
+            {
+              "questions": [choice("q1")],
+            },
+          ],
+        ),
+        await send(
+          sections: [
+            {
+              "questions": [
+                choice(
+                  "q1",
+                  options: [
+                    {"id": "a", "label": "A"},
+                    {"id": "a", "label": "B"},
+                  ],
+                ),
+              ],
+            },
+          ],
+        ),
+        await send(
+          sections: [
+            {
+              "images": [
+                for (var index = 0; index < 3; index++) {"path": png("big$index.png", padding: 17 * 1024 * 1024)},
+              ],
+            },
+          ],
+        ),
+      ];
+
+      expect(results.map((result) => result.text), [
+        "title is longer than 200 characters.",
+        "The page has more than 20 images.",
+        "The page has more than 50 questions.",
+        "Question q1 has more than 12 options.",
+        "Two questions have the id q1.",
+        "Question q1 has two options with the id a.",
+        "The page's images are over 50 MiB together.",
+      ]);
+      expect(results.every((result) => result.isError), isTrue);
+      expect(await pages.pendingPages(sessionId: "s1"), isEmpty);
+    });
+
+    test("names the image it cannot show", () async {
+      File("${files.path}/fake.png").writeAsStringSync("not a png");
+      File("${files.path}/notes.txt").writeAsStringSync("text");
+      File("${files.path}/huge.png").writeAsBytesSync(List.filled(maxTranscriptImageBytes + 1, 0));
+      Future<String> withImage(String path) async => (await send(
+        sections: [
+          {
+            "images": [
+              {"path": path},
+            ],
+          },
+        ],
+      )).text;
+
+      expect(await withImage("shot.png"), "Image path shot.png is not absolute.");
+      expect(await withImage("${files.path}/gone.png"), "No file at image path ${files.path}/gone.png.");
+      expect(
+        await withImage("${files.path}/fake.png"),
+        "The file at ${files.path}/fake.png is not a png, jpg, gif or webp image.",
+      );
+      expect(
+        await withImage("${files.path}/notes.txt"),
+        "The file at ${files.path}/notes.txt is not a png, jpg, gif or webp image.",
+      );
+      expect(await withImage("${files.path}/huge.png"), "The image at ${files.path}/huge.png is over 20 MiB.");
+      expect(await pages.pendingPages(sessionId: "s1"), isEmpty);
+    });
+
+    test("names the argument a malformed page gets wrong", () async {
+      Future<String> withQuestion(Map<String, Object?> question) async => (await send(
+        sections: [
+          {
+            "questions": [question],
+          },
+        ],
+      )).text;
+
+      expect(
+        (await call(tool: "send_page", arguments: {"sections": []})).text,
+        contains("title is required"),
+      );
+      expect(
+        await withQuestion({"id": "q1", "title": "Pick", "kind": "single", "colour": "red"}),
+        contains("sections[].questions[].colour is not an argument"),
+      );
+      expect(
+        await withQuestion({"id": "q1", "kind": "text"}),
+        contains("sections[].questions[].title is required"),
+      );
+      expect(
+        (await send(
+          sections: [
+            {"heading": "Scope", "colour": "red"},
+          ],
+        )).text,
+        contains("sections[].colour is not an argument"),
+      );
+      expect(
+        await withQuestion({
+          "id": "q1",
+          "title": "Pick",
+          "kind": "single",
+          "options": [
+            {"id": "a", "label": "A", "colour": "red"},
+          ],
+        }),
+        contains("sections[].questions[].options[].colour is not an argument"),
+      );
+      expect(
+        (await send(
+          sections: [
+            {
+              "images": [
+                {"caption": "Now"},
+              ],
+            },
+          ],
+        )).text,
+        contains("images[].path is required"),
+      );
+      expect(
+        await withQuestion({"id": "q1", "title": "Pick", "kind": "single"}),
+        contains("sections[0].questions[0].options is required when its kind is single."),
+      );
+      expect(
+        await withQuestion({
+          "id": "q1",
+          "title": "Say",
+          "kind": "text",
+          "options": [
+            {"id": "a", "label": "A"},
+          ],
+        }),
+        contains("sections[0].questions[0].options are only for single and multiple questions."),
+      );
+      expect(
+        await withQuestion({
+          "id": "q1",
+          "title": "Pick",
+          "kind": "single",
+          "options": [
+            {"id": "a", "label": ""},
+          ],
+        }),
+        contains("sections[0].questions[0].options[0].label is required."),
+      );
+      expect(await pages.pendingPages(sessionId: "s1"), isEmpty);
+    });
+  });
 }
 
 /// Records the tasks run now instead of starting sessions.
