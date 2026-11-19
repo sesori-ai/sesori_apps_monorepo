@@ -76,7 +76,11 @@ void main() {
   });
 
   test("marked notices preserve attribution without becoming ordinary questions", () {
-    for (final kind in [QuestionInteractionKind.form, QuestionInteractionKind.externalAction]) {
+    for (final kind in [
+      QuestionInteractionKind.form,
+      QuestionInteractionKind.externalAction,
+      QuestionInteractionKind.page,
+    ]) {
       final json = <String, dynamic>{
         "id": "request",
         "sessionID": "child",

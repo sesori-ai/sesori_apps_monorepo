@@ -102,6 +102,9 @@ sealed class const MessagePart._() with _$MessagePart {
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
     // Remove @Default and require text when the minimum supported bridge always sends it.
     @Default("") String text,
+
+    /// The agent page a Sesori notice answers, so the line can reopen it.
+    String? noticePageRequestId,
   }) = MessagePartText;
 
   @FreezedUnionValue("reasoning")
