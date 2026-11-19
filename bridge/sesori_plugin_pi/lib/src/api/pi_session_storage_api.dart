@@ -436,8 +436,13 @@ List<_PiScanDiagnostics> _clearPendingMarkers({
     knownDirectories: knownDirectories,
   );
   for (final markerPath in markers.paths) {
-    final file = File(markerPath);
-    if (file.existsSync()) file.deleteSync();
+    try {
+      File(markerPath).deleteSync();
+    } on PathNotFoundException {
+      // Each turn that ends before the bridge sees the session persisted
+      // clears the marker, so a turn ending close behind another finds it
+      // already gone.
+    }
   }
   return markers.diagnostics;
 }

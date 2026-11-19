@@ -1875,9 +1875,10 @@ class ChatHistoryRepository({
 
   String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
 
-  /// The replayed row for the newest stored row when a bridge stop cut its
-  /// turn off right after it. The stop landed before the bridge stored the
-  /// row the replay has next, so the stored row has no next neighbor and its
+  /// The replayed row for the newest stored row when the replay goes on past
+  /// it: a bridge stop cut its turn off right after it, or a read came while
+  /// the reply to it streams, whose row the bridge stores without parts until
+  /// they finish. The stored row has no next neighbor the replay holds, so its
   /// full context can't match. It pairs with the one unpaired replayed row of
   /// the same previous neighbor whose content equals or completes its own.
   ({int importedIndex, int storedIndex})? _interruptedTailPair({
@@ -1892,8 +1893,16 @@ class ChatHistoryRepository({
     required Set<String> pairedStoredIds,
     required Set<int> pairedImportedIndexes,
   }) {
-    final storedIndex = storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
-    if (storedIndex == -1 || pairedStoredIds.contains(interruptedAfterMessageId)) return null;
+    var streamingIndex = storedRows.length - 1;
+    bool isStreaming(_SemanticMessageFingerprints? row) =>
+        row != null && row.isAssistant && row.parts.isEmpty && !row.isCompaction;
+    while (streamingIndex >= 0 && isStreaming(storedFingerprints[streamingIndex])) {
+      streamingIndex--;
+    }
+    final storedIndex = streamingIndex < storedRows.length - 1
+        ? streamingIndex
+        : storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
+    if (storedIndex == -1 || pairedStoredIds.contains(storedRows[storedIndex].messageId)) return null;
     final storedContext = storedContexts[storedIndex];
     if (storedContext == null) return null;
     final storedFingerprint = storedFingerprints[storedIndex];
