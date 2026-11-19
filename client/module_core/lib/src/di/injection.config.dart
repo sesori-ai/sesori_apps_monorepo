@@ -17,7 +17,7 @@ import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/src/api/analytics_api.dart' as _i727;
 import 'package:sesori_dart_core/src/api/analytics_release_cutoff_api.dart'
     as _i649;
-import 'package:sesori_dart_core/src/api/attribution_api.dart' as _i556;
+import 'package:sesori_dart_core/src/api/attribution_api.dart' as _i557;
 import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i385;
 import 'package:sesori_dart_core/src/api/bridge_settings_api.dart' as _i415;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
@@ -172,6 +172,8 @@ import 'package:sesori_dart_core/src/repositories/notification_preferences_repos
     as _i458;
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
+import 'package:sesori_dart_core/src/repositories/page_draft_repository.dart'
+    as _i556;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i680;
 import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
@@ -251,6 +253,8 @@ import 'package:sesori_dart_core/src/services/notification_registration_service.
     as _i659;
 import 'package:sesori_dart_core/src/services/pending_form_service.dart'
     as _i426;
+import 'package:sesori_dart_core/src/services/pending_page_service.dart'
+    as _i578;
 import 'package:sesori_dart_core/src/services/plugin_authentication_browser_service.dart'
     as _i674;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
@@ -322,6 +326,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i685.HostFileClient>(() => const _i685.HostFileClient());
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
+    );
+    gh.lazySingleton<_i556.PageDraftRepository>(
+      () => _i556.PageDraftRepository(),
     );
     gh.lazySingleton<_i293.ComposerImageDownscaleBuilder>(
       () => const _i293.ComposerImageDownscaleBuilder(),
@@ -432,8 +439,8 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i509.VoiceModeRepository(configApi: gh<_i276.VoiceModeConfigApi>()),
     );
-    gh.lazySingleton<_i556.AttributionApi>(
-      () => _i556.AttributionApi(client: gh<_i14.AttributionClient>()),
+    gh.lazySingleton<_i557.AttributionApi>(
+      () => _i557.AttributionApi(client: gh<_i14.AttributionClient>()),
     );
     gh.lazySingleton<_i298.FounderCallConfigApi>(
       () => _i298.FounderCallConfigApi(
@@ -595,7 +602,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i993.AttributionRepository>(
       () => _i993.AttributionRepository(
-        api: gh<_i556.AttributionApi>(),
+        api: gh<_i557.AttributionApi>(),
         claimStorage: gh<_i275.AttributionClaimStorage>(),
       ),
     );
@@ -803,6 +810,12 @@ extension GetItInjectableX on _i174.GetIt {
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i578.PendingPageService>(
+      () => _i578.PendingPageService(
+        repository: gh<_i7.SessionRepository>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
     );
     gh.lazySingleton<_i110.PluginManagementService>(
       () => _i110.PluginManagementService(

@@ -286,6 +286,12 @@ class SessionRepository({
   Future<ApiResponse<FormReplyResult>> declineForm({required DeclineFormRequest request}) =>
       _api.declineForm(request: request);
 
+  Future<ApiResponse<PageLookupResponse>> lookupPage({required PageLookupRequest request}) =>
+      _api.lookupPage(request: request);
+
+  Future<ApiResponse<PageSubmitResult>> submitPage({required SubmitPageRequest request}) =>
+      _api.submitPage(request: request);
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _api.getPendingPermissions(sessionId: sessionId);
   }
