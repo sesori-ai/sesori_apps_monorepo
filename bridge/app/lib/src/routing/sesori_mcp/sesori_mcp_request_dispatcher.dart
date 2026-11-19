@@ -495,13 +495,14 @@ class SesoriMcpRequestDispatcher({
 
   static const String _seeSchema = "see its input schema.";
 
-  /// Where each nested page argument sits, keyed by the generated class
-  /// checked decoding reports.
-  static const Map<String, String> _nestedArgumentPlaces = {
-    "_PageSectionArgument": "sections[].",
-    "_PageQuestionArgument": "sections[].questions[].",
-    "_PageOptionArgument": "sections[].questions[].options[].",
-    "_PageImageArgument": "images[].",
+  /// Where each nested page argument sits, keyed by the class checked
+  /// decoding reports: Freezed's generated `_<Model>` for each model, so a
+  /// renamed model fails to compile here instead of losing its place.
+  static final Map<String, String> _nestedArgumentPlaces = {
+    "_$PageSectionArgument": "sections[].",
+    "_$PageQuestionArgument": "sections[].questions[].",
+    "_$PageOptionArgument": "sections[].questions[].options[].",
+    "_$PageImageArgument": "images[].",
   };
 
   /// The fields each kind of a nested argument needs, as its schema
