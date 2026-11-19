@@ -154,8 +154,8 @@ class OmpPlugin._({
   /// From 18.18.9 until 18.20.1 (fixed there, not in 18.20.0), ACP session
   /// deletion persists an empty untitled replacement session
   /// (https://github.com/can1357/oh-my-pi/issues/19068), and `session/new`
-  /// alone still writes an empty untitled session at once (verified on
-  /// 18.22.2). An entry with
+  /// alone still writes an empty untitled session file at once (verified on
+  /// 19.0.0). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
   /// A missing or non-int count keeps the entry.
