@@ -430,6 +430,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getRect(find.byType(QuestionPageScreen)).top, 0);
     expect(opened, [("page-1", "session-1")]);
+    // File links in the page's Markdown open through the session's cubit.
+    expect(tester.element(find.byType(QuestionPageScreen)).read<SessionDetailCubit>(), session);
 
     await emit(tester, PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()));
     expect(find.text("0 of 3 answered"), findsOneWidget);

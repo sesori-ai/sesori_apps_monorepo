@@ -38,7 +38,8 @@ Future<void> showQuestionPage({
   required String requestId,
   required String sessionId,
 }) {
-  final source = switch (context.read<SessionDetailCubit>().state.hydratedSession) {
+  final sessionCubit = context.read<SessionDetailCubit>();
+  final source = switch (sessionCubit.state.hydratedSession) {
     final session? => [PregoBrandLogo.displayNameFor(session.pluginId), ?session.title].join(" · "),
     null => null,
   };
@@ -55,9 +56,14 @@ Future<void> showQuestionPage({
         navigator.pop();
         scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
       },
-      child: BlocProvider(
-        create: (_) => scope.createPendingPageCubit(requestId: requestId, sessionId: sessionId),
-        child: QuestionPageScreen(source: source, onClose: navigator.pop),
+      // The session's cubit comes along, so file links in the page's Markdown
+      // open their preview as they do in the transcript.
+      child: BlocProvider.value(
+        value: sessionCubit,
+        child: BlocProvider(
+          create: (_) => scope.createPendingPageCubit(requestId: requestId, sessionId: sessionId),
+          child: QuestionPageScreen(source: source, onClose: navigator.pop),
+        ),
       ),
     ),
     transitionsBuilder: (_, animation, _, child) => _QuestionPageFrame(
