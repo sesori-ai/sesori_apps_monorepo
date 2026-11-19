@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_chat_history.dart";
@@ -186,6 +187,7 @@ void main() {
       bridgeIdProvider: const _BridgeIdProvider(),
       interruptions: const NoSessionInterruptions(),
       mutations: const UnusedContinuationMutations(),
+      sessionOptions: FakeSessionOptionsService(),
     );
 
     await Future.wait([

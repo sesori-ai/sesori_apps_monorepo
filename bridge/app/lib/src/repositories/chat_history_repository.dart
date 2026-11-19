@@ -1029,8 +1029,38 @@ class ChatHistoryRepository({
       semanticPairs[importedIndex] = storedIndex;
     }
 
+    // A page's answer notice names its page, so its replayed row is the one
+    // naming the same page wherever the harness put it: a notice sent while a
+    // turn runs is stored where the bridge sent it, but a harness that queues
+    // it replays it where the turn took it in.
+    final importedNoticeByPage = <String, int>{
+      for (var index = 0; index < messages.length; index++)
+        if (!storedIds.contains(messages[index].info.id) && !semanticPairs.containsKey(index))
+          ?_noticePageRequestId(parts: messages[index].parts): index,
+    };
+    for (var index = 0; index < storedContextRows.length; index++) {
+      final row = storedContextRows[index];
+      // A row the comparison couldn't read can't be decoded here either.
+      if (importedIds.contains(row.messageId) ||
+          semanticallyImportedStoredIds.contains(row.messageId) ||
+          storedSemanticFingerprints[index] == null) {
+        continue;
+      }
+      final parts = [
+        for (final json in storedPartJsonByMessage[row.messageId] ?? const <String>[])
+          MessagePart.fromJson(jsonDecodeMap(json)),
+      ];
+      if (_noticePageRequestId(parts: parts) case final page?) {
+        if (importedNoticeByPage.remove(page) case final importedIndex?) {
+          semanticallyImportedStoredIds.add(row.messageId);
+          semanticPairs[importedIndex] = index;
+        }
+      }
+    }
+
     if (_interruptedTailPair(
           interruptedAfterMessageId: interruptedAfterMessageId,
+          staleContexts: staleContexts,
           messages: messages,
           importedFingerprints: importedSemanticFingerprints,
           importedContexts: importedSemanticContexts,
@@ -1873,15 +1903,22 @@ class ChatHistoryRepository({
     return base64UrlEncode(digest);
   }
 
+  String? _noticePageRequestId({required List<MessagePart> parts}) => switch (parts) {
+    [MessagePartText(:final noticePageRequestId?)] => noticePageRequestId,
+    _ => null,
+  };
+
   String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
 
-  /// The replayed row for the newest stored row when a bridge stop cut its
-  /// turn off right after it. The stop landed before the bridge stored the
-  /// row the replay has next, so the stored row has no next neighbor and its
+  /// The replayed row for the newest stored row when the replay goes on past
+  /// it: a bridge stop cut its turn off right after it, or a read came while
+  /// the reply to it streams, whose row the bridge stores without parts until
+  /// they finish. The stored row has no next neighbor the replay holds, so its
   /// full context can't match. It pairs with the one unpaired replayed row of
   /// the same previous neighbor whose content equals or completes its own.
   ({int importedIndex, int storedIndex})? _interruptedTailPair({
     required String? interruptedAfterMessageId,
+    required Set<String> staleContexts,
     required List<MessageWithParts> messages,
     required List<_SemanticMessageFingerprints?> importedFingerprints,
     required List<String?> importedContexts,
@@ -1892,10 +1929,21 @@ class ChatHistoryRepository({
     required Set<String> pairedStoredIds,
     required Set<int> pairedImportedIndexes,
   }) {
-    final storedIndex = storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
-    if (storedIndex == -1 || pairedStoredIds.contains(interruptedAfterMessageId)) return null;
+    var streamingIndex = storedRows.length - 1;
+    bool isStreaming(_SemanticMessageFingerprints? row) =>
+        row != null && row.isAssistant && row.parts.isEmpty && !row.isCompaction;
+    while (streamingIndex >= 0 && isStreaming(storedFingerprints[streamingIndex])) {
+      streamingIndex--;
+    }
+    final isStreamingTail = streamingIndex < storedRows.length - 1;
+    final storedIndex = isStreamingTail
+        ? streamingIndex
+        : storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
+    if (storedIndex == -1 || pairedStoredIds.contains(storedRows[storedIndex].messageId)) return null;
     final storedContext = storedContexts[storedIndex];
-    if (storedContext == null) return null;
+    // A stale row of the same context, such as an earlier send of the same
+    // prompt, may be the occurrence the replay holds.
+    if (storedContext == null || (isStreamingTail && staleContexts.contains(storedContext))) return null;
     final storedFingerprint = storedFingerprints[storedIndex];
     if ((storedFingerprint, jsonDecode(storedContext)) case (
       final storedFingerprint?,

@@ -62,8 +62,12 @@ class const SessionDetailPresentationScope({
   /// Slides the agent's question page [requestId] up over the session at
   /// [context], under this scope. The page's lookup decides whether it opens
   /// for editing or read-only, or says it no longer exists.
-  Future<void> openPage({required BuildContext context, required String requestId, required String sessionId}) =>
-      showQuestionPage(context: context, scope: this, requestId: requestId, sessionId: sessionId);
+  Future<void> openPage({
+    required BuildContext context,
+    required String requestId,
+    required String sessionId,
+    required String? title,
+  }) => showQuestionPage(context: context, scope: this, requestId: requestId, sessionId: sessionId, title: title);
 
   /// This scope again around [child], for a route pushed from below it: the
   /// route's content does not inherit the session page's scope. [openSession]

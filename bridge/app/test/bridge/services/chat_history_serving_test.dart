@@ -2,11 +2,13 @@ import "dart:async";
 
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginSessionHistoryBusyException, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_chat_history.dart";
 
 void main() {
@@ -473,7 +475,91 @@ void main() {
       expect(repository.fetchCount, 0);
     });
   });
+
+  group("a replay naming a model the catalog doesn't offer", () {
+    const stored = AgentModel(providerID: "anthropic", modelID: "sonnet", variant: "high");
+    const offered = AgentModel(providerID: "anthropic", modelID: "opus", variant: null);
+    const unknown = AgentModel(providerID: "anthropic", modelID: "gateway-renamed", variant: null);
+
+    FakeSessionOptionsService catalogOffering() =>
+        FakeSessionOptionsService()
+          ..cacheOutcome = SessionOptionsAvailable(response: _catalogOffering(models: const [stored, offered]));
+
+    test("keeps the session's stored model", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: stored)]);
+      expect(page.replayedPromptDefaults?.model, stored);
+    });
+
+    test("still takes an imported model the catalog offers", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: offered);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: offered)]);
+      expect(page.replayedPromptDefaults?.model, offered);
+    });
+
+    test("takes the imported model when the session has none stored", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: unknown)]);
+    });
+
+    test("takes the imported model when no catalog is cached to judge it by", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: unknown)]);
+    });
+  });
 }
+
+SessionOptionsResponse _catalogOffering({required List<AgentModel> models}) => SessionOptionsResponse(
+  agents: const Agents(agents: []),
+  providers: ProviderListResponse(
+    items: [
+      ProviderInfo(
+        id: "anthropic",
+        name: "Anthropic",
+        models: {
+          for (final model in models)
+            model.modelID: ProviderModel(
+              id: model.modelID,
+              providerID: model.providerID,
+              name: model.modelID,
+              variants: const [],
+              defaultVariant: null,
+              family: null,
+              fastMode: null,
+              releaseDate: null,
+            ),
+        },
+        defaultModelID: null,
+      ),
+    ],
+    connectedOnly: true,
+  ),
+  commands: const CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
+);
 
 Message _message({required String id}) => Message.user(
   invocation: null,
@@ -501,6 +587,7 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
     implements SessionRepository {
   int fetchCount = 0;
   SessionPromptDefaults? replayedPromptDefaults;
+  SessionPromptDefaults? storedPromptDefaults;
   Object? promptDefaultsUpdateError;
   bool storedFastMode = false;
   final List<SessionPromptDefaults> promptDefaultsUpdates = [];
@@ -537,6 +624,28 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
     promptDefaultsUpdates.add(SessionPromptDefaults(agent: agent, model: agentModel));
     return SessionPromptDefaults(agent: agent, model: agentModel, fastMode: storedFastMode);
   }
+
+  @override
+  Future<Session?> getCatalogSession({required String sessionId}) async => Session(
+    approvalOverride: null,
+    id: sessionId,
+    pluginId: "claude",
+    projectID: "project-1",
+    directory: "/tmp/project-1",
+    parentID: null,
+    title: null,
+    branchName: null,
+    time: null,
+    promptDefaults: storedPromptDefaults,
+    hasWorktree: false,
+    unseen: false,
+    lastUserActivityAt: null,
+    autoContinuation: null,
+    pinOrder: null,
+    scheduledTask: null,
+    interruption: null,
+    forkedFrom: null,
+  );
 
   @override
   Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
