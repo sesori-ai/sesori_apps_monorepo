@@ -1033,17 +1033,17 @@ class ChatHistoryRepository({
     // saying the same wherever the harness put it: a notice sent while a turn
     // runs is stored where the bridge sent it, but a harness that queues it
     // replays it where the turn took it in. Equal notices stay ambiguous.
-    final importedNoticesByContent = <String, List<int>>{};
+    final importedNoticesByContent = <String, List<(int, _SemanticMessageFingerprints)>>{};
     for (var index = 0; index < messages.length; index++) {
       if (storedIds.contains(messages[index].info.id) || semanticPairs.containsKey(index)) continue;
       if ((messages[index].info, importedSemanticFingerprints[index]) case (
         MessageAssistant(sender: MessageSender.sesori),
         final fingerprint?,
       )) {
-        importedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add(index);
+        importedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add((index, fingerprint));
       }
     }
-    final storedNoticesByContent = <String, List<int>>{};
+    final storedNoticesByContent = <String, List<(int, _SemanticMessageFingerprints)>>{};
     for (var index = 0; index < storedContextRows.length; index++) {
       final row = storedContextRows[index];
       if (importedIds.contains(row.messageId) || semanticallyImportedStoredIds.contains(row.messageId)) continue;
@@ -1051,11 +1051,18 @@ class ChatHistoryRepository({
       final fingerprint = storedSemanticFingerprints[index];
       if (fingerprint == null) continue;
       if (Message.fromJson(jsonDecodeMap(row.infoJson)) case MessageAssistant(sender: MessageSender.sesori)) {
-        storedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add(index);
+        storedNoticesByContent.putIfAbsent(fingerprint.content, () => []).add((index, fingerprint));
       }
     }
     for (final MapEntry(key: content, value: storedIndexes) in storedNoticesByContent.entries) {
-      if ((storedIndexes, importedNoticesByContent[content]) case ([final storedIndex], [final importedIndex])) {
+      // A notice can repeat word for word, so known times that differ mark
+      // two occurrences.
+      if ((storedIndexes, importedNoticesByContent[content])
+          case (
+            [(final storedIndex, final storedFingerprint)],
+            [(final importedIndex, final importedFingerprint)],
+          )
+          when _knownTimesAgree(imported: importedFingerprint, stored: storedFingerprint)) {
         semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
         semanticPairs[importedIndex] = storedIndex;
       }

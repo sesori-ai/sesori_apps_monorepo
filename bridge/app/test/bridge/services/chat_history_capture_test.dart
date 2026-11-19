@@ -2233,6 +2233,31 @@ void main() {
         }
       });
 
+      test("keeps an equal notice sent at another time", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              _messageWithText(id: "ses_a-m1-user", text: "Say ALPHA", createdAt: null, promptId: null),
+              _notice(id: "ses_a-m2-user", createdAt: 200, pageRequestId: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "prm_a-user", text: "Say ALPHA", createdAt: 100, promptId: "prm_a"),
+            _notice(id: "prm_n-user", createdAt: 300, pageRequestId: null),
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          containsAll(const ["ses_a-m2-user", "prm_n-user"]),
+        );
+      });
+
       // An earlier send of the same prompt, stale after an import, may be the
       // occurrence the replay holds, so the streaming tail can't claim it.
       test("keeps a repeated prompt whose reply is still streaming", () async {
