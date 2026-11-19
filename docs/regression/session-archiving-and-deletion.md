@@ -31,7 +31,9 @@ entirely along with its transcript and its dedicated worktree.
   sub-agent, from the live activity summary whatever its backend still reports, so it lights no project badge
   or needs-you mark, never lists as Running, and auto-approval skips its own requests (an active sub-agent's
   request still gets auto-approved under an archived root). Every archive publishes a fresh
-  summary at once, in every harness. The bridge also lists no pending question, permission, form or external
+  summary at once, in every harness, and the archived session itself as updated. Another device therefore
+  sees the archive live: the session leaves its active lists, and an open session page turns read-only, its
+  composer and needs-you cards gone, without a reload. The bridge also lists no pending question, permission, form or external
   action whose own session is archived, since none can be answered. Archiving also cancels the session's own
   pending requests in every harness where nothing else could answer them (see
   `docs/HARNESS_CAPABILITIES.md`).
