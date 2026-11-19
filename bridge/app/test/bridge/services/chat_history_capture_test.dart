@@ -2153,23 +2153,7 @@ void main() {
       // reply, while the store holds its row without parts yet: Grok and GitHub
       // Copilot replay from a second process mid-turn.
       test("matches the newest turn once while its reply is still streaming", () async {
-        MessageWithParts notice({required String id, required int? createdAt, required String? pageRequestId}) =>
-            MessageWithParts(
-              info: sesoriNoticeRow(
-                id: id,
-                sessionId: "ses_a",
-                time: createdAt == null ? null : MessageTime(created: createdAt, completed: null),
-              ),
-              parts: [
-                MessagePart.text(
-                  id: "$id-text",
-                  sessionID: "ses_a",
-                  messageID: id,
-                  text: "You answered the fixture page.",
-                  noticePageRequestId: pageRequestId,
-                ),
-              ],
-            );
+        const notice = _notice;
         final turns = <String, MessageWithParts Function({required String id, required int? createdAt})>{
           "a page answer": ({required id, required createdAt}) =>
               notice(id: id, createdAt: createdAt, pageRequestId: "sesori-page-1"),
@@ -2211,6 +2195,72 @@ void main() {
           ];
           expect(turnIds, ["ses_a-h3-user"], reason: kind);
         }
+      });
+
+      // Oh My Pi takes a notice sent while a turn runs in after the tool call
+      // it was waiting on, so the replay holds it later than the bridge's row.
+      test("matches a page answer notice the harness took in later", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              _messageWithText(id: "ses_a-m1-user", text: "Say ALPHA", createdAt: null, promptId: null),
+              _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
+              _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
+              _notice(id: "ses_a-m4-user", createdAt: null, pageRequestId: "sesori-page-1"),
+              _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "prm_a-user", text: "Say ALPHA", createdAt: 100, promptId: "prm_a"),
+            _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
+            _notice(id: "prm_n-user", createdAt: 300, pageRequestId: "sesori-page-1"),
+            _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["ses_a-m1-user", "ses_a-m2-assistant", "ses_a-m3-assistant", "ses_a-m4-user", "ses_a-m5-assistant"],
+        );
+      });
+
+      // An earlier send of the same prompt, stale after an import, may be the
+      // occurrence the replay holds, so the streaming tail can't claim it.
+      test("keeps a repeated prompt whose reply is still streaming", () async {
+        final transcript = [_messageWithText(id: "r1-q", text: "Say Q", createdAt: null, promptId: null)];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [_messageWithText(id: "live-q", text: "Say Q", createdAt: 100, promptId: "p1")],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-q2", text: "Say Q", createdAt: 300, promptId: "p2"),
+            MessageWithParts(
+              info: _assistantMessageWithText(id: "live-q2-a", text: "", reasoning: null, createdAt: null).info,
+              parts: const [],
+            ),
+          ],
+        );
+        transcript
+          ..clear()
+          ..add(_messageWithText(id: "r2-q", text: "Say Q", createdAt: null, promptId: null));
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-q", "live-q2", "live-q2-a"],
+        );
       });
 
       // Oh My Pi replays no row for a reply whose model call failed.
@@ -3650,3 +3700,21 @@ final class _GatedInterruptions({required super.dao}) extends SessionInterruptio
     return await super.convertLeftover(leftover: leftover, afterMessageId: afterMessageId);
   }
 }
+
+MessageWithParts _notice({required String id, required int? createdAt, required String? pageRequestId}) =>
+    MessageWithParts(
+      info: sesoriNoticeRow(
+        id: id,
+        sessionId: "ses_a",
+        time: createdAt == null ? null : MessageTime(created: createdAt, completed: null),
+      ),
+      parts: [
+        MessagePart.text(
+          id: "$id-text",
+          sessionID: "ses_a",
+          messageID: id,
+          text: "You answered the fixture page.",
+          noticePageRequestId: pageRequestId,
+        ),
+      ],
+    );
