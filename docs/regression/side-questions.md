@@ -116,6 +116,8 @@ declaration into a `SideQuestionAvailability`: `available`,
   question stays in the field.
 - A new exchange slides in at the bottom; the list follows only a reader
   already at the bottom.
+- A thread that fits neither scrolls nor bounces, also while the earlier chats
+  cover it, and a macOS trackpad overscroll of a longer one stretches steadily.
 - Closing the sheet or panel while waiting, then reopening the chat, shows the
   answer.
 - An archived session's chats are read-only: "This session is archived. Its

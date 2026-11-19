@@ -332,6 +332,18 @@ void main() {
     expect(find.byKey(SideChatView.newChatButtonKey), findsNothing);
   });
 
+  testWidgets("a thread that fits stays still while the earlier chats cover it", (tester) async {
+    // An archived session opens straight on its newest chat.
+    await pumpView(tester, isArchived: true);
+    await tester.tap(find.byKey(SideChatView.earlierButtonKey));
+    await settle(tester);
+    expect(find.text("Earlier side chats"), findsOneWidget);
+
+    final position = Scrollable.of(tester.element(find.text("It backs off twice."))).position;
+    expect(position.maxScrollExtent, 0, reason: "the thread must fit");
+    expect(position.physics.shouldAcceptUserOffset(position), isFalse, reason: "a thread that fits must not bounce");
+  }, variant: const TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.macOS}));
+
   testWidgets(
     "a trackpad overscroll stretches steadily while a copy button slides under a resting cursor",
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),

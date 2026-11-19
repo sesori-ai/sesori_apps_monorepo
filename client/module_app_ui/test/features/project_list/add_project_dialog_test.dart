@@ -15,6 +15,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../helpers/trackpad_overscroll.dart";
+
 // ---------------------------------------------------------------------------
 // Mock classes
 // ---------------------------------------------------------------------------
@@ -727,6 +729,41 @@ void main() {
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: _homePath)).called(1);
       expect(_button(tester, _placeButton("Home")).onPressed, isNull);
     });
+
+    /// Opens the browser on a host with more drives than the place row shows.
+    Future<void> openWithManyDrives(WidgetTester tester) async {
+      when(() => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+        (invocation) async => FilesystemSuggestionsSuccess(
+          suggestions: FilesystemSuggestions(
+            data: const [],
+            path: (invocation.namedArguments[const Symbol("prefix")] as String?) ?? _homePath,
+            driveRoots: [for (var index = 0; index < 12; index++) "/Volumes/Drive $index"],
+          ),
+        ),
+      );
+      await tester.pumpWidget(_buildOpenerApp(cubit: mockCubit));
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+    }
+
+    final textScales = ValueVariant({1.0, 2.0});
+    testWidgets("the place row is as tall as its buttons at any text size", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = textScales.currentValue ?? 1;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await openWithManyDrives(tester);
+
+      // The closest scrollable is the row's own.
+      final row = find.ancestor(of: _placeButton("Home"), matching: find.byType(Scrollable)).first;
+      expect(tester.getSize(row).height, tester.getSize(_placeButton("Home")).height);
+    }, variant: textScales);
+
+    testWidgets("a trackpad overscroll stretches the place row steadily while a button slides under a resting cursor", (
+      tester,
+    ) async {
+      await openWithManyDrives(tester);
+
+      await expectSteadyTrackpadOverscroll(tester: tester, target: _placeButton("Drive 11"));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("the up button opens the parent folder and is disabled at the root", (tester) async {
       _stubSuggestionsPerPrefix(

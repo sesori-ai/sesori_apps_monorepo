@@ -97,7 +97,9 @@ state.
   is disabled. A drive that does not answer the bridge's probe within two
   seconds is left out, an unreadable mount table lists no drives, and a bridge
   that predates drive listing shows Home and Root. It remains available while a navigated directory loads or
-  reports an access failure. A folder without subfolders reads "No folders
+  reports an access failure. A row too long for the dialog scrolls sideways,
+  and a macOS trackpad overscroll of it stretches steadily even as a button
+  slides under the resting cursor. A folder without subfolders reads "No folders
   here", with a line saying files are not listed, and the add button names the
   browsed folder ("Add my-app"). Hiding delists
   without destroying sessions or history. Every catalog scan preserves the stored
