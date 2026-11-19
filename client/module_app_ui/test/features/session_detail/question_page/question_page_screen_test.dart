@@ -935,4 +935,139 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(QuestionPageScreen), findsNothing);
   });
+
+  testWidgets("three pages open in one session each count, ask and scroll on their own", (tester) async {
+    final session = _MockSessionDetailCubit();
+    whenListen(
+      session,
+      const Stream<SessionDetailState>.empty(),
+      initialState: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+    );
+    PendingPage page({required String id, required List<PageSection> sections}) => PendingPage(
+      id: id,
+      sessionId: "session-1",
+      displaySessionId: null,
+      title: "Fixture $id",
+      intro: null,
+      sections: sections,
+    );
+    final picked = PageDraft.empty.withChoice(questionId: "plan", optionId: "canary");
+    final page2 = page(
+      id: "page-2",
+      sections: const [
+        PageSection(heading: "Rollout", body: null, images: [], questions: [_plan]),
+        PageSection(heading: "Follow-up", body: null, images: [], questions: [_why]),
+      ],
+    );
+    final pages = {
+      // Untouched: three left.
+      "page-1": PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
+      // One optional question left, in its second section.
+      "page-2": PageEditing(
+        page: page2,
+        draft: picked,
+        feedback: const PageFeedbackNone(),
+      ),
+      // Two optional questions left, the first far down the page.
+      "page-3": PageEditing(
+        page: page(
+          id: "page-3",
+          sections: [
+            const PageSection(heading: null, body: null, images: [], questions: [_plan]),
+            for (var index = 0; index < 6; index++)
+              PageSection(heading: null, body: "Fixture text\n\n" * 6, images: const [], questions: const []),
+            const PageSection(heading: null, body: null, images: [], questions: [_checks, _why]),
+          ],
+        ),
+        draft: picked,
+        feedback: const PageFeedbackNone(),
+      ),
+    };
+    final cubits = <String, _MockPendingPageCubit>{};
+    final page2States = StreamController<PendingPageState>.broadcast();
+    addTearDown(page2States.close);
+    for (final MapEntry(key: id, value: state) in pages.entries) {
+      final pageCubit = cubits[id] = _MockPendingPageCubit();
+      whenListen(
+        pageCubit,
+        id == "page-2" ? page2States.stream : const Stream<PendingPageState>.empty(),
+        initialState: state,
+      );
+      when(pageCubit.submit).thenAnswer((_) async {});
+    }
+    _MockPendingPageCubit pageCubit(String id) => cubits[id] ?? (throw StateError("no fixture page $id"));
+    late BuildContext sessionContext;
+    await tester.pumpWidget(
+      _scoped(
+        createPendingPageCubit: ({required requestId, required sessionId}) => pageCubit(requestId),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: session,
+          child: Builder(
+            builder: (context) {
+              sessionContext = context;
+              return const Scaffold(body: Text("Session"));
+            },
+          ),
+        ),
+      ),
+    );
+    // Page 2 opens last, so it sits on top of the other two.
+    for (final id in ["page-1", "page-3", "page-2"]) {
+      unawaited(
+        SessionDetailPresentationScope.read(
+          sessionContext,
+        ).openPage(context: sessionContext, requestId: id, sessionId: "session-1", title: "Fixture $id"),
+      );
+      await tester.pumpAndSettle();
+    }
+    Finder screen(String id) =>
+        find.byWidgetPredicate((widget) => widget is QuestionPageScreen && widget.title == "Fixture $id");
+    Finder inPage(String id, Finder finder) => find.descendant(of: screen(id), matching: finder);
+    double scrolled(String id) =>
+        tester.state<ScrollableState>(inPage(id, find.byType(Scrollable)).first).position.pixels;
+
+    expect(tester.widget<Text>(inPage("page-1", find.byKey(const Key("question-page-left")))).data, "3 left");
+    expect(tester.widget<Text>(inPage("page-2", find.byKey(const Key("question-page-left")))).data, "1 left");
+    expect(tester.widget<Text>(inPage("page-3", find.byKey(const Key("question-page-left")))).data, "2 left");
+    expect(tester.widget<Text>(inPage("page-2", find.byKey(const Key("question-page-number-why")))).data, "2.1");
+    expect(tester.widget<Text>(inPage("page-1", find.byKey(const Key("question-page-number-why")))).data, "3");
+
+    // Page 2 asks about its own gap only and sends only itself.
+    await tester.tap(inPage("page-2", find.byKey(const Key("question-page-submit"))));
+    await tester.pumpAndSettle();
+    expect(find.text("Submit with 1 unanswered question?"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("question-page-gaps-submit")));
+    await tester.pumpAndSettle();
+    verify(pageCubit("page-2").submit).called(1);
+    verifyNever(pageCubit("page-1").submit);
+    verifyNever(pageCubit("page-3").submit);
+
+    // Settling page 2 closes only page 2.
+    page2States.add(PageSettledHere(page: page2, draft: picked, action: PageAction.submit));
+    await tester.pumpAndSettle();
+    verify(() => session.acknowledgeQuestionSettlement(requestId: "page-2")).called(1);
+    verifyNever(
+      () => session.acknowledgeQuestionSettlement(
+        requestId: any(named: "requestId", that: isNot("page-2")),
+      ),
+    );
+    expect(screen("page-2"), findsNothing);
+    expect(screen("page-1"), findsOneWidget);
+    expect(screen("page-3"), findsOneWidget);
+    expect(tester.widget<Text>(inPage("page-1", find.byKey(const Key("question-page-left")))).data, "3 left");
+    expect(tester.widget<Text>(inPage("page-3", find.byKey(const Key("question-page-left")))).data, "2 left");
+    expect(scrolled("page-1"), 0);
+    expect(scrolled("page-3"), 0);
+
+    // Go to first on page 3, now on top, scrolls page 3 alone.
+    await tester.tap(inPage("page-3", find.byKey(const Key("question-page-submit"))));
+    await tester.pumpAndSettle();
+    expect(find.text("Submit with 2 unanswered questions?"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("question-page-gaps-go-to-first")));
+    await tester.pumpAndSettle();
+    expect(scrolled("page-3"), greaterThan(0));
+    expect(scrolled("page-1"), 0);
+    verifyNever(pageCubit("page-1").submit);
+    verifyNever(pageCubit("page-3").submit);
+  });
 }

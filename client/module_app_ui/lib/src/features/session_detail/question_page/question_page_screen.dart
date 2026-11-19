@@ -830,7 +830,7 @@ class const _LeftPill({required final int left}) extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: left == 0 ? prego.colors.bgSuccessSecondary : prego.colors.bgTertiary,
+            color: prego.colors.bgTertiary,
             borderRadius: BorderRadius.circular(PregoRadius.full),
           ),
           child: left == 0
