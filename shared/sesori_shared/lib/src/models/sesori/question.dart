@@ -9,6 +9,7 @@ enum QuestionInteractionKind() {
   question,
   form,
   externalAction,
+  page,
   unknown,
 }
 

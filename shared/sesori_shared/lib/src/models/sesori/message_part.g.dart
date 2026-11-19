@@ -11,6 +11,7 @@ MessagePartText _$MessagePartTextFromJson(Map json) => MessagePartText(
   sessionID: json['sessionID'] as String,
   messageID: json['messageID'] as String,
   text: json['text'] as String? ?? "",
+  noticePageRequestId: json['noticePageRequestId'] as String?,
   $type: json['type'] as String?,
 );
 
@@ -20,6 +21,7 @@ Map<String, dynamic> _$MessagePartTextToJson(MessagePartText instance) =>
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
       'text': instance.text,
+      'noticePageRequestId': ?instance.noticePageRequestId,
       'type': instance.$type,
     };
 

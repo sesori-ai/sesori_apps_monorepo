@@ -151,13 +151,15 @@ as String,
 @JsonSerializable()
 
 class MessagePartText extends MessagePart {
-  const MessagePartText({required this.id, required this.sessionID, required this.messageID, this.text = "",  String? $type}): $type = $type ?? 'text',super._();
+  const MessagePartText({required this.id, required this.sessionID, required this.messageID, this.text = "", this.noticePageRequestId,  String? $type}): $type = $type ?? 'text',super._();
   factory MessagePartText.fromJson(Map<String, dynamic> json) => _$MessagePartTextFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
 @JsonKey() final  String text;
+/// The agent page a Sesori notice answers, so the line can reopen it.
+ final  String? noticePageRequestId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -176,18 +178,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text)&&(identical(other.noticePageRequestId, noticePageRequestId) || other.noticePageRequestId == noticePageRequestId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID,text);
+    return Object.hash(runtimeType,id,sessionID,messageID,text,noticePageRequestId);
 }
 
 @override
 String toString() {
-    return 'MessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+    return 'MessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text, noticePageRequestId: $noticePageRequestId)';
 }
 
 
@@ -198,7 +200,7 @@ abstract mixin class $MessagePartTextCopyWith<$Res> implements $MessagePartCopyW
   factory $MessagePartTextCopyWith(MessagePartText value, $Res Function(MessagePartText) _then) = _$MessagePartTextCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String text
+ String id, String sessionID, String messageID, String text, String? noticePageRequestId
 });
 
 
@@ -215,13 +217,14 @@ class _$MessagePartTextCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? text = null,Object? noticePageRequestId = freezed,}) {
   return _then(MessagePartText(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
+as String,noticePageRequestId: freezed == noticePageRequestId ? _self.noticePageRequestId : noticePageRequestId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
