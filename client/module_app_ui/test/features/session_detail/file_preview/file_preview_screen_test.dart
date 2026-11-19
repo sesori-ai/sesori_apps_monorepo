@@ -145,6 +145,7 @@ Widget _app({
     imageClipboard: _MockImageClipboard.new,
     imageSharer: _MockImageSharer.new,
     sessionRepository: () => throw UnimplementedError(),
+    createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
     createPendingFormCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
     createFilePreviewCubit: createFilePreviewCubit,
     createExternalActionCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),

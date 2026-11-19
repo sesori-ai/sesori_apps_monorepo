@@ -282,7 +282,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       }
     });
     final cubit = context.read<SessionDetailCubit>();
-    _questionSub = cubit.questionStream.listen((question) => mounted ? _showQuestionModal(question) : null);
+    _questionSub = cubit.questionStream.listen((question) {
+      if (mounted && _opensByItself(question)) _showQuestionModal(question);
+    });
     _permissionSub = cubit.permissionStream.listen((permission) => mounted ? _showPermissionModal(permission) : null);
     _noticeSub = cubit.noticeStream.listen((notice) => mounted ? _showNotice(notice) : null);
     cubit.clearNotifications();
@@ -1326,6 +1328,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
     if (!isPending()) return false;
     cubit.clearNotifications();
+    if (question.interactionKind == QuestionInteractionKind.page) {
+      _trackOpenSheet(
+        sheet: OpenRequestSheet.question,
+        isPending: isPending,
+        // A page that settled while open stays read-only until closed, so the
+        // card comes back for whatever else waits rather than opening it.
+        onWithdrawn: _unfoldCard,
+        closed: SessionDetailPresentationScope.read(
+          context,
+        ).openPage(context: context, requestId: question.id, sessionId: question.sessionID),
+      );
+      return true;
+    }
     if (question.interactionKind == QuestionInteractionKind.form) {
       _trackOpenSheet(
         sheet: OpenRequestSheet.question,
@@ -1518,11 +1533,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     _showFailureAlert(message);
   }
 
+  /// Whether [question] opens without the user asking, on arrival or after
+  /// the request before it. A page waits for its card's Review.
+  bool _opensByItself(SesoriQuestionAsked question) => question.interactionKind != QuestionInteractionKind.page;
+
   void _scheduleNextQuestionModal() {
     final state = context.read<SessionDetailCubit>().state;
     if (state case SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions)) {
-      if (pendingQuestions.isNotEmpty) {
-        _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+      if (pendingQuestions.firstOrNull case final next? when _opensByItself(next)) {
+        _scheduleModal(() => _showQuestionModal(next));
         return;
       }
       if (pendingPermissions.isNotEmpty) {
@@ -1540,8 +1559,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         _scheduleModal(() => _showPermissionModal(pendingPermissions.first));
         return;
       }
-      if (pendingQuestions.isNotEmpty) {
-        _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+      if (pendingQuestions.firstOrNull case final next? when _opensByItself(next)) {
+        _scheduleModal(() => _showQuestionModal(next));
         return;
       }
     }
