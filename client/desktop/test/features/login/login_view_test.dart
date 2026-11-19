@@ -19,6 +19,8 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../helpers/trackpad_overscroll.dart";
+
 class _MockLoginCubit() extends MockCubit<LoginState> implements LoginCubit;
 
 class _MockLastSignInProviderCubit() extends MockCubit<AuthProvider?> implements LastSignInProviderCubit;
@@ -134,8 +136,21 @@ void main() {
       expect(tester.takeException(), isNull);
       final legal = find.text(_legal, findRichText: true);
       await tester.scrollUntilVisible(legal, 100);
+      // The scroll view lays out the jump scrollUntilVisible ends with.
+      await tester.pump();
       expect(tester.getRect(legal).bottom, lessThanOrEqualTo(480));
       expect(find.text("Sign in with email").hitTestable(), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+    testWidgets("a trackpad overscroll stretches steadily while the buttons slide under a resting cursor", (
+      tester,
+    ) async {
+      await pumpLogin(tester, state: const LoginState.idle(), size: const Size(560, 480));
+
+      await expectSteadyTrackpadOverscroll(
+        tester: tester,
+        target: find.widgetWithText(PregoButtonsSolid, "Sign in with email"),
+      );
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("crossing the breakpoint folds the panel and keeps what was typed", (tester) async {

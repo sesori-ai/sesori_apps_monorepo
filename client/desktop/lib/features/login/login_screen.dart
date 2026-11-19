@@ -122,7 +122,10 @@ class const _SignInPane({
         : const SizedBox(width: double.infinity);
 
     return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
+      // Keeps the overscroll stretch when the column lays out again mid-scroll,
+      // as a button does when it slides under a resting trackpad cursor.
+      builder: (context, constraints) => PregoSingleChildScrollView(
+        controller: null,
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: constraints.maxHeight),
           child: Padding(

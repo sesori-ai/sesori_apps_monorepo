@@ -8,6 +8,7 @@ import "../../interactions/prego_interaction_scope.dart";
 import "../../motion/prego_pointer_motion.dart";
 import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
+import "../prego_single_child_scroll_view.dart";
 
 /// Where an [AnchoredFlatPanel] sits against the rect it anchors to.
 enum AnchoredPanelPlacement() {
@@ -192,7 +193,11 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
         // shrink-wraps as before.
         child: widget.contentScrolls
             ? widget.childBuilder(context, close)
-            : SingleChildScrollView(reverse: widget.reverseScroll, child: widget.childBuilder(context, close)),
+            : PregoSingleChildScrollView(
+                controller: null,
+                reverse: widget.reverseScroll,
+                child: widget.childBuilder(context, close),
+              ),
       ),
     );
 

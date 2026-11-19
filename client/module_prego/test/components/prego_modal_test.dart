@@ -1,7 +1,10 @@
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../helpers/trackpad_overscroll.dart";
 
 Widget _app({required PregoInteractionMode mode, required void Function(BuildContext context) onOpen}) {
   return PregoInteractionScope(
@@ -27,6 +30,24 @@ Future<void> _open({required WidgetTester tester}) async {
 /// The dialog's visible panel; the [Dialog] widget itself spans the window.
 Rect _panel({required WidgetTester tester}) =>
     tester.getRect(find.descendant(of: find.byType(Dialog), matching: find.byType(Material)).first);
+
+/// More buttons than a dialog holds, so the body scrolls.
+Widget _buttons() => Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    for (var index = 0; index < 20; index++)
+      Padding(
+        padding: const EdgeInsets.only(bottom: PregoSpacing.sm),
+        child: PregoButtonsSolid(
+          label: "Option $index",
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.md,
+          fullWidth: true,
+          onPressed: () {},
+        ),
+      ),
+  ],
+);
 
 void main() {
   testWidgets("touch keeps the bottom sheet", (tester) async {
@@ -205,4 +226,38 @@ void main() {
     expect(find.byType(Dialog), findsNothing);
     expect(find.text("1 of 2"), findsOneWidget);
   });
+
+  testWidgets(
+    "a trackpad overscroll stretches a dialog steadily while buttons slide under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          mode: PregoInteractionMode.pointer,
+          onOpen: (context) => showPregoModal<void>(context: context, title: "Fixture", builder: (_) => _buttons()),
+        ),
+      );
+      await _open(tester: tester);
+      await expectSteadyTrackpadOverscroll(tester: tester, target: find.text("Option 19"));
+    },
+  );
+
+  testWidgets(
+    "a trackpad overscroll stretches an action sheet steadily while buttons slide under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          mode: PregoInteractionMode.pointer,
+          onOpen: (context) => showPregoModalRoute<void>(
+            context: context,
+            builder: (_) =>
+                PregoActionSheet(title: "Fixture", topInset: 0, actions: const Text("Allow"), child: _buttons()),
+          ),
+        ),
+      );
+      await _open(tester: tester);
+      await expectSteadyTrackpadOverscroll(tester: tester, target: find.text("Option 19"));
+    },
+  );
 }

@@ -253,7 +253,7 @@ class const _PregoDialogFrame({
                 ],
               ),
             ),
-            Flexible(child: scrolls ? SingleChildScrollView(child: body) : body),
+            Flexible(child: scrolls ? PregoSingleChildScrollView(controller: null, child: body) : body),
           ],
         ),
       ),

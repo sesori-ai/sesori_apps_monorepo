@@ -73,7 +73,11 @@ class const ExternalActionModal({
         topInset: topInset,
         child: SizedBox(
           height: math.max(0, math.min(520, available)),
-          child: SingleChildScrollView(
+          // Keeps the overscroll stretch when the request lays out again
+          // mid-scroll, as a button does when it slides under a resting
+          // trackpad cursor.
+          child: PregoSingleChildScrollView(
+            controller: null,
             padding: const EdgeInsets.all(PregoSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

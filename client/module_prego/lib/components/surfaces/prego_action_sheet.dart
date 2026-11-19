@@ -4,6 +4,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_theme.dart";
+import "../prego_single_child_scroll_view.dart";
 import "prego_modal.dart";
 
 /// A floating, content-sized sheet for a short decision flow.
@@ -117,13 +118,13 @@ class const _DecisionFlow({
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (scrollAll) content else Flexible(child: SingleChildScrollView(child: content)),
+              if (scrollAll) content else Flexible(child: PregoSingleChildScrollView(controller: null, child: content)),
               SizedBox(height: prego.spacing.xl),
               actions,
             ],
           ),
         );
-        return scrollAll ? SingleChildScrollView(child: body) : body;
+        return scrollAll ? PregoSingleChildScrollView(controller: null, child: body) : body;
       },
     );
   }

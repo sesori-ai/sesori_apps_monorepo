@@ -155,7 +155,7 @@ SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
 );
 
 Finder _pickerMenuItem(String label) => find.descendant(
-  of: find.byType(SingleChildScrollView),
+  of: find.byType(PregoSingleChildScrollView),
   matching: find.widgetWithText(InkWell, label),
 );
 

@@ -171,7 +171,7 @@ void main() {
       expect(last.hitTestable(), findsOneWidget);
       expect(first.hitTestable(), findsNothing);
       expect(tester.getTopLeft(first).dy, lessThan(tester.getTopLeft(last).dy));
-      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+      await tester.drag(find.byType(PregoSingleChildScrollView), const Offset(0, 300));
       await tester.pumpAndSettle();
       expect(first.hitTestable(), findsOneWidget);
     });
@@ -298,7 +298,7 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      final panelRect = tester.getRect(find.byType(PregoSingleChildScrollView));
       final firstItem = find.widgetWithText(InkWell, "Alpha");
       final lastItem = find.widgetWithText(InkWell, "Beta");
       final firstItemRect = tester.getRect(firstItem);
@@ -333,7 +333,7 @@ void main() {
         find.descendant(of: row, matching: find.widgetWithText(PregoStatusLabel, "Online")),
         findsOneWidget,
       );
-      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      final panelRect = tester.getRect(find.byType(PregoSingleChildScrollView));
       expect(tester.getRect(row).top, panelRect.top);
       expect(tester.getRect(row).bottom, panelRect.bottom);
     });
@@ -356,7 +356,7 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      final panelRect = tester.getRect(find.byType(PregoSingleChildScrollView));
       final firstCustomRect = tester.getRect(find.byKey(const ValueKey("first-custom")));
       final lastCustomRect = tester.getRect(find.byKey(const ValueKey("last-custom")));
 
@@ -419,7 +419,7 @@ void main() {
       await tester.tap(find.text("Open"));
       await tester.pumpAndSettle();
 
-      expect(tester.getSize(find.byType(SingleChildScrollView)).width, lessThanOrEqualTo(296.0));
+      expect(tester.getSize(find.byType(PregoSingleChildScrollView)).width, lessThanOrEqualTo(296.0));
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 

@@ -12,6 +12,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/composer_attachment_dispatcher_fixture.dart";
+import "../../helpers/trackpad_overscroll.dart";
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
@@ -42,8 +43,7 @@ const _composing = NewSessionState.composing(
 );
 
 void main() {
-  testWidgets("the composer opens with the attachments the last new-session composer kept", (tester) async {
-    const kept = ComposerHostFileAttachment(path: "/tmp/notes.txt", filename: "notes.txt");
+  _MockNewSessionCubit composerCubit({required List<ComposerAttachment> initialAttachments}) {
     final composer = _MockNewSessionCubit();
     whenListen(composer, const Stream<NewSessionState>.empty(), initialState: _composing);
     when(() => composer.needsHarnessDiscovery).thenReturn(false);
@@ -53,9 +53,16 @@ void main() {
     when(() => composer.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => composer.composerDraft).thenReturn(ComposerDraft.typed(text: "next idea"));
     when(() => composer.offersAttachments).thenReturn(true);
-    when(() => composer.initialAttachments).thenReturn(const [kept]);
+    when(() => composer.initialAttachments).thenReturn(initialAttachments);
     when(() => composer.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
+    return composer;
+  }
 
+  Future<void> pumpNewSession({
+    required WidgetTester tester,
+    required NewSessionCubit composer,
+    required NewSessionPageChrome? pageChrome,
+  }) async {
     final projects = _MockProjectListCubit();
     whenListen(
       projects,
@@ -102,7 +109,7 @@ void main() {
               child: child,
             ),
             banner: null,
-            pageChrome: null,
+            pageChrome: pageChrome,
             aboveComposer: null,
             submitAction: null,
           ),
@@ -110,6 +117,12 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+  testWidgets("the composer opens with the attachments the last new-session composer kept", (tester) async {
+    const kept = ComposerHostFileAttachment(path: "/tmp/notes.txt", filename: "notes.txt");
+    final composer = composerCubit(initialAttachments: const [kept]);
+    await pumpNewSession(tester: tester, composer: composer, pageChrome: null);
 
     expect(tester.widget<PromptInput>(find.byType(PromptInput)).initialAttachments, const [kept]);
     final staged = verify(
@@ -118,4 +131,25 @@ void main() {
     expect(staged.last, const [kept]);
     expect(find.byKey(const ObjectKey(kept)), findsOneWidget);
   });
+
+  testWidgets("a trackpad overscroll stretches steadily while the composer slides under a resting cursor", (
+    tester,
+  ) async {
+    // A short window, so the options column scrolls.
+    tester.view.physicalSize = const Size(800, 260);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpNewSession(
+      tester: tester,
+      composer: composerCubit(initialAttachments: const []),
+      pageChrome: const NewSessionPageChrome(
+        topBar: SizedBox(height: 48),
+        maxContentWidth: 600,
+        transcriptWidth: 600,
+        backgroundColor: null,
+      ),
+    );
+
+    await expectSteadyTrackpadOverscroll(tester: tester, target: find.byType(TextField));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }

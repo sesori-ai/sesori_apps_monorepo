@@ -69,13 +69,16 @@ desktop main-pane transitions distinct.
   permission requests, reasoning, and the folder browser. A dialog opened from
   a dialog stacks on it, and Escape closes only the top one. Reduced motion
   opens and closes them at once.
+- A macOS trackpad overscroll in a dialog, an action sheet or a popover
+  stretches steadily and settles back, even as buttons slide under the resting
+  cursor. Content that fits does not scroll or bounce.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; sidebar shell coverage proves the 700 pt breakpoint, the floating panel's inset past the safe area, the pane's page kept clear of the side insets through the collapse, the collapse motion and restore, and that rotating keeps the open session and the list; reveal page coverage proves the circle follows the route animation out of its origin over a still page and back into it, paints the dim and the rim's shadow under the circle (and the lift over it on a dark page) mid-reveal and on pop and leaves the open page painting alone, without checking their colours, tracks an iOS edge swipe linearly, closes past halfway or on a flick and otherwise springs back open, ignores the edge off iOS and gives way to the fallback under reduced motion, and route and home navigation coverage prove only the + selects it and choosing a project keeps it; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the desktop exits to the home; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; archive navigation coverage proves an archived session's edge swipe and system Back return to the Archived list and the list's leave the flow; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; sidebar shell coverage proves the 700 pt breakpoint, the floating panel's inset past the safe area, the pane's page kept clear of the side insets through the collapse, the collapse motion and restore, and that rotating keeps the open session and the list; reveal page coverage proves the circle follows the route animation out of its origin over a still page and back into it, paints the dim and the rim's shadow under the circle (and the lift over it on a dark page) mid-reveal and on pop and leaves the open page painting alone, without checking their colours, tracks an iOS edge swipe linearly, closes past halfway or on a flick and otherwise springs back open, ignores the edge off iOS and gives way to the fallback under reduced motion, and route and home navigation coverage prove only the + selects it and choosing a project keeps it; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the desktop exits to the home; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; archive navigation coverage proves an archived session's edge swipe and system Back return to the Archived list and the list's leave the flow; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, the instant reduced-motion open, and a steady macOS trackpad overscroll in the dialog, the action sheet and the popover; scroll view coverage proves content that fits keeps its size and stays still under a drag. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, the settings modal, the + revealing New session and Back shrinking it (on iOS also a partial and a completed edge swipe, slow and flicked, with the list scrolled), and the phone's Archived page pushing over Settings with an archived session's detail pushing over it, leaving each by an edge swipe released mid-gesture (the page springs back) and completed, and by Back. |
 | L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise sidebar pane fading and the collapse and restore motion where the viewport supports it. |
 | L5 Full | No additional coverage. |
@@ -94,6 +97,8 @@ desktop main-pane transitions distinct.
 - A desktop modal rises as a bottom sheet, a phone modal opens as a dialog,
   Escape closes more than the top dialog, or a dialog fades under reduced
   motion.
+- A trackpad overscroll in a dialog, action sheet or popover snaps back
+  mid-gesture, or content that fits starts to scroll.
 - Returning from a base compact session detail lands anywhere but the home, a
   session URL whose project identifier contains filesystem-path separators does
   not match, or a pushed child detail returns to the home instead of its parent.
@@ -128,3 +133,5 @@ desktop main-pane transitions distinct.
 - `client/desktop/test/core/routing/desktop_router_test.dart`
 - `client/module_prego/lib/components/surfaces/prego_modal.dart`
 - `client/module_prego/test/components/prego_modal_test.dart`
+- `client/module_prego/test/components/prego_popover_test.dart`
+- `client/module_prego/test/components/prego_single_child_scroll_view_test.dart`

@@ -268,7 +268,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Tool 0"), findsOneWidget);
     expect(_height(tester), collapsed);
-    final panel = find.ancestor(of: find.text("Tool 0"), matching: find.byType(SingleChildScrollView));
+    final panel = find.ancestor(of: find.text("Tool 0"), matching: find.byType(PregoSingleChildScrollView));
     expect(tester.getSize(panel).height, lessThanOrEqualTo(TranscriptGroupWidget.panelMaxHeight));
   });
 

@@ -104,73 +104,64 @@ class const PendingFormModal({
                 ),
               ),
               Expanded(
-                // A sliver viewport, like the question page's, so the
-                // overscroll stretch holds when the form lays out again
+                // Keeps the overscroll stretch when the form lays out again
                 // mid-scroll, as a field or button does when it slides under a
-                // resting trackpad cursor. A SingleChildScrollView snaps its
-                // overscroll back to the edge on every layout.
-                child: CustomScrollView(
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsetsDirectional.only(
-                        start: PregoSpacing.lg,
-                        end: PregoSpacing.lg,
-                        bottom: PregoSpacing.lg,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (state case FormReady(
-                              :final form,
-                              :final drafts,
-                              :final submission,
-                              :final connection,
-                            )) ...[
-                              Text(form.title, style: Theme.of(context).textTheme.titleMedium),
-                              const SizedBox(height: PregoSpacing.md),
-                              Text(form.message),
-                              const SizedBox(height: PregoSpacing.lg),
-                              for (final field in form.fields)
-                                PendingFormFieldEditor(
-                                  key: ValueKey(field.id),
-                                  field: field,
-                                  draft: drafts[field.id],
-                                  issue: submission is FormSubmissionInvalid ? submission.fieldErrors[field.id] : null,
-                                  editable:
-                                      connection == FormConnectionOwnership.active && submission is! FormSubmitting,
-                                  onChanged: (draft) => cubit.edit(fieldId: field.id, draft: draft),
-                                ),
-                              _Button(
-                                label: loc.questionModalSubmit,
-                                onPressed: cubit.canSubmit ? cubit.submit : null,
-                              ),
-                              for (final choice in [FormDismissalChoice.decline, FormDismissalChoice.cancel])
-                                _Button(
-                                  label: choice == FormDismissalChoice.decline
-                                      ? loc.mcpExternalDecline
-                                      : loc.mcpCancelRequest,
-                                  onPressed:
-                                      connection == FormConnectionOwnership.active && submission is! FormSubmitting
-                                      ? () => cubit.decline(choice: choice)
-                                      : null,
-                                ),
-                            ],
-                            if (state is FormReadFailed) ...[
-                              _Button(label: loc.mcpRefresh, onPressed: cubit.refresh),
-                              _Button(
-                                label: loc.mcpCancelRequest,
-                                onPressed: () {
-                                  context.pop();
-                                  onCancelUnavailable();
-                                },
-                              ),
-                            ],
-                          ],
+                // resting trackpad cursor.
+                child: PregoSingleChildScrollView(
+                  controller: null,
+                  padding: const EdgeInsetsDirectional.only(
+                    start: PregoSpacing.lg,
+                    end: PregoSpacing.lg,
+                    bottom: PregoSpacing.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (state case FormReady(
+                        :final form,
+                        :final drafts,
+                        :final submission,
+                        :final connection,
+                      )) ...[
+                        Text(form.title, style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(height: PregoSpacing.md),
+                        Text(form.message),
+                        const SizedBox(height: PregoSpacing.lg),
+                        for (final field in form.fields)
+                          PendingFormFieldEditor(
+                            key: ValueKey(field.id),
+                            field: field,
+                            draft: drafts[field.id],
+                            issue: submission is FormSubmissionInvalid ? submission.fieldErrors[field.id] : null,
+                            editable: connection == FormConnectionOwnership.active && submission is! FormSubmitting,
+                            onChanged: (draft) => cubit.edit(fieldId: field.id, draft: draft),
+                          ),
+                        _Button(
+                          label: loc.questionModalSubmit,
+                          onPressed: cubit.canSubmit ? cubit.submit : null,
                         ),
-                      ),
-                    ),
-                  ],
+                        for (final choice in [FormDismissalChoice.decline, FormDismissalChoice.cancel])
+                          _Button(
+                            label: choice == FormDismissalChoice.decline
+                                ? loc.mcpExternalDecline
+                                : loc.mcpCancelRequest,
+                            onPressed: connection == FormConnectionOwnership.active && submission is! FormSubmitting
+                                ? () => cubit.decline(choice: choice)
+                                : null,
+                          ),
+                      ],
+                      if (state is FormReadFailed) ...[
+                        _Button(label: loc.mcpRefresh, onPressed: cubit.refresh),
+                        _Button(
+                          label: loc.mcpCancelRequest,
+                          onPressed: () {
+                            context.pop();
+                            onCancelUnavailable();
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ],
