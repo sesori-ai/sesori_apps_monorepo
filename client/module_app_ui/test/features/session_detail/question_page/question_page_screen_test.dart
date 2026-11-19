@@ -631,53 +631,93 @@ void main() {
     verifyNever(() => session.acknowledgeQuestionSettlement(requestId: any(named: "requestId")));
   });
 
-  testWidgets("an accepted Submit settles the request on the session and slides the page down", (tester) async {
-    final session = _MockSessionDetailCubit();
-    whenListen(
-      session,
-      const Stream<SessionDetailState>.empty(),
-      initialState: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
-    );
-    whenListen(
-      cubit,
-      states.stream,
-      initialState: PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
-    );
-    await tester.pumpWidget(
-      _scoped(
-        createPendingPageCubit: ({required requestId, required sessionId}) => cubit,
-        child: BlocProvider<SessionDetailCubit>.value(
-          value: session,
-          child: Builder(
-            builder: (context) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => SessionDetailPresentationScope.read(
-                    context,
-                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1", title: null),
-                  child: const Text("Open"),
+  group("an accepted Submit through the scope's opener", () {
+    late _MockSessionDetailCubit session;
+
+    Future<void> open(WidgetTester tester) async {
+      session = _MockSessionDetailCubit();
+      whenListen(
+        session,
+        const Stream<SessionDetailState>.empty(),
+        initialState: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+      );
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
+      );
+      await tester.pumpWidget(
+        _scoped(
+          createPendingPageCubit: ({required requestId, required sessionId}) => cubit,
+          child: BlocProvider<SessionDetailCubit>.value(
+            value: session,
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    onPressed: () => SessionDetailPresentationScope.read(
+                      context,
+                    ).openPage(context: context, requestId: "page-1", sessionId: "session-1", title: null),
+                    child: const Text("Open"),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.tap(find.text("Open"));
-    await tester.pumpAndSettle();
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+    }
 
-    states.add(PageSent(page: _questionsPage, draft: PageDraft.empty));
-    await tester.pump();
-    verify(() => session.acknowledgeQuestionSettlement(requestId: "page-1")).called(1);
-    // The pop starts the slide on the next frame.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 120));
-    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
-    final midway = tester.getRect(find.byType(QuestionPageScreen)).top;
-    expect(midway, greaterThan(0));
-    expect(midway, lessThan(screenHeight));
-    await tester.pumpAndSettle();
-    expect(find.byType(QuestionPageScreen), findsNothing);
+    testWidgets("settles the request on the session and slides the page down", (tester) async {
+      await open(tester);
+
+      states.add(PageSent(page: _questionsPage, draft: PageDraft.empty));
+      await tester.pump();
+      verify(() => session.acknowledgeQuestionSettlement(requestId: "page-1")).called(1);
+      // The pop starts the slide on the next frame.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final midway = tester.getRect(find.byType(QuestionPageScreen)).top;
+      expect(midway, greaterThan(0));
+      expect(midway, lessThan(screenHeight));
+      await tester.pumpAndSettle();
+      expect(find.byType(QuestionPageScreen), findsNothing);
+      expect(find.text("Open"), findsOneWidget);
+    });
+
+    testWidgets("while the page is already sliding down leaves the session in place", (tester) async {
+      await open(tester);
+
+      await tester.tap(find.byKey(const Key("question-page-close")));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      states.add(PageSent(page: _questionsPage, draft: PageDraft.empty));
+      await tester.pumpAndSettle();
+
+      verify(() => session.acknowledgeQuestionSettlement(requestId: "page-1")).called(1);
+      expect(find.byType(QuestionPageScreen), findsNothing);
+      expect(find.text("Open"), findsOneWidget);
+    });
+
+    testWidgets("under a route the page opened removes only the page", (tester) async {
+      await open(tester);
+      Navigator.of(
+        tester.element(find.byType(QuestionPageScreen)),
+      ).push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text("Fixture preview"))));
+      await tester.pumpAndSettle();
+
+      states.add(PageSent(page: _questionsPage, draft: PageDraft.empty));
+      await tester.pumpAndSettle();
+      expect(find.text("Fixture preview"), findsOneWidget);
+      expect(find.byType(QuestionPageScreen, skipOffstage: false), findsNothing);
+
+      Navigator.of(tester.element(find.text("Fixture preview"))).pop();
+      await tester.pumpAndSettle();
+      expect(find.text("Open"), findsOneWidget);
+    });
   });
 
   testWidgets("a wide window shows the page as a wide overlay over the dimmed session", (tester) async {

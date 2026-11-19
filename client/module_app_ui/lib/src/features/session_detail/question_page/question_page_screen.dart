@@ -51,7 +51,8 @@ Future<void> showQuestionPage({
   final reducedMotion = context.isReducedMotion;
   // ignore: no_slop_linter/avoid_navigator_of, the page is a transient route over the session page
   final navigator = Navigator.of(context);
-  final route = PageRouteBuilder<void>(
+  late final PageRouteBuilder<void> route;
+  route = PageRouteBuilder<void>(
     // The session stays drawn below: the wide overlay shows it around the page.
     opaque: false,
     transitionDuration: reducedMotion ? Duration.zero : _openDuration,
@@ -73,7 +74,13 @@ Future<void> showQuestionPage({
             onClose: navigator.pop,
             onSent: () {
               sessionCubit.acknowledgeQuestionSettlement(requestId: requestId);
-              navigator.pop();
+              // The page may already be leaving, closed while its Submit was in
+              // flight, or sit under a route it opened, such as a file preview.
+              if (route.isCurrent) {
+                navigator.pop();
+              } else if (route.isActive) {
+                navigator.removeRoute(route);
+              }
             },
           ),
         ),
