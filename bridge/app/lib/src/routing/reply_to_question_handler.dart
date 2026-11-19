@@ -38,7 +38,7 @@ class ReplyToQuestionHandler({
       case AgentPageReplyDismissed():
         break;
       case AgentPageAlreadySettled():
-        throw buildErrorResponse(request: request, status: 409, message: "This page was already answered or closed.");
+        throw buildErrorResponse(request: request, status: 404, message: "This page is no longer pending.");
     }
 
     return const SuccessEmptyResponse();
