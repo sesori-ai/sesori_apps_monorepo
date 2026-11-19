@@ -119,8 +119,8 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   note, marks those as the user's own words on one line each, names the sub-agent session that asked, and asks for a
   one-line acknowledgement.
 - `POST /page` opens a page, pending, answered (with its answers and note) or dismissed, by its id on the page's own
-  session or the root session it shows on. A pending page is `missing` while its session is archived; answered and
-  dismissed pages open archived or not. Anything else is `missing`.
+  session or the root session it shows on. A pending page of an archived session is `missing`, because archiving
+  withdraws it for good; answered and dismissed pages open archived or not. Anything else is `missing`.
 - Answer and dismissal notices carry `[SESORI PAGE] <id>` as the first line after `[FOR THE AGENT]`. The bridge reads
   it only there, live and on reload, into the text part's `noticePageRequestId`, so the user's line can reopen the
   page; a reference line anywhere else, such as inside a user's note, never counts. Notices without it, and every
