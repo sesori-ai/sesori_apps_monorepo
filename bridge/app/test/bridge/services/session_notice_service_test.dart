@@ -12,11 +12,16 @@ import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show parseSessionNotice;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginBusyPromptHandling;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-const _notice = SessionNotice(summary: "You allowed pausing “Nightly”.", guidance: "The change is saved.");
+const _notice = SessionNotice(
+  summary: "You allowed pausing “Nightly”.",
+  guidance: "The change is saved.",
+  pageRequestId: null,
+);
 
 void main() {
   late _Sessions sessions;
@@ -51,6 +56,23 @@ void main() {
     expect(sent.mark, isA<PromptStampNotice>());
     expect(sent.text, contains("You allowed pausing “Nightly”."));
     expect(sent.text, contains("The change is saved."));
+    expect(parseSessionNotice(text: sent.text)?.pageRequestId, isNull);
+  });
+
+  test("a page notice carries its page reference into the frame", () async {
+    await service.deliver(
+      sessionId: "s1",
+      notice: const SessionNotice(
+        summary: "You answered “Palette”.",
+        guidance: "Fixture",
+        pageRequestId: "sesori-page-1",
+      ),
+    );
+
+    expect(
+      parseSessionNotice(text: prompts.sent.single.text),
+      (summary: "You answered “Palette”.", pageRequestId: "sesori-page-1"),
+    );
   });
 
   test("a steering harness takes the notice into the running turn", () async {

@@ -1262,6 +1262,123 @@ void main() {
     await messages.cancel();
   });
 
+  test("a submitted page tells the session, and its notice line links back to the page", () async {
+    final relayServer = await TestRelayServer.start();
+    final mcpServer = await SesoriMcpServer.bindLoopback();
+    final grants = SesoriMcpGrantRepository(random: Random());
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+      sesoriMcpRequests: mcpServer.requests,
+      sesoriMcpGrants: grants,
+    );
+    addTearDown(() async {
+      await harness.close();
+      await mcpServer.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    await _exchangeRoomKey(socket: socket, messages: messages, connID: 407);
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final events = <SesoriSseEvent>[];
+    final subscription = harness.composition.session.localWireEvents.listen(events.add);
+    addTearDown(subscription.cancel);
+
+    final token = grants.mint(pluginId: "one");
+    grants.bind(token: token, backendSessionId: "backend-session");
+    await http.post(
+      mcpServer.url,
+      headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
+      body: jsonEncode({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "send_page",
+          "arguments": {
+            "title": "Release plan",
+            "sections": [
+              {
+                "questions": [
+                  {"id": "q1", "title": "Ship date?", "kind": "text", "required": true},
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    );
+    await _waitFor(() => events.whereType<SesoriQuestionAsked>().isNotEmpty, reason: "the page marker");
+    final asked = events.whereType<SesoriQuestionAsked>().single;
+
+    final submitted = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "POST",
+        "/page/submit",
+        body: jsonEncode(
+          SubmitPageRequest(
+            requestId: asked.id,
+            sessionId: "stable-session",
+            answers: const [
+              PageAnswer(
+                questionId: "q1",
+                value: PageAnswerValue.text(text: "Friday"),
+                note: null,
+              ),
+            ],
+            note: null,
+          ).toJson(),
+        ),
+      ),
+    );
+    expect(submitted.status, 200);
+    expect(
+      PageSubmitResult.fromJson(jsonDecodeMap(submitted.body ?? fail("missing body"))),
+      const PageSubmitResult.accepted(),
+    );
+
+    final plugin = harness.plugins.single;
+    await _waitFor(() => plugin.sentPromptIds.isNotEmpty, reason: "the answer notice");
+    final noticeText = [
+      for (final part in plugin.lastSendPromptParts ?? const <PluginPromptPart>[])
+        if (part case PluginPromptPartText(:final text)) text,
+    ].join();
+    expect(noticeText, contains("[SESORI PAGE] ${asked.id}"));
+    expect(noticeText, contains("“Friday”"));
+
+    // The harness echoes the notice back; the wire shows its summary and the page.
+    plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: PluginMessagePart.text(
+          id: "notice-part",
+          sessionID: "backend-session",
+          messageID: "notice-echo",
+          text: noticeText,
+        ),
+      ),
+    );
+    await _waitFor(
+      () => events.any((event) => event is SesoriMessagePartUpdated && event.part.id == "notice-part"),
+      reason: "the echoed notice part",
+    );
+    final echoed = events.whereType<SesoriMessagePartUpdated>().singleWhere((event) => event.part.id == "notice-part");
+    expect(
+      echoed.part,
+      isA<MessagePartText>()
+          .having((part) => part.text, "text", "You answered “Release plan”.")
+          .having((part) => part.noticePageRequestId, "noticePageRequestId", asked.id),
+    );
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await messages.cancel();
+  });
+
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

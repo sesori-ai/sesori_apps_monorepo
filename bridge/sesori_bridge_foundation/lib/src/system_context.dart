@@ -71,21 +71,30 @@ String? _stripOneNote({required String text}) {
 const _noticeStart = "[SESORI NOTICE]\n";
 const _noticeAgentPart = "\n[FOR THE AGENT]\n";
 const _noticeEnd = "\n[END SESORI NOTICE]";
+const _noticePageReference = "[SESORI PAGE] ";
+final _pageRequestIdPattern = RegExp(r"^\S+$");
 
 /// A message Sesori sends into a session on its own behalf: [summary] is the
 /// line the user sees, addressed to them, and [guidance] tells the agent what
-/// to do about it. [parseSessionNotice] reads the [summary] back wherever the
-/// message surfaces.
-String buildSessionNotice({required String summary, required String guidance}) {
+/// to do about it. [pageRequestId] names the page the notice settles, on the
+/// first line of the agent's part. [parseSessionNotice] reads the [summary]
+/// and the page back wherever the message surfaces.
+String buildSessionNotice({required String summary, required String guidance, required String? pageRequestId}) {
   return "$_noticeStart$summary$_noticeAgentPart"
+      "${pageRequestId == null ? "" : "$_noticePageReference$pageRequestId\n"}"
       "Sesori wrote this message, not the user. The user sees only the line above,\n"
       "addressed to them.\n"
       "$guidance$_noticeEnd";
 }
 
-/// The summary of the notice [buildSessionNotice] wrote, when [text] is
-/// exactly one notice apart from surrounding whitespace, otherwise null.
-String? parseSessionNotice({required String text}) {
+/// The summary and page reference of the notice [buildSessionNotice] wrote,
+/// when [text] is exactly one notice apart from surrounding whitespace,
+/// otherwise null.
+///
+/// The reference counts only on the first line of the agent's part, where
+/// [buildSessionNotice] writes it: the guidance can quote the user's own
+/// words, so a reference line anywhere else is never one.
+({String summary, String? pageRequestId})? parseSessionNotice({required String text}) {
   final notice = text.trim();
   if (!notice.startsWith(_noticeStart) || !notice.endsWith(_noticeEnd)) return null;
   // Another frame inside means several messages were joined into one.
@@ -93,5 +102,13 @@ String? parseSessionNotice({required String text}) {
       notice.indexOf(_noticeStart, 1) < 0 && notice.indexOf(_noticeEnd) == notice.length - _noticeEnd.length;
   final agentPartIndex = notice.indexOf(_noticeAgentPart, _noticeStart.length);
   if (!isOneNotice || agentPartIndex < 0) return null;
-  return notice.substring(_noticeStart.length, agentPartIndex);
+  final agentPart = notice.substring(agentPartIndex + _noticeAgentPart.length);
+  final firstLine = agentPart.split("\n").first;
+  final reference = firstLine.startsWith(_noticePageReference)
+      ? firstLine.substring(_noticePageReference.length)
+      : null;
+  return (
+    summary: notice.substring(_noticeStart.length, agentPartIndex),
+    pageRequestId: reference != null && _pageRequestIdPattern.hasMatch(reference) ? reference : null,
+  );
 }

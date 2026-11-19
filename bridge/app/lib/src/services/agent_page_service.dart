@@ -138,18 +138,63 @@ class AgentPageService({
     ];
   }
 
+  /// The page [requestId] names, pending or settled, when [sessionId] is its
+  /// session or the root session it shows on. Archive state doesn't matter:
+  /// an archived session's pages still open read-only on the client, and
+  /// submit refuses them.
+  Future<PageLookupResponse> lookup({required String sessionId, required String requestId}) async {
+    final stored = await _find(requestId: requestId, sessionId: sessionId);
+    if (stored == null) return const PageLookupMissing();
+    return switch (stored.outcome) {
+      null => PageLookupPending(page: stored.page),
+      AgentPageAnswered(:final answers, :final note) => PageLookupAnswered(
+        page: stored.page,
+        answers: answers,
+        note: note,
+      ),
+      AgentPageDismissed() => PageLookupDismissed(page: stored.page),
+    };
+  }
+
+  /// Settles [request]'s page with its answers and tells the session that
+  /// sent it. The first submit wins; later ones get
+  /// [PageSubmitAlreadySettled]. Null when no page in the request's session
+  /// has that id.
+  ///
+  /// Throws [SessionArchivedReadOnlyException] when the page's session is
+  /// archived.
+  Future<PageSubmitResult?> submit({required SubmitPageRequest request}) async {
+    final stored = await _find(requestId: request.requestId, sessionId: request.sessionId);
+    if (stored == null) return null;
+    await _archive.requireNotArchived(sessionId: stored.page.sessionId);
+    if (stored.outcome != null) return const PageSubmitAlreadySettled();
+    final invalid = _invalidQuestionIds(page: stored.page, answers: request.answers);
+    if (invalid.isNotEmpty) return PageSubmitInvalid(questionIds: invalid);
+
+    final settled = await _pages.settle(
+      id: request.requestId,
+      outcome: AgentPageAnswered(answers: request.answers, note: request.note),
+    );
+    if (settled == null) return const PageSubmitAlreadySettled();
+    Log.i("Page ${request.requestId} was answered");
+    unawaited(
+      _notices.deliver(
+        sessionId: settled.displaySessionId ?? settled.sessionId,
+        notice: _noticeBuilder.answered(page: settled, answers: request.answers, note: request.note),
+      ),
+    );
+    return const PageSubmitAccepted();
+  }
+
   /// Dismisses [requestId] when it names a page shown on [sessionId]. The
   /// question routes can only cancel a page, so a reply dismisses it too.
   ///
   /// Throws [SessionArchivedReadOnlyException] when the page's session is
   /// archived.
   Future<AgentPageInterception> dismiss({required String requestId, required String sessionId}) async {
-    final stored = await _pages.find(id: requestId);
+    final stored = await _find(requestId: requestId, sessionId: sessionId);
     if (stored == null) return const NotAgentPage();
     final page = stored.page;
-    if (sessionId != page.sessionId && sessionId != (page.displaySessionId ?? page.sessionId)) {
-      return const NotAgentPage();
-    }
     await _archive.requireNotArchived(sessionId: page.sessionId);
     final settled = await _pages.settle(id: requestId, outcome: const AgentPageDismissed());
     if (settled == null) return const AgentPageAlreadySettled();
@@ -162,6 +207,69 @@ class AgentPageService({
     );
     return const AgentPageReplyDismissed();
   }
+
+  /// The page [requestId] names when [sessionId] is its session or the root
+  /// session it shows on, where the notice about it sits too.
+  Future<StoredAgentPage?> _find({required String requestId, required String sessionId}) async {
+    final stored = await _pages.find(id: requestId);
+    if (stored == null) return null;
+    final page = stored.page;
+    return sessionId == page.sessionId || sessionId == (page.displaySessionId ?? page.sessionId) ? stored : null;
+  }
+
+  /// The questions [answers] can't settle [page] with, in page order, then
+  /// any ids the page doesn't have: a required question left unanswered, an
+  /// answer of another kind than its question, an option of another
+  /// question, or a question answered twice. Option ids are unique only
+  /// within their question, so each is checked against its own.
+  List<String> _invalidQuestionIds({required PendingPage page, required List<PageAnswer> answers}) {
+    final questions = {
+      for (final section in page.sections)
+        for (final question in section.questions) question.id: question,
+    };
+    final byQuestion = <String, PageAnswer>{};
+    final invalid = <String>{};
+    for (final answer in answers) {
+      final question = questions[answer.questionId];
+      if (question == null || byQuestion.containsKey(answer.questionId) || !_fits(question: question, answer: answer)) {
+        invalid.add(answer.questionId);
+      }
+      byQuestion[answer.questionId] = answer;
+    }
+    for (final question in questions.values) {
+      if (question.isRequired && !_answers(answer: byQuestion[question.id])) invalid.add(question.id);
+    }
+    return [
+      for (final id in questions.keys)
+        if (invalid.contains(id)) id,
+      for (final id in invalid)
+        if (!questions.containsKey(id)) id,
+    ];
+  }
+
+  /// Whether [answer]'s value, if any, is of [question]'s kind and names
+  /// only its options. A note alone fits any question.
+  bool _fits({required PageQuestion question, required PageAnswer answer}) {
+    Set<String> optionIds(List<PageOption> options) => {for (final option in options) option.id};
+    return switch ((question.kind, answer.value)) {
+      (_, null) => true,
+      (PageSingleChoice(:final options), PageChoiceAnswer(:final optionId)) => optionIds(options).contains(optionId),
+      (PageMultipleChoice(:final options), PageChoicesAnswer(optionIds: final chosen)) => optionIds(
+        options,
+      ).containsAll(chosen),
+      (PageTextInput(), PageTextAnswer()) => true,
+      _ => false,
+    };
+  }
+
+  /// Whether [answer] answers its question; a note alone or blank text
+  /// doesn't.
+  bool _answers({required PageAnswer? answer}) => switch (answer?.value) {
+    null || PageAnswerUnknown() => false,
+    PageChoiceAnswer() => true,
+    PageChoicesAnswer(:final optionIds) => optionIds.isNotEmpty,
+    PageTextAnswer(:final text) => text.trim().isNotEmpty,
+  };
 
   AgentPageSendResult? _limitProblem({required AgentPageDraft draft}) {
     if (draft.title.length > maxTitleLength) return const AgentPageOverLimit(limit: AgentPageLimit.titleLength);
