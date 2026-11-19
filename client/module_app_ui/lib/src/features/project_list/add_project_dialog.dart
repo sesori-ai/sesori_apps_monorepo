@@ -668,24 +668,53 @@ class const _Places({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      alignment: AlignmentDirectional.centerStart,
+    PregoButtonsSolid button({required String label, required VoidCallback? onPressed}) => PregoButtonsSolid(
+      label: label,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      size: PregoButtonsSolidSize.sm,
+      onPressed: onPressed,
+    );
+
+    return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-        child: Row(
-          spacing: PregoSpacing.md,
-          children: [
-            for (final place in places)
-              PregoButtonsSolid(
-                label: place.label,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: place.path == currentPath ? null : () => onNavigate(place.path),
+      child: Stack(
+        children: [
+          // An unseen button gives the row its buttons' height at any text
+          // size and in either interaction mode; the scroll view fills it.
+          ExcludeFocus(
+            child: Visibility(
+              visible: false,
+              maintainState: true,
+              maintainAnimation: true,
+              maintainSize: true,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                heightFactor: 1,
+                child: button(label: "", onPressed: null),
               ),
-          ],
-        ),
+            ),
+          ),
+          // Keeps the overscroll stretch when the row lays out again
+          // mid-scroll, as a button does when it slides under a resting
+          // trackpad cursor.
+          Positioned.fill(
+            child: PregoSingleChildScrollView(
+              controller: null,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+              child: Row(
+                spacing: PregoSpacing.md,
+                children: [
+                  for (final place in places)
+                    button(
+                      label: place.label,
+                      onPressed: place.path == currentPath ? null : () => onNavigate(place.path),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

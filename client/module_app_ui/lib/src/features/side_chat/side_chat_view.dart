@@ -338,6 +338,10 @@ class _SideChatViewState() extends State<SideChatView> {
       key: ValueKey(_threadEpoch),
       // The earlier chats take the sheet's drags while they cover the thread.
       controller: _showingEarlier ? null : widget.scrollController,
+      // The inherited physics, as a SingleChildScrollView keeps, so a thread
+      // that fits stays still. Without a controller a CustomScrollView would
+      // otherwise always scroll and bounce.
+      physics: const ScrollPhysics(),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.xs, PregoSpacing.xl, PregoSpacing.xl),
