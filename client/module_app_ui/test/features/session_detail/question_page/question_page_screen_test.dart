@@ -111,8 +111,10 @@ Widget _scoped({required PendingPageCubitFactory createPendingPageCubit, require
 void main() {
   late _MockPendingPageCubit cubit;
   late StreamController<PendingPageState> states;
+  late int sent;
 
   setUp(() {
+    sent = 0;
     cubit = _MockPendingPageCubit();
     states = StreamController<PendingPageState>.broadcast();
     addTearDown(states.close);
@@ -145,7 +147,7 @@ void main() {
         createPendingPageCubit: ({required requestId, required sessionId}) => cubit,
         child: BlocProvider<PendingPageCubit>.value(
           value: cubit,
-          child: QuestionPageScreen(title: title, source: source, onClose: () {}),
+          child: QuestionPageScreen(title: title, source: source, onClose: () {}, onSent: () => sent++),
         ),
       ),
     );
@@ -441,15 +443,100 @@ void main() {
     expect(find.textContaining("answered"), findsNothing);
   });
 
-  testWidgets("Dismiss page in the top bar's menu dismisses through the cubit", (tester) async {
+  testWidgets("an accepted Submit closes the page once, as it looked while sending", (tester) async {
     await pumpScreen(tester, state: editing(draft: PageDraft.empty));
+    await emit(
+      tester,
+      PageSubmitting(page: _questionsPage, draft: PageDraft.empty, action: PageAction.submit),
+      animating: true,
+    );
+    final before = tester.getRect(find.byKey(const Key("question-page-closing-note")));
 
+    await emit(tester, PageSent(page: _questionsPage, draft: PageDraft.empty), animating: true);
+
+    expect(sent, 1);
+    // Nothing folds or changes while the page leaves.
+    expect(tester.getRect(find.byKey(const Key("question-page-closing-note"))), before);
+    expect(find.byKey(const Key("question-page-settled")), findsNothing);
+  });
+
+  for (final (name, outcome) in [
+    (
+      "fails",
+      editing(
+        draft: PageDraft.empty,
+        feedback: PageFeedbackFailed(action: PageAction.submit, cause: ApiError.generic()),
+      ),
+    ),
+    (
+      "is refused as invalid",
+      editing(
+        draft: PageDraft.empty,
+        feedback: PageFeedbackInvalid(questionIds: const ["plan"]),
+      ),
+    ),
+    (
+      "finds the page answered elsewhere",
+      PageReadOnly(page: _questionsPage, draft: PageDraft.empty, reason: PageReadOnlyReason.answeredElsewhere),
+    ),
+    ("finds the page archived", const PageMissing() as PendingPageState),
+  ]) {
+    testWidgets("a Submit that $name keeps the page open", (tester) async {
+      await pumpScreen(tester, state: editing(draft: PageDraft.empty));
+      await emit(
+        tester,
+        PageSubmitting(page: _questionsPage, draft: PageDraft.empty, action: PageAction.submit),
+        animating: true,
+      );
+      await emit(tester, outcome);
+      expect(sent, 0);
+    });
+  }
+
+  Future<void> tapDismiss(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key("question-page-menu")));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Dismiss page"));
     await tester.pumpAndSettle();
+  }
+
+  testWidgets("Dismiss page on an untouched page dismisses at once", (tester) async {
+    await pumpScreen(tester, state: editing(draft: PageDraft.empty));
+
+    await tapDismiss(tester);
+    expect(find.text("Dismiss without sending your answers?"), findsNothing);
     verify(() => cubit.dismiss()).called(1);
   });
+
+  for (final (name, draft) in [
+    ("a pick", PageDraft.empty.withChoice(questionId: "plan", optionId: "canary")),
+    ("a closing note", PageDraft.empty.withNote(note: "Fixture note")),
+  ]) {
+    testWidgets("Dismiss page with $name asks first, and Cancel keeps it all", (tester) async {
+      await pumpScreen(tester, state: editing(draft: draft));
+
+      await tapDismiss(tester);
+      expect(find.text("Dismiss without sending your answers?"), findsOneWidget);
+      verifyNever(() => cubit.dismiss());
+
+      await tester.tap(find.byKey(const Key("question-page-dismiss-cancel")));
+      await tester.pumpAndSettle();
+      expect(find.text("Dismiss without sending your answers?"), findsNothing);
+      verifyNever(() => cubit.dismiss());
+      verifyNever(() => cubit.setNote(note: any(named: "note")));
+      verifyNever(
+        () => cubit.setChoice(
+          questionId: any(named: "questionId"),
+          optionId: any(named: "optionId"),
+        ),
+      );
+
+      await tapDismiss(tester);
+      await tester.tap(find.byKey(const Key("question-page-dismiss-confirm")));
+      await tester.pumpAndSettle();
+      verify(() => cubit.dismiss()).called(1);
+    });
+  }
 
   group("images", () {
     PendingPageState imagePage({required PageImage image}) => PageEditing(
@@ -539,6 +626,56 @@ void main() {
     expect(find.text("0 of 3 answered"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("question-page-close")));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestionPageScreen), findsNothing);
+    verifyNever(() => session.acknowledgeQuestionSettlement(requestId: any(named: "requestId")));
+  });
+
+  testWidgets("an accepted Submit settles the request on the session and slides the page down", (tester) async {
+    final session = _MockSessionDetailCubit();
+    whenListen(
+      session,
+      const Stream<SessionDetailState>.empty(),
+      initialState: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+    );
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
+    );
+    await tester.pumpWidget(
+      _scoped(
+        createPendingPageCubit: ({required requestId, required sessionId}) => cubit,
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: session,
+          child: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => SessionDetailPresentationScope.read(
+                    context,
+                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1", title: null),
+                  child: const Text("Open"),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text("Open"));
+    await tester.pumpAndSettle();
+
+    states.add(PageSent(page: _questionsPage, draft: PageDraft.empty));
+    await tester.pump();
+    verify(() => session.acknowledgeQuestionSettlement(requestId: "page-1")).called(1);
+    // The pop starts the slide on the next frame.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final midway = tester.getRect(find.byType(QuestionPageScreen)).top;
+    expect(midway, greaterThan(0));
+    expect(midway, lessThan(screenHeight));
     await tester.pumpAndSettle();
     expect(find.byType(QuestionPageScreen), findsNothing);
   });

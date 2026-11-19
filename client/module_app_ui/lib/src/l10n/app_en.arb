@@ -3218,6 +3218,12 @@
   "questionPageActions": "Page actions",
   "questionPageDismiss": "Dismiss page",
   "@questionPageDismiss": {"description": "Menu item on an agent's question page that closes it without answering and tells the agent so."},
+  "questionPageDismissConfirmTitle": "Dismiss without sending your answers?",
+  "@questionPageDismissConfirmTitle": {"description": "Title of the confirmation shown when the user taps Dismiss page on a question page where they have already picked or written something. Dismissing tells the agent the page was closed and discards those picks."},
+  "questionPageDismissConfirmAction": "Dismiss",
+  "@questionPageDismissConfirmAction": {"description": "Destructive button of the dismiss confirmation on a question page. It closes the page without answering and tells the agent so."},
+  "questionPageDismissConfirmCancel": "Cancel",
+  "@questionPageDismissConfirmCancel": {"description": "Button of the dismiss confirmation on a question page that keeps the page open with everything the user entered."},
   "questionPageSource": "From {source}",
   "@questionPageSource": {
     "description": "Second header line of an agent's question page, naming the session that sent it, such as 'From Claude Code · Fix the login'.",

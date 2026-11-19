@@ -138,7 +138,7 @@ void main() {
     expect(state.draft.note, isNull);
   });
 
-  test("an accepted submit turns read-only as answered, drops the draft and reports once", () async {
+  test("an accepted submit is sent with its answers, drops the draft and reports once", () async {
     submitAnswers(const PageSubmitResult.accepted());
     final cubit = create();
     await editing(cubit);
@@ -147,8 +147,7 @@ void main() {
     expect(cubit.state, isA<PageSubmitting>().having((s) => s.action, "action", PageAction.submit));
     await submitting;
 
-    final state = cubit.state as PageReadOnly;
-    expect(state.reason, PageReadOnlyReason.answered);
+    final state = cubit.state as PageSent;
     expect(state.draft.note, "Thanks");
     expect(drafts.get(requestId: page.id), isNull);
     expect(reportedEvents(), 1);
@@ -389,7 +388,7 @@ void main() {
     expect(cubit.state, isA<PageSubmitting>());
     answer.complete(ApiResponse.success(const PageSubmitResult.accepted()));
     await submitting;
-    expect((cubit.state as PageReadOnly).reason, PageReadOnlyReason.answered);
+    expect(cubit.state, isA<PageSent>());
   });
 
   test("a reconnect looks the open page up again and catches a settlement it missed", () async {

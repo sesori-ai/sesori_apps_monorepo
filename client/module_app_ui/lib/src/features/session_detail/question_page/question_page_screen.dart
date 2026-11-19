@@ -32,7 +32,10 @@ const _wideOverlayGap = PregoSpacing.x4l;
 /// answer or has settled: its cubit's lookup decides how it opens. Its cubit
 /// comes from [scope] and lives as long as the route. The page names the
 /// session [context] shows as its source, and [title] until its lookup names
-/// it. Open it through [SessionDetailPresentationScope.openPage].
+/// it. Once its own Submit is accepted, the page tells that session's cubit
+/// the request settled, so its needs-you card never comes back while the page
+/// leaves, and slides down. Open it through
+/// [SessionDetailPresentationScope.openPage].
 Future<void> showQuestionPage({
   required BuildContext context,
   required SessionDetailPresentationScope scope,
@@ -64,7 +67,15 @@ Future<void> showQuestionPage({
         value: sessionCubit,
         child: BlocProvider(
           create: (_) => scope.createPendingPageCubit(requestId: requestId, sessionId: sessionId),
-          child: QuestionPageScreen(title: title, source: source, onClose: navigator.pop),
+          child: QuestionPageScreen(
+            title: title,
+            source: source,
+            onClose: navigator.pop,
+            onSent: () {
+              sessionCubit.acknowledgeQuestionSettlement(requestId: requestId);
+              navigator.pop();
+            },
+          ),
         ),
       ),
     ),
@@ -147,6 +158,9 @@ class const QuestionPageScreen({
   /// The session the page came from, such as "Claude Code · Fix the login".
   required final String? source,
   required final VoidCallback onClose,
+
+  /// Closes the page once the bridge accepts its Submit.
+  required final VoidCallback onSent,
 }) extends StatefulWidget {
   @override
   State<QuestionPageScreen> createState() => _QuestionPageScreenState();
@@ -180,6 +194,21 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
     required String? text,
   }) => fields[questionId] ??= TextEditingController(text: text);
 
+  /// Dismisses the page, asking first when the user has picked or written
+  /// something that dismissing would throw away.
+  Future<void> _dismiss() async {
+    final cubit = context.read<PendingPageCubit>();
+    if (cubit.state case PageEditing(:final draft) when draft.hasInput) {
+      final confirmed = await showPregoModal<bool>(
+        context: context,
+        title: context.loc.questionPageDismissConfirmTitle,
+        builder: (_) => const _DismissConfirmation(),
+      );
+      if (!mounted || confirmed != true) return;
+    }
+    await cubit.dismiss();
+  }
+
   /// Brings the first question Submit flagged into view.
   void _scrollToIssue({required List<String> questionIds}) {
     final target = switch (questionIds.firstOrNull) {
@@ -201,16 +230,27 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
     final prego = context.prego;
     final state = context.watch<PendingPageCubit>().state;
     final page = switch (state) {
-      PageEditing(:final page) || PageSubmitting(:final page) || PageReadOnly(:final page) => page,
+      PageEditing(:final page) ||
+      PageSubmitting(:final page) ||
+      PageSent(:final page) ||
+      PageReadOnly(:final page) => page,
       PageLoading() || PageMissing() || PageUnsupported() || PageLoadFailed() => null,
     };
     final title = _title = page?.title ?? _title;
     return BlocListener<PendingPageCubit, PendingPageState>(
       listenWhen: (previous, current) =>
-          previous is PageSubmitting && current is PageEditing && current.feedback is PageFeedbackInvalid,
+          current is PageSent ||
+          (previous is PageSubmitting && current is PageEditing && current.feedback is PageFeedbackInvalid),
       listener: (_, state) {
-        if (state case PageEditing(feedback: PageFeedbackInvalid(:final questionIds))) {
-          _scrollToIssue(questionIds: questionIds);
+        switch (state) {
+          // Only an accepted Submit closes the page; any other outcome keeps it
+          // open to say why.
+          case PageSent():
+            widget.onSent();
+          case PageEditing(feedback: PageFeedbackInvalid(:final questionIds)):
+            _scrollToIssue(questionIds: questionIds);
+          case _:
+            break;
         }
       },
       child: CallbackShortcuts(
@@ -229,10 +269,10 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                   source: widget.source,
                   onClose: widget.onClose,
                   onDismiss: switch (state) {
-                    PageEditing() => context.read<PendingPageCubit>().dismiss,
+                    PageEditing() => _dismiss,
                     _ => null,
                   },
-                  showsMenu: state is PageEditing || state is PageSubmitting,
+                  showsMenu: state is PageEditing || state is PageSubmitting || state is PageSent,
                 ),
                 Divider(height: 1, thickness: 1, color: prego.colors.borderSecondary),
                 Expanded(
@@ -258,6 +298,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                           ),
                           PageEditing(:final page, :final draft) ||
                           PageSubmitting(:final page, :final draft) ||
+                          PageSent(:final page, :final draft) ||
                           PageReadOnly(:final page, :final draft) => _PageBody(
                             page: page,
                             draft: draft,
@@ -395,6 +436,37 @@ class const _Header({
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The dismiss question's body: Cancel and a destructive Dismiss. Pops `true`
+/// only for Dismiss.
+class const _DismissConfirmation() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: PregoSheetActions(
+        secondary: PregoButtonsSolid(
+          key: const Key("question-page-dismiss-cancel"),
+          label: loc.questionPageDismissConfirmCancel,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        primary: PregoButtonsSolid(
+          key: const Key("question-page-dismiss-confirm"),
+          label: loc.questionPageDismissConfirmAction,
+          hierarchy: PregoButtonsSolidHierarchy.primary,
+          type: PregoButtonsSolidType.destructive,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
       ),
     );
   }
@@ -620,7 +692,8 @@ class const _Bar({
             hierarchy: PregoButtonsSolidHierarchy.primary,
             size: PregoButtonsSolidSize.md,
             isLoading: switch (state) {
-              PageSubmitting(action: PageAction.submit) => true,
+              // A sent page leaves looking as it did while sending.
+              PageSubmitting(action: PageAction.submit) || PageSent() => true,
               _ => false,
             },
             onPressed: state is PageEditing ? cubit.submit : null,
@@ -672,6 +745,7 @@ class const _Bar({
       ),
       PageEditing() ||
       PageSubmitting() ||
+      PageSent() ||
       PageReadOnly() ||
       PageLoading() ||
       PageMissing() ||

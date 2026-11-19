@@ -4730,6 +4730,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionPageDismiss => 'Dismiss page';
 
   @override
+  String get questionPageDismissConfirmTitle => 'Dismiss without sending your answers?';
+
+  @override
+  String get questionPageDismissConfirmAction => 'Dismiss';
+
+  @override
+  String get questionPageDismissConfirmCancel => 'Cancel';
+
+  @override
   String questionPageSource(String source) {
     return 'From $source';
   }

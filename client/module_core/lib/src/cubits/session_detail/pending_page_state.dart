@@ -5,7 +5,7 @@ import "../../foundation/models/page_draft.dart";
 
 /// Why a page shows read-only.
 enum PageReadOnlyReason() {
-  /// The page was answered, here or before it was opened.
+  /// The page was answered before it was opened, here or on another surface.
   answered,
 
   /// Another surface answered the page while it was open here.
@@ -42,6 +42,10 @@ final class const PageSubmitting({
   required final PageDraft draft,
   required final PageAction action,
 }) extends PendingPageState;
+
+/// The bridge accepted this surface's submit. The page leaves as it was, so
+/// nothing on it moves while it goes.
+final class const PageSent({required final PendingPage page, required final PageDraft draft}) extends PendingPageState;
 
 /// [draft] holds the answers the page settled with, or this surface's own
 /// picks when the page settled elsewhere while open.

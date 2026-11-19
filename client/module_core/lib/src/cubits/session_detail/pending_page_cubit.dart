@@ -87,7 +87,8 @@ class PendingPageCubit({
       if (isClosed) return;
       switch (result) {
         case PageSubmitAccepted():
-          _settle(page: current.page, draft: current.draft, reason: PageReadOnlyReason.answered);
+          _drafts.remove(requestId: requestId);
+          emit(PageSent(page: current.page, draft: current.draft));
         case PageSubmitAlreadySettled():
           _settle(page: current.page, draft: current.draft, reason: PageReadOnlyReason.answeredElsewhere);
         case PageSubmitInvalid(:final questionIds):
@@ -164,7 +165,7 @@ class PendingPageCubit({
         case PageEditing():
           // The page stays editable; the next reconnect looks again.
           logw("Failed to look page $requestId up again", error);
-        case PageSubmitting() || PageReadOnly() || PageMissing() || PageUnsupported():
+        case PageSubmitting() || PageSent() || PageReadOnly() || PageMissing() || PageUnsupported():
           break;
       }
     }
@@ -198,7 +199,7 @@ class PendingPageCubit({
   /// The state [response] leads to from [current], or null to keep [current].
   PendingPageState? _afterLookup({required PageLookupResponse response, required PendingPageState current}) {
     // A submit in flight or a settled page knows more than this lookup.
-    if (current is PageSubmitting || current is PageReadOnly) return null;
+    if (current is PageSubmitting || current is PageSent || current is PageReadOnly) return null;
     final editing = current is PageEditing ? current : null;
     switch (response) {
       case PageLookupPending(:final page):
