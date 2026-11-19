@@ -96,6 +96,7 @@ void main() {
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.replaysHistoryDuringTurn, isFalse);
       expect(descriptor.options.single.name, "bin");
     });
 

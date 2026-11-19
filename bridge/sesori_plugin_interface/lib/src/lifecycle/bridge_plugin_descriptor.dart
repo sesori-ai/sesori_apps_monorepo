@@ -72,6 +72,13 @@ abstract class const BridgePluginDescriptor() {
   /// so a client can warn before a send stops that turn.
   PluginBusyPromptHandling get busyPromptHandling;
 
+  /// Whether the bridge may import this backend's history while one of its
+  /// sessions runs a turn. False when that replay holds the running turn under
+  /// other message ids than the live stream, so the live reply would show
+  /// beside its replayed copy, or cannot run until the turn ends. The bridge
+  /// then keeps what the live stream stored and imports once the turn ends.
+  bool get replaysHistoryDuringTurn => true;
+
   /// Live terminal quota reporting, available only for verified plugin seams.
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.unavailable;
 

@@ -2054,7 +2054,8 @@ class OrchestratorSession._({
       // An ended turn can strand tool parts in a non-terminal state — a
       // permission never answered, an abort, a backend process death. The
       // backend will never complete them, so finalize the stored snapshots and
-      // tell subscribers before the idle event lands.
+      // tell subscribers before the idle event lands. A history import that
+      // waited for the turn runs after them.
       if (event case BridgeSseSessionIdle(:final sessionID)) {
         await _finalizeOpenToolParts(
           sessionId: sessionID,
@@ -2062,6 +2063,7 @@ class OrchestratorSession._({
           generation: generation,
           allowDuringStop: allowDuringStop,
         );
+        _chatHistoryService.reimportAfterTurn(sessionId: sessionID);
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;

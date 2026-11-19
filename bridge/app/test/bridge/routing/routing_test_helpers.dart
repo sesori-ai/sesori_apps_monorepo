@@ -327,6 +327,9 @@ class FakeSessionRepository({
   bool sesoriToolsSupported({required String pluginId}) => sesoriTools;
 
   @override
+  bool replaysHistoryDuringTurn({required String pluginId}) => true;
+
+  @override
   bool isPluginEligible({required String pluginId}) => eligiblePluginIds.contains(pluginId);
 
   @override

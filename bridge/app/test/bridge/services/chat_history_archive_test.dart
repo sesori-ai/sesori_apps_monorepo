@@ -626,5 +626,8 @@ class _FakeSessionRepository({required final List<MessageWithParts> transcript})
       sessionIds.intersection(existingSessionIds);
 
   @override
+  bool replaysHistoryDuringTurn({required String pluginId}) => true;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

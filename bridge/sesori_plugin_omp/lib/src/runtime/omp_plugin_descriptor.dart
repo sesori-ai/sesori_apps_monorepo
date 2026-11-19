@@ -108,6 +108,11 @@ final class const OmpPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// OMP replays under fresh ids on every load, and its replay of a session
+  /// the live process holds can run only between turns.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   /// Oh My Pi advertises a native `/compact` over ACP (verified 18.20.2).
   @override
   bool get supportsCompactionOnRequest => true;
