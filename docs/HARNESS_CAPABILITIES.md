@@ -211,6 +211,11 @@ own. Verified live on
 after several minutes), so the notice asks the agent for a one-line reply
 rather than none.
 
+Question pages: every harness that gets the server can call `send_page`; the
+answer arrives with the same notice timing, so a steering harness hears it in
+its running turn and the others after the turn. Whether each harness passes
+the tool's nested schema to its model unchanged is not verified live yet.
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a
