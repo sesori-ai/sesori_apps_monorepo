@@ -74,6 +74,7 @@ void main() {
       final [delivered] = notices.delivered;
       expect(delivered.sessionId, "ses-1");
       expect(delivered.notice.summary, "You closed “Release plan” without answering.");
+      expect(delivered.notice.pageRequestId, pageId);
     });
 
     test("a settled page answers 404 and tells nobody again", () async {

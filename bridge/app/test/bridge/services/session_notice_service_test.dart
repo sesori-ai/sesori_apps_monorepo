@@ -62,7 +62,11 @@ void main() {
   test("a page notice carries its page reference into the frame", () async {
     await service.deliver(
       sessionId: "s1",
-      notice: const SessionNotice(summary: "You answered “Palette”.", guidance: "Fixture", pageRequestId: "sesori-page-1"),
+      notice: const SessionNotice(
+        summary: "You answered “Palette”.",
+        guidance: "Fixture",
+        pageRequestId: "sesori-page-1",
+      ),
     );
 
     expect(

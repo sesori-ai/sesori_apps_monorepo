@@ -21,8 +21,7 @@ class const AgentPageAnswerNoticeBuilder() {
         if (page.displaySessionId != null) "Sub-agent session ${page.sessionId} sent this page.",
         "The user answered the page ${_plain(text: page.title)}.",
         _answerFormat,
-        for (final question in questions)
-          _answerLine(question: question, answer: byQuestion[question.id]),
+        for (final question in questions) _answerLine(question: question, answer: byQuestion[question.id]),
         if (note != null) "Anything else: ${_userText(text: note)}",
         "Act on the answers, and acknowledge them in one short line.",
       ].join("\n"),
