@@ -20,7 +20,7 @@ without cross-owner cancellation; exercise both start orders in the
 ## Runtime Target Coverage
 
 Targets audited on **2026-11-12**, covering all eleven registered harnesses; all eleven moved
-(DeepSeek with its owned adapter release `0.2.2`; since moved to `0.2.4`, see its row). Managed assets were independently downloaded and
+(DeepSeek with its owned adapter release `0.2.2`; since moved to `0.2.5`, see its row). Managed assets were independently downloaded and
 hashed: OpenCode 6, Antigravity 6, Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. npm integrity, GitHub digests,
 available checksum lists and the Antigravity registry's published archive hashes agree. Cursor
 hashes are locally computed, not publisher attestations. Direct-CLI targets (Claude, Hermes, Grok)
@@ -28,9 +28,10 @@ are recommendation metadata, not forced upgrades. Compatible PATH binaries remai
 Independent minimums are unchanged; Antigravity retains its exact-pair policy rather than an
 independent floor. On 2026-11-12 the production managed install (digest sentinel) passed on macOS
 arm64 for all eight managed harnesses; it had network and normal file reads. The native probes
-below ran with network denied, home reads denied and no credentials. Codex was raised again on
-2026-11-15 in a single-harness follow-up, OpenCode, Antigravity and Cursor
-on 2026-11-16 (`runtime-refresh-2026-11`), and Copilot, Claude Code, OMP, Hermes, Grok and DeepSeek on 2026-11-17 (`runtime-refresh-2026-11-17`); each of those rows records its own run's evidence and probe conditions.
+below ran with network denied, home reads denied and no credentials. Later runs raised Antigravity
+on 2026-11-16 (`runtime-refresh-2026-11`), Hermes on 2026-11-17 (`runtime-refresh-2026-11-17`), and
+OpenCode, Codex, Copilot, Cursor, Claude Code, OMP, Grok and DeepSeek on 2026-11-18
+(`runtime-refresh-2026-11-18`); each of those rows records its own run's evidence and probe conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
