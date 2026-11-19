@@ -580,18 +580,29 @@ authored lines, with generated lines listed separately.
 | 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | In PR #2813 |
 | 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | In PR #2814 |
 | 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | In PR #2816 |
+| 4.b/10 | 🌱 Treat a filled-in empty image as no image | ~100 | 4 | Merged in #2819 |
 | 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | In PR #2817 |
 | 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | In PR #2815 |
 | 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | In PR #2818 |
-| 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Planned |
+| 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | In PR #2821 |
 | 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | In PR #2820 |
-| 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | Planned |
+| 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | In PR #NNNN |
 | 10/10 | Headless iOS simulator and live-harness verification, then retire the plan | docs | 9 | Planned |
 
 After step 2, the bridge steps (3 to 5) and the client steps (6 to 8) run in
 parallel, since they touch disjoint packages. The feature only becomes usable
 once steps 5 and 8 have merged. Until then the code ships unused, all within one
 release.
+
+Deviations:
+
+- **4.b** came out of the step 4 live check. Claude Code, Pi and GitHub Copilot
+  fill in every optional field, so each option arrived with
+  `image: {"path": "", "caption": ""}` and the bridge refused the page. An image
+  with an empty path and no caption now reads as no image.
+- **7.b** split the page images off step 7 to keep that PR within the size cap.
+- **9** leaves `file-previews.md` alone: the page's image viewer is the chat's
+  attachment viewer, not the file preview.
 
 ## Risks
 

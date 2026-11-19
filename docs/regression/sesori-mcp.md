@@ -45,8 +45,7 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   `isError` text results, not protocol errors. An unexpected failure is logged by tool name only and answered with a
   generic error.
 - An empty string in any tool argument reads as left out, since strict-schema providers make the model fill every
-  field. A `send_page` image with an empty path and no caption reads as no image; an empty path with a caption is
-  refused as a missing path. Arguments that still do not parse are refused with the field and the reason, for example
+  field. Arguments that still do not parse are refused with the field and the reason, for example
   `schedule.time is required when schedule.kind is daily.`
 - Results are text only, with no `structuredContent`. Read tools and `send_page` are advertised with
   `readOnlyHint: true`, proposing tools with `false`.
@@ -85,15 +84,22 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   is woken by it. Archived and
   deleted sessions get nothing; a bridge restart drops a notice still waiting. The notice is not user activity: it
   leaves the session's last user message time alone.
+- `send_page` does not block. It returns at once with "Sent “Title” to the user. Sesori will message this session
+  with their answer.", and the answer arrives later as a notice. There is no cap on pages per session and pages do not
+  queue: several can wait at once, and each is answered on its own.
 - `send_page` parses strictly: an unknown key at any level is refused naming it (`sections[].questions[].colour is
   not an argument`), and other errors name the indexed field (`sections[0].questions[1].options[2].label is required.`).
   A single or multiple question needs options and a text question takes none. Caps: a 200-character title, 50
-  questions, 12 options a question, 20 images, 20 MiB an image and 50 MiB a page. Question ids are unique in the page
-  and option ids in their question.
+  questions, 12 options a question, 20 images, 20 MiB an image and 50 MiB a page. The image cap counts every declared
+  image, in sections, questions and options. Question ids are unique in the page and option ids in their question.
+- Every refusal is an `isError` result that names what failed and stores nothing: a parse error, a cap, a duplicate
+  id, a refused image, or a caller whose session row is gone ("This session is no longer known to Sesori.").
 - A page image is an absolute path to a png, jpg, gif or webp file whose content matches its extension; a relative,
-  missing, unreadable, oversized or non-image path is refused naming it. Each distinct path is copied once into the
-  bridge's page-images folder with its width and height, so the page keeps the image however the original changes. A
-  failed send removes its copies. Page content and answers are never logged, only ids and counts.
+  missing, unreadable, oversized or non-image path is refused naming it. An image whose path and caption are both empty
+  reads as no image, because strict-schema providers fill in the images they leave out that way. An empty path with a
+  caption is refused as a missing path. Each distinct path is copied once into the bridge's page-images folder with its
+  width and height, so the page keeps the image however the original changes. A failed send removes its copies. Page
+  content and answers are never logged, only ids and counts.
 - A page from a sub-agent shows on its root session. It rides the pending-question pipeline as a marker
   (`interactionKind: page`) whose header and question are the title: `/session/questions` lists it after the harness's
   questions (never for an archived session), push says "Question requires input" with the title as its body, and the
@@ -209,7 +215,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 - Copilot asks its own permission before each proposing tool, so an unattended Copilot run that proposes a change
   waits for the user twice. Grok's own prompt for a Sesori tool is answered by the plugin.
 - Tokens are not revoked when a harness process exits; they live until the bridge stops.
-- A bridge restart drops waiting requests; the phone's modal for one then fails to reply. It also drops an outcome
+- A bridge restart drops waiting task requests; the phone's modal for one then fails to reply. Pages are kept in the
+  bridge database and survive it. It also drops an outcome
   notice still waiting for its session to go quiet.
 - Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
 - `get_task` and `list_tasks` cover tasks not yet done; a finished one-off task is not listed.
@@ -232,6 +239,8 @@ The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: C
   catalog (`routing/sesori_mcp/`), `SesoriMcpAccessService`, `ScheduledTaskAgentService`,
   `ScheduledTaskChangeDescriptionBuilder`, `AgentApprovalRepository`,
   `SesoriMcpGrantRepository` and `BridgeSesoriMcpAccessImpl` under `bridge/app/lib/src/`, with tests under
-  `bridge/app/test/bridge/sesori_mcp/`.
+  `bridge/app/test/bridge/sesori_mcp/`. Pages: `AgentPageService`, `AgentPageRepository`,
+  `AgentPageAnswerNoticeBuilder` and the `/page` and `/page/submit` handlers. The app side is in
+  [questions and permissions](questions-and-permissions.md#agent-question-pages).
 - Plugin contract: `SesoriMcpAccess` and `SesoriMcpLaunch` in `bridge/sesori_plugin_interface`.
 - Plan: [.plan/completed/sesori-mcp/PLAN.md](../../.plan/completed/sesori-mcp/PLAN.md).

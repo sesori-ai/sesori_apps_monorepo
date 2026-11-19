@@ -211,10 +211,17 @@ own. Verified live on
 after several minutes), so the notice asks the agent for a one-line reply
 rather than none.
 
-Question pages: every harness that gets the server can call `send_page`; the
-answer arrives with the same notice timing, so a steering harness hears it in
-its running turn and the others after the turn. Whether each harness passes
-the tool's nested schema to its model unchanged is not verified live yet.
+Question pages: every harness that gets the server (Claude Code, Codex, Pi, Oh
+My Pi, Grok and GitHub Copilot) can call `send_page`, with no harness-specific
+code. The answer arrives with the same notice timing, so a steering harness
+hears it in its running turn and the others after the turn. The other harnesses
+have no `send_page`: Antigravity, Hermes and Cursor stay off until verified,
+DeepSeek is unsupported, and OpenCode has no per-session seam. Live on 2026-11-18, a large nested `send_page` call was accepted on
+Codex, Oh My Pi and Grok. Claude Code, Pi and GitHub Copilot fill in every
+optional field, including `image: {"path": "", "caption": ""}`, which the
+bridge refused until it learned to read that as no image (#2819). No harness
+showed its own permission prompt for `send_page`. The answer roundtrip, and the
+call on Claude Code, Pi and Copilot since #2819, are not verified live yet.
 
 ## Transcript turn boundaries
 
