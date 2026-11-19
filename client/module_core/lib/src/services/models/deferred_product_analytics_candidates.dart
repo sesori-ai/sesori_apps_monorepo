@@ -89,7 +89,8 @@ final class DeferredProductAnalyticsCandidates {
     ScheduledTaskSavedEvent() ||
     SessionMessageEditedEvent() ||
     SessionForkedEvent() ||
-    SessionSentToSessionEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    SessionSentToSessionEvent() ||
+    QuestionPageFinishedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {

@@ -335,6 +335,15 @@ void main() {
         params: const {"harness": "codex", "outcome": "branch_point_unavailable"},
       ),
       (
+        event: const ProductAnalyticsEvent.questionPageFinished(
+          outcome: AnalyticsQuestionPageOutcome.dismissed,
+          questionCount: AnalyticsQuestionCountBucket.twoToFive,
+          hasImages: true,
+        ),
+        name: "question_page_finished",
+        params: const {"outcome": "dismissed", "question_count": "2_5", "has_images": "true"},
+      ),
+      (
         // A one-off, new-session task carries neither missed_run_policy nor
         // auto_compact.
         event: const ProductAnalyticsEvent.scheduledTaskSaved(
@@ -350,8 +359,8 @@ void main() {
       ),
     ];
 
-    test("covers all 34 event names in the contract", () {
-      expect(sentEvents.map((event) => event.name).toSet(), hasLength(34));
+    test("covers all 35 event names in the contract", () {
+      expect(sentEvents.map((event) => event.name).toSet(), hasLength(35));
     });
 
     for (final sent in sentEvents) {
