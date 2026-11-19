@@ -624,26 +624,26 @@ PendingPageCubit _unusedPage({required String requestId, required String session
 /// [child] on a session page, for rows that read its presentation scope.
 Widget _presented({required PendingPageCubitFactory createPendingPageCubit, required Widget child}) =>
     SessionDetailPresentationScope(
-  messageImageRepository: _UnpreviewedImageRepository.new,
-  imageSaver: () => throw UnimplementedError("Saving images is not under test"),
-  imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
-  imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
-  sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
-  createExternalActionCubit: ({required requestId, required sessionId}) =>
-      throw UnimplementedError("External actions are not under test"),
-  createPendingPageCubit: createPendingPageCubit,
-  createPendingFormCubit: ({required requestId, required sessionId}) =>
-      throw UnimplementedError("Forms are not under test"),
-  createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
-  canShareImages: false,
-  openExternalLink: ({required url, required mode}) async => false,
-  openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-  returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-  openHarnessSettings: () {},
-  openBridgeSettings: () {},
-  openSideChat: null,
-  child: child,
-);
+      messageImageRepository: _UnpreviewedImageRepository.new,
+      imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+      imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+      imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+      sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+      createExternalActionCubit: ({required requestId, required sessionId}) =>
+          throw UnimplementedError("External actions are not under test"),
+      createPendingPageCubit: createPendingPageCubit,
+      createPendingFormCubit: ({required requestId, required sessionId}) =>
+          throw UnimplementedError("Forms are not under test"),
+      createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+      canShareImages: false,
+      openExternalLink: ({required url, required mode}) async => false,
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      openHarnessSettings: () {},
+      openBridgeSettings: () {},
+      openSideChat: null,
+      child: child,
+    );
 
 /// Previews no attachment, so an image keeps its placeholder: a tile the size
 /// its preview takes.
@@ -1871,7 +1871,8 @@ void main() {
     expect(opened, isEmpty);
     expect(find.byType(QuestionPageScreen), findsNothing);
 
-    await tester.tap(find.text("You answered “Release plan”."));
+    // The card takes the tap, around content that doesn't hit-test on Android.
+    await tester.tap(find.widgetWithText(SystemMessageCard, "You answered “Release plan”."));
     await tester.pumpAndSettle();
     expect(opened, [(requestId: "sesori-page-fixture", sessionId: "session-root")]);
     // The lookup decides what the page shows; a page that is gone says so.

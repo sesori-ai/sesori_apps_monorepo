@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "assistant_message_card.dart";
@@ -47,7 +48,7 @@ class const SystemMessageCard({
     final card = PregoTappable(
       onTap: onTap,
       borderRadius: borderRadius,
-      containerBuilder: (child) => DecoratedBox(
+      containerBuilder: (Widget child) => DecoratedBox(
         decoration: BoxDecoration(
           color: prego.colors.bgSecondary,
           border: Border.all(color: prego.colors.borderSecondary),

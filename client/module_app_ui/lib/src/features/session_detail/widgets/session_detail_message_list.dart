@@ -1883,7 +1883,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           // A notice about an agent's page reopens it; the page's lookup says
           // whether it is still there. The notice sits on the session the page
           // shows on, which the lookup accepts.
-          onTap: switch (message.parts.whereType<MessagePartText>().map((p) => p.noticePageRequestId).nonNulls.firstOrNull) {
+          onTap: switch (message.parts
+              .whereType<MessagePartText>()
+              .map((p) => p.noticePageRequestId)
+              .nonNulls
+              .firstOrNull) {
             final requestId? => () => unawaited(
               SessionDetailPresentationScope.read(
                 context,
