@@ -136,6 +136,7 @@ void main() {
     WidgetTester tester, {
     required PendingPageState state,
     String? source,
+    String? title,
     bool animating = false,
   }) async {
     whenListen(cubit, states.stream, initialState: state);
@@ -144,7 +145,7 @@ void main() {
         createPendingPageCubit: ({required requestId, required sessionId}) => cubit,
         child: BlocProvider<PendingPageCubit>.value(
           value: cubit,
-          child: QuestionPageScreen(source: source, onClose: () {}),
+          child: QuestionPageScreen(title: title, source: source, onClose: () {}),
         ),
       ),
     );
@@ -304,7 +305,8 @@ void main() {
 
       expect(find.text(label), findsOneWidget);
       expect(find.byKey(const Key("question-page-submit")), findsNothing);
-      expect(find.byKey(const Key("question-page-menu")), findsNothing);
+      // Hidden, keeping its room.
+      expect(find.byKey(const Key("question-page-menu")).hitTestable(), findsNothing);
       expect(optionIcon(tester, "all"), TablerRegular.circle_dot);
       expect(find.text("Watch EU"), findsOneWidget);
       expect(find.byKey(const Key("question-page-note-plan")), findsOneWidget);
@@ -370,6 +372,50 @@ void main() {
 
     expect(find.text("This page is no longer available."), findsOneWidget);
     expect(find.byKey(const Key("question-page-submit")), findsNothing);
+  });
+
+  group("the header", () {
+    // Long enough to be cut, so a change in the header's room would show.
+    const source = "Claude Code · Required and dismiss questions before the agent ships the checkout release";
+    Rect sourceRect(WidgetTester tester) => tester.getRect(find.text("From $source"));
+
+    testWidgets("keeps the page's title when the page goes missing, and nothing in it moves", (tester) async {
+      await pumpScreen(
+        tester,
+        state: editing(draft: PageDraft.empty),
+        source: source,
+      );
+      // The header's title comes first; the body repeats it.
+      final title = tester.getRect(find.text("Release plan").first);
+      final from = sourceRect(tester);
+
+      await emit(tester, const PageMissing());
+
+      expect(find.text("This page is no longer available."), findsOneWidget);
+      expect(tester.getRect(find.text("Release plan")), title);
+      expect(sourceRect(tester), from);
+    });
+
+    testWidgets("shows the opener's title before the lookup and keeps it when the page is missing", (tester) async {
+      await pumpScreen(tester, state: const PageLoading(), source: source, title: "Release plan", animating: true);
+      expect(find.text("Release plan"), findsOneWidget);
+
+      await emit(tester, const PageMissing());
+      expect(find.text("Release plan"), findsOneWidget);
+    });
+
+    for (final (name, next) in [
+      ("goes missing", const PageMissing() as PendingPageState),
+      ("loads", PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone())),
+    ]) {
+      testWidgets("without a known title holds its height while the page $name", (tester) async {
+        await pumpScreen(tester, state: const PageLoading(), source: source, animating: true);
+        final from = sourceRect(tester);
+
+        await emit(tester, next);
+        expect(sourceRect(tester), from);
+      });
+    }
   });
 
   testWidgets("a failed open offers a retry", (tester) async {
@@ -466,7 +512,7 @@ void main() {
                 child: TextButton(
                   onPressed: () => SessionDetailPresentationScope.read(
                     context,
-                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1"),
+                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1", title: null),
                   child: const Text("Open"),
                 ),
               ),
@@ -519,7 +565,7 @@ void main() {
                 child: TextButton(
                   onPressed: () => SessionDetailPresentationScope.read(
                     context,
-                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1"),
+                  ).openPage(context: context, requestId: "page-1", sessionId: "session-1", title: null),
                   child: const Text("Open"),
                 ),
               ),
