@@ -339,8 +339,9 @@ send_page {
   - **No session lane.** The conditional update is atomic, and pages touch no
     plugin state that the lane orders.
   - **Interception.** Reply and reject interception returns a sealed result
-    (`NotAgentPage`, `AgentPageDismissed` or `AgentPageAlreadySettled`),
-    mirroring `NotAgentApproval`.
+    (`NotAgentPage`, `AgentPageReplyDismissed` or `AgentPageAlreadySettled`),
+    mirroring `NotAgentApproval`. `AgentPageDismissed` is already the
+    repository's outcome variant.
 - **`AgentPageAnswerNoticeBuilder`** (new and pure) builds both notices.
   - **Answer notice.** The summary is "You answered “Title”.". The guidance
     carries everything in full: question ids and titles, chosen option ids and
