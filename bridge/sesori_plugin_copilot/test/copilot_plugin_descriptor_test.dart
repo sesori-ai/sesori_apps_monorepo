@@ -6,6 +6,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("CopilotPluginDescriptor defers history imports while a turn runs", () {
+    expect(CopilotPluginDescriptor.production().replaysHistoryDuringTurn, isFalse);
+  });
+
   group("CopilotPluginDescriptor.needsManagedRuntimeUpgrade", () {
     final descriptor = CopilotPluginDescriptor.production();
     late Directory stateDir;

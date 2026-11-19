@@ -69,6 +69,12 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Hermes's `session/load` replays the running turn under replay ids, not
+  /// the prompt-id rows the live stream stores: it stamps message ids on live
+  /// replies only.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   /// Hermes advertises a native `/compress` over ACP (verified v0.21.5).
   @override
   bool get supportsCompactionOnRequest => true;
