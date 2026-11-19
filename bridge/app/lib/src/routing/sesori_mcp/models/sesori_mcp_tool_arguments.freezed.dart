@@ -325,4 +325,301 @@ String toString() {
 
 
 
+
+/// @nodoc
+mixin _$SendPageArguments {
+
+ String get title; String? get intro; List<PageSectionArgument> get sections;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as SendPageArguments;
+  return 'SendPageArguments(title: ${_this.title}, intro: ${_this.intro}, sections: ${_this.sections})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+class _SendPageArguments implements SendPageArguments {
+  const _SendPageArguments({required this.title, required this.intro, required  List<PageSectionArgument> sections}): _sections = sections;
+  factory _SendPageArguments.fromJson(Map<String, dynamic> json) => _$SendPageArgumentsFromJson(json);
+
+@override final  String title;
+@override final  String? intro;
+ final  List<PageSectionArgument> _sections;
+@override List<PageSectionArgument> get sections {
+  if (_sections is EqualUnmodifiableListView) return _sections;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_sections);
+}
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'SendPageArguments(title: $title, intro: $intro, sections: $sections)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PageSectionArgument {
+
+ String? get heading; String? get body; List<PageImageArgument>? get images; List<PageQuestionArgument>? get questions;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as PageSectionArgument;
+  return 'PageSectionArgument(heading: ${_this.heading}, body: ${_this.body}, images: ${_this.images}, questions: ${_this.questions})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+class _PageSectionArgument implements PageSectionArgument {
+  const _PageSectionArgument({required this.heading, required this.body, required  List<PageImageArgument>? images, required  List<PageQuestionArgument>? questions}): _images = images,_questions = questions;
+  factory _PageSectionArgument.fromJson(Map<String, dynamic> json) => _$PageSectionArgumentFromJson(json);
+
+@override final  String? heading;
+@override final  String? body;
+ final  List<PageImageArgument>? _images;
+@override List<PageImageArgument>? get images {
+  final value = _images;
+  if (value == null) return null;
+  if (_images is EqualUnmodifiableListView) return _images;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+ final  List<PageQuestionArgument>? _questions;
+@override List<PageQuestionArgument>? get questions {
+  final value = _questions;
+  if (value == null) return null;
+  if (_questions is EqualUnmodifiableListView) return _questions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'PageSectionArgument(heading: $heading, body: $body, images: $images, questions: $questions)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PageImageArgument {
+
+ String get path; String? get caption;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as PageImageArgument;
+  return 'PageImageArgument(path: ${_this.path}, caption: ${_this.caption})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+class _PageImageArgument implements PageImageArgument {
+  const _PageImageArgument({required this.path, required this.caption});
+  factory _PageImageArgument.fromJson(Map<String, dynamic> json) => _$PageImageArgumentFromJson(json);
+
+@override final  String path;
+@override final  String? caption;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'PageImageArgument(path: $path, caption: $caption)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PageQuestionArgument {
+
+ String get id; String get title; String? get body; List<PageImageArgument>? get images; PageQuestionKindArgument get kind;/// Only for single and multiple; text questions take none.
+ List<PageOptionArgument>? get options; bool get required;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as PageQuestionArgument;
+  return 'PageQuestionArgument(id: ${_this.id}, title: ${_this.title}, body: ${_this.body}, images: ${_this.images}, kind: ${_this.kind}, options: ${_this.options}, required: ${_this.required})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+class _PageQuestionArgument implements PageQuestionArgument {
+  const _PageQuestionArgument({required this.id, required this.title, required this.body, required  List<PageImageArgument>? images, required this.kind, required  List<PageOptionArgument>? options, this.required = false}): _images = images,_options = options;
+  factory _PageQuestionArgument.fromJson(Map<String, dynamic> json) => _$PageQuestionArgumentFromJson(json);
+
+@override final  String id;
+@override final  String title;
+@override final  String? body;
+ final  List<PageImageArgument>? _images;
+@override List<PageImageArgument>? get images {
+  final value = _images;
+  if (value == null) return null;
+  if (_images is EqualUnmodifiableListView) return _images;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override final  PageQuestionKindArgument kind;
+/// Only for single and multiple; text questions take none.
+ final  List<PageOptionArgument>? _options;
+/// Only for single and multiple; text questions take none.
+@override List<PageOptionArgument>? get options {
+  final value = _options;
+  if (value == null) return null;
+  if (_options is EqualUnmodifiableListView) return _options;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override@JsonKey() final  bool required;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'PageQuestionArgument(id: $id, title: $title, body: $body, images: $images, kind: $kind, options: $options, required: $required)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PageOptionArgument {
+
+ String get id; String get label; String? get description; PageImageArgument? get image; bool get recommended;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as PageOptionArgument;
+  return 'PageOptionArgument(id: ${_this.id}, label: ${_this.label}, description: ${_this.description}, image: ${_this.image}, recommended: ${_this.recommended})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+class _PageOptionArgument implements PageOptionArgument {
+  const _PageOptionArgument({required this.id, required this.label, required this.description, required this.image, this.recommended = false});
+  factory _PageOptionArgument.fromJson(Map<String, dynamic> json) => _$PageOptionArgumentFromJson(json);
+
+@override final  String id;
+@override final  String label;
+@override final  String? description;
+@override final  PageImageArgument? image;
+@override@JsonKey() final  bool recommended;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'PageOptionArgument(id: $id, label: $label, description: $description, image: $image, recommended: $recommended)';
+}
+
+
+}
+
+
+
+
 // dart format on

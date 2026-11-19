@@ -90,3 +90,77 @@ sealed class UpdateTaskArguments with _$UpdateTaskArguments {
 
   factory fromJson(Map<String, dynamic> json) => _$UpdateTaskArgumentsFromJson(json);
 }
+
+// The page arguments reject unknown fields, so a field the agent misspelled
+// fails with its name instead of silently dropping content.
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class SendPageArguments with _$SendPageArguments {
+  @JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+  const factory({
+    required String title,
+    required String? intro,
+    required List<PageSectionArgument> sections,
+  }) = _SendPageArguments;
+
+  factory fromJson(Map<String, dynamic> json) => _$SendPageArgumentsFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class PageSectionArgument with _$PageSectionArgument {
+  @JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+  const factory({
+    required String? heading,
+    required String? body,
+    required List<PageImageArgument>? images,
+    required List<PageQuestionArgument>? questions,
+  }) = _PageSectionArgument;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageSectionArgumentFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class PageImageArgument with _$PageImageArgument {
+  @JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+  const factory({required String path, required String? caption}) = _PageImageArgument;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageImageArgumentFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class PageQuestionArgument with _$PageQuestionArgument {
+  @JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+  const factory({
+    required String id,
+    required String title,
+    required String? body,
+    required List<PageImageArgument>? images,
+    required PageQuestionKindArgument kind,
+
+    /// Only for single and multiple; text questions take none.
+    required List<PageOptionArgument>? options,
+    @Default(false) bool required,
+  }) = _PageQuestionArgument;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageQuestionArgumentFromJson(json);
+}
+
+enum PageQuestionKindArgument() {
+  single,
+  multiple,
+  text,
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class PageOptionArgument with _$PageOptionArgument {
+  @JsonSerializable(checked: true, disallowUnrecognizedKeys: true, createToJson: false)
+  const factory({
+    required String id,
+    required String label,
+    required String? description,
+    required PageImageArgument? image,
+    @Default(false) bool recommended,
+  }) = _PageOptionArgument;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageOptionArgumentFromJson(json);
+}

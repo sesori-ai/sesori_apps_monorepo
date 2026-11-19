@@ -1,13 +1,15 @@
 import "dart:async";
 import "dart:convert";
 
-import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJsonException;
+import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJsonException, UnrecognizedKeysException;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations, bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, sesoriMcpServerName;
-import "package:sesori_shared/sesori_shared.dart" show PromptModel, ScheduledTaskErrorCode, SessionVariant;
+import "package:sesori_shared/sesori_shared.dart"
+    show PromptModel, ScheduledTaskErrorCode, SessionVariant, maxTranscriptImageBytes;
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../repositories/models/sesori_mcp_caller.dart";
+import "../../services/agent_page_service.dart";
 import "../../services/scheduled_task_agent_service.dart";
 import "../../services/sesori_mcp_access_service.dart";
 import "models/sesori_mcp_rpc_request.dart";
@@ -24,6 +26,7 @@ import "sesori_mcp_tool.dart";
 class SesoriMcpRequestDispatcher({
   required final SesoriMcpAccessService _access,
   required final ScheduledTaskAgentService _agent,
+  required final AgentPageService _pages,
   required final SesoriMcpResultFormatter _formatter,
 }) {
   /// The protocol versions this server speaks, oldest first. `initialize`
@@ -114,10 +117,11 @@ class SesoriMcpRequestDispatcher({
       },
       "serverInfo": {"name": sesoriMcpServerName, "version": bridgeVersion},
       "instructions":
-          "Sesori's tools for the scheduled tasks on this computer. Start with list_tasks; get_task without a "
-          "task_id shows this session's own task when it is a scheduled run. Tools that change a task only send "
-          "the user a request to allow and return at once. Each request is answered on its own; Sesori messages "
-          "this session with the user's answer, so don't poll get_task for it.",
+          "Sesori's tools for asking the user and for the scheduled tasks on this computer. send_page asks the "
+          "user on a page in the Sesori app. For tasks, start with list_tasks; get_task without a task_id shows "
+          "this session's own task when it is a scheduled run. Tools that change a task only send the user a "
+          "request to allow. Pages and requests return at once and are answered on their own; Sesori messages "
+          "this session with the user's answer, so don't poll for it.",
     };
   }
 
@@ -247,6 +251,14 @@ class SesoriMcpRequestDispatcher({
         final args = _parse(json: arguments, fromJson: TaskIdArguments.fromJson);
         final proposal = await _agent.proposeRunNow(caller: caller, taskId: args.taskId);
         return _proposal(proposal: proposal, sent: _appliesOnAllow);
+      case SesoriMcpTool.sendPage:
+        final args = _parse(json: arguments, fromJson: SendPageArguments.fromJson);
+        return _pageSent(
+          result: await _pages.send(
+            caller: caller,
+            draft: _pageDraft(args: args),
+          ),
+        );
     }
   }
 
@@ -255,6 +267,109 @@ class SesoriMcpRequestDispatcher({
   static const String _appliesOnAllow =
       "Sent to the user for approval. Nothing happens unless they allow it. $_answerFollows";
   static const String _answerFollows = "Sesori will message this session with their answer.";
+
+  static const int _mebibyte = 1024 * 1024;
+
+  _ToolOutcome _pageSent({required AgentPageSendResult result}) {
+    final text = switch (result) {
+      AgentPageSent(:final page) => "Sent “${page.title}” to the user. $_answerFollows",
+      AgentPageCallerGone() => "This session is no longer known to Sesori.",
+      AgentPageOverLimit(limit: AgentPageLimit.titleLength) =>
+        "title is longer than ${AgentPageService.maxTitleLength} characters.",
+      AgentPageOverLimit(limit: AgentPageLimit.images) =>
+        "The page has more than ${AgentPageService.maxImages} images.",
+      AgentPageOverLimit(limit: AgentPageLimit.questions) =>
+        "The page has more than ${AgentPageService.maxQuestions} questions.",
+      AgentPageOverLimit(limit: AgentPageLimit.imageBytes) =>
+        "The page's images are over ${AgentPageService.maxPageImageBytes ~/ _mebibyte} MiB together.",
+      AgentPageTooManyOptions(:final questionId) =>
+        "Question $questionId has more than ${AgentPageService.maxOptions} options.",
+      AgentPageDuplicateQuestionId(:final questionId) => "Two questions have the id $questionId.",
+      AgentPageDuplicateOptionId(:final questionId, :final optionId) =>
+        "Question $questionId has two options with the id $optionId.",
+      AgentPageImageRejected(:final path, :final problem) => switch (problem) {
+        AgentPageImageProblem.notAbsolute => "Image path $path is not absolute.",
+        AgentPageImageProblem.missing => "No file at image path $path.",
+        AgentPageImageProblem.denied => "The bridge may not read image path $path.",
+        AgentPageImageProblem.tooLarge => "The image at $path is over ${maxTranscriptImageBytes ~/ _mebibyte} MiB.",
+        AgentPageImageProblem.notImage => "The file at $path is not a png, jpg, gif or webp image.",
+      },
+    };
+    return _ToolOutcome(isError: result is! AgentPageSent, text: text);
+  }
+
+  /// [args] as the page service takes them. Strict-schema providers fill
+  /// fields they leave out with "", so an empty optional text reads as
+  /// absent and an empty required one as missing.
+  AgentPageDraft _pageDraft({required SendPageArguments args}) {
+    return AgentPageDraft(
+      title: _requiredText(value: args.title, field: "title"),
+      intro: _optionalText(value: args.intro),
+      sections: [
+        for (final (sectionIndex, section) in args.sections.indexed)
+          AgentPageSectionDraft(
+            heading: _optionalText(value: section.heading),
+            body: _optionalText(value: section.body),
+            images: _pageImages(images: section.images ?? const [], field: "sections[$sectionIndex].images"),
+            questions: [
+              for (final (questionIndex, question) in (section.questions ?? const <PageQuestionArgument>[]).indexed)
+                _pageQuestion(question: question, field: "sections[$sectionIndex].questions[$questionIndex]"),
+            ],
+          ),
+      ],
+    );
+  }
+
+  AgentPageQuestionDraft _pageQuestion({required PageQuestionArgument question, required String field}) {
+    final options = [
+      for (final (index, option) in (question.options ?? const <PageOptionArgument>[]).indexed)
+        AgentPageOptionDraft(
+          id: _requiredText(value: option.id, field: "$field.options[$index].id"),
+          label: _requiredText(value: option.label, field: "$field.options[$index].label"),
+          description: _optionalText(value: option.description),
+          image: switch (option.image) {
+            final image? => _pageImage(image: image, field: "$field.options[$index].image"),
+            null => null,
+          },
+          recommended: option.recommended,
+        ),
+    ];
+    return AgentPageQuestionDraft(
+      id: _requiredText(value: question.id, field: "$field.id"),
+      title: _requiredText(value: question.title, field: "$field.title"),
+      body: _optionalText(value: question.body),
+      images: _pageImages(images: question.images ?? const [], field: "$field.images"),
+      kind: switch (question.kind) {
+        PageQuestionKindArgument.single || PageQuestionKindArgument.multiple when options.isEmpty =>
+          throw _InvalidArguments(reason: "$field.options is required when its kind is ${question.kind.name}."),
+        PageQuestionKindArgument.single => AgentPageSingleChoiceDraft(options: options),
+        PageQuestionKindArgument.multiple => AgentPageMultipleChoiceDraft(options: options),
+        PageQuestionKindArgument.text when options.isEmpty => const AgentPageTextDraft(),
+        PageQuestionKindArgument.text => throw _InvalidArguments(
+          reason: "$field.options are only for single and multiple questions.",
+        ),
+      },
+      isRequired: question.required,
+    );
+  }
+
+  List<AgentPageImageDraft> _pageImages({required List<PageImageArgument> images, required String field}) => [
+    for (final (index, image) in images.indexed) _pageImage(image: image, field: "$field[$index]"),
+  ];
+
+  AgentPageImageDraft _pageImage({required PageImageArgument image, required String field}) {
+    return AgentPageImageDraft(
+      path: _requiredText(value: image.path, field: "$field.path"),
+      caption: _optionalText(value: image.caption),
+    );
+  }
+
+  String _requiredText({required String value, required String field}) {
+    if (value.trim().isEmpty) throw _InvalidArguments(reason: "$field is required.");
+    return value;
+  }
+
+  String? _optionalText({required String? value}) => value == null || value.trim().isEmpty ? null : value;
 
   _ToolOutcome _proposal({required AgentProposal proposal, required String sent}) {
     return switch (proposal) {
@@ -360,10 +475,17 @@ class SesoriMcpRequestDispatcher({
     try {
       return fromJson(present);
     } on CheckedFromJsonException catch (error) {
+      // A nested argument's failure names only its own key, so its place
+      // in the arguments comes from the model that failed.
+      final place = _nestedArgumentPlaces[error.className] ?? "";
       final reason = switch (error.key) {
-        final key? when present[key] == null => "$key is required.",
-        final key? => "$key is not valid; see its input schema.",
-        null => _seeSchema,
+        final key? when error.map[key] == null => "$place$key is required.",
+        final key? => "$place$key is not valid; see its input schema.",
+        null => switch (error.innerError) {
+          UnrecognizedKeysException(:final unrecognizedKeys) =>
+            "$place${unrecognizedKeys.first} is not an argument; see its input schema.",
+          _ => _seeSchema,
+        },
       };
       throw _InvalidArguments(reason: reason);
     } on Object {
@@ -372,6 +494,15 @@ class SesoriMcpRequestDispatcher({
   }
 
   static const String _seeSchema = "see its input schema.";
+
+  /// Where each nested page argument sits, keyed by the generated class
+  /// checked decoding reports.
+  static const Map<String, String> _nestedArgumentPlaces = {
+    "_PageSectionArgument": "sections[].",
+    "_PageQuestionArgument": "sections[].questions[].",
+    "_PageOptionArgument": "sections[].questions[].options[].",
+    "_PageImageArgument": "images[].",
+  };
 
   /// The fields each kind of a nested argument needs, as its schema
   /// describes them. The shared models read an unknown kind as unknown and

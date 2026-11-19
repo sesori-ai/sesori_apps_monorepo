@@ -21,6 +21,9 @@ final class const AttachmentThumbnailTooLarge() extends AttachmentThumbnailBuild
 final class const AttachmentThumbnailFailed({required final Object cause, required final StackTrace stackTrace})
     extends AttachmentThumbnailBuildResult;
 
+/// An image's size in pixels.
+final class const ImageDimensions({required final int width, required final int height});
+
 class const AttachmentThumbnailBuilder() {
   static const _size = 512;
   static const _jpegQuality = 82;
@@ -55,6 +58,26 @@ class const AttachmentThumbnailBuilder() {
     image.ImageFormat.invalid ||
     null => null,
   };
+
+  /// The size of the supported image in [bytes], read from its header off
+  /// the calling isolate; null when [bytes] hold no supported image.
+  Future<ImageDimensions?> readDimensions({required Uint8List bytes}) {
+    return Isolate.run(() => _readDimensions(bytes: bytes));
+  }
+
+  ImageDimensions? _readDimensions({required Uint8List bytes}) {
+    try {
+      final decoder = _decoderForSupportedData(bytes: bytes);
+      if (decoder == null || !decoder.isValidFile(bytes)) return null;
+      final info = decoder.startDecode(bytes);
+      if (info == null || info.width <= 0 || info.height <= 0) return null;
+      return ImageDimensions(width: info.width, height: info.height);
+    } on image.ImageException {
+      return null;
+    } on FormatException {
+      return null;
+    }
+  }
 
   Future<AttachmentThumbnailBuildResult> build({required Uint8List bytes}) {
     return Isolate.run(() => _build(bytes: bytes));
