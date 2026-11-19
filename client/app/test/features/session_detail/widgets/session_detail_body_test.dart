@@ -19,6 +19,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_row_reporter.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -2328,6 +2329,80 @@ void main() {
     // An archived page has nothing to offer, so it grows no menu to hold it.
     expect(find.byKey(const Key("session-detail-more")), findsNothing);
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+  });
+
+  group("archived from another device", () {
+    final card = find.byType(SessionDetailNeedsYouCard);
+    final transcriptLine = find.text("Hello, world!");
+    double transcriptOffset(WidgetTester tester) => tester
+        .state<ScrollableState>(find.ancestor(of: transcriptLine, matching: find.byType(Scrollable)).first)
+        .position
+        .pixels;
+
+    Future<StreamController<SessionDetailState>> openWithPendingQuestion(WidgetTester tester) async {
+      final loaded = _loadedState(
+        pendingQuestions: const [_question],
+        pendingPermissions: const [],
+        messages: [testMessageWithParts()],
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: loaded);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(card, findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+      states.add(loaded.copyWith(isArchived: true));
+      // Delivers the archive; the next frame shows it.
+      await tester.pump();
+      return states;
+    }
+
+    testWidgets("the card and composer leave in one glide while the transcript stays scrolled", (tester) async {
+      await openWithPendingQuestion(tester);
+      await tester.pump();
+      final restingTop = tester.getTopLeft(transcriptLine).dy;
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+
+      // Halfway, both are still on their way out together.
+      await tester.pump(transcriptMotionDuration ~/ 2);
+      expect(card, findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+
+      // The transcript follows the room they give up a little each frame,
+      // never in one jump, and its scroll position never changes.
+      var previousTop = tester.getTopLeft(transcriptLine).dy;
+      expect(previousTop, greaterThan(restingTop));
+      for (var frame = 0; frame < 12; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final top = tester.getTopLeft(transcriptLine).dy;
+        expect(top - previousTop, inInclusiveRange(0, 40));
+        expect(transcriptOffset(tester), 0);
+        previousTop = top;
+      }
+      await tester.pumpAndSettle();
+
+      expect(card, findsNothing);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.getTopLeft(transcriptLine).dy, previousTop);
+    });
+
+    testWidgets("with reduced motion, the card and composer leave at once", (tester) async {
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await openWithPendingQuestion(tester);
+
+      await tester.pump();
+      final top = tester.getTopLeft(transcriptLine).dy;
+      expect(card, findsNothing);
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.getTopLeft(transcriptLine).dy, top);
+    });
   });
 
   testWidgets("archiving a loaded session disposes its composer-owned voice lifecycle", (tester) async {

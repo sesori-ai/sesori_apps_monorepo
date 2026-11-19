@@ -173,6 +173,35 @@ class const ComposerSetAside._({required final bool setAside, required super.chi
   bool updateShouldNotify(ComposerSetAside oldWidget) => setAside != oldWidget.setAside;
 }
 
+/// Cross-fades to a [child] under a new key in the room [ComposerOrNotice]
+/// eases, then drops the one that left, where [ComposerOrNotice] keeps its
+/// composer. It suits a change that never turns back, such as an archive
+/// trading the composer for what the session ran with. Reduced motion makes
+/// the change at once.
+class const CrossFadeRoomSwitcher({super.key, required final Alignment alignment, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      transitionBuilder: _occupant,
+      // The one arriving paints over the one leaving.
+      layoutBuilder: (current, previous) => _CrossFadeRoom(alignment: alignment, children: [...previous, ?current]),
+      child: child,
+    );
+  }
+
+  // Built before the arriving one's animation starts, so whether it is shown
+  // is read as the animation runs.
+  static Widget _occupant(Widget child, Animation<double> animation) => AnimatedBuilder(
+    animation: animation,
+    builder: (context, _) =>
+        _CrossFadeRoomOccupant(presence: animation, shown: animation.status.isForwardOrCompleted, child: child),
+  );
+}
+
 /// A child of [_CrossFadeRoom] at its [presence]: it fades with it, takes no
 /// taps, focus or semantics unless [shown], and once gone stays mounted
 /// offstage. One leaving fades out as it was: its own animations hold still,

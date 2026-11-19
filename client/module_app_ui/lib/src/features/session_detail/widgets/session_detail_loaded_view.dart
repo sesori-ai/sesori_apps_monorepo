@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../utils/markdown_plain_text.dart";
+import "../../../widgets/composer_or_notice.dart";
 import "../session_detail_presentation_scope.dart";
 import "edit_message_dialogs.dart";
 import "handoff_session_link.dart";
@@ -231,22 +232,32 @@ class SessionDetailLoadedView extends StatelessWidget {
             children: [
               if (state.isRefreshing) const LinearProgressIndicator(),
               // Archiving is permanent, so this session is audit-only: say so
-              // where the composer used to be.
-              if (state.isArchived)
-                SessionDetailArchivedNotice(
-                  sideChatCount: state.archivedSideChatCount,
-                  onOpenSideChats: switch ((SessionDetailPresentationScope.of(context).openSideChat, state.pluginId)) {
-                    (final openSideChat?, final pluginId?) => () => openSideChat(
-                      context: context,
-                      sessionId: state.session.id,
-                      pluginId: pluginId,
-                      availability: state.sideQuestions,
-                      isArchived: true,
-                      initialQuestion: null,
-                    ),
-                    _ => null,
-                  },
-                ),
+              // where the composer used to be. An archive from another device
+              // fades it in with the composer's change below.
+              AnimatedSwitcher(
+                duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+                switchInCurve: transcriptMotionCurve,
+                switchOutCurve: transcriptMotionReverseCurve,
+                child: state.isArchived
+                    ? SessionDetailArchivedNotice(
+                        sideChatCount: state.archivedSideChatCount,
+                        onOpenSideChats: switch ((
+                          SessionDetailPresentationScope.of(context).openSideChat,
+                          state.pluginId,
+                        )) {
+                          (final openSideChat?, final pluginId?) => () => openSideChat(
+                            context: context,
+                            sessionId: state.session.id,
+                            pluginId: pluginId,
+                            availability: state.sideQuestions,
+                            isArchived: true,
+                            initialQuestion: null,
+                          ),
+                          _ => null,
+                        },
+                      )
+                    : const SizedBox.shrink(),
+              ),
               // The harness can no longer restore this session; its stored
               // history stays readable beneath this floating layer, which
               // fades rather than moving the transcript.
@@ -310,7 +321,17 @@ class SessionDetailLoadedView extends StatelessWidget {
                       ],
                     ),
                     if (bottomControls case final controls?)
-                      SentBubbleRowReach(reach: composerInset - transcriptInset, child: controls),
+                      SentBubbleRowReach(
+                        reach: composerInset - transcriptInset,
+                        // An archive from another device turns this page
+                        // read-only: the composer cross-fades into what the
+                        // session ran with as the cards above fold, so the
+                        // transcript glides down once.
+                        child: CrossFadeRoomSwitcher(
+                          alignment: Alignment.bottomCenter,
+                          child: KeyedSubtree(key: ValueKey(readOnly), child: controls),
+                        ),
+                      ),
                   ],
                 ),
               ),
