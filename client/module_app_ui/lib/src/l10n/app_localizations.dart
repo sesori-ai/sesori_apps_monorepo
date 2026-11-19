@@ -8323,12 +8323,6 @@ abstract class AppLocalizations {
   /// **'Add a note (optional)'**
   String get questionPageNoteHint;
 
-  /// No description provided for @questionPageNoNote.
-  ///
-  /// In en, this message translates to:
-  /// **'No note'**
-  String get questionPageNoNote;
-
   /// No description provided for @questionPageClosingNoteTitle.
   ///
   /// In en, this message translates to:
@@ -8358,6 +8352,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sesori didn\'t understand the reply. Update the app and try again.'**
   String get questionPageUnknownResult;
+
+  /// No description provided for @questionPageImageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Image unavailable'**
+  String get questionPageImageUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

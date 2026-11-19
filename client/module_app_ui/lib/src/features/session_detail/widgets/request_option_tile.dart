@@ -37,7 +37,8 @@ class const RequestChoiceTile({
 }
 
 /// One option of a question: a radio for a single choice, a checkbox for a
-/// multiple choice. [badge] sits beside the label.
+/// multiple choice. [badge] sits beside the label, and [footer] below the
+/// description, such as the option's image.
 class const RequestOptionTile({
   super.key,
   required final String label,
@@ -46,6 +47,7 @@ class const RequestOptionTile({
   required final bool isSelected,
   required final VoidCallback? onTap,
   required final Widget? badge,
+  required final Widget? footer,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -61,6 +63,7 @@ class const RequestOptionTile({
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
         onTap: onTap,
         child: Row(
+          crossAxisAlignment: footer == null ? CrossAxisAlignment.center : CrossAxisAlignment.start,
           children: [
             Icon(
               isMultiple
@@ -95,6 +98,10 @@ class const RequestOptionTile({
                         color: prego.colors.textSecondary,
                       ),
                     ),
+                  ],
+                  if (footer case final footer?) ...[
+                    const SizedBox(height: PregoSpacing.md),
+                    footer,
                   ],
                 ],
               ),

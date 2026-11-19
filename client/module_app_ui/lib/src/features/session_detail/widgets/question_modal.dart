@@ -448,6 +448,7 @@ class _QuestionModalState() extends State<QuestionModal> {
                                 isSelected: !draft.isDeclined && draft.selectedLabels.contains(option.label),
                                 onTap: () => _onOptionTap(label: option.label),
                                 badge: null,
+                                footer: null,
                               ),
                             ),
 

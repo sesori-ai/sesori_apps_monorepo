@@ -11,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../session_detail_presentation_scope.dart";
+import "question_page_image.dart";
 import "question_page_question.dart";
 
 typedef PendingPageCubitFactory = PendingPageCubit Function({required String requestId, required String sessionId});
@@ -425,6 +426,7 @@ class const _PageBody({
     final loc = context.loc;
     final cubit = context.read<PendingPageCubit>();
     final enabled = state is PageEditing;
+    final readOnly = state is PageReadOnly;
     final flagged = switch (state) {
       PageEditing(feedback: PageFeedbackInvalid(:final questionIds)) => questionIds.toSet(),
       _ => const <String>{},
@@ -454,6 +456,10 @@ class const _PageBody({
                     QuestionPageMarkdown(data: body),
                     const SizedBox(height: PregoSpacing.md),
                   ],
+                  for (final image in section.images) ...[
+                    QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
+                    const SizedBox(height: PregoSpacing.md),
+                  ],
                   for (final question in section.questions) ...[
                     const SizedBox(height: PregoSpacing.lg),
                     QuestionPageQuestion(
@@ -468,23 +474,39 @@ class const _PageBody({
                       },
                       answerController: answerField(question.id),
                       noteController: noteField(question.id),
+                      showsNote: !readOnly || draft.answers[question.id]?.note != null,
                     ),
                   ],
                 ],
-                const SizedBox(height: PregoSpacing.x4l),
-                Text(
-                  loc.questionPageClosingNoteTitle,
-                  style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-                ),
-                const SizedBox(height: PregoSpacing.md),
-                QuestionPageTextField(
-                  key: const Key("question-page-closing-note"),
-                  controller: closingNote,
-                  hint: enabled ? loc.questionPageClosingNoteHint : loc.questionPageNoNote,
-                  enabled: enabled,
-                  isFlagged: false,
-                  minLines: 2,
-                  onChanged: (note) => cubit.setNote(note: note),
+                // A read-only page shows the closing note only when one was
+                // written; a submitting page keeps it so nothing moves. It
+                // folds away when the page settles while open.
+                AnimatedSize(
+                  duration: context.isReducedMotion ? Duration.zero : _contentDuration,
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: !readOnly || draft.note != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: PregoSpacing.x4l),
+                            Text(
+                              loc.questionPageClosingNoteTitle,
+                              style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+                            ),
+                            const SizedBox(height: PregoSpacing.md),
+                            QuestionPageTextField(
+                              key: const Key("question-page-closing-note"),
+                              controller: closingNote,
+                              hint: loc.questionPageClosingNoteHint,
+                              enabled: enabled,
+                              isFlagged: false,
+                              minLines: 2,
+                              onChanged: (note) => cubit.setNote(note: note),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: double.infinity),
                 ),
               ],
             ),
