@@ -18,6 +18,10 @@ class const ModelLevelStrip({
   required final String? selected,
   required final ValueChanged<SessionVariant> onPicked,
 }) extends StatelessWidget {
+  /// The strip's height, which a model without levels keeps in its place so
+  /// moving the selection does not resize the list.
+  static double heightFor({required bool pointer}) => pointer ? 26 : 34;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -27,7 +31,7 @@ class const ModelLevelStrip({
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     final radius = BorderRadius.circular(PregoRadius.full);
     return Container(
-      height: pointer ? 26 : 34,
+      height: heightFor(pointer: pointer),
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(color: colors.bgSurface1, borderRadius: radius),
       child: Row(

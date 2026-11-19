@@ -466,6 +466,26 @@ void main() {
       expect(find.byType(ModelPicker), findsOneWidget);
     });
 
+    for (final mode in PregoInteractionMode.values) {
+      testWidgets("the list keeps its edges as the strip moves to a model without effort (${mode.name})", (
+        tester,
+      ) async {
+        await _pumpEffort(tester, initial: alpha, mode: mode);
+        await tester.tap(find.byType(mode == PregoInteractionMode.pointer ? PregoPickerButton : ModelEffortChip));
+        await tester.pumpAndSettle();
+        await tester.tap(_row("Gamma"));
+        await tester.pumpAndSettle();
+        final withLevels = tester.getRect(find.byType(ModelPicker));
+        final gammaOpen = tester.getSize(_row("Gamma")).height;
+
+        await tester.tap(_row("Beta"));
+        await tester.pumpAndSettle();
+        expect(_strip(), findsNothing);
+        expect(tester.getRect(find.byType(ModelPicker)), withLevels);
+        expect(tester.getSize(_row("Beta")).height, gammaOpen);
+      });
+    }
+
     testWidgets("a level commits the model and level together and closes the list", (tester) async {
       final picks = await _pumpEffort(tester, initial: alpha);
       await tester.tap(find.byType(ModelEffortChip));

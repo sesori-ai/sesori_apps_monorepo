@@ -217,11 +217,20 @@ class _ModelRowState() extends State<_ModelRow> with SingleTickerProviderStateMi
               child: Padding(
                 padding: EdgeInsets.only(top: pointer ? 6 : 8),
                 child: widget.levels.isEmpty
-                    ? Text(
-                        context.loc.modelPickerNoEffort,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                    // As tall as the strip, so the list keeps its height when
+                    // the selection moves between a model with levels and one
+                    // without.
+                    ? SizedBox(
+                        height: ModelLevelStrip.heightFor(pointer: pointer),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            context.loc.modelPickerNoEffort,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                          ),
+                        ),
                       )
                     : ModelLevelStrip(
                         levels: widget.levels,
