@@ -110,6 +110,9 @@ class PendingPageCubit({
             feedback: PageFeedbackFailed(action: PageAction.submit, cause: error),
           ),
         );
+        // The page may have settled while this request failed, and a reconnect
+        // during the request was not acted on, so look again.
+        await _lookup();
       }
     }
   }
@@ -131,6 +134,9 @@ class PendingPageCubit({
             feedback: PageFeedbackFailed(action: PageAction.dismiss, cause: error),
           ),
         );
+        // The page may have settled while this request failed, and a reconnect
+        // during the request was not acted on, so look again.
+        await _lookup();
       }
     }
   }

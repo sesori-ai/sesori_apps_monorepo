@@ -6882,6 +6882,561 @@ class SessionInterruptionsTableCompanion
   }
 }
 
+mixin $AgentPagesTableTableToColumns implements Insertable<AgentPageDto> {
+  String get id;
+
+  /// The session that sent the page.
+  String get sessionId;
+
+  /// The root of [sessionId]'s family, where the page is surfaced. Equal to
+  /// [sessionId] when that session is a root.
+  String get rootSessionId;
+  PendingPage get pageJson;
+  AgentPageStatus get status;
+
+  /// How the user settled the page, as JSON. Null while it is pending.
+  String? get outcomeJson;
+  int get createdAt;
+  int? get settledAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['session_id'] = Variable<String>(sessionId);
+    map['root_session_id'] = Variable<String>(rootSessionId);
+    {
+      map['page_json'] = Variable<String>(
+        $AgentPagesTableTable.$converterpageJson.toSql(pageJson),
+      );
+    }
+    {
+      map['status'] = Variable<String>(
+        $AgentPagesTableTable.$converterstatus.toSql(status),
+      );
+    }
+    if (!nullToAbsent || outcomeJson != null) {
+      map['outcome_json'] = Variable<String>(outcomeJson);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    if (!nullToAbsent || settledAt != null) {
+      map['settled_at'] = Variable<int>(settledAt);
+    }
+    return map;
+  }
+}
+
+class $AgentPagesTableTable extends AgentPagesTable
+    with TableInfo<$AgentPagesTableTable, AgentPageDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AgentPagesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _rootSessionIdMeta = const VerificationMeta(
+    'rootSessionId',
+  );
+  @override
+  late final GeneratedColumn<String> rootSessionId = GeneratedColumn<String>(
+    'root_session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<PendingPage, String> pageJson =
+      GeneratedColumn<String>(
+        'page_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PendingPage>($AgentPagesTableTable.$converterpageJson);
+  @override
+  late final GeneratedColumnWithTypeConverter<AgentPageStatus, String> status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AgentPageStatus>($AgentPagesTableTable.$converterstatus);
+  static const VerificationMeta _outcomeJsonMeta = const VerificationMeta(
+    'outcomeJson',
+  );
+  @override
+  late final GeneratedColumn<String> outcomeJson = GeneratedColumn<String>(
+    'outcome_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _settledAtMeta = const VerificationMeta(
+    'settledAt',
+  );
+  @override
+  late final GeneratedColumn<int> settledAt = GeneratedColumn<int>(
+    'settled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    rootSessionId,
+    pageJson,
+    status,
+    outcomeJson,
+    createdAt,
+    settledAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'agent_pages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AgentPageDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('root_session_id')) {
+      context.handle(
+        _rootSessionIdMeta,
+        rootSessionId.isAcceptableOrUnknown(
+          data['root_session_id']!,
+          _rootSessionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_rootSessionIdMeta);
+    }
+    if (data.containsKey('outcome_json')) {
+      context.handle(
+        _outcomeJsonMeta,
+        outcomeJson.isAcceptableOrUnknown(
+          data['outcome_json']!,
+          _outcomeJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('settled_at')) {
+      context.handle(
+        _settledAtMeta,
+        settledAt.isAcceptableOrUnknown(data['settled_at']!, _settledAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AgentPageDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AgentPageDto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      rootSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}root_session_id'],
+      )!,
+      pageJson: $AgentPagesTableTable.$converterpageJson.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}page_json'],
+        )!,
+      ),
+      status: $AgentPagesTableTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      outcomeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outcome_json'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      settledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}settled_at'],
+      ),
+    );
+  }
+
+  @override
+  $AgentPagesTableTable createAlias(String alias) {
+    return $AgentPagesTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<PendingPage, String> $converterpageJson =
+      const PendingPageConverter();
+  static JsonTypeConverter2<AgentPageStatus, String, String> $converterstatus =
+      const EnumNameConverter<AgentPageStatus>(AgentPageStatus.values);
+  @override
+  bool get withoutRowId => true;
+}
+
+class AgentPageDto extends DataClass with $AgentPagesTableTableToColumns {
+  @override
+  final String id;
+
+  /// The session that sent the page.
+  @override
+  final String sessionId;
+
+  /// The root of [sessionId]'s family, where the page is surfaced. Equal to
+  /// [sessionId] when that session is a root.
+  @override
+  final String rootSessionId;
+  @override
+  final PendingPage pageJson;
+  @override
+  final AgentPageStatus status;
+
+  /// How the user settled the page, as JSON. Null while it is pending.
+  @override
+  final String? outcomeJson;
+  @override
+  final int createdAt;
+  @override
+  final int? settledAt;
+  const AgentPageDto({
+    required this.id,
+    required this.sessionId,
+    required this.rootSessionId,
+    required this.pageJson,
+    required this.status,
+    this.outcomeJson,
+    required this.createdAt,
+    this.settledAt,
+  });
+  AgentPagesTableCompanion toCompanion(bool nullToAbsent) {
+    return AgentPagesTableCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      rootSessionId: Value(rootSessionId),
+      pageJson: Value(pageJson),
+      status: Value(status),
+      outcomeJson: outcomeJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(outcomeJson),
+      createdAt: Value(createdAt),
+      settledAt: settledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(settledAt),
+    );
+  }
+
+  factory AgentPageDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AgentPageDto(
+      id: serializer.fromJson<String>(json['id']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      rootSessionId: serializer.fromJson<String>(json['rootSessionId']),
+      pageJson: serializer.fromJson<PendingPage>(json['pageJson']),
+      status: $AgentPagesTableTable.$converterstatus.fromJson(
+        serializer.fromJson<String>(json['status']),
+      ),
+      outcomeJson: serializer.fromJson<String?>(json['outcomeJson']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      settledAt: serializer.fromJson<int?>(json['settledAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'rootSessionId': serializer.toJson<String>(rootSessionId),
+      'pageJson': serializer.toJson<PendingPage>(pageJson),
+      'status': serializer.toJson<String>(
+        $AgentPagesTableTable.$converterstatus.toJson(status),
+      ),
+      'outcomeJson': serializer.toJson<String?>(outcomeJson),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'settledAt': serializer.toJson<int?>(settledAt),
+    };
+  }
+
+  AgentPageDto copyWith({
+    String? id,
+    String? sessionId,
+    String? rootSessionId,
+    PendingPage? pageJson,
+    AgentPageStatus? status,
+    Value<String?> outcomeJson = const Value.absent(),
+    int? createdAt,
+    Value<int?> settledAt = const Value.absent(),
+  }) => AgentPageDto(
+    id: id ?? this.id,
+    sessionId: sessionId ?? this.sessionId,
+    rootSessionId: rootSessionId ?? this.rootSessionId,
+    pageJson: pageJson ?? this.pageJson,
+    status: status ?? this.status,
+    outcomeJson: outcomeJson.present ? outcomeJson.value : this.outcomeJson,
+    createdAt: createdAt ?? this.createdAt,
+    settledAt: settledAt.present ? settledAt.value : this.settledAt,
+  );
+  AgentPageDto copyWithCompanion(AgentPagesTableCompanion data) {
+    return AgentPageDto(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      rootSessionId: data.rootSessionId.present
+          ? data.rootSessionId.value
+          : this.rootSessionId,
+      pageJson: data.pageJson.present ? data.pageJson.value : this.pageJson,
+      status: data.status.present ? data.status.value : this.status,
+      outcomeJson: data.outcomeJson.present
+          ? data.outcomeJson.value
+          : this.outcomeJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      settledAt: data.settledAt.present ? data.settledAt.value : this.settledAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AgentPageDto(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('rootSessionId: $rootSessionId, ')
+          ..write('pageJson: $pageJson, ')
+          ..write('status: $status, ')
+          ..write('outcomeJson: $outcomeJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('settledAt: $settledAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    rootSessionId,
+    pageJson,
+    status,
+    outcomeJson,
+    createdAt,
+    settledAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentPageDto &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.rootSessionId == this.rootSessionId &&
+          other.pageJson == this.pageJson &&
+          other.status == this.status &&
+          other.outcomeJson == this.outcomeJson &&
+          other.createdAt == this.createdAt &&
+          other.settledAt == this.settledAt);
+}
+
+class AgentPagesTableCompanion extends UpdateCompanion<AgentPageDto> {
+  final Value<String> id;
+  final Value<String> sessionId;
+  final Value<String> rootSessionId;
+  final Value<PendingPage> pageJson;
+  final Value<AgentPageStatus> status;
+  final Value<String?> outcomeJson;
+  final Value<int> createdAt;
+  final Value<int?> settledAt;
+  const AgentPagesTableCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.rootSessionId = const Value.absent(),
+    this.pageJson = const Value.absent(),
+    this.status = const Value.absent(),
+    this.outcomeJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.settledAt = const Value.absent(),
+  });
+  AgentPagesTableCompanion.insert({
+    required String id,
+    required String sessionId,
+    required String rootSessionId,
+    required PendingPage pageJson,
+    required AgentPageStatus status,
+    this.outcomeJson = const Value.absent(),
+    required int createdAt,
+    this.settledAt = const Value.absent(),
+  }) : id = Value(id),
+       sessionId = Value(sessionId),
+       rootSessionId = Value(rootSessionId),
+       pageJson = Value(pageJson),
+       status = Value(status),
+       createdAt = Value(createdAt);
+  static Insertable<AgentPageDto> custom({
+    Expression<String>? id,
+    Expression<String>? sessionId,
+    Expression<String>? rootSessionId,
+    Expression<String>? pageJson,
+    Expression<String>? status,
+    Expression<String>? outcomeJson,
+    Expression<int>? createdAt,
+    Expression<int>? settledAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (rootSessionId != null) 'root_session_id': rootSessionId,
+      if (pageJson != null) 'page_json': pageJson,
+      if (status != null) 'status': status,
+      if (outcomeJson != null) 'outcome_json': outcomeJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (settledAt != null) 'settled_at': settledAt,
+    });
+  }
+
+  AgentPagesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sessionId,
+    Value<String>? rootSessionId,
+    Value<PendingPage>? pageJson,
+    Value<AgentPageStatus>? status,
+    Value<String?>? outcomeJson,
+    Value<int>? createdAt,
+    Value<int?>? settledAt,
+  }) {
+    return AgentPagesTableCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      rootSessionId: rootSessionId ?? this.rootSessionId,
+      pageJson: pageJson ?? this.pageJson,
+      status: status ?? this.status,
+      outcomeJson: outcomeJson ?? this.outcomeJson,
+      createdAt: createdAt ?? this.createdAt,
+      settledAt: settledAt ?? this.settledAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (rootSessionId.present) {
+      map['root_session_id'] = Variable<String>(rootSessionId.value);
+    }
+    if (pageJson.present) {
+      map['page_json'] = Variable<String>(
+        $AgentPagesTableTable.$converterpageJson.toSql(pageJson.value),
+      );
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(
+        $AgentPagesTableTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (outcomeJson.present) {
+      map['outcome_json'] = Variable<String>(outcomeJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (settledAt.present) {
+      map['settled_at'] = Variable<int>(settledAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AgentPagesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('rootSessionId: $rootSessionId, ')
+          ..write('pageJson: $pageJson, ')
+          ..write('status: $status, ')
+          ..write('outcomeJson: $outcomeJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('settledAt: $settledAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6909,6 +7464,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SessionRunningTurnsTableTable(this);
   late final $SessionInterruptionsTableTable sessionInterruptionsTable =
       $SessionInterruptionsTableTable(this);
+  late final $AgentPagesTableTable agentPagesTable = $AgentPagesTableTable(
+    this,
+  );
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -6945,6 +7503,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_scheduled_task_runs_session',
     'CREATE INDEX idx_scheduled_task_runs_session ON scheduled_task_runs (session_id)',
   );
+  late final Index idxAgentPagesStatusRoot = Index(
+    'idx_agent_pages_status_root',
+    'CREATE INDEX idx_agent_pages_status_root ON agent_pages (status, root_session_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
@@ -6968,6 +7530,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     scheduledTaskRunsTable,
     sessionRunningTurnsTable,
     sessionInterruptionsTable,
+    agentPagesTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
@@ -6977,6 +7540,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxScheduledTasksNextDue,
     idxScheduledTaskRunsTask,
     idxScheduledTaskRunsSession,
+    idxAgentPagesStatusRoot,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7056,6 +7620,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('session_interruptions', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('agent_pages', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -8633,6 +9204,28 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$AgentPagesTableTable, List<AgentPageDto>>
+  _agentPagesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.agentPagesTable,
+    aliasName: 'sessions_table__session_id__agent_pages__session_id',
+  );
+
+  $$AgentPagesTableTableProcessedTableManager get agentPagesTableRefs {
+    final manager =
+        $$AgentPagesTableTableTableManager($_db, $_db.agentPagesTable).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _agentPagesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -9017,6 +9610,31 @@ class $$SessionTableTableFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> agentPagesTableRefs(
+    Expression<bool> Function($$AgentPagesTableTableFilterComposer f) f,
+  ) {
+    final $$AgentPagesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.agentPagesTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AgentPagesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.agentPagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -9608,6 +10226,31 @@ class $$SessionTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> agentPagesTableRefs<T extends Object>(
+    Expression<T> Function($$AgentPagesTableTableAnnotationComposer a) f,
+  ) {
+    final $$AgentPagesTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.agentPagesTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AgentPagesTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.agentPagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -9634,6 +10277,7 @@ class $$SessionTableTableTableManager
             bool scheduledTaskRunsTableRefs,
             bool sessionRunningTurnsTableRefs,
             bool sessionInterruptionsTableRefs,
+            bool agentPagesTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -9789,6 +10433,7 @@ class $$SessionTableTableTableManager
                 scheduledTaskRunsTableRefs = false,
                 sessionRunningTurnsTableRefs = false,
                 sessionInterruptionsTableRefs = false,
+                agentPagesTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -9802,6 +10447,7 @@ class $$SessionTableTableTableManager
                       db.sessionRunningTurnsTable,
                     if (sessionInterruptionsTableRefs)
                       db.sessionInterruptionsTable,
+                    if (agentPagesTableRefs) db.agentPagesTable,
                   ],
                   addJoins:
                       <
@@ -9988,6 +10634,26 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (agentPagesTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          AgentPageDto,
+                          $AgentPagesTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._agentPagesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).agentPagesTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -10019,6 +10685,7 @@ typedef $$SessionTableTableProcessedTableManager =
         bool scheduledTaskRunsTableRefs,
         bool sessionRunningTurnsTableRefs,
         bool sessionInterruptionsTableRefs,
+        bool agentPagesTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -13005,6 +13672,384 @@ typedef $$SessionInterruptionsTableTableProcessedTableManager =
       SessionInterruptionDto,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$AgentPagesTableTableCreateCompanionBuilder =
+    AgentPagesTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String rootSessionId,
+      required PendingPage pageJson,
+      required AgentPageStatus status,
+      Value<String?> outcomeJson,
+      required int createdAt,
+      Value<int?> settledAt,
+    });
+typedef $$AgentPagesTableTableUpdateCompanionBuilder =
+    AgentPagesTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> rootSessionId,
+      Value<PendingPage> pageJson,
+      Value<AgentPageStatus> status,
+      Value<String?> outcomeJson,
+      Value<int> createdAt,
+      Value<int?> settledAt,
+    });
+
+final class $$AgentPagesTableTableReferences
+    extends BaseReferences<_$AppDatabase, $AgentPagesTableTable, AgentPageDto> {
+  $$AgentPagesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable
+      .createAlias('agent_pages__session_id__sessions_table__session_id');
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$AgentPagesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+  $$AgentPagesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rootSessionId => $composableBuilder(
+    column: $table.rootSessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<PendingPage, PendingPage, String>
+  get pageJson => $composableBuilder(
+    column: $table.pageJson,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AgentPageStatus, AgentPageStatus, String>
+  get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get settledAt => $composableBuilder(
+    column: $table.settledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AgentPagesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+  $$AgentPagesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rootSessionId => $composableBuilder(
+    column: $table.rootSessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pageJson => $composableBuilder(
+    column: $table.pageJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get settledAt => $composableBuilder(
+    column: $table.settledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AgentPagesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+  $$AgentPagesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get rootSessionId => $composableBuilder(
+    column: $table.rootSessionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<PendingPage, String> get pageJson =>
+      $composableBuilder(column: $table.pageJson, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AgentPageStatus, String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get settledAt =>
+      $composableBuilder(column: $table.settledAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$AgentPagesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AgentPagesTableTable,
+          AgentPageDto,
+          $$AgentPagesTableTableFilterComposer,
+          $$AgentPagesTableTableOrderingComposer,
+          $$AgentPagesTableTableAnnotationComposer,
+          $$AgentPagesTableTableCreateCompanionBuilder,
+          $$AgentPagesTableTableUpdateCompanionBuilder,
+          (AgentPageDto, $$AgentPagesTableTableReferences),
+          AgentPageDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$AgentPagesTableTableTableManager(
+    _$AppDatabase db,
+    $AgentPagesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AgentPagesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AgentPagesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AgentPagesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> rootSessionId = const Value.absent(),
+                Value<PendingPage> pageJson = const Value.absent(),
+                Value<AgentPageStatus> status = const Value.absent(),
+                Value<String?> outcomeJson = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int?> settledAt = const Value.absent(),
+              }) => AgentPagesTableCompanion(
+                id: id,
+                sessionId: sessionId,
+                rootSessionId: rootSessionId,
+                pageJson: pageJson,
+                status: status,
+                outcomeJson: outcomeJson,
+                createdAt: createdAt,
+                settledAt: settledAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sessionId,
+                required String rootSessionId,
+                required PendingPage pageJson,
+                required AgentPageStatus status,
+                Value<String?> outcomeJson = const Value.absent(),
+                required int createdAt,
+                Value<int?> settledAt = const Value.absent(),
+              }) => AgentPagesTableCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                rootSessionId: rootSessionId,
+                pageJson: pageJson,
+                status: status,
+                outcomeJson: outcomeJson,
+                createdAt: createdAt,
+                settledAt: settledAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$AgentPagesTableTable, AgentPageDto>(table),
+                  $$AgentPagesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable: $$AgentPagesTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn: $$AgentPagesTableTableReferences
+                            ._sessionIdTable(db)
+                            .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AgentPagesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AgentPagesTableTable,
+      AgentPageDto,
+      $$AgentPagesTableTableFilterComposer,
+      $$AgentPagesTableTableOrderingComposer,
+      $$AgentPagesTableTableAnnotationComposer,
+      $$AgentPagesTableTableCreateCompanionBuilder,
+      $$AgentPagesTableTableUpdateCompanionBuilder,
+      (AgentPageDto, $$AgentPagesTableTableReferences),
+      AgentPageDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -13059,4 +14104,6 @@ class $AppDatabaseManager {
         _db,
         _db.sessionInterruptionsTable,
       );
+  $$AgentPagesTableTableTableManager get agentPagesTable =>
+      $$AgentPagesTableTableTableManager(_db, _db.agentPagesTable);
 }
