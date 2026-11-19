@@ -81,7 +81,7 @@ class const _Segment({
                   label,
                   maxLines: 1,
                   style: prego.textTheme.textXs.medium.copyWith(
-                    color: isSelected ? colors.textPrimaryOnBrand : colors.textSecondary,
+                    color: isSelected ? colors.textWhite : colors.textSecondary,
                   ),
                 ),
               ),
