@@ -211,6 +211,12 @@ own. Verified live on
 after several minutes), so the notice asks the agent for a one-line reply
 rather than none.
 
+Question pages: every harness that gets the server can call `send_page`; the
+answer arrives with the same notice timing, so a steering harness hears it in
+its running turn and the others after the turn. A large nested page call is
+accepted on Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot (see the
+live check in the step 4 PR).
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

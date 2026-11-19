@@ -237,9 +237,10 @@ send_page {
 - Caps: a 200-character title, 20 images, 50 questions, and 12 options per
   question. The whole call stays within the 1 MiB MCP body. There is no cap on
   pages per session.
-- Parsing is strict: Freezed models and `additionalProperties: false`. Ids must
-  be unique within a page. A violation returns an `isError` result that names
-  the field.
+- Parsing is strict: Freezed models and `additionalProperties: false`.
+  Question ids must be unique within a page and option ids within their
+  question, since an answer names both. A violation returns an `isError` result
+  that names the field.
 - `recommended` shows a small label and is never preselected.
 
 ### Wire (shared)
@@ -341,7 +342,10 @@ send_page {
   - **Interception.** Reply and reject interception returns a sealed result
     (`NotAgentPage`, `AgentPageReplyDismissed` or `AgentPageAlreadySettled`),
     mirroring `NotAgentApproval`. `AgentPageDismissed` is already the
-    repository's outcome variant.
+    repository's outcome variant. `AgentPageAlreadySettled` answers 404 "no
+    longer pending", the existing contract for a request answered elsewhere, so
+    only the dismiss that wins succeeds and the client never counts a false
+    dismiss.
 - **`AgentPageAnswerNoticeBuilder`** (new and pure) builds both notices.
   - **Answer notice.** The summary is "You answered “Title”.". The guidance
     carries everything in full: question ids and titles, chosen option ids and
@@ -425,6 +429,13 @@ send_page {
     - Parameters: the outcome (answered or dismissed), a question-count bucket
       (0, 1, 2–5, 6+) and `has_images`.
     - No ids, titles or content.
+    - **Release gate.** The app release that ships question pages waits until
+      the `question_page_finished` warehouse rollout is done: sesori_auth_server#122
+      is deployed (merged 778fc4b079), the BigQuery apply with
+      `--apply-schedules` has run, the export image is rolled, the manual export
+      and assertions have passed, and the SOPS record is updated. A desktop
+      client that sends the event between the #122 deploy and the image roll
+      blocks the whole auth export.
 - **module_app_ui.**
   - **The page screen** slides up over the session, using the file-preview
     `PageRouteBuilder` pattern (easeOutCubic in, easeInCubic out). Desktop shows
