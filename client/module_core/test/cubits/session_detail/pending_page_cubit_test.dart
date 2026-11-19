@@ -254,6 +254,41 @@ void main() {
     expect((cubit.state as PageReadOnly).reason, PageReadOnlyReason.dismissed);
   });
 
+  group("a page archived while open is refused with 409, then missing, without the failure", () {
+    final archived = ApiError.nonSuccessCode(errorCode: 409, rawErrorString: null);
+
+    Future<List<PendingPageState>> act({required Future<void> Function(PendingPageCubit cubit) action}) async {
+      final cubit = create();
+      await editing(cubit);
+      answerAll(cubit);
+      lookupAnswers(const PageLookupResponse.missing());
+      final states = <PendingPageState>[];
+      final sub = cubit.stream.listen(states.add);
+      await action(cubit);
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(drafts.get(requestId: page.id), isNull);
+      expect(reportedEvents(), 0);
+      return states;
+    }
+
+    test("on submit", () async {
+      when(
+        () => repository.submitPage(request: any(named: "request")),
+      ).thenAnswer((_) async => ApiResponse.error(archived));
+
+      expect(await act(action: (cubit) => cubit.submit()), [isA<PageSubmitting>(), isA<PageMissing>()]);
+    });
+
+    test("on dismiss", () async {
+      when(
+        () => repository.rejectQuestion(requestId: page.id, sessionId: "owner"),
+      ).thenAnswer((_) async => ApiResponse.error(archived));
+
+      expect(await act(action: (cubit) => cubit.dismiss()), [isA<PageSubmitting>(), isA<PageMissing>()]);
+    });
+  });
+
   test("an answered page opens read-only with its answers filled in", () async {
     drafts.save(
       requestId: page.id,
