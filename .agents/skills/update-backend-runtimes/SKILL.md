@@ -287,7 +287,9 @@ than re-asking the same decision or enforcing superseded pin-blocking language.
 - Executable lookup reads the bridge process's own `PATH`. On a machine with the
   harness installed, run managed-install probes with a `PATH` that hides user
   installs, or the probe exercises the user's runtime (OpenCode refuses with
-  "The global OpenCode runtime now takes precedence").
+  "The global OpenCode runtime now takes precedence"). Resolve the repository's
+  Dart with `asdf which dart` inside the worktree before restricting `PATH`; the
+  global shim can resolve an older Flutter whose Dart is too old.
 - Start the trusted outer bound before fixture setup/compilation, not only the
   final probe. Bound startup, reads and shutdown; correlate responses by ID and
   distinguish server requests. Own process handles/groups or Windows Job Objects;
