@@ -213,8 +213,16 @@ rather than none.
 
 Question pages: every harness that gets the server can call `send_page`; the
 answer arrives with the same notice timing, so a steering harness hears it in
-its running turn and the others after the turn. Whether each harness passes
-the tool's nested schema to its model unchanged is not verified live yet.
+its running turn and the others after the turn. Verified live on 2026-11-18
+through a test model: Claude Code 2.1.325, Codex 0.169.0, Pi 1.5.2, Oh My Pi
+18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 all accepted a large nested page,
+including options whose empty image fields the model filled in, and each heard
+the answer. Claude Code, Codex and Oh My Pi heard it mid-turn, Pi at the next
+tool boundary, and Grok and Copilot in a new turn. Codex reaches the tool through
+a namespace with `strict: false`, Grok through `search_tool` and `use_tool`, and
+Oh My Pi through an `xd://` virtual file it reads and then writes. These versions
+sit slightly below the current pins but above the minimums. Dismissal was
+checked on Claude Code only.
 
 ## Transcript turn boundaries
 
