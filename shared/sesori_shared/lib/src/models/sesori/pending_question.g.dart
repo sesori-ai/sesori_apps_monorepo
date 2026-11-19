@@ -50,5 +50,6 @@ const _$QuestionInteractionKindEnumMap = {
   QuestionInteractionKind.question: 'question',
   QuestionInteractionKind.form: 'form',
   QuestionInteractionKind.externalAction: 'externalAction',
+  QuestionInteractionKind.page: 'page',
   QuestionInteractionKind.unknown: 'unknown',
 };

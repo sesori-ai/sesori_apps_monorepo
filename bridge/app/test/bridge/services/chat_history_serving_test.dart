@@ -2,11 +2,13 @@ import "dart:async";
 
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginSessionHistoryBusyException, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_chat_history.dart";
 
 void main() {
@@ -398,6 +400,137 @@ void main() {
     expect(repository.fetchCount, 2);
   });
 
+  group("a backend that replays a running turn under other ids", () {
+    MessageWithParts replayed({required String id, required Message info, required String text}) => MessageWithParts(
+      info: info,
+      parts: [MessagePart.text(id: "$id-p1", sessionID: "ses_a", messageID: id, text: text)],
+    );
+
+    test("a mid-turn read keeps the live reply once and imports after the turn", () async {
+      final repository =
+          _FakeSessionRepository(
+              transcript: [
+                replayed(
+                  id: "ses_a-h1-user",
+                  info: _message(id: "ses_a-h1-user"),
+                  text: "Say ALPHA",
+                ),
+                replayed(
+                  id: "ses_a-h2-assistant",
+                  info: _assistant(id: "ses_a-h2-assistant"),
+                  text: "ALPH",
+                ),
+              ],
+            )
+            ..replaysDuringTurn = false
+            ..status = const SessionStatus.busy(since: null);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "prm_n-user"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: const MessagePart.text(
+          id: "prm_n-user-p1",
+          sessionID: "ses_a",
+          messageID: "prm_n-user",
+          text: "Say ALPHA",
+        ),
+      );
+      // The reply streams: its row is stored before its text finishes.
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _assistant(id: "live-reply"),
+      );
+
+      final midTurn = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(midTurn.messages.map((message) => message.info.id), const ["prm_n-user", "live-reply"]);
+      expect(midTurn.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 0, reason: "the replay would hold the reply under another id");
+
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: const MessagePart.text(id: "live-reply-p1", sessionID: "ses_a", messageID: "live-reply", text: "ALPHA"),
+      );
+      final stillRunning = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(stillRunning.messages.map((message) => message.info.id), const ["prm_n-user", "live-reply"]);
+
+      repository
+        ..status = const SessionStatus.idle()
+        ..transcript = [
+          replayed(
+            id: "ses_a-h1-user",
+            info: _message(id: "ses_a-h1-user"),
+            text: "Say ALPHA",
+          ),
+          replayed(
+            id: "ses_a-h2-assistant",
+            info: _assistant(id: "ses_a-h2-assistant"),
+            text: "ALPHA",
+          ),
+        ];
+      final refreshed = history.service.historyRefreshes.first;
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+
+      expect((await refreshed).sessionId, "ses_a");
+      expect(repository.fetchCount, 1);
+      final afterTurn = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(afterTurn.awaitingHarnessSync, isFalse);
+      expect(afterTurn.messages.map((message) => message.info), [isA<MessageUser>(), isA<MessageAssistant>()]);
+      expect(repository.fetchCount, 1);
+    });
+
+    test("an open during the turn re-reads in the background only after it", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      await history.service.observeBackendActivity(
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
+      );
+      repository
+        ..replaysDuringTurn = false
+        ..status = const SessionStatus.busy(since: null);
+
+      final served = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      await history.service.drain();
+
+      expect(served.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 1, reason: "the background re-read waits for the turn");
+
+      repository.status = const SessionStatus.idle();
+      final refreshed = history.service.historyRefreshes.first;
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      expect((await refreshed).sessionId, "ses_a");
+      expect(repository.fetchCount, 2);
+    });
+
+    test("an ended turn re-reads nothing when no import waited for it", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])..replaysDuringTurn = false;
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      await history.service.drain();
+
+      expect(repository.fetchCount, 1);
+    });
+  });
+
+  test("a backend that replays a running turn under live ids still imports during it", () async {
+    final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+      ..status = const SessionStatus.busy(since: null);
+    final history = createTestChatHistory(sessionRepository: repository);
+
+    final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+    expect(repository.fetchCount, 1);
+    expect(page.awaitingHarnessSync, isFalse);
+    expect(page.messages.map((message) => message.info.id), const ["m1"]);
+  });
+
   group("store-only reads", () {
     test("a never-backfilled session serves its captured rows instead of fetching", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
@@ -473,7 +606,91 @@ void main() {
       expect(repository.fetchCount, 0);
     });
   });
+
+  group("a replay naming a model the catalog doesn't offer", () {
+    const stored = AgentModel(providerID: "anthropic", modelID: "sonnet", variant: "high");
+    const offered = AgentModel(providerID: "anthropic", modelID: "opus", variant: null);
+    const unknown = AgentModel(providerID: "anthropic", modelID: "gateway-renamed", variant: null);
+
+    FakeSessionOptionsService catalogOffering() =>
+        FakeSessionOptionsService()
+          ..cacheOutcome = SessionOptionsAvailable(response: _catalogOffering(models: const [stored, offered]));
+
+    test("keeps the session's stored model", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: stored)]);
+      expect(page.replayedPromptDefaults?.model, stored);
+    });
+
+    test("still takes an imported model the catalog offers", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: offered);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: offered)]);
+      expect(page.replayedPromptDefaults?.model, offered);
+    });
+
+    test("takes the imported model when the session has none stored", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository, sessionOptions: catalogOffering());
+
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: unknown)]);
+    });
+
+    test("takes the imported model when no catalog is cached to judge it by", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..storedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: stored)
+        ..replayedPromptDefaults = const SessionPromptDefaults(agent: "Agent", model: unknown);
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(repository.promptDefaultsUpdates, [const SessionPromptDefaults(agent: "Agent", model: unknown)]);
+    });
+  });
 }
+
+SessionOptionsResponse _catalogOffering({required List<AgentModel> models}) => SessionOptionsResponse(
+  agents: const Agents(agents: []),
+  providers: ProviderListResponse(
+    items: [
+      ProviderInfo(
+        id: "anthropic",
+        name: "Anthropic",
+        models: {
+          for (final model in models)
+            model.modelID: ProviderModel(
+              id: model.modelID,
+              providerID: model.providerID,
+              name: model.modelID,
+              variants: const [],
+              defaultVariant: null,
+              family: null,
+              fastMode: null,
+              releaseDate: null,
+            ),
+        },
+        defaultModelID: null,
+      ),
+    ],
+    connectedOnly: true,
+  ),
+  commands: const CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
+);
 
 Message _message({required String id}) => Message.user(
   invocation: null,
@@ -483,6 +700,16 @@ Message _message({required String id}) => Message.user(
   sessionID: "ses_a",
   agent: null,
   time: const MessageTime(created: 1, completed: null),
+);
+
+Message _assistant({required String id}) => Message.assistant(
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  modelID: null,
+  providerID: null,
+  sender: MessageSender.agent,
+  time: null,
 );
 
 MessagePart _part({required String id, required String messageId}) => MessagePart.text(
@@ -501,6 +728,7 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
     implements SessionRepository {
   int fetchCount = 0;
   SessionPromptDefaults? replayedPromptDefaults;
+  SessionPromptDefaults? storedPromptDefaults;
   Object? promptDefaultsUpdateError;
   bool storedFastMode = false;
   final List<SessionPromptDefaults> promptDefaultsUpdates = [];
@@ -538,8 +766,39 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
     return SessionPromptDefaults(agent: agent, model: agentModel, fastMode: storedFastMode);
   }
 
+  /// Whether the plugin declares its history safe to import mid-turn.
+  bool replaysDuringTurn = true;
+
+  /// The session's live status, as its plugin reports it.
+  SessionStatus status = const SessionStatus.idle();
+
   @override
-  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
+  bool replaysHistoryDuringTurn({required String pluginId}) => replaysDuringTurn;
+
+  @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => status;
+
+  @override
+  Future<Session?> getCatalogSession({required String sessionId}) async => Session(
+    approvalOverride: null,
+    id: sessionId,
+    pluginId: "claude",
+    projectID: "project-1",
+    directory: "/tmp/project-1",
+    parentID: null,
+    title: null,
+    branchName: null,
+    time: null,
+    promptDefaults: storedPromptDefaults,
+    hasWorktree: false,
+    unseen: false,
+    lastUserActivityAt: null,
+    autoContinuation: null,
+    pinOrder: null,
+    scheduledTask: null,
+    interruption: null,
+    forkedFrom: null,
+  );
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => !sessionKnown

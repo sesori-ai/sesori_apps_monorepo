@@ -18,6 +18,7 @@ class SessionDeletionService({
   required final ScratchRepository _scratchRepository,
   required final PromptUploadRepository _promptUploadRepository,
   required final PromptUploadRepository _transcriptRepository,
+  required final PromptUploadRepository _pageImageRepository,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
@@ -43,11 +44,17 @@ class SessionDeletionService({
         );
         await _purgeHistory(deleted.sessionIds);
         // Not awaited: the family lock must not be held while large folders
-        // are removed. The uploads and the transcripts sent into the family go
-        // on every delete, because they are Sesori's copies and not the user's
-        // project files.
-        unawaited(_deletePromptUploads(sessionIds: deleted.sessionIds));
-        unawaited(_deleteTranscripts(sessionIds: deleted.sessionIds));
+        // are removed. The uploads, the transcripts sent into the family and
+        // the images its agents sent on pages go on every delete, because
+        // they are Sesori's copies and not the user's project files.
+        final sessionIds = deleted.sessionIds;
+        unawaited(
+          _deleteSessionCopies(repository: _promptUploadRepository, files: "prompt uploads", sessionIds: sessionIds),
+        );
+        unawaited(
+          _deleteSessionCopies(repository: _transcriptRepository, files: "transcripts", sessionIds: sessionIds),
+        );
+        unawaited(_deleteSessionCopies(repository: _pageImageRepository, files: "page images", sessionIds: sessionIds));
         if (deleteSessionFolder) {
           unawaited(_deleteSessionFolder(deleted: deleted));
         }
@@ -73,22 +80,16 @@ class SessionDeletionService({
   }
 
   /// Best-effort: the sessions are already gone, so a failure leaves only
-  /// their uploaded files, which the age sweep removes later.
-  Future<void> _deletePromptUploads({required List<String> sessionIds}) async {
+  /// their [files] on disk. The age sweep removes prompt uploads later.
+  Future<void> _deleteSessionCopies({
+    required PromptUploadRepository repository,
+    required String files,
+    required List<String> sessionIds,
+  }) async {
     try {
-      await _promptUploadRepository.deleteSessions(sessionIds: sessionIds);
+      await repository.deleteSessions(sessionIds: sessionIds);
     } on Object catch (error, stackTrace) {
-      Log.w("Failed to delete the prompt uploads of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
-    }
-  }
-
-  /// Best-effort: the sessions are already gone, so a failure leaves only the
-  /// transcripts sent into them on disk.
-  Future<void> _deleteTranscripts({required List<String> sessionIds}) async {
-    try {
-      await _transcriptRepository.deleteSessions(sessionIds: sessionIds);
-    } on Object catch (error, stackTrace) {
-      Log.w("Failed to delete the transcripts of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
+      Log.w("Failed to delete the $files of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
     }
   }
 

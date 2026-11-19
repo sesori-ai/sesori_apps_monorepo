@@ -123,6 +123,11 @@ class const CursorPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Cursor's `session/load` replays the running turn under replay ids, not
+  /// the prompt-id rows the live stream stores.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   /// Cursor compacts through its native `/summarize`.
   @override
   bool get supportsCompactionOnRequest => true;

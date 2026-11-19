@@ -3213,5 +3213,55 @@
   "@sessionDetailArchivedSideChats": {
     "description": "Link on an archived session's notice that opens its side chats read-only, with how many there are.",
     "placeholders": {"count": {"type": "int"}}
-  }
+  },
+  "questionPageClose": "Close page",
+  "questionPageActions": "Page actions",
+  "questionPageDismiss": "Dismiss page",
+  "@questionPageDismiss": {"description": "Menu item on an agent's question page that closes it without answering and tells the agent so."},
+  "questionPageDismissConfirmTitle": "Dismiss without sending your answers?",
+  "@questionPageDismissConfirmTitle": {"description": "Title of the confirmation shown when the user taps Dismiss page on a question page where they have already picked or written something. Dismissing tells the agent the page was closed and discards those picks."},
+  "questionPageDismissConfirmAction": "Dismiss",
+  "@questionPageDismissConfirmAction": {"description": "Destructive button of the dismiss confirmation on a question page. It closes the page without answering and tells the agent so."},
+  "questionPageDismissConfirmCancel": "Cancel",
+  "@questionPageDismissConfirmCancel": {"description": "Button of the dismiss confirmation on a question page that keeps the page open with everything the user entered."},
+  "questionPageSource": "From {source}",
+  "@questionPageSource": {
+    "description": "Second header line of an agent's question page, naming the session that sent it, such as 'From Claude Code · Fix the login'.",
+    "placeholders": {"source": {"type": "String"}}
+  },
+  "questionPageProgress": "{answered} of {total} answered",
+  "@questionPageProgress": {
+    "description": "Progress in the bottom bar of an agent's question page.",
+    "placeholders": {"answered": {"type": "int"}, "total": {"type": "int"}}
+  },
+  "questionPageSubmit": "Submit",
+  "questionPageDone": "Done",
+  "@questionPageDone": {"description": "Submit button of a question page that has no questions, only information."},
+  "questionPageAnswered": "Answered",
+  "questionPageAnsweredElsewhere": "Answered on another device",
+  "questionPageDismissed": "Dismissed",
+  "questionPageMissing": "This page is no longer available.",
+  "questionPageUnsupported": "This page needs an updated Sesori app.",
+  "questionPageLoadFailed": "Couldn't load this page.",
+  "questionPageRetry": "Try again",
+  "questionPageRequired": "Required",
+  "questionPageRecommended": "Recommended",
+  "@questionPageRecommended": {"description": "Label on the option the agent recommends. It is never picked for the user."},
+  "questionPageNeedsAnswer": "Answer this question to submit.",
+  "questionPageAnswerRefused": "This answer wasn't accepted. Check it and submit again.",
+  "questionPageInvalid": "{count, plural, =1{1 question needs your attention} other{{count} questions need your attention}}",
+  "@questionPageInvalid": {
+    "description": "Bottom bar of a question page after Submit found questions to fix.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "questionPageUnsupportedQuestion": "This question needs an updated Sesori app. You can submit without it.",
+  "questionPageAnswerHint": "Type your answer",
+  "questionPageNoAnswer": "No answer",
+  "questionPageNoteHint": "Add a note (optional)",
+  "questionPageClosingNoteTitle": "Anything else?",
+  "questionPageClosingNoteHint": "Anything the agent should know (optional)",
+  "questionPageSubmitFailed": "Couldn't send your answers. Try again.",
+  "questionPageDismissFailed": "Couldn't dismiss the page. Try again.",
+  "questionPageUnknownResult": "Sesori didn't understand the reply. Update the app and try again.",
+  "questionPageImageUnavailable": "Image unavailable"
 }

@@ -1031,6 +1031,9 @@ class SessionRepository({
   /// `agent-tools` setting is on.
   bool sesoriToolsSupported({required String pluginId}) => _runtime.injectsSesoriTools(pluginId: pluginId);
 
+  /// Whether [pluginId]'s history may be imported while a session runs a turn.
+  bool replaysHistoryDuringTurn({required String pluginId}) => _runtime.replaysHistoryDuringTurn(pluginId: pluginId);
+
   /// Whether the plugin bound to [sessionId] takes image parts inline.
   Future<bool> inlineImagesSupportedForSession({required String sessionId}) async {
     final binding = await _requireBinding(sessionId: sessionId, operation: SessionOperation.sendPrompt);

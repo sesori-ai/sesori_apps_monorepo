@@ -8184,6 +8184,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Side chats ({count})'**
   String sessionDetailArchivedSideChats(int count);
+
+  /// No description provided for @questionPageClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close page'**
+  String get questionPageClose;
+
+  /// No description provided for @questionPageActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Page actions'**
+  String get questionPageActions;
+
+  /// Menu item on an agent's question page that closes it without answering and tells the agent so.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss page'**
+  String get questionPageDismiss;
+
+  /// Title of the confirmation shown when the user taps Dismiss page on a question page where they have already picked or written something. Dismissing tells the agent the page was closed and discards those picks.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss without sending your answers?'**
+  String get questionPageDismissConfirmTitle;
+
+  /// Destructive button of the dismiss confirmation on a question page. It closes the page without answering and tells the agent so.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get questionPageDismissConfirmAction;
+
+  /// Button of the dismiss confirmation on a question page that keeps the page open with everything the user entered.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get questionPageDismissConfirmCancel;
+
+  /// Second header line of an agent's question page, naming the session that sent it, such as 'From Claude Code · Fix the login'.
+  ///
+  /// In en, this message translates to:
+  /// **'From {source}'**
+  String questionPageSource(String source);
+
+  /// Progress in the bottom bar of an agent's question page.
+  ///
+  /// In en, this message translates to:
+  /// **'{answered} of {total} answered'**
+  String questionPageProgress(int answered, int total);
+
+  /// No description provided for @questionPageSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get questionPageSubmit;
+
+  /// Submit button of a question page that has no questions, only information.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get questionPageDone;
+
+  /// No description provided for @questionPageAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered'**
+  String get questionPageAnswered;
+
+  /// No description provided for @questionPageAnsweredElsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered on another device'**
+  String get questionPageAnsweredElsewhere;
+
+  /// No description provided for @questionPageDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed'**
+  String get questionPageDismissed;
+
+  /// No description provided for @questionPageMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'This page is no longer available.'**
+  String get questionPageMissing;
+
+  /// No description provided for @questionPageUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This page needs an updated Sesori app.'**
+  String get questionPageUnsupported;
+
+  /// No description provided for @questionPageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this page.'**
+  String get questionPageLoadFailed;
+
+  /// No description provided for @questionPageRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get questionPageRetry;
+
+  /// No description provided for @questionPageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get questionPageRequired;
+
+  /// Label on the option the agent recommends. It is never picked for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get questionPageRecommended;
+
+  /// No description provided for @questionPageNeedsAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer this question to submit.'**
+  String get questionPageNeedsAnswer;
+
+  /// No description provided for @questionPageAnswerRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'This answer wasn\'t accepted. Check it and submit again.'**
+  String get questionPageAnswerRefused;
+
+  /// Bottom bar of a question page after Submit found questions to fix.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question needs your attention} other{{count} questions need your attention}}'**
+  String questionPageInvalid(int count);
+
+  /// No description provided for @questionPageUnsupportedQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'This question needs an updated Sesori app. You can submit without it.'**
+  String get questionPageUnsupportedQuestion;
+
+  /// No description provided for @questionPageAnswerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your answer'**
+  String get questionPageAnswerHint;
+
+  /// No description provided for @questionPageNoAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer'**
+  String get questionPageNoAnswer;
+
+  /// No description provided for @questionPageNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note (optional)'**
+  String get questionPageNoteHint;
+
+  /// No description provided for @questionPageClosingNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything else?'**
+  String get questionPageClosingNoteTitle;
+
+  /// No description provided for @questionPageClosingNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything the agent should know (optional)'**
+  String get questionPageClosingNoteHint;
+
+  /// No description provided for @questionPageSubmitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send your answers. Try again.'**
+  String get questionPageSubmitFailed;
+
+  /// No description provided for @questionPageDismissFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t dismiss the page. Try again.'**
+  String get questionPageDismissFailed;
+
+  /// No description provided for @questionPageUnknownResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori didn\'t understand the reply. Update the app and try again.'**
+  String get questionPageUnknownResult;
+
+  /// No description provided for @questionPageImageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Image unavailable'**
+  String get questionPageImageUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

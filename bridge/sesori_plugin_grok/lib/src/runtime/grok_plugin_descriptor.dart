@@ -59,6 +59,11 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Grok's `session/load` replays the running turn under replay ids, not
+  /// the prompt-id rows the live stream stores.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   /// Grok Build advertises a native `/compact` over ACP (verified 1.0.30).
   @override
   bool get supportsCompactionOnRequest => true;

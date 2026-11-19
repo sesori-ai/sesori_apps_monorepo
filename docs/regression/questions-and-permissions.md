@@ -328,15 +328,107 @@ reaches the backend so the turn continues.
   refuse stale callbacks,
   including completions from another surface, until interaction is usable again.
 
+### Agent question pages
+
+An agent's `send_page` call ([Sesori MCP](sesori-mcp.md)) becomes a pending
+request of kind `page` on the session that shows it, which is the root session
+for a sub-agent's page.
+
+- The session needs the user as it does for a harness question. The needs-you
+  card grows in with the generic wording, "1 request · <title> · Review",
+  project summaries mark the session as awaiting input, and push says "Question
+  requires input" with the title as its body. The page never opens by itself,
+  either on arrival or after another request is answered. Only a tap on the
+  card or its Review button opens it.
+- The page slides up from the bottom over the session, covering it on a narrow
+  window or as a wide panel over the dimmed session from 960 px. Reduced motion
+  shows and hides it at once. A fixed header holds the title, "From <harness ·
+  session>", Close and a Page actions menu with Dismiss page. The intro and the
+  sections scroll below it. A sticky bar shows "<n> of <total> answered" with
+  Submit, or Done on a page with no questions, and keeps one height in every
+  state. Close, Escape or a tap on the dimmed area slides the page down and
+  leaves it pending, and the card comes back. Picks and notes stay in memory
+  per surface until the page settles, so reopening keeps them. They are not
+  synced.
+- Questions are single choice, multiple choice or text, and each choice
+  question has an optional note. The page ends with an "Anything else?" note. A recommended
+  option shows "Recommended" and is never preselected. A question of a kind the
+  app doesn't know says "This question needs an updated Sesori app. You can
+  submit without it." and never blocks Submit.
+- Each image sits in a box at the size its file declared, with a height cap
+  that narrows a tall image. It shimmers while loading and then fades in, so
+  nothing below it moves. An image that can't load shows a neutral placeholder
+  in the same box: a crossed-out photo icon that screen readers announce as
+  "Image unavailable". Tapping a loaded image opens it in
+  the chat's image viewer. Option images sit under the option's description.
+- Submit with a required question unanswered (a note alone doesn't answer it)
+  is refused in the app without asking the bridge. The page scrolls to the first
+  flagged question, which says "Answer this question to submit.", and the bar
+  says "1 question needs your attention". Answers the bridge refuses as invalid
+  say "This answer wasn't accepted. Check it and submit again." While Submit is
+  in flight its button spins and the controls are disabled. The moment the
+  bridge accepts it the page slides down as it was, with nothing on it folding
+  or changing, and the needs-you card does not come back while it leaves. The
+  chat behind holds still, and the "You answered" line confirms the answer.
+  Every other outcome keeps the page open with its reason: a failed or invalid
+  Submit, one refused because the page settled elsewhere, and an archived
+  session's refusal.
+- Dismiss page settles the page as dismissed through `/question/reject`. Once
+  the bridge accepts it, the page slides down at once as it was, like an
+  accepted Submit, and the "You closed … without answering" line confirms it.
+  A dismiss refused because the page settled elsewhere keeps the page open,
+  read-only. On a page with a pick, a typed answer or any note, Dismiss page
+  first asks "Dismiss without sending your answers?" in a floating sheet whose
+  question wraps rather than being cut, with Cancel and a destructive Dismiss;
+  Cancel leaves everything as it was. An untouched page dismisses in one tap. Close, Escape, Android back and a tap on the dimmed
+  area only hide the page, so they never ask.
+- The first submit or dismiss on any surface wins. A page open on another
+  surface turns read-only with that surface's own picks and "Answered on
+  another device" (or "Dismissed"), and a later Submit there gets the same
+  result. A failed submit or dismiss looks the page up again before it shows
+  "Couldn't send your answers. Try again." or "Couldn't dismiss the page. Try
+  again.", so a page settled meanwhile turns read-only without flashing the
+  failure first. An open page also looks itself up again after a reconnect.
+- Archiving a session withdraws its pending pages for good, since archiving is
+  permanent. Their needs-you markers go away, a pending page reads as missing,
+  and the agent gets no notice, because an archived session gets nothing. On a
+  page that is open when the session is archived, Submit and dismiss get the
+  archived refusal (409). The app then looks the page up, the lookup reports it
+  missing, and the page drops its draft and shows "This page is no longer
+  available." without a failure line. Answered and dismissed pages of an archived session still reopen
+  read-only from their transcript line.
+- An accepted Submit adds one Sesori Automation line, "You answered “Title”.",
+  to the session that shows the page. A dismissal adds "You closed “Title”
+  without answering." Either line shows a chevron, gives press feedback and has
+  button semantics, with no extra screen-reader hint. On Android its text can't
+  be selected while it is tappable. Tapping the line slides the same page up
+  read-only, both live and after a reload, with the user's picks and notes
+  filled in. A read-only page hides an empty question note and an empty
+  "Anything else?" note, and on a page that settles elsewhere while open they
+  fade as they fold away (200 ms; at once with reduced motion). If the bridge no longer has the page, for example because the sub-agent session that sent it
+  was deleted, the page reads "This page is no longer available." Apps without
+  the reopen tap show the line as plain text.
+- Released apps read the `page` kind as unknown. From v1.10.1 they show the
+  "MCP request" sheet ("This client cannot complete this MCP request. You can
+  cancel it here.") with Cancel request. Apps before v1.10.1 show a plain
+  question titled with the page title, with one Cancel option whose description
+  says that answering needs an updated app. Either answer dismisses the page.
+- Pages live in the bridge database, whether pending, answered or dismissed.
+  After a bridge restart or a desktop relaunch, a pending page comes back on
+  the card and answering it delivers as usual. An answered page still reopens
+  with its images. Deleting a session deletes its pages and their image copies.
+- Each Submit or dismiss the bridge confirms reports `question_page_finished`
+  once, as described in [analytics](analytics.md#required-behavior).
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no needs-you card or dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar and finite string-choice array forms where supported, unsupported-form decline, abort cancellation, per-session pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, async acknowledgement omission from history, and `serverRequest/resolved` withdrawal by exact request id with a late reply refused. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. Automated Claude accepting-edits coverage: the permissions snapshot and `session.edits-auto-accepted` event keep the line in sync, Turn off mid-turn switches the running process to `default`, and a failed switch keeps the grant and brings the line back with an alert. |
-| L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. Claude covers Always on a file edit showing the "Accepting edits · Turn off" line on phone and desktop, Turn off during a running turn fading it on both, and the next edit in that turn asking again. |
-| L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
-| L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. Claude accepting-edits compatibility: an older app on a newer bridge shows no line and keeps working, and a newer app on an older bridge shows no line. |
+| L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar and finite string-choice array forms where supported, unsupported-form decline, abort cancellation, per-session pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, async acknowledgement omission from history, and `serverRequest/resolved` withdrawal by exact request id with a late reply refused. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. Automated Claude accepting-edits coverage: the permissions snapshot and `session.edits-auto-accepted` event keep the line in sync, Turn off mid-turn switches the running process to `default`, and a failed switch keeps the grant and brings the line back with an alert. Automated question pages: `pending_page_service_test.dart` (required questions refused in the app, analytics only for confirmed outcomes), `pending_page_cubit_test.dart` (each lookup state, drafts kept across a close, settled elsewhere, a failed submit looking up first, reconnect lookups, images loaded once), `question_page_screen_test.dart` (validation scroll and reason, read-only reasons, the missing page, Done, an accepted Submit or dismiss closing the page and settling its request while a refused or failed one keeps it open, the dismiss confirmation only with input and its question wrapping, notes fading as they fold, the slide and the wide overlay), `session_detail_body_test.dart` (no auto-open, Review opens the page), `session_detail_message_list_test.dart` (the reopen tap), and in the bridge `agent_page_repository_test.dart` (first settle wins, cascade on delete) and `page_handlers_test.dart`. |
+| L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. Claude covers Always on a file edit showing the "Accepting edits · Turn off" line on phone and desktop, Turn off during a running turn fading it on both, and the next edit in that turn asking again. Question pages on a headless iOS simulator: a page with text and images arrives and the card grows in without the page opening; open, answer and submit, and the page slides down onto the chat as the transcript line appears with nothing jumping; dismiss a started page, Cancel the confirmation, then confirm it and the page slides down onto the "You closed" line; Submit with a required question unanswered; dismiss, and its line appears; tap the answered line to reopen it read-only with the answers; restart the bridge with a page pending, then answer it. |
+| L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. Question pages: a second surface submits first and the open page shows "Answered on another device"; archive while a page is open, then Submit is refused, the page shows "This page is no longer available." and no notice arrives; a deleted sub-agent's page shows "This page is no longer available." from its line on the root. |
+| L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. Claude accepting-edits compatibility: an older app on a newer bridge shows no line and keeps working, and a newer app on an older bridge shows no line. Question pages on released apps: the v1.14.1 app's "MCP request" sheet and Cancel request dismiss the page, and the Cancel option of an app before v1.10.1 does the same. |
 
 ### OMP ACP multi-select focus
 
@@ -427,6 +519,20 @@ the prompt write is held, proving cancellation does not remove the later request
 - Reading pending state starts an intentionally stopped backend.
 - An archived session accepts a reply, or its own pending question or permission
   is still listed.
+- A question page opens by itself, shifts content as its images load, or
+  accepts a Submit with a required question unanswered. It stays open after
+  its own accepted Submit or dismiss, closes after a failed or refused one or
+  one settled elsewhere, changes or folds anything while it slides down, or
+  its needs-you card flashes back as it leaves. Dismiss page throws away picks
+  or notes without asking, asks on an untouched page, or cuts its question
+  short. A note vanishes in one frame when the page settles elsewhere. A page answered on
+  another surface stays editable, or a second submit sends a second notice.
+- An archived session's page accepts answers, sends a notice, keeps its
+  needs-you marker, or opens as pending.
+- The transcript line of an answered or closed page ignores a tap, reopens the
+  page editable or without its answers, or a missing page gives no reason.
+- A released app offers no way to cancel a page, or a pending page is gone after
+  a bridge restart.
 - Antigravity displays or dispatches a persistent choice, displays any warning-bearing choice, escalates Once, changes
   an opaque option ID, guesses an ambiguous label, or leaves malformed input pending after cancellation/cleanup.
 - Copilot offers a question surface or waits for a Sesori answer to an upstream
@@ -492,5 +598,9 @@ the prompt write is held, proving cancellation does not remove the later request
   `bridge/sesori_plugin_omp/test/omp_plugin_test.dart`,
   `bridge/app/test/bridge/repositories/question_repository_test.dart`, and
   `client/module_app_ui/test/features/session_detail/widgets/question_modal_test.dart`.
+- Question pages: `AgentPageService`, `AgentPageRepository` and
+  `lookup_page_handler.dart`/`submit_page_handler.dart` under `bridge/app/lib/src/`;
+  `PendingPageService` and `PendingPageCubit` in `client/module_core`; and
+  `client/module_app_ui/lib/src/features/session_detail/question_page/`.
 - Owning tests for pending interaction, reply routes, and pending state without
   a started backend.

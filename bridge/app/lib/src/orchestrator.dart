@@ -16,6 +16,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
 import "api/database/daos/accepted_prompts_dao.dart";
+import "api/database/daos/agent_pages_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/scheduled_task_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
@@ -65,6 +66,7 @@ import "push/push_session_state_tracker.dart";
 import "push/scheduled_task_failure_push_listener.dart";
 import "repositories/accepted_prompts_repository.dart";
 import "repositories/agent_approval_repository.dart";
+import "repositories/agent_page_repository.dart";
 import "repositories/agent_repository.dart";
 import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/bridge_settings_repository.dart";
@@ -74,12 +76,14 @@ import "repositories/external_action_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/form_repository.dart";
 import "repositories/health_repository.dart";
+import "repositories/mappers/agent_page_mapper.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/plugin_message_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/mappers/session_transcript_markdown_builder.dart";
 import "repositories/mcp_repository.dart";
 import "repositories/models/agent_approval.dart";
+import "repositories/models/agent_page.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
@@ -154,6 +158,7 @@ import "routing/get_sessions_handler.dart";
 import "routing/get_side_chats_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
+import "routing/lookup_page_handler.dart";
 import "routing/mark_session_seen_handler.dart";
 import "routing/move_session_pin_handler.dart";
 import "routing/open_project_handler.dart";
@@ -193,9 +198,12 @@ import "routing/set_session_auto_continuation_handler.dart";
 import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/stop_accepting_edits_handler.dart";
+import "routing/submit_page_handler.dart";
 import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
+import "services/agent_page_answer_notice_builder.dart";
+import "services/agent_page_service.dart";
 import "services/archived_session_validator.dart";
 import "services/bridge_startup_retry_service.dart";
 import "services/catalog_import_service.dart";
@@ -399,6 +407,12 @@ class Orchestrator({
     final transcriptRepository = PromptUploadRepository(
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriTranscriptsDirectory(),
+    );
+    // The same for the images agents send on pages: an answered page reopens
+    // with its images for as long as its session exists.
+    final pageImageRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriPageImagesDirectory(),
     );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
@@ -617,6 +631,7 @@ class Orchestrator({
       bridgeIdProvider: _bridgeRegistrationService,
       interruptions: sessionInterruptions,
       mutations: sessionMutationDispatcher,
+      sessionOptions: sessionOptionsService,
     );
     final sessionPromptService = SessionPromptService(
       continuations: sessionContinuations,
@@ -643,6 +658,7 @@ class Orchestrator({
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
       sessions: sessionRepository,
+      history: chatHistoryService,
       views: sessionViews,
       operations: sessionOperationDispatcher,
       prompts: sessionPromptService,
@@ -681,6 +697,7 @@ class Orchestrator({
       scratchRepository: scratchRepository,
       promptUploadRepository: promptUploadRepository,
       transcriptRepository: transcriptRepository,
+      pageImageRepository: pageImageRepository,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
@@ -823,6 +840,25 @@ class Orchestrator({
       ),
     );
     final agentApprovalRepository = AgentApprovalRepository(random: Random.secure());
+    final sessionNoticeService = SessionNoticeService(
+      sessions: sessionRepository,
+      operations: sessionOperationDispatcher,
+      prompts: sessionPromptService,
+      events: sessionEventDispatcher,
+      plugins: _pluginLifecycleService,
+      tasks: scheduledTaskRepository,
+    );
+    final agentPageRepository = AgentPageRepository(dao: AgentPagesDao(database: _database));
+    final agentPageService = AgentPageService(
+      pages: agentPageRepository,
+      sessions: sessionRepository,
+      filesystem: filesystemRepository,
+      images: pageImageRepository,
+      imageReader: const AttachmentThumbnailBuilder(),
+      archive: archivedSessionValidator,
+      notices: sessionNoticeService,
+      noticeBuilder: const AgentPageAnswerNoticeBuilder(),
+    );
     final scheduledTaskAgentService = ScheduledTaskAgentService(
       tasks: scheduledTaskService,
       runner: scheduledTaskRunService,
@@ -832,17 +868,12 @@ class Orchestrator({
       history: chatHistoryService,
       approvals: agentApprovalRepository,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
-      notices: SessionNoticeService(
-        sessions: sessionRepository,
-        operations: sessionOperationDispatcher,
-        prompts: sessionPromptService,
-        events: sessionEventDispatcher,
-        plugins: _pluginLifecycleService,
-      ),
+      notices: sessionNoticeService,
     );
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
       agent: scheduledTaskAgentService,
+      pages: agentPageService,
       formatter: const SesoriMcpResultFormatter(),
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
@@ -919,7 +950,7 @@ class Orchestrator({
         RunScheduledTaskNowHandler(scheduledTaskRunService: scheduledTaskRunService),
         GetProvidersHandler(repository: providerRepository),
         PostAgentsHandler(repository: agentRepository),
-        GetSessionQuestionsHandler(questionRepository: questionRepository),
+        GetSessionQuestionsHandler(questionRepository: questionRepository, agentPageService: agentPageService),
         GetSessionExternalActionsHandler(service: pendingInteractionService),
         GetSessionFormsHandler(service: pendingInteractionService),
         GetSessionPermissionsHandler(
@@ -927,11 +958,19 @@ class Orchestrator({
           permissionAutoApprovalService: permissionAutoApprovalService,
           scheduledTaskAgentService: scheduledTaskAgentService,
         ),
-        ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
+        ReplyToQuestionHandler(
+          agentPageService: agentPageService,
+          pendingInteractionService: pendingInteractionService,
+        ),
         ReplyToExternalActionHandler(service: pendingInteractionService),
         ReplyToFormHandler(service: pendingInteractionService),
         DeclineFormHandler(service: pendingInteractionService),
-        RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
+        RejectQuestionHandler(
+          agentPageService: agentPageService,
+          pendingInteractionService: pendingInteractionService,
+        ),
+        LookupPageHandler(agentPageService: agentPageService),
+        SubmitPageHandler(agentPageService: agentPageService),
         ReplyToPermissionHandler(
           scheduledTaskAgentService: scheduledTaskAgentService,
           pendingInteractionService: pendingInteractionService,
@@ -970,8 +1009,8 @@ class Orchestrator({
       chatHistoryActivityListener: chatHistoryActivityListener,
       sesoriMcpRequests: _sesoriMcpRequests,
       sesoriMcpRequestDispatcher: sesoriMcpRequestDispatcher,
-      scheduledTaskAgentService: scheduledTaskAgentService,
       agentApprovalRepository: agentApprovalRepository,
+      agentPageRepository: agentPageRepository,
       runningTurnListener: runningTurnListener,
       interruptedTurnListener: interruptedTurnListener,
       chatHistoryService: chatHistoryService,
@@ -1057,14 +1096,12 @@ class Orchestrator({
     required SessionViewService sessionViews,
   }) async {
     final session = switch (mutation) {
-      SessionDeleted() ||
-      SessionContinuationUpdated() ||
-      SessionArchived() ||
-      SessionMessagesRewound() => mutation.session,
+      SessionDeleted() || SessionContinuationUpdated() || SessionMessagesRewound() => mutation.session,
       SessionTitleUpdated() ||
       SessionApprovalOverrideUpdated() ||
       SessionPinnedUpdated() ||
-      SessionInterruptionUpdated() => await sessionViews.enrich(session: mutation.session),
+      SessionInterruptionUpdated() ||
+      SessionArchived() => await sessionViews.enrich(session: mutation.session),
     };
     return (
       pluginId: session.pluginId,
@@ -1077,9 +1114,14 @@ class Orchestrator({
           BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         ],
         SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
-        // A backend may keep reporting an archived session running or waiting,
-        // so rebuild the summary, which drops archived sessions, at once.
-        SessionArchived() => const [BridgeSseProjectUpdated()],
+        // Open lists and session pages on other devices learn the archive from
+        // the updated session. A backend may keep reporting an archived session
+        // running or waiting, so the summary, which drops archived sessions, is
+        // rebuilt at once too.
+        SessionArchived() => [
+          BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+          const BridgeSseProjectUpdated(),
+        ],
         // Each removal is stored and fanned out like a backend's own.
         SessionMessagesRewound(:final removedMessageIds) => [
           for (final messageId in removedMessageIds)
@@ -1115,8 +1157,8 @@ class OrchestratorSession._({
   required final ChatHistoryActivityListener _chatHistoryActivityListener,
   required Stream<SesoriMcpInboundRequest> sesoriMcpRequests,
   required final SesoriMcpRequestDispatcher _sesoriMcpRequestDispatcher,
-  required final ScheduledTaskAgentService _scheduledTaskAgentService,
   required final AgentApprovalRepository _agentApprovalRepository,
+  required final AgentPageRepository _agentPageRepository,
   required final RunningTurnListener _runningTurnListener,
   required final InterruptedTurnListener _interruptedTurnListener,
   required final ChatHistoryService _chatHistoryService,
@@ -1477,7 +1519,27 @@ class OrchestratorSession._({
                 reply: reply.name,
               ),
           };
-          unawaited(_deliverAgentApprovalEvent(event: permissionEvent));
+          unawaited(_deliverAgentRequestEvent(event: permissionEvent));
+        })
+        .addTo(_subscriptions);
+    // A page travels as a marker question, and its session waits on the
+    // user until the page is answered or dismissed.
+    _agentPageRepository.events
+        .listen((event) {
+          final questionEvent = switch (event) {
+            AgentPageAsked(:final page) => _questionAsked(question: page.toPendingQuestion()),
+            AgentPageSettled(:final page, outcome: AgentPageAnswered()) => SesoriSseEvent.questionReplied(
+              requestID: page.id,
+              sessionID: page.sessionId,
+              displaySessionId: page.displaySessionId,
+            ),
+            AgentPageSettled(:final page, outcome: AgentPageDismissed()) => SesoriSseEvent.questionRejected(
+              requestID: page.id,
+              sessionID: page.sessionId,
+              displaySessionId: page.displaySessionId,
+            ),
+          };
+          unawaited(_deliverAgentRequestEvent(event: questionEvent));
         })
         .addTo(_subscriptions);
     // A send starting or ending changes its source's row on every client.
@@ -1581,6 +1643,7 @@ class OrchestratorSession._({
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
       attempt(_agentApprovalRepository.dispose),
+      attempt(_agentPageRepository.dispose),
     ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
@@ -1991,7 +2054,8 @@ class OrchestratorSession._({
       // An ended turn can strand tool parts in a non-terminal state — a
       // permission never answered, an abort, a backend process death. The
       // backend will never complete them, so finalize the stored snapshots and
-      // tell subscribers before the idle event lands.
+      // tell subscribers before the idle event lands. A history import that
+      // waited for the turn runs after them.
       if (event case BridgeSseSessionIdle(:final sessionID)) {
         await _finalizeOpenToolParts(
           sessionId: sessionID,
@@ -1999,6 +2063,7 @@ class OrchestratorSession._({
           generation: generation,
           allowDuringStop: allowDuringStop,
         );
+        _chatHistoryService.reimportAfterTurn(sessionId: sessionID);
       }
 
       final refreshProjectsSummary = event is BridgeSseProjectUpdated || event is BridgeSseSessionDeleted;
@@ -2139,9 +2204,9 @@ class OrchestratorSession._({
     required bool Function() shouldCapture,
   }) async {
     if (part.type == PluginMessagePartType.unknown) return null;
-    final visiblePart = part.withoutSystemContext()?.withoutNoticeFrame();
+    final visiblePart = part.withoutSystemContext();
     if (visiblePart == null) return null;
-    final sharedPart = _mapper.mapMessagePart(part: visiblePart);
+    final sharedPart = _mapper.mapMessagePart(part: visiblePart).withoutNoticeFrame();
     final visible = _mapper.isMessagePartVisible(part: visiblePart);
     if (!_chatHistoryService.requiresAwaitedAttachmentCapture(part: sharedPart)) {
       // Deliberately not awaited: an ordinary part's wire shape does not depend
@@ -2278,13 +2343,25 @@ class OrchestratorSession._({
     }
   }
 
-  Future<void> _deliverAgentApprovalEvent({required SesoriSseEvent event}) async {
+  /// Delivers an event of an agent's approval or page, then the projects
+  /// summary, whose needs-you state it changed.
+  Future<void> _deliverAgentRequestEvent({required SesoriSseEvent event}) async {
     try {
       await _deliverBridgeEvent(event: event);
     } on Object catch (error, stackTrace) {
-      Log.w("failed to deliver an agent approval event", error, stackTrace);
+      Log.w("failed to deliver an agent request event", error, stackTrace);
     }
     await _buildAndEnqueueProjectsSummaryInOrder();
+  }
+
+  SesoriSseEvent _questionAsked({required PendingQuestion question}) {
+    return SesoriSseEvent.questionAsked(
+      id: question.id,
+      sessionID: question.sessionID,
+      displaySessionId: question.displaySessionId,
+      questions: question.questions,
+      interactionKind: question.interactionKind,
+    );
   }
 
   Future<void> _buildAndDeliverProjectsSummaryInOrder({
@@ -2367,8 +2444,15 @@ class OrchestratorSession._({
     try {
       return _mapper.buildProjectsSummaryEvent(
         projects: _sessionSendService.markSending(
-          projects: await _scheduledTaskAgentService.markAwaitingApproval(
+          // Agent approvals and pages keep their sessions awaiting input,
+          // even when the harness has gone idle, so the app keeps them on its
+          // attention list.
+          projects: await _sessionRepository.markAwaitingInput(
             projects: await _sessionRepository.getProjectActivitySummaries(),
+            rootSessionIds: {
+              ..._agentApprovalRepository.awaitingRootSessionIds,
+              ...await _agentPageRepository.awaitingRootSessionIds(),
+            },
           ),
         ),
       );

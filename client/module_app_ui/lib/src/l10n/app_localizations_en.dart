@@ -4719,4 +4719,112 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionDetailArchivedSideChats(int count) {
     return 'Side chats ($count)';
   }
+
+  @override
+  String get questionPageClose => 'Close page';
+
+  @override
+  String get questionPageActions => 'Page actions';
+
+  @override
+  String get questionPageDismiss => 'Dismiss page';
+
+  @override
+  String get questionPageDismissConfirmTitle => 'Dismiss without sending your answers?';
+
+  @override
+  String get questionPageDismissConfirmAction => 'Dismiss';
+
+  @override
+  String get questionPageDismissConfirmCancel => 'Cancel';
+
+  @override
+  String questionPageSource(String source) {
+    return 'From $source';
+  }
+
+  @override
+  String questionPageProgress(int answered, int total) {
+    return '$answered of $total answered';
+  }
+
+  @override
+  String get questionPageSubmit => 'Submit';
+
+  @override
+  String get questionPageDone => 'Done';
+
+  @override
+  String get questionPageAnswered => 'Answered';
+
+  @override
+  String get questionPageAnsweredElsewhere => 'Answered on another device';
+
+  @override
+  String get questionPageDismissed => 'Dismissed';
+
+  @override
+  String get questionPageMissing => 'This page is no longer available.';
+
+  @override
+  String get questionPageUnsupported => 'This page needs an updated Sesori app.';
+
+  @override
+  String get questionPageLoadFailed => 'Couldn\'t load this page.';
+
+  @override
+  String get questionPageRetry => 'Try again';
+
+  @override
+  String get questionPageRequired => 'Required';
+
+  @override
+  String get questionPageRecommended => 'Recommended';
+
+  @override
+  String get questionPageNeedsAnswer => 'Answer this question to submit.';
+
+  @override
+  String get questionPageAnswerRefused => 'This answer wasn\'t accepted. Check it and submit again.';
+
+  @override
+  String questionPageInvalid(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions need your attention',
+      one: '1 question needs your attention',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get questionPageUnsupportedQuestion => 'This question needs an updated Sesori app. You can submit without it.';
+
+  @override
+  String get questionPageAnswerHint => 'Type your answer';
+
+  @override
+  String get questionPageNoAnswer => 'No answer';
+
+  @override
+  String get questionPageNoteHint => 'Add a note (optional)';
+
+  @override
+  String get questionPageClosingNoteTitle => 'Anything else?';
+
+  @override
+  String get questionPageClosingNoteHint => 'Anything the agent should know (optional)';
+
+  @override
+  String get questionPageSubmitFailed => 'Couldn\'t send your answers. Try again.';
+
+  @override
+  String get questionPageDismissFailed => 'Couldn\'t dismiss the page. Try again.';
+
+  @override
+  String get questionPageUnknownResult => 'Sesori didn\'t understand the reply. Update the app and try again.';
+
+  @override
+  String get questionPageImageUnavailable => 'Image unavailable';
 }

@@ -45,6 +45,7 @@ void main() {
     late _RecordingScratchRepository scratchRepository;
     late _RecordingPromptUploadRepository promptUploadRepository;
     late _RecordingPromptUploadRepository transcriptRepository;
+    late _RecordingPromptUploadRepository pageImageRepository;
 
     setUp(() {
       db = createTestDatabase();
@@ -63,6 +64,12 @@ void main() {
         delegate: PromptUploadRepository(
           filesystemApi: const FilesystemApi(),
           uploadsRoot: p.join(scratchParent.path, "transcripts"),
+        ),
+      );
+      pageImageRepository = _RecordingPromptUploadRepository(
+        delegate: PromptUploadRepository(
+          filesystemApi: const FilesystemApi(),
+          uploadsRoot: p.join(scratchParent.path, "page-images"),
         ),
       );
       operationLog = [];
@@ -112,6 +119,7 @@ void main() {
           scratchRepository: scratchRepository,
           promptUploadRepository: promptUploadRepository,
           transcriptRepository: transcriptRepository,
+          pageImageRepository: pageImageRepository,
         ),
       );
     });
@@ -186,11 +194,13 @@ void main() {
       });
     });
 
-    // The prompt uploads and the transcripts sent into a session share one
-    // folder layout and are deleted the same way.
-    for (final (folder, repositoryOf, otherRepositoryOf) in [
-      ("uploads", () => promptUploadRepository, () => transcriptRepository),
-      ("transcripts", () => transcriptRepository, () => promptUploadRepository),
+    // The prompt uploads, the transcripts sent into a session and the images
+    // its agents sent on pages share one folder layout and are deleted the
+    // same way.
+    for (final (folder, repositoryOf, otherRepositoriesOf) in [
+      ("uploads", () => promptUploadRepository, () => [transcriptRepository, pageImageRepository]),
+      ("transcripts", () => transcriptRepository, () => [promptUploadRepository, pageImageRepository]),
+      ("page-images", () => pageImageRepository, () => [promptUploadRepository, transcriptRepository]),
     ]) {
       group("session files in $folder", () {
         late _RecordingPromptUploadRepository repository;
@@ -243,8 +253,10 @@ void main() {
           final deletedSessionIds = repository.deletedSessionIds.single;
           expect(deletedSessionIds, unorderedEquals(["s1", "s2"]));
           expect(logs.text, allOf(contains(deletedSessionIds.join(", ")), contains("Device busy")));
-          // The other store's cleanup still runs.
-          expect(otherRepositoryOf().deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
+          // The other stores' cleanup still runs.
+          for (final other in otherRepositoriesOf()) {
+            expect(other.deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
+          }
         });
       });
     }

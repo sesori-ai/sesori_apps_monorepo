@@ -74,6 +74,12 @@ class const AntigravityPluginDescriptor({
 
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
+
+  /// Antigravity's `session/load` replays the running turn under replay ids,
+  /// not the prompt-id rows the live stream stores.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   @override
   bool get supportsPromptAttachments => true;
 

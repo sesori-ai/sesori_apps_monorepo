@@ -63,6 +63,7 @@ export "src/models/sesori/move_session_pin_request.dart";
 export "src/models/sesori/notification_data.dart";
 export "src/models/sesori/pending_external_action.dart";
 export "src/models/sesori/pending_form.dart";
+export "src/models/sesori/pending_page.dart";
 export "src/models/sesori/pending_permission.dart";
 export "src/models/sesori/pending_question.dart";
 export "src/models/sesori/permission_reply.dart";

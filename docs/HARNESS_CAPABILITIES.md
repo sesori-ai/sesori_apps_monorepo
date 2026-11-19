@@ -211,6 +211,22 @@ own. Verified live on
 after several minutes), so the notice asks the agent for a one-line reply
 rather than none.
 
+Question pages: every harness that gets the server can call `send_page`, with
+no harness-specific code; the answer arrives with the same notice timing, so a
+steering harness hears it in its running turn and the others after the turn.
+Antigravity, Hermes and Cursor stay off until verified, DeepSeek is
+unsupported, and OpenCode has no per-session seam. Verified live on 2026-11-18
+through a test model: Claude Code 2.1.325, Codex 0.169.0, Pi 1.5.2, Oh My Pi
+18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 all accepted a large nested page,
+including options whose empty image fields the model filled in, and each heard
+the answer. Claude Code, Codex and Oh My Pi heard it mid-turn, Pi at the next
+tool boundary, and Grok and Copilot in a new turn. Codex reaches the tool through
+a namespace with `strict: false`, Grok through `search_tool` and `use_tool`, and
+Oh My Pi through an `xd://` virtual file it reads and then writes. These versions
+sit slightly below the current pins but above the minimums. No harness
+showed its own permission prompt for `send_page`. Dismissal was checked on
+Claude Code only.
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a
@@ -228,7 +244,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, and 18.22.0 did in a 2026-11-17 initialize probe) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. From 18.20.1 a prompt that starts a background job (or, per the source, live sub-agents) stays open until the job ends plus a short follow-up turn, with no updates in between. Steering then answers `promptRequired`, so the follow-up returns to Queued and is sent after the job ends. Stop ends the prompt at once but not the job, whose result OMP keeps for the next prompt; that prompt stays open until the old job finishes. A history read in that window falls back to the bridge's stored history. Verified live on 18.21.0, 2026-11-16. Before 18.20.1 OMP ends the prompt and starts a turn of its own when the job finishes; it refuses steering and rejects `session/prompt` with `-32003`, and the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, and 18.22.2 did in a 2026-11-18 initialize probe) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. From 18.20.1 a prompt that starts a background job (or, per the source, live sub-agents) stays open until the job ends plus a short follow-up turn, with no updates in between. Steering then answers `promptRequired`, so the follow-up returns to Queued and is sent after the job ends. Stop ends the prompt at once but not the job, whose result OMP keeps for the next prompt; that prompt stays open until the old job finishes. A history read in that window falls back to the bridge's stored history. Verified live on 18.21.0, 2026-11-16. Before 18.20.1 OMP ends the prompt and starts a turn of its own when the job finishes; it refuses steering and rejects `session/prompt` with `-32003`, and the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -549,7 +565,7 @@ sub-agents finish.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.3.0.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.3.2.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
@@ -1060,7 +1076,7 @@ harness that raises the exception.
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.22.0`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.22.2`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification
@@ -1409,6 +1425,22 @@ message ids was never affected.
 | Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
 | Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
+## History imports during a turn
+
+The bridge stores a running turn under the ids the live stream gives it. When
+a harness replays that turn under other ids, an import while the turn runs
+would show the streaming reply twice, so the bridge waits and imports once the
+turn ends (`replaysHistoryDuringTurn: false`). A change made outside Sesori
+during a turn then shows when the turn ends.
+
+| Harness | Status |
+|---|---|
+| Claude Code, Codex, Pi, OpenCode | ✅ Import during a turn: the same ids live and in replay. |
+| DeepSeek | ✅ Imports during a turn: its own history read names user rows by their ACP message ids. Not verified live. |
+| Oh My Pi, Grok, Copilot | ⏳ Import after the turn: they replay under fresh ids. |
+| Hermes | ⏳ Imports after the turn. From the plugin code: Hermes stamps message ids on live replies only, so the replay names every row differently, and the shared ACP replay never keeps the live user row's prompt id. Not verified live. |
+| Cursor, Antigravity | ⏳ Import after the turn. From the plugin code: the shared ACP replay never keeps the live user row's prompt id, and the reply keeps its live id only if the agent stamps the same message id live and in replay, which no recorded payload shows. Not verified live: both need a real account. |
+
 ## Failed-turn notices sent as text
 
 Some ACP harnesses end a turn that did no work with `stopReason: end_turn` and
@@ -1502,7 +1534,7 @@ prompt does to a target that is running, from each plugin's
 | Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 | Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 
-¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.22.0 advertises
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.22.2 advertises
 `_session/steering`. An older OMP on PATH without it stops the running turn,
 and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
@@ -1619,11 +1651,11 @@ sends none. In both modes `wait_agent` renders as a "Waiting for N sub-agents" t
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 
-⁴ Copilot CLI (plugin targets 1.0.113) runs custom agents as subagents. When
+⁴ Copilot CLI (plugin targets 1.0.114) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
 Protocol server exposed no subagent lifecycle, no child session, and only the
 turn-wide `session/cancel`. Copilot's changelog says ACP clients receive
-subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.113 pin and maps
+subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.114 pin and maps
 no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
 sub-agent identity, lifecycle and per-child stop.
 
@@ -1669,7 +1701,7 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.2.4 over dsh 0.2.2-rc.4 is the managed target;
+⁹ DeepSeek's published adapter 0.2.5 over dsh 0.2.2-rc.5 is the managed target;
 adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
 may delegate only one level by default (previously three), with at most eight
 active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider

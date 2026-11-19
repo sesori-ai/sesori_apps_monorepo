@@ -224,7 +224,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   between versions do not work. For the audit, diff the digest-checked
   `github-copilot-X.Y.Z-<os>-<arch>.tgz` release assets instead: they hold
   readable `cli-main.js`, `changelog.json` and `copilot-sdk/generated/*.d.ts`
-  (verified 2026-11-17 on 1.0.112/1.0.113).
+  (verified on 1.0.112 to 1.0.114).
 - **Probe:** production current-host install, isolated `COPILOT_HOME` and
   `COPILOT_CACHE_HOME` (the loader can run a newer package cached there unless
   auto-update is off), branded `GitHub Copilot CLI X.Y.Z.` version, then
@@ -394,10 +394,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   until `18.20.1` (the fix landed there, not in `18.20.0` as the changelog says)
   the raw list holds a new empty, untitled replacement session (upstream
   #19068). `session/new` alone still writes an empty untitled session
-  (`_meta.messageCount` 0, no title) on `18.22.0`, so the plugin's listing
+  (`_meta.messageCount` 0, no title) on `18.22.2`, so the plugin's listing
   filter stays; confirm both shapes on each bump.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in the `18.22.0` source), `session/load` and `session/resume` fail
+  From `18.6.3` (still in the `18.22.2` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this

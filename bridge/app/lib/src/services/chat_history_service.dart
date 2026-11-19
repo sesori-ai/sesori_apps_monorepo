@@ -20,6 +20,7 @@ import "../repositories/models/tool_output_lookup.dart";
 import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_options_service.dart";
 
 sealed class const SessionAttachmentResult();
 
@@ -134,6 +135,7 @@ class ChatHistoryService({
   required final BridgeIdProvider _bridgeIdProvider,
   required final SessionInterruptionRepository _interruptions,
   required final SessionMutationDispatcher _mutations,
+  required final SessionOptionsService _sessionOptions,
 }) {
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
@@ -147,6 +149,9 @@ class ChatHistoryService({
   /// cannot restore, served with its stored pages until a re-read succeeds.
   final Map<String, String> _cannotContinueMessages = {};
   final Set<Future<void>> _backgroundRefreshes = {};
+
+  /// Sessions whose import waited for the running turn, re-read once it ends.
+  final Set<String> _importsAwaitingTurnEnd = {};
 
   /// Each session re-read in the background after a read served it behind its
   /// harness, once its stored pages changed: the re-read transcript landed,
@@ -305,11 +310,12 @@ class ChatHistoryService({
     try {
       replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
     } on PluginSessionHistoryBusyException catch (error) {
-      // A turn is running and the harness can replay history only between
+      // A turn is running and its history can be imported only between
       // turns. The store holds what the live stream captured, and nothing is
-      // written, so the first read after the turn backfills. Open tool parts
-      // belong to the running turn, so there is nothing to sweep.
+      // written, so the turn's end re-reads it. Open tool parts belong to the
+      // running turn, so there is nothing to sweep.
       Log.d("Session $sessionId is mid-turn; serving stored history until it ends (${error.message})");
+      _importsAwaitingTurnEnd.add(sessionId);
       final stored = await _storedOnlyPage(
         sessionId: sessionId,
         window: window,
@@ -381,11 +387,7 @@ class ChatHistoryService({
     required int? nextCursor,
     required int userMessagesBefore,
   }) {
-    if (opensSession) {
-      final refresh = _refreshFromHarness(sessionId: sessionId);
-      _backgroundRefreshes.add(refresh);
-      unawaited(refresh.whenComplete(() => _backgroundRefreshes.remove(refresh)));
-    }
+    if (opensSession) _startBackgroundRefresh(sessionId: sessionId);
     return (
       messages: messages,
       nextCursor: nextCursor,
@@ -394,6 +396,18 @@ class ChatHistoryService({
       userMessagesBefore: userMessagesBefore,
       cannotContinueMessage: _cannotContinueMessages[sessionId],
     );
+  }
+
+  void _startBackgroundRefresh({required String sessionId}) {
+    final refresh = _refreshFromHarness(sessionId: sessionId);
+    _backgroundRefreshes.add(refresh);
+    unawaited(refresh.whenComplete(() => _backgroundRefreshes.remove(refresh)));
+  }
+
+  /// Re-reads the session in the background when an import waited for the
+  /// turn that just ended, and announces it on [historyRefreshes].
+  void reimportAfterTurn({required String sessionId}) {
+    if (_importsAwaitingTurnEnd.remove(sessionId)) _startBackgroundRefresh(sessionId: sessionId);
   }
 
   /// Waits for the background re-reads, which never throw, during shutdown.
@@ -422,8 +436,9 @@ class ChatHistoryService({
       announce = message != null && _cannotContinueMessages[sessionId] != message;
       if (message != null) _cannotContinueMessages[sessionId] = message;
     } on PluginSessionHistoryBusyException catch (error) {
-      // The live stream delivers the running turn; the next read re-reads.
+      // The live stream delivers the running turn; its end re-reads.
       Log.d("Session $sessionId is mid-turn; re-reading it after the turn (${error.message})");
+      _importsAwaitingTurnEnd.add(sessionId);
       return;
     } on Object catch (error, stackTrace) {
       Log.w("Background re-read of session $sessionId failed; serving its stored history", error, stackTrace);
@@ -1324,6 +1339,7 @@ class ChatHistoryService({
     return _enqueue(
       sessionId: sessionId,
       write: () async {
+        await _requireImportableNow(sessionId: sessionId);
         // Read inside the queue too, so it cannot miss a capture that landed
         // between the read and the write.
         final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
@@ -1355,7 +1371,9 @@ class ChatHistoryService({
           interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
-        final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
+        final promptDefaults = shouldReconcilePromptDefaults
+            ? await keepingStoredModel(sessionId: sessionId, imported: snapshot.promptDefaults)
+            : null;
         if (promptDefaults == null) return null;
         try {
           // The stored value carries the session's fast mode, which history
@@ -1372,6 +1390,55 @@ class ChatHistoryService({
         }
       },
     );
+  }
+
+  /// Throws [PluginSessionHistoryBusyException], as a backend that cannot
+  /// replay mid-turn does, when the session's plugin declares its history
+  /// unsafe to import while a turn runs and one is running. The replay would
+  /// hold the streaming reply under other ids than the live rows, which later
+  /// live updates keep filling, so the reply would show twice.
+  Future<void> _requireImportableNow({required String sessionId}) async {
+    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (stored == null || _sessionRepository.replaysHistoryDuringTurn(pluginId: stored.pluginId)) return;
+    final status = await _sessionRepository.getSessionStatus(sessionId: sessionId);
+    if (status is! SessionStatusBusy && status is! SessionStatusRetry) return;
+    throw const PluginSessionHistoryBusyException(
+      operation: "history import",
+      message: "the backend replays a running turn under other message ids",
+    );
+  }
+
+  /// The prompt defaults [imported] from [sessionId]'s harness history, with
+  /// the session's stored model kept when the harness catalog doesn't offer
+  /// the imported one.
+  ///
+  /// History records the model name the backend's API answered with, which a
+  /// gateway can rename; sending that name back fails. A model the catalog
+  /// offers still wins, so a model changed natively in the harness carries
+  /// over. Without a stored model, or without a cached catalog to judge by,
+  /// [imported] is returned unchanged.
+  Future<SessionPromptDefaults?> keepingStoredModel({
+    required String sessionId,
+    required SessionPromptDefaults? imported,
+  }) async {
+    final importedModel = imported?.model;
+    if (imported == null || importedModel == null) return imported;
+    try {
+      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+      final storedModel = session?.promptDefaults?.model;
+      if (session == null || storedModel == null || storedModel == importedModel) return imported;
+      final catalog = await _sessionOptions.loadCacheOnly(pluginId: session.pluginId, projectId: session.projectID);
+      if (catalog is! SessionOptionsAvailable) return imported;
+      const calculator = SessionOptionsCatalogCalculator();
+      if (calculator.isModelAvailable(providers: catalog.response.providers.items, model: importedModel)) {
+        return imported;
+      }
+      Log.i("Kept the stored model of session $sessionId: its history names a model the catalog doesn't offer");
+      return imported.copyWith(model: storedModel);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not check the imported model of session $sessionId against its catalog", error, stackTrace);
+      return imported;
+    }
   }
 
   /// Records the [leftover] running turn an earlier bridge run left as the

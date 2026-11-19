@@ -36,6 +36,8 @@ Widget _app({
             imageClipboard: () => throw UnimplementedError(),
             imageSharer: () => throw UnimplementedError(),
             sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+            createPendingPageCubit: ({required requestId, required sessionId}) =>
+                throw StateError("Unused fixture page"),
             createPendingFormCubit: ({required requestId, required sessionId}) =>
                 throw StateError("Unused fixture form"),
             createFilePreviewCubit: ({required reference}) =>

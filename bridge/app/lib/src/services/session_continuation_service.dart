@@ -7,6 +7,7 @@ import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_readiness.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
+import "chat_history_service.dart";
 import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_prompt_service.dart";
@@ -19,6 +20,7 @@ final class const SessionAutoContinuationUnavailableException() implements Excep
 class const SessionContinuationService({
   required final SessionContinuationRepository _continuations,
   required final SessionRepository _sessions,
+  required final ChatHistoryService _history,
   required final SessionViewService _views,
   required final SessionOperationDispatcher _operations,
   required final SessionPromptService _prompts,
@@ -168,7 +170,7 @@ class const SessionContinuationService({
     try {
       await _prompts.sendWithDefaults(
         sessionId: sessionId,
-        defaults: snapshot.promptDefaults,
+        defaults: await _history.keepingStoredModel(sessionId: sessionId, imported: snapshot.promptDefaults),
         send: (settings) => _prompts.sendPromptAlreadyReserved(
           sessionId: sessionId,
           promptId: promptId,

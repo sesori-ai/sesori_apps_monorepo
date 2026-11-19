@@ -1,5 +1,6 @@
 import "dart:convert";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
@@ -51,6 +52,24 @@ class BoundedTextFileBinary() extends BoundedTextFileReadResult;
 class BoundedTextFileTooLarge() extends BoundedTextFileReadResult;
 
 class BoundedTextFileReadFailure() extends BoundedTextFileReadResult;
+
+/// What [FilesystemRepository.readImageFile] found at a path.
+sealed class const ImageFileReadResult();
+
+/// The file's bytes and the MIME type its extension names; the bytes are not
+/// checked against it.
+final class const ImageFileContent({required final Uint8List bytes, required final String mime})
+    extends ImageFileReadResult;
+
+final class const ImageFileMissing() extends ImageFileReadResult;
+
+final class const ImageFileDenied() extends ImageFileReadResult;
+
+/// Over [maxTranscriptImageBytes].
+final class const ImageFileTooLarge() extends ImageFileReadResult;
+
+/// Not a regular file, or its extension is not a previewable image's.
+final class const ImageFileUnsupported() extends ImageFileReadResult;
 
 /// Layer 2 aggregator over [FilesystemApi]. Owns the mapping from raw
 /// `dart:io` results into shared models and the classification of
@@ -192,48 +211,97 @@ class FilesystemRepository({
   /// Rethrows a [FileSystemException] that is neither a permission denial nor
   /// a missing file.
   FilePreviewResponse readPreviewFile({required String absolutePath, required bool acceptsPdf}) {
+    final extension = _extensionOf(path: absolutePath);
+    if (_previewImageMimeTypes.containsKey(extension)) {
+      return switch (readImageFile(absolutePath: absolutePath)) {
+        ImageFileContent(:final bytes, :final mime) => FilePreviewResponse.image(
+          mime: mime,
+          base64: base64Encode(bytes),
+          byteLength: bytes.length,
+        ),
+        ImageFileMissing() => const FilePreviewResponse.missing(),
+        ImageFileDenied() => const FilePreviewResponse.denied(),
+        ImageFileTooLarge() => const FilePreviewResponse.tooLarge(),
+        ImageFileUnsupported() => const FilePreviewResponse.unsupported(),
+      };
+    }
+    return _readRegularFile(
+      path: absolutePath,
+      missing: const FilePreviewResponse.missing(),
+      denied: const FilePreviewResponse.denied(),
+      notRegularFile: const FilePreviewResponse.unsupported(),
+      read: () {
+        if (extension == "pdf" && acceptsPdf) {
+          final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
+          if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
+          return FilePreviewResponse.pdf(base64: base64Encode(bytes));
+        }
+        if (_binaryExtensions.contains(extension)) return const FilePreviewResponse.unsupported();
+
+        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
+        if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
+        if (bytes.contains(0)) return const FilePreviewResponse.unsupported();
+        try {
+          return FilePreviewResponse.text(content: utf8.decode(bytes));
+        } on FormatException {
+          return const FilePreviewResponse.unsupported();
+        }
+      },
+    );
+  }
+
+  /// The image at [absolutePath], following links, when its extension is a
+  /// previewable image's (png, jpg, jpeg, gif or webp), up to
+  /// [maxTranscriptImageBytes]. Files are classified as [readPreviewFile]
+  /// classifies them.
+  ///
+  /// Rethrows a [FileSystemException] that is neither a permission denial nor
+  /// a missing file.
+  ImageFileReadResult readImageFile({required String absolutePath}) {
+    final mime = _previewImageMimeTypes[_extensionOf(path: absolutePath)];
+    if (mime == null) return const ImageFileUnsupported();
+    return _readRegularFile(
+      path: absolutePath,
+      missing: const ImageFileMissing(),
+      denied: const ImageFileDenied(),
+      notRegularFile: const ImageFileUnsupported(),
+      read: () {
+        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxTranscriptImageBytes);
+        if (bytes.length > maxTranscriptImageBytes) return const ImageFileTooLarge();
+        return ImageFileContent(bytes: Uint8List.fromList(bytes), mime: mime);
+      },
+    );
+  }
+
+  /// [read]'s result when [path] is a regular file, following links, and
+  /// [missing], [denied] or [notRegularFile] otherwise. Only a regular file
+  /// is opened: reading a pipe, socket or device could block the bridge.
+  ///
+  /// Rethrows a [FileSystemException] that is neither a permission denial nor
+  /// a missing file.
+  T _readRegularFile<T>({
+    required String path,
+    required T missing,
+    required T denied,
+    required T notRegularFile,
+    required T Function() read,
+  }) {
     try {
-      var entityType = _filesystemApi.entityType(path: absolutePath);
+      var entityType = _filesystemApi.entityType(path: path);
       // Resolving follows a link to its target. A failed lookup also reports
       // notFound, so resolving surfaces its real cause, such as a denied
       // parent folder, as a FileSystemException. Neither opens the file.
       if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
-        entityType = _filesystemApi.entityType(path: _filesystemApi.resolveFilePath(path: absolutePath));
+        entityType = _filesystemApi.entityType(path: _filesystemApi.resolveFilePath(path: path));
       }
-      if (entityType == FileSystemEntityType.notFound) return const FilePreviewResponse.missing();
-      // Only a regular file is opened: reading a pipe, socket or device could
-      // block the bridge.
-      if (entityType != FileSystemEntityType.file) return const FilePreviewResponse.unsupported();
-
-      final extension = _extensionOf(path: absolutePath);
-      final imageMime = _previewImageMimeTypes[extension];
-      if (imageMime != null) {
-        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxTranscriptImageBytes);
-        if (bytes.length > maxTranscriptImageBytes) return const FilePreviewResponse.tooLarge();
-        return FilePreviewResponse.image(mime: imageMime, base64: base64Encode(bytes), byteLength: bytes.length);
-      }
-      if (extension == "pdf" && acceptsPdf) {
-        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
-        if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
-        return FilePreviewResponse.pdf(base64: base64Encode(bytes));
-      }
-      if (_binaryExtensions.contains(extension)) return const FilePreviewResponse.unsupported();
-
-      final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewBytes);
-      if (bytes.length > maxFilePreviewBytes) return const FilePreviewResponse.tooLarge();
-      if (bytes.contains(0)) return const FilePreviewResponse.unsupported();
-      try {
-        return FilePreviewResponse.text(content: utf8.decode(bytes));
-      } on FormatException {
-        return const FilePreviewResponse.unsupported();
-      }
+      if (entityType == FileSystemEntityType.notFound) return missing;
+      if (entityType != FileSystemEntityType.file) return notRegularFile;
+      return read();
     } on FileSystemException catch (error) {
-      if (_permissionValidator.isPermissionDenied(error: error)) return const FilePreviewResponse.denied();
+      if (_permissionValidator.isPermissionDenied(error: error)) return denied;
       // Dart raises PathNotFoundException for Windows' missing-folder error
       // (code 3), which isFileMissing does not recognise.
-      if (error is PathNotFoundException || _permissionValidator.isFileMissing(error: error)) {
-        return const FilePreviewResponse.missing();
-      }
+      if (error is PathNotFoundException || _permissionValidator.isFileMissing(error: error)) return missing;
       rethrow;
     }
   }

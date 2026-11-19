@@ -254,10 +254,13 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     if (!isValidPiSessionId(sessionId: sessionId)) return;
     final environment = _environment;
     final directories = Set<String>.of(knownDirectories);
-    final diagnostics = await Isolate.run(
+    final cleared = await Isolate.run(
       () => _clearPendingMarkers(environment: environment, sessionId: sessionId, knownDirectories: directories),
     );
-    diagnostics.forEach(_logDiagnostics);
+    cleared.diagnostics.forEach(_logDiagnostics);
+    for (final path in cleared.alreadyRemoved) {
+      Log.d("[pi] pending marker $path was already cleared by an overlapping turn end");
+    }
   }
 
   Future<PiSessionEntriesDto> _readSessionHistory({required String path}) async {
@@ -425,7 +428,8 @@ void _writePendingMarker({required String path, required String cwd, required St
   );
 }
 
-List<_PiScanDiagnostics> _clearPendingMarkers({
+/// Also returns the markers another clear removed while this one ran.
+({List<_PiScanDiagnostics> diagnostics, List<String> alreadyRemoved}) _clearPendingMarkers({
   required Map<String, String> environment,
   required String sessionId,
   required Set<String> knownDirectories,
@@ -435,11 +439,20 @@ List<_PiScanDiagnostics> _clearPendingMarkers({
     sessionId: sessionId,
     knownDirectories: knownDirectories,
   );
+  final alreadyRemoved = <String>[];
   for (final markerPath in markers.paths) {
     final file = File(markerPath);
-    if (file.existsSync()) file.deleteSync();
+    if (!file.existsSync()) continue;
+    try {
+      file.deleteSync();
+    } on PathNotFoundException {
+      // Each turn that ends before the bridge sees the session persisted
+      // clears the marker, so a turn ending close behind another can find it
+      // gone between the check and the delete.
+      alreadyRemoved.add(markerPath);
+    }
   }
-  return markers.diagnostics;
+  return (diagnostics: markers.diagnostics, alreadyRemoved: alreadyRemoved);
 }
 
 ({Set<String> paths, List<_PiScanDiagnostics> diagnostics}) _pendingMarkerPaths({

@@ -19,6 +19,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_row_reporter.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -35,6 +36,8 @@ import "../../../helpers/test_helpers.dart";
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+
+class _MockPendingPageCubit() extends MockCubit<PendingPageState> implements PendingPageCubit;
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
@@ -84,6 +87,7 @@ Widget _buildApp({
   bool readOnly = false,
   SessionExternalActionCubitFactory? createExternalActionCubit,
   PendingFormCubitFactory? createPendingFormCubit,
+  PendingPageCubitFactory? createPendingPageCubit,
   SessionDetailPageChrome? pageChrome,
   SideChatOpener? openSideChat,
 }) {
@@ -116,6 +120,9 @@ Widget _buildApp({
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
             sessionRepository: MockSessionRepository.new,
+            createPendingPageCubit:
+                createPendingPageCubit ??
+                ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
             createPendingFormCubit:
                 createPendingFormCubit ??
                 ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
@@ -2324,6 +2331,80 @@ void main() {
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
   });
 
+  group("archived from another device", () {
+    final card = find.byType(SessionDetailNeedsYouCard);
+    final transcriptLine = find.text("Hello, world!");
+    double transcriptOffset(WidgetTester tester) => tester
+        .state<ScrollableState>(find.ancestor(of: transcriptLine, matching: find.byType(Scrollable)).first)
+        .position
+        .pixels;
+
+    Future<StreamController<SessionDetailState>> openWithPendingQuestion(WidgetTester tester) async {
+      final loaded = _loadedState(
+        pendingQuestions: const [_question],
+        pendingPermissions: const [],
+        messages: [testMessageWithParts()],
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: loaded);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(card, findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+      states.add(loaded.copyWith(isArchived: true));
+      // Delivers the archive; the next frame shows it.
+      await tester.pump();
+      return states;
+    }
+
+    testWidgets("the card and composer leave in one glide while the transcript stays scrolled", (tester) async {
+      await openWithPendingQuestion(tester);
+      await tester.pump();
+      final restingTop = tester.getTopLeft(transcriptLine).dy;
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+
+      // Halfway, both are still on their way out together.
+      await tester.pump(transcriptMotionDuration ~/ 2);
+      expect(card, findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+
+      // The transcript follows the room they give up a little each frame,
+      // never in one jump, and its scroll position never changes.
+      var previousTop = tester.getTopLeft(transcriptLine).dy;
+      expect(previousTop, greaterThan(restingTop));
+      for (var frame = 0; frame < 12; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final top = tester.getTopLeft(transcriptLine).dy;
+        expect(top - previousTop, inInclusiveRange(0, 40));
+        expect(transcriptOffset(tester), 0);
+        previousTop = top;
+      }
+      await tester.pumpAndSettle();
+
+      expect(card, findsNothing);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.getTopLeft(transcriptLine).dy, previousTop);
+    });
+
+    testWidgets("with reduced motion, the card and composer leave at once", (tester) async {
+      tester.binding.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await openWithPendingQuestion(tester);
+
+      await tester.pump();
+      final top = tester.getTopLeft(transcriptLine).dy;
+      expect(card, findsNothing);
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.getTopLeft(transcriptLine).dy, top);
+    });
+  });
+
   testWidgets("archiving a loaded session disposes its composer-owned voice lifecycle", (tester) async {
     final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final states = StreamController<SessionDetailState>();
@@ -3177,6 +3258,60 @@ void main() {
     final card = find.byType(SessionDetailNeedsYouCard);
     expect(find.descendant(of: card, matching: find.text("Review")), findsOneWidget);
     expect(find.descendant(of: card, matching: find.text("Answer")), findsNothing);
+  });
+
+  testWidgets("a question page never opens by itself, and its card's Review opens it", (tester) async {
+    const page = SesoriQuestionAsked(
+      id: "sesori-page-1",
+      sessionID: "session-1",
+      displaySessionId: null,
+      interactionKind: QuestionInteractionKind.page,
+      questions: [
+        QuestionInfo(
+          question: "Pick a rollout plan",
+          header: "Pick a rollout plan",
+          options: [QuestionOption(label: "Cancel", description: "Needs an updated Sesori app")],
+        ),
+      ],
+    );
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(states.close);
+    final initial = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(initial);
+    whenListen(cubit, states.stream, initialState: initial);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    final pageCubit = _MockPendingPageCubit();
+    whenListen(pageCubit, const Stream<PendingPageState>.empty(), initialState: const PageLoading());
+    final opened = <(String, String)>[];
+
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        createPendingPageCubit: ({required requestId, required sessionId}) {
+          opened.add((requestId, sessionId));
+          return pageCubit;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final arrived = _loadedState(pendingQuestions: const [page], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(arrived);
+    states.add(arrived);
+    questions.add(page);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QuestionPageScreen), findsNothing);
+    expect(opened, isEmpty);
+    final card = find.byType(SessionDetailNeedsYouCard);
+    expect(find.descendant(of: card, matching: find.text("1 pending request")), findsOneWidget);
+    expect(find.descendant(of: card, matching: find.text("Pick a rollout plan")), findsOneWidget);
+
+    await tester.tap(find.descendant(of: card, matching: find.text("Review")));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestionPageScreen), findsOneWidget);
+    expect(opened, [("sesori-page-1", "session-1")]);
   });
 
   for (final kind in [QuestionInteractionKind.externalAction, QuestionInteractionKind.form]) {

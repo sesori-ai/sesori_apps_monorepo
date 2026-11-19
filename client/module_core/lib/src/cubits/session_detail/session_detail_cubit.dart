@@ -4030,7 +4030,8 @@ class SessionDetailCubit(
     emit(current.copyWith(pendingQuestions: pending));
   }
 
-  /// A typed native request settled through the external-action service.
+  /// A request settled through its own service, such as a typed native
+  /// request or a question page, ahead of the bridge's settlement event.
   void acknowledgeQuestionSettlement({required String requestId}) => _onQuestionResolved(requestId);
 
   void _onPermissionAsked(SesoriPermissionAsked permission) {

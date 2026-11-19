@@ -170,13 +170,68 @@ Page<void> buildSessionPaneTransitionPage({
 }) {
   final duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
   final isImperative = isImperativePaneState(context: context, state: state);
-  return CustomTransitionPage<void>(
+  return _SessionPanePage(
     key: pageKey,
     transitionDuration: skipsEntryTransition ? Duration.zero : duration,
     reverseTransitionDuration: duration,
-    transitionsBuilder: _sessionPaneTransitions,
     child: ImperativePaneRouteScope(isImperative: isImperative, child: child),
   );
+}
+
+/// A session pane page. A page pushed over it moves it aside as the platform's
+/// pages do, but one that leaves it showing below, such as a question page
+/// sliding up over it, leaves it where it is.
+class const _SessionPanePage({
+  required super.key,
+  required super.transitionDuration,
+  required super.reverseTransitionDuration,
+  required super.child,
+}) extends CustomTransitionPage<void> {
+  this : super(transitionsBuilder: _sessionPaneTransitions);
+
+  @override
+  Route<void> createRoute(BuildContext context) => _SessionPaneRoute(settings: this);
+}
+
+class _SessionPaneRoute({required super.settings}) extends PageRoute<void> {
+  _SessionPanePage get _page => switch (settings) {
+    final _SessionPanePage page => page,
+    _ => throw StateError("A session pane route shows a _SessionPanePage"),
+  };
+
+  @override
+  Duration get transitionDuration => _page.transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => _page.reverseTransitionDuration;
+
+  @override
+  Color? get barrierColor => null;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  bool get maintainState => true;
+
+  /// Only a page that covers this one moves it aside: a translucent route
+  /// shows it, so moving it would shift it under the user's eyes and bare the
+  /// strip it slid away from.
+  @override
+  bool canTransitionTo(TransitionRoute<dynamic> nextRoute) => nextRoute is PageRoute && nextRoute.opaque;
+
+  @override
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+    return Semantics(scopesRoute: true, explicitChildNodes: true, child: _page.child);
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => _page.transitionsBuilder(context, animation, secondaryAnimation, child);
 }
 
 /// Beside the sidebar a pane page fades; as a page of its own it moves as the

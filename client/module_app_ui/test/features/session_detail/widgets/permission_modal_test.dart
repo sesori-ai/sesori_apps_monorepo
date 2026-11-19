@@ -174,17 +174,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // Taps by the keys integration tests use, so the touch layout keeps them.
   for (final replyCase in const [
-    (label: "Don’t allow", reply: PermissionReply.reject),
-    (label: "Allow", reply: PermissionReply.once),
-    (label: "Always approve", reply: PermissionReply.always),
+    (label: "Don’t allow", key: Key("permission-reject"), reply: PermissionReply.reject),
+    (label: "Allow", key: Key("permission-allow"), reply: PermissionReply.once),
+    (label: "Always approve", key: Key("permission-always"), reply: PermissionReply.always),
   ]) {
     testWidgets("forwards ${replyCase.label} to the owning child without changing scope", (tester) async {
       final capture = _ReplyCapture();
       final router = _createRouter(permission: _permission, capture: capture);
       await tester.pumpWidget(_buildApp(router: router));
       await _openPermissionModal(tester);
-      await tester.tap(find.widgetWithText(PregoButtonsSolid, replyCase.label));
+      expect(tester.widget<PregoButtonsSolid>(find.byKey(replyCase.key)).label, replyCase.label);
+      await tester.tap(find.byKey(replyCase.key));
       await tester.pumpAndSettle();
 
       expect(capture.requestId, _permission.requestID);

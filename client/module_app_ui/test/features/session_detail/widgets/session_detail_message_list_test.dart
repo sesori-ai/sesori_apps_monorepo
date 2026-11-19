@@ -2,10 +2,12 @@ import "dart:async";
 import "dart:convert";
 import "dart:math" as math;
 
+import "package:bloc_test/bloc_test.dart";
 import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
@@ -599,6 +601,7 @@ Future<void> _pumpPointerTurns(
     PregoInteractionScope(
       mode: PregoInteractionMode.pointer,
       child: _presented(
+        createPendingPageCubit: _unusedPage,
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -611,27 +614,36 @@ Future<void> _pumpPointerTurns(
   await tester.pumpAndSettle();
 }
 
+class _MockPendingPageCubit() extends MockCubit<PendingPageState> implements PendingPageCubit;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+PendingPageCubit _unusedPage({required String requestId, required String sessionId}) =>
+    throw StateError("Unused fixture page");
+
 /// [child] on a session page, for rows that read its presentation scope.
-Widget _presented({required Widget child}) => SessionDetailPresentationScope(
-  messageImageRepository: _UnpreviewedImageRepository.new,
-  imageSaver: () => throw UnimplementedError("Saving images is not under test"),
-  imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
-  imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
-  sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
-  createExternalActionCubit: ({required requestId, required sessionId}) =>
-      throw UnimplementedError("External actions are not under test"),
-  createPendingFormCubit: ({required requestId, required sessionId}) =>
-      throw UnimplementedError("Forms are not under test"),
-  createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
-  canShareImages: false,
-  openExternalLink: ({required url, required mode}) async => false,
-  openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-  returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-  openHarnessSettings: () {},
-  openBridgeSettings: () {},
-  openSideChat: null,
-  child: child,
-);
+Widget _presented({required PendingPageCubitFactory createPendingPageCubit, required Widget child}) =>
+    SessionDetailPresentationScope(
+      messageImageRepository: _UnpreviewedImageRepository.new,
+      imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+      imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+      imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+      sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+      createExternalActionCubit: ({required requestId, required sessionId}) =>
+          throw UnimplementedError("External actions are not under test"),
+      createPendingPageCubit: createPendingPageCubit,
+      createPendingFormCubit: ({required requestId, required sessionId}) =>
+          throw UnimplementedError("Forms are not under test"),
+      createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+      canShareImages: false,
+      openExternalLink: ({required url, required mode}) async => false,
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+      openHarnessSettings: () {},
+      openBridgeSettings: () {},
+      openSideChat: null,
+      child: child,
+    );
 
 /// Previews no attachment, so an image keeps its placeholder: a tile the size
 /// its preview takes.
@@ -1795,6 +1807,78 @@ void main() {
     expect(find.text("Future sender"), findsOneWidget);
   });
 
+  testWidgets("a Sesori notice about a page reopens it on tap; a notice without one is no button", (tester) async {
+    final session = _MockSessionDetailCubit();
+    whenListen(
+      session,
+      const Stream<SessionDetailState>.empty(),
+      initialState: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+    );
+    final page = _MockPendingPageCubit();
+    whenListen(page, const Stream<PendingPageState>.empty(), initialState: const PageMissing());
+    final opened = <({String requestId, String sessionId})>[];
+    const answered = MessageWithParts(
+      info: Message.assistant(
+        id: "answered",
+        // The root session the notice sits on, not the parts' session.
+        sessionID: "session-root",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        sender: MessageSender.sesori,
+        time: null,
+      ),
+      parts: [
+        MessagePart.text(
+          id: "answered-part",
+          sessionID: "session-1",
+          messageID: "answered",
+          text: "You answered “Release plan”.",
+          noticePageRequestId: "sesori-page-fixture",
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      BlocProvider<SessionDetailCubit>.value(
+        value: session,
+        child: _presented(
+          createPendingPageCubit: ({required requestId, required sessionId}) {
+            opened.add((requestId: requestId, sessionId: sessionId));
+            return page;
+          },
+          child: _SessionDetailMessageListHarness(
+            initialMessages: [
+              _automatedMessage(messageId: "plain", text: "You allowed pausing it.", sender: MessageSender.sesori),
+              answered,
+            ],
+            initialStreamingText: const {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Finder buttonAround(String text) => find.ancestor(
+      of: find.text(text),
+      matching: find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.button ?? false)),
+    );
+
+    expect(buttonAround("You allowed pausing it."), findsNothing);
+    expect(buttonAround("You answered “Release plan”."), findsOneWidget);
+    expect(find.byIcon(TablerRegular.chevron_right), findsOneWidget);
+
+    await tester.tap(find.text("You allowed pausing it."));
+    await tester.pumpAndSettle();
+    expect(opened, isEmpty);
+    expect(find.byType(QuestionPageScreen), findsNothing);
+
+    // The card takes the tap, around content that doesn't hit-test on Android.
+    await tester.tap(find.widgetWithText(SystemMessageCard, "You answered “Release plan”."));
+    await tester.pumpAndSettle();
+    expect(opened, [(requestId: "sesori-page-fixture", sessionId: "session-root")]);
+    // The lookup decides what the page shows; a page that is gone says so.
+    expect(find.text("This page is no longer available."), findsOneWidget);
+  });
+
   testWidgets(
     "an Automation card shows a lone step's row; a turn and a card of two steps, even split by text, keep their counts",
     (
@@ -2522,6 +2606,7 @@ void main() {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _presented(
+        createPendingPageCubit: _unusedPage,
         child: _SessionDetailMessageListHarness(
           key: harnessKey,
           initialMessages: [
@@ -2601,6 +2686,7 @@ void main() {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _presented(
+        createPendingPageCubit: _unusedPage,
         child: _SessionDetailMessageListHarness(
           key: harnessKey,
           initialMessages: [_message(messageId: "assistant-0", role: "assistant", text: "Earlier reply")],
@@ -7927,6 +8013,7 @@ void main() {
         PregoInteractionScope(
           mode: PregoInteractionMode.pointer,
           child: _presented(
+            createPendingPageCubit: _unusedPage,
             child: _SessionDetailMessageListHarness(
               initialMessages: [
                 _message(messageId: "prompt", role: "user", text: "Fix the build"),

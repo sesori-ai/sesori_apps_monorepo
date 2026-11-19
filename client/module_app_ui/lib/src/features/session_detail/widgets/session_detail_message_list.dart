@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../session_detail_presentation_scope.dart";
 
 import "assistant_message_card.dart";
 import "error_message_card.dart";
@@ -1879,6 +1880,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           blocks: transcript.blocksFor(messageId: id),
           streamingText: streamingText,
           createdAtMs: createdAtMs,
+          // A notice about an agent's page reopens it; the page's lookup says
+          // whether it is still there. The notice sits on the session the page
+          // shows on, which the lookup accepts.
+          onTap: switch (message.parts
+              .whereType<MessagePartText>()
+              .map((p) => p.noticePageRequestId)
+              .nonNulls
+              .firstOrNull) {
+            final requestId? => () => unawaited(
+              SessionDetailPresentationScope.read(
+                context,
+              ).openPage(context: context, requestId: requestId, sessionId: message.info.sessionID, title: null),
+            ),
+            _ => null,
+          },
         ),
       ),
       final MessageError error => _agentRow(
