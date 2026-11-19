@@ -205,18 +205,28 @@ class const QuestionPageQuestion({
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
           ),
         },
-        if (question.kind case PageSingleChoice() || PageMultipleChoice()) ...[
-          const SizedBox(height: PregoSpacing.xs),
-          QuestionPageTextField(
-            key: Key("question-page-note-${question.id}"),
-            controller: noteController,
-            hint: enabled ? loc.questionPageNoteHint : loc.questionPageNoNote,
-            enabled: enabled,
-            isFlagged: false,
-            minLines: 1,
-            onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
+        // A read-only page shows a note only when one was written; the row
+        // folds away when the page settles while open.
+        if (question.kind case PageSingleChoice() || PageMultipleChoice())
+          AnimatedSize(
+            duration: context.isReducedMotion ? Duration.zero : _issueDuration,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: enabled || answer?.note != null
+                ? Padding(
+                    padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+                    child: QuestionPageTextField(
+                      key: Key("question-page-note-${question.id}"),
+                      controller: noteController,
+                      hint: loc.questionPageNoteHint,
+                      enabled: enabled,
+                      isFlagged: false,
+                      minLines: 1,
+                      onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
-        ],
       ],
     );
   }

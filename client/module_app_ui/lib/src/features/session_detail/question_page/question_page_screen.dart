@@ -476,20 +476,34 @@ class const _PageBody({
                     ),
                   ],
                 ],
-                const SizedBox(height: PregoSpacing.x4l),
-                Text(
-                  loc.questionPageClosingNoteTitle,
-                  style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-                ),
-                const SizedBox(height: PregoSpacing.md),
-                QuestionPageTextField(
-                  key: const Key("question-page-closing-note"),
-                  controller: closingNote,
-                  hint: enabled ? loc.questionPageClosingNoteHint : loc.questionPageNoNote,
-                  enabled: enabled,
-                  isFlagged: false,
-                  minLines: 2,
-                  onChanged: (note) => cubit.setNote(note: note),
+                // A read-only page shows the closing note only when one was
+                // written; it folds away when the page settles while open.
+                AnimatedSize(
+                  duration: context.isReducedMotion ? Duration.zero : _contentDuration,
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: enabled || draft.note != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: PregoSpacing.x4l),
+                            Text(
+                              loc.questionPageClosingNoteTitle,
+                              style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+                            ),
+                            const SizedBox(height: PregoSpacing.md),
+                            QuestionPageTextField(
+                              key: const Key("question-page-closing-note"),
+                              controller: closingNote,
+                              hint: loc.questionPageClosingNoteHint,
+                              enabled: enabled,
+                              isFlagged: false,
+                              minLines: 2,
+                              onChanged: (note) => cubit.setNote(note: note),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: double.infinity),
                 ),
               ],
             ),

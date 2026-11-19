@@ -8323,12 +8323,6 @@ abstract class AppLocalizations {
   /// **'Add a note (optional)'**
   String get questionPageNoteHint;
 
-  /// No description provided for @questionPageNoNote.
-  ///
-  /// In en, this message translates to:
-  /// **'No note'**
-  String get questionPageNoNote;
-
   /// No description provided for @questionPageClosingNoteTitle.
   ///
   /// In en, this message translates to:

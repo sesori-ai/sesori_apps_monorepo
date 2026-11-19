@@ -307,6 +307,8 @@ void main() {
       expect(find.byKey(const Key("question-page-menu")), findsNothing);
       expect(optionIcon(tester, "all"), TablerRegular.circle_dot);
       expect(find.text("Watch EU"), findsOneWidget);
+      expect(find.byKey(const Key("question-page-note-plan")), findsOneWidget);
+      expect(find.byKey(const Key("question-page-note-checks")), findsNothing);
       expect(find.text("Error rate"), findsOneWidget);
       expect(find.text("Thanks"), findsOneWidget);
       for (final field in tester.widgetList<TextField>(find.byType(TextField))) {
@@ -332,6 +334,9 @@ void main() {
     expect(tester.getRect(find.text("Rollout plan")), before);
     expect(find.text("Answered on another device"), findsOneWidget);
     expect(optionIcon(tester, "canary"), TablerRegular.circle_dot);
+    // Empty notes fold away once the page is read-only.
+    expect(find.byKey(const Key("question-page-note-plan")), findsNothing);
+    expect(find.byKey(const Key("question-page-closing-note")), findsNothing);
   });
 
   testWidgets("a dismiss refused because the page settled elsewhere turns read-only without an error", (tester) async {

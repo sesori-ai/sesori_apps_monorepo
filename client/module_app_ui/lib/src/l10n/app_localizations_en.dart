@@ -4802,9 +4802,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionPageNoteHint => 'Add a note (optional)';
 
   @override
-  String get questionPageNoNote => 'No note';
-
-  @override
   String get questionPageClosingNoteTitle => 'Anything else?';
 
   @override

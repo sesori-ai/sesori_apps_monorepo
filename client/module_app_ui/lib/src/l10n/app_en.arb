@@ -3252,7 +3252,6 @@
   "questionPageAnswerHint": "Type your answer",
   "questionPageNoAnswer": "No answer",
   "questionPageNoteHint": "Add a note (optional)",
-  "questionPageNoNote": "No note",
   "questionPageClosingNoteTitle": "Anything else?",
   "questionPageClosingNoteHint": "Anything the agent should know (optional)",
   "questionPageSubmitFailed": "Couldn't send your answers. Try again.",
