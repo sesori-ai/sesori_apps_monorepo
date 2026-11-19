@@ -211,28 +211,47 @@ class const QuestionPageQuestion({
         },
         // The row folds away when the page settles while open.
         if (question.kind case PageSingleChoice() || PageMultipleChoice())
-          AnimatedSize(
-            duration: context.isReducedMotion ? Duration.zero : _issueDuration,
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: showsNote
-                ? Padding(
-                    padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
-                    child: QuestionPageTextField(
-                      key: Key("question-page-note-${question.id}"),
-                      controller: noteController,
-                      hint: loc.questionPageNoteHint,
-                      enabled: enabled,
-                      isFlagged: false,
-                      minLines: 1,
-                      onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
-                    ),
-                  )
-                : const SizedBox(width: double.infinity),
+          QuestionPageFold(
+            shown: showsNote,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+              child: QuestionPageTextField(
+                key: Key("question-page-note-${question.id}"),
+                controller: noteController,
+                hint: loc.questionPageNoteHint,
+                enabled: enabled,
+                isFlagged: false,
+                minLines: 1,
+                onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
+              ),
+            ),
           ),
       ],
     );
   }
+}
+
+/// Shows [child] while [shown]. It fades as it folds away and as it unfolds,
+/// so its content never vanishes in one frame; reduced motion swaps it at once.
+class const QuestionPageFold({super.key, required final bool shown, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: context.isReducedMotion ? Duration.zero : _issueDuration,
+    // Eased at both ends both ways, so a fold starts gently enough for its
+    // fade to show; a steep curve run backwards spends half of it in a frame.
+    switchInCurve: Curves.easeInOutCubic,
+    switchOutCurve: Curves.easeInOutCubic,
+    layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
+    transitionBuilder: (child, animation) => SizeTransition(
+      sizeFactor: animation,
+      alignment: Alignment.topCenter,
+      child: FadeTransition(opacity: animation, child: child),
+    ),
+    child: shown
+        ? KeyedSubtree(key: const ValueKey(true), child: child)
+        : const SizedBox(key: ValueKey(false), width: double.infinity),
+  );
 }
 
 class const _Options({

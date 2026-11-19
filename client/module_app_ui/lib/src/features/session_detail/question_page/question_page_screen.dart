@@ -32,7 +32,10 @@ const _wideOverlayGap = PregoSpacing.x4l;
 /// answer or has settled: its cubit's lookup decides how it opens. Its cubit
 /// comes from [scope] and lives as long as the route. The page names the
 /// session [context] shows as its source, and [title] until its lookup names
-/// it. Open it through [SessionDetailPresentationScope.openPage].
+/// it. Once its own Submit or dismiss is accepted, the page tells that session's cubit
+/// the request settled, so its needs-you card never comes back while the page
+/// leaves, and slides down. Open it through
+/// [SessionDetailPresentationScope.openPage].
 Future<void> showQuestionPage({
   required BuildContext context,
   required SessionDetailPresentationScope scope,
@@ -48,7 +51,8 @@ Future<void> showQuestionPage({
   final reducedMotion = context.isReducedMotion;
   // ignore: no_slop_linter/avoid_navigator_of, the page is a transient route over the session page
   final navigator = Navigator.of(context);
-  final route = PageRouteBuilder<void>(
+  late final PageRouteBuilder<void> route;
+  route = PageRouteBuilder<void>(
     // The session stays drawn below: the wide overlay shows it around the page.
     opaque: false,
     transitionDuration: reducedMotion ? Duration.zero : _openDuration,
@@ -64,7 +68,21 @@ Future<void> showQuestionPage({
         value: sessionCubit,
         child: BlocProvider(
           create: (_) => scope.createPendingPageCubit(requestId: requestId, sessionId: sessionId),
-          child: QuestionPageScreen(title: title, source: source, onClose: navigator.pop),
+          child: QuestionPageScreen(
+            title: title,
+            source: source,
+            onClose: navigator.pop,
+            onSettledHere: () {
+              sessionCubit.acknowledgeQuestionSettlement(requestId: requestId);
+              // The page may already be leaving, closed while its Submit was in
+              // flight, or sit under a route it opened, such as a file preview.
+              if (route.isCurrent) {
+                navigator.pop();
+              } else if (route.isActive) {
+                navigator.removeRoute(route);
+              }
+            },
+          ),
         ),
       ),
     ),
@@ -147,6 +165,9 @@ class const QuestionPageScreen({
   /// The session the page came from, such as "Claude Code · Fix the login".
   required final String? source,
   required final VoidCallback onClose,
+
+  /// Closes the page once the bridge accepts its Submit or dismiss.
+  required final VoidCallback onSettledHere,
 }) extends StatefulWidget {
   @override
   State<QuestionPageScreen> createState() => _QuestionPageScreenState();
@@ -180,6 +201,23 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
     required String? text,
   }) => fields[questionId] ??= TextEditingController(text: text);
 
+  /// Dismisses the page, asking first when the user has picked or written
+  /// something that dismissing would throw away.
+  Future<void> _dismiss() async {
+    final cubit = context.read<PendingPageCubit>();
+    if (cubit.state case PageEditing(:final draft) when draft.hasInput) {
+      // The question is the sheet's own title, which wraps; a modal's
+      // header would cut it to one line.
+      final topInset = MediaQuery.paddingOf(context).top;
+      final confirmed = await showPregoModalRoute<bool>(
+        context: context,
+        builder: (_) => _DismissConfirmation(topInset: topInset),
+      );
+      if (!mounted || confirmed != true) return;
+    }
+    await cubit.dismiss();
+  }
+
   /// Brings the first question Submit flagged into view.
   void _scrollToIssue({required List<String> questionIds}) {
     final target = switch (questionIds.firstOrNull) {
@@ -201,16 +239,27 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
     final prego = context.prego;
     final state = context.watch<PendingPageCubit>().state;
     final page = switch (state) {
-      PageEditing(:final page) || PageSubmitting(:final page) || PageReadOnly(:final page) => page,
+      PageEditing(:final page) ||
+      PageSubmitting(:final page) ||
+      PageSettledHere(:final page) ||
+      PageReadOnly(:final page) => page,
       PageLoading() || PageMissing() || PageUnsupported() || PageLoadFailed() => null,
     };
     final title = _title = page?.title ?? _title;
     return BlocListener<PendingPageCubit, PendingPageState>(
       listenWhen: (previous, current) =>
-          previous is PageSubmitting && current is PageEditing && current.feedback is PageFeedbackInvalid,
+          current is PageSettledHere ||
+          (previous is PageSubmitting && current is PageEditing && current.feedback is PageFeedbackInvalid),
       listener: (_, state) {
-        if (state case PageEditing(feedback: PageFeedbackInvalid(:final questionIds))) {
-          _scrollToIssue(questionIds: questionIds);
+        switch (state) {
+          // Only an accepted Submit or dismiss closes the page; any other
+          // outcome keeps it open to say why.
+          case PageSettledHere():
+            widget.onSettledHere();
+          case PageEditing(feedback: PageFeedbackInvalid(:final questionIds)):
+            _scrollToIssue(questionIds: questionIds);
+          case _:
+            break;
         }
       },
       child: CallbackShortcuts(
@@ -229,10 +278,10 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                   source: widget.source,
                   onClose: widget.onClose,
                   onDismiss: switch (state) {
-                    PageEditing() => context.read<PendingPageCubit>().dismiss,
+                    PageEditing() => _dismiss,
                     _ => null,
                   },
-                  showsMenu: state is PageEditing || state is PageSubmitting,
+                  showsMenu: state is PageEditing || state is PageSubmitting || state is PageSettledHere,
                 ),
                 Divider(height: 1, thickness: 1, color: prego.colors.borderSecondary),
                 Expanded(
@@ -258,6 +307,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                           ),
                           PageEditing(:final page, :final draft) ||
                           PageSubmitting(:final page, :final draft) ||
+                          PageSettledHere(:final page, :final draft) ||
                           PageReadOnly(:final page, :final draft) => _PageBody(
                             page: page,
                             draft: draft,
@@ -400,6 +450,39 @@ class const _Header({
   }
 }
 
+/// The dismiss question with Cancel and a destructive Dismiss. Pops `true`
+/// only for Dismiss.
+class const _DismissConfirmation({required final double topInset}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return PregoActionSheet(
+      title: loc.questionPageDismissConfirmTitle,
+      topInset: topInset,
+      actions: PregoSheetActions(
+        secondary: PregoButtonsSolid(
+          key: const Key("question-page-dismiss-cancel"),
+          label: loc.questionPageDismissConfirmCancel,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        primary: PregoButtonsSolid(
+          key: const Key("question-page-dismiss-confirm"),
+          label: loc.questionPageDismissConfirmAction,
+          hierarchy: PregoButtonsSolidHierarchy.primary,
+          type: PregoButtonsSolidType.destructive,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ),
+      child: const SizedBox.shrink(),
+    );
+  }
+}
+
 class const _Message({required final String text, required final VoidCallback? onRetry}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -503,32 +586,28 @@ class const _PageBody({
                 // A read-only page shows the closing note only when one was
                 // written; a submitting page keeps it so nothing moves. It
                 // folds away when the page settles while open.
-                AnimatedSize(
-                  duration: context.isReducedMotion ? Duration.zero : _contentDuration,
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: !readOnly || draft.note != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: PregoSpacing.x4l),
-                            Text(
-                              loc.questionPageClosingNoteTitle,
-                              style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-                            ),
-                            const SizedBox(height: PregoSpacing.md),
-                            QuestionPageTextField(
-                              key: const Key("question-page-closing-note"),
-                              controller: closingNote,
-                              hint: loc.questionPageClosingNoteHint,
-                              enabled: enabled,
-                              isFlagged: false,
-                              minLines: 2,
-                              onChanged: (note) => cubit.setNote(note: note),
-                            ),
-                          ],
-                        )
-                      : const SizedBox(width: double.infinity),
+                QuestionPageFold(
+                  shown: !readOnly || draft.note != null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: PregoSpacing.x4l),
+                      Text(
+                        loc.questionPageClosingNoteTitle,
+                        style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+                      ),
+                      const SizedBox(height: PregoSpacing.md),
+                      QuestionPageTextField(
+                        key: const Key("question-page-closing-note"),
+                        controller: closingNote,
+                        hint: loc.questionPageClosingNoteHint,
+                        enabled: enabled,
+                        isFlagged: false,
+                        minLines: 2,
+                        onChanged: (note) => cubit.setNote(note: note),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -620,7 +699,8 @@ class const _Bar({
             hierarchy: PregoButtonsSolidHierarchy.primary,
             size: PregoButtonsSolidSize.md,
             isLoading: switch (state) {
-              PageSubmitting(action: PageAction.submit) => true,
+              // A sent page leaves looking as it did while sending.
+              PageSubmitting(action: PageAction.submit) || PageSettledHere(action: PageAction.submit) => true,
               _ => false,
             },
             onPressed: state is PageEditing ? cubit.submit : null,
@@ -672,6 +752,7 @@ class const _Bar({
       ),
       PageEditing() ||
       PageSubmitting() ||
+      PageSettledHere() ||
       PageReadOnly() ||
       PageLoading() ||
       PageMissing() ||

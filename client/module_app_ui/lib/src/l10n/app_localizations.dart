@@ -8203,6 +8203,24 @@ abstract class AppLocalizations {
   /// **'Dismiss page'**
   String get questionPageDismiss;
 
+  /// Title of the confirmation shown when the user taps Dismiss page on a question page where they have already picked or written something. Dismissing tells the agent the page was closed and discards those picks.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss without sending your answers?'**
+  String get questionPageDismissConfirmTitle;
+
+  /// Destructive button of the dismiss confirmation on a question page. It closes the page without answering and tells the agent so.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get questionPageDismissConfirmAction;
+
+  /// Button of the dismiss confirmation on a question page that keeps the page open with everything the user entered.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get questionPageDismissConfirmCancel;
+
   /// Second header line of an agent's question page, naming the session that sent it, such as 'From Claude Code · Fix the login'.
   ///
   /// In en, this message translates to:

@@ -8,6 +8,9 @@ final class PageDraft({required Map<String, PageAnswer> answers, required final 
 
   static final PageDraft empty = PageDraft(answers: const {}, note: null);
 
+  /// Whether the user has picked or written anything on the page.
+  bool get hasInput => answers.isNotEmpty || note != null;
+
   /// A null [optionId] clears a single-choice pick.
   PageDraft withChoice({required String questionId, required String? optionId}) => _withAnswer(
     questionId: questionId,
