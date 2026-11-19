@@ -2,9 +2,11 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../platform/external_link_opener.dart";
+import "question_page/question_page_screen.dart";
 import "widgets/external_action_modal.dart";
 import "widgets/pending_form_modal.dart";
 
+export "question_page/question_page_screen.dart" show PendingPageCubitFactory;
 export "widgets/external_action_modal.dart" show SessionExternalActionCubitFactory;
 export "widgets/pending_form_modal.dart" show PendingFormCubitFactory;
 
@@ -24,6 +26,9 @@ class const SessionDetailPresentationScope({
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final PendingFormCubitFactory createPendingFormCubit,
+
+  /// Opens an agent's question page, for editing or read-only.
+  required final PendingPageCubitFactory createPendingPageCubit,
 
   /// Loads one file's preview from the connected bridge.
   required final FilePreviewCubitFactory createFilePreviewCubit,
@@ -54,6 +59,12 @@ class const SessionDetailPresentationScope({
     return scope ?? (throw StateError("SessionDetailPresentationScope was not found in the widget tree"));
   }
 
+  /// Slides the agent's question page [requestId] up over the session at
+  /// [context], under this scope. The page's lookup decides whether it opens
+  /// for editing or read-only, or says it no longer exists.
+  Future<void> openPage({required BuildContext context, required String requestId, required String sessionId}) =>
+      showQuestionPage(context: context, scope: this, requestId: requestId, sessionId: sessionId);
+
   /// This scope again around [child], for a route pushed from below it: the
   /// route's content does not inherit the session page's scope. [openSession]
   /// lets the route close itself before it navigates away.
@@ -68,6 +79,7 @@ class const SessionDetailPresentationScope({
     sessionRepository: sessionRepository,
     createExternalActionCubit: createExternalActionCubit,
     createPendingFormCubit: createPendingFormCubit,
+    createPendingPageCubit: createPendingPageCubit,
     createFilePreviewCubit: createFilePreviewCubit,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
@@ -88,6 +100,7 @@ class const SessionDetailPresentationScope({
       sessionRepository != oldWidget.sessionRepository ||
       createExternalActionCubit != oldWidget.createExternalActionCubit ||
       createPendingFormCubit != oldWidget.createPendingFormCubit ||
+      createPendingPageCubit != oldWidget.createPendingPageCubit ||
       createFilePreviewCubit != oldWidget.createFilePreviewCubit ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||

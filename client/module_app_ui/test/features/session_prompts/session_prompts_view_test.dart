@@ -114,6 +114,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
         imageClipboard: _unused,
         imageSharer: _unused,
         sessionRepository: () => sessionRepository,
+        createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
         createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
         createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
         createExternalActionCubit: ({required requestId, required sessionId}) =>

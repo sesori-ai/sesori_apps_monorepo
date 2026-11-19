@@ -158,6 +158,14 @@ class const _MobileSessionDetailBody({
         requestId: requestId,
         sessionId: sessionId,
       ),
+      createPendingPageCubit: ({required requestId, required sessionId}) => PendingPageCubit(
+        service: getIt<PendingPageService>(),
+        drafts: getIt<PageDraftRepository>(),
+        filePreviews: getIt<FilePreviewRepository>(),
+        connectionService: getIt<ConnectionService>(),
+        requestId: requestId,
+        sessionId: sessionId,
+      ),
       createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
         service: getIt<SessionExternalActionService>(),
         connectionService: getIt<ConnectionService>(),

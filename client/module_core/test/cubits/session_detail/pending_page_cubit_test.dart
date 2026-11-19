@@ -239,6 +239,21 @@ void main() {
     expect(reportedEvents(), 1);
   });
 
+  test("a dismiss the bridge refuses for a page settled elsewhere turns read-only without the failure", () async {
+    when(() => repository.rejectQuestion(requestId: page.id, sessionId: "owner"))
+        .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    final cubit = create();
+    await editing(cubit);
+    lookupAnswers(const PageLookupResponse.dismissed(page: page));
+    final states = <PendingPageState>[];
+    final sub = cubit.stream.listen(states.add);
+    await cubit.dismiss();
+    await Future<void>.delayed(Duration.zero);
+    await sub.cancel();
+    expect(states, [isA<PageSubmitting>(), isA<PageReadOnly>()]);
+    expect((cubit.state as PageReadOnly).reason, PageReadOnlyReason.dismissed);
+  });
+
   test("an answered page opens read-only with its answers filled in", () async {
     drafts.save(
       requestId: page.id,

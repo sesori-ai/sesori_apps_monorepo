@@ -582,7 +582,8 @@ authored lines, with generated lines listed separately.
 | 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | In PR #2816 |
 | 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | In PR #2817 |
 | 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | In PR #2815 |
-| 7/10 | 🚧 Client page screen: screen and widgets, image boxes, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording | ~1,000–1,300 | 6 | Planned |
+| 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | In PR #2818 |
+| 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Planned |
 | 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | Planned |
 | 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | Planned |
 | 10/10 | Headless iOS simulator and live-harness verification, then retire the plan | docs | 9 | Planned |

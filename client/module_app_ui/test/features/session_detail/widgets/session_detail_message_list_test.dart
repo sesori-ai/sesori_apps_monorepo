@@ -620,6 +620,7 @@ Widget _presented({required Widget child}) => SessionDetailPresentationScope(
   sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
   createExternalActionCubit: ({required requestId, required sessionId}) =>
       throw UnimplementedError("External actions are not under test"),
+  createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
   createPendingFormCubit: ({required requestId, required sessionId}) =>
       throw UnimplementedError("Forms are not under test"),
   createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),

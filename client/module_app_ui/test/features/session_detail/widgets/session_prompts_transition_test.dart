@@ -64,6 +64,8 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
             imageClipboard: _MockImageClipboard.new,
             imageSharer: _MockImageSharer.new,
             sessionRepository: _MockSessionRepository.new,
+            createPendingPageCubit: ({required requestId, required sessionId}) =>
+                throw StateError("Unused fixture page"),
             createPendingFormCubit: ({required requestId, required sessionId}) =>
                 throw UnimplementedError("Forms are not under test"),
             createFilePreviewCubit: ({required reference}) =>

@@ -103,17 +103,11 @@ class PendingPageCubit({
       // ApiError is an expected transport failure despite extending Error.
       // ignore: avoid_catching_errors
     } on ApiError catch (error) {
-      if (!isClosed) {
-        emit(
-          _editing(
-            from: current,
-            feedback: PageFeedbackFailed(action: PageAction.submit, cause: error),
-          ),
-        );
-        // The page may have settled while this request failed, and a reconnect
-        // during the request was not acted on, so look again.
-        await _lookup();
-      }
+      if (isClosed) return;
+      await _recover(
+        from: current,
+        failure: PageFeedbackFailed(action: PageAction.submit, cause: error),
+      );
     }
   }
 
@@ -127,17 +121,11 @@ class PendingPageCubit({
       // ApiError is an expected transport failure despite extending Error.
       // ignore: avoid_catching_errors
     } on ApiError catch (error) {
-      if (!isClosed) {
-        emit(
-          _editing(
-            from: current,
-            feedback: PageFeedbackFailed(action: PageAction.dismiss, cause: error),
-          ),
-        );
-        // The page may have settled while this request failed, and a reconnect
-        // during the request was not acted on, so look again.
-        await _lookup();
-      }
+      if (isClosed) return;
+      await _recover(
+        from: current,
+        failure: PageFeedbackFailed(action: PageAction.dismiss, cause: error),
+      );
     }
   }
 
@@ -179,6 +167,26 @@ class PendingPageCubit({
         case PageSubmitting() || PageReadOnly() || PageMissing() || PageUnsupported():
           break;
       }
+    }
+  }
+
+  /// After a failed submit or dismiss, the page may have settled meanwhile (the
+  /// bridge refuses a settled page), and a reconnect during the request was not
+  /// acted on, so look again before showing [failure]. The page stays
+  /// submitting until then, so a page settled elsewhere turns read-only
+  /// without flashing the failure first.
+  Future<void> _recover({required PageEditing from, required PageFeedbackFailed failure}) async {
+    final failed = _editing(from: from, feedback: failure);
+    try {
+      final response = await _service.lookup(requestId: requestId, sessionId: sessionId);
+      if (isClosed) return;
+      emit(_afterLookup(response: response, current: failed) ?? failed);
+      // ApiError is an expected transport failure despite extending Error.
+      // ignore: avoid_catching_errors
+    } on ApiError catch (error) {
+      if (isClosed) return;
+      logw("Failed to look page $requestId up after a failed ${failure.action.name}", error);
+      emit(failed);
     }
   }
 

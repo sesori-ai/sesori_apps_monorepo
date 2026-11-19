@@ -11,6 +11,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../platform/external_link_opener.dart";
 import "../../../widgets/markdown_styles.dart";
 import "pending_request_auto_dismiss.dart";
+import "request_option_tile.dart";
 
 /// Modal that presents all server-driven questions within a single
 /// [SesoriQuestionAsked] event, one at a time.
@@ -440,11 +441,13 @@ class _QuestionModalState() extends State<QuestionModal> {
 
                             // Option tiles
                             ...info.options.map(
-                              (option) => _OptionTile(
-                                option: option,
+                              (option) => RequestOptionTile(
+                                label: option.label,
+                                description: option.description.isEmpty ? null : option.description,
                                 isMultiple: info.multiple,
                                 isSelected: !draft.isDeclined && draft.selectedLabels.contains(option.label),
                                 onTap: () => _onOptionTap(label: option.label),
+                                badge: null,
                               ),
                             ),
 
@@ -827,95 +830,6 @@ class const _QuestionStep({
 }
 
 // -----------------------------------------------------------------------------
-// Option tile
-// -----------------------------------------------------------------------------
-
-class const _ChoiceTile({
-  required final Color color,
-  required final ShapeBorder shape,
-  required final VoidCallback onTap,
-  required final Widget child,
-  final Key? materialKey,
-  final double bottomSpacing = 0,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tile = Material(
-      key: materialKey,
-      color: color,
-      shape: shape,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        mouseCursor: WidgetStateMouseCursor.clickable,
-        customBorder: shape,
-        onTap: onTap,
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: child),
-      ),
-    );
-    return bottomSpacing == 0
-        ? tile
-        : Padding(
-            padding: EdgeInsetsDirectional.only(bottom: bottomSpacing),
-            child: tile,
-          );
-  }
-}
-
-class const _OptionTile({
-  required final QuestionOption option,
-  required final bool isMultiple,
-  required final bool isSelected,
-  required final VoidCallback onTap,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-
-    return _ChoiceTile(
-      bottomSpacing: 8,
-      // bgSurface1 so the card reads as raised against the sheet's
-      // bgSecondary surface (bgSecondary here would vanish into it).
-      color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(
-            isMultiple
-                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
-                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
-            color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: .start,
-              children: [
-                Text(
-                  option.label,
-                  style: prego.textTheme.textSm.bold.copyWith(
-                    fontWeight: .bold,
-                  ),
-                ),
-                if (option.description.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    option.description,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
 // Per-question decline tile
 // -----------------------------------------------------------------------------
 
@@ -931,7 +845,7 @@ class const _DeclineQuestionTile({
     return Semantics(
       button: true,
       selected: isSelected,
-      child: _ChoiceTile(
+      child: RequestChoiceTile(
         materialKey: const Key("decline-current-question"),
         color: isSelected ? prego.colors.bgQuaternary : prego.colors.bgSurface1,
         shape: RoundedRectangleBorder(

@@ -27,6 +27,7 @@ export "src/features/scheduled_tasks/scheduled_task_detail_view.dart";
 export "src/features/scheduled_tasks/scheduled_task_editor_view.dart";
 export "src/features/scheduled_tasks/scheduled_tasks_view.dart" show ScheduledPageExit, ScheduledTasksView;
 export "src/features/session_detail/composer_presentation_scope.dart";
+export "src/features/session_detail/question_page/question_page_screen.dart" show QuestionPageScreen;
 export "src/features/session_detail/session_auto_continuation_menu.dart";
 export "src/features/session_detail/session_detail_activity_owner.dart";
 export "src/features/session_detail/session_detail_presentation_scope.dart";

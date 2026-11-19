@@ -36,6 +36,8 @@ class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements 
 
 class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
+class _MockPendingPageCubit() extends MockCubit<PendingPageState> implements PendingPageCubit;
+
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 void _stubImagePick(MockComposerAttachmentDispatcher dispatcher, ComposerAttachment Function() image) {
@@ -84,6 +86,7 @@ Widget _buildApp({
   bool readOnly = false,
   SessionExternalActionCubitFactory? createExternalActionCubit,
   PendingFormCubitFactory? createPendingFormCubit,
+  PendingPageCubitFactory? createPendingPageCubit,
   SessionDetailPageChrome? pageChrome,
   SideChatOpener? openSideChat,
 }) {
@@ -116,6 +119,9 @@ Widget _buildApp({
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
             sessionRepository: MockSessionRepository.new,
+            createPendingPageCubit:
+                createPendingPageCubit ??
+                ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
             createPendingFormCubit:
                 createPendingFormCubit ??
                 ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
@@ -3177,6 +3183,60 @@ void main() {
     final card = find.byType(SessionDetailNeedsYouCard);
     expect(find.descendant(of: card, matching: find.text("Review")), findsOneWidget);
     expect(find.descendant(of: card, matching: find.text("Answer")), findsNothing);
+  });
+
+  testWidgets("a question page never opens by itself, and its card's Review opens it", (tester) async {
+    const page = SesoriQuestionAsked(
+      id: "sesori-page-1",
+      sessionID: "session-1",
+      displaySessionId: null,
+      interactionKind: QuestionInteractionKind.page,
+      questions: [
+        QuestionInfo(
+          question: "Pick a rollout plan",
+          header: "Pick a rollout plan",
+          options: [QuestionOption(label: "Cancel", description: "Needs an updated Sesori app")],
+        ),
+      ],
+    );
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(states.close);
+    final initial = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(initial);
+    whenListen(cubit, states.stream, initialState: initial);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    final pageCubit = _MockPendingPageCubit();
+    whenListen(pageCubit, const Stream<PendingPageState>.empty(), initialState: const PageLoading());
+    final opened = <(String, String)>[];
+
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        createPendingPageCubit: ({required requestId, required sessionId}) {
+          opened.add((requestId, sessionId));
+          return pageCubit;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final arrived = _loadedState(pendingQuestions: const [page], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(arrived);
+    states.add(arrived);
+    questions.add(page);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(QuestionPageScreen), findsNothing);
+    expect(opened, isEmpty);
+    final card = find.byType(SessionDetailNeedsYouCard);
+    expect(find.descendant(of: card, matching: find.text("1 pending request")), findsOneWidget);
+    expect(find.descendant(of: card, matching: find.text("Pick a rollout plan")), findsOneWidget);
+
+    await tester.tap(find.descendant(of: card, matching: find.text("Review")));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestionPageScreen), findsOneWidget);
+    expect(opened, [("sesori-page-1", "session-1")]);
   });
 
   for (final kind in [QuestionInteractionKind.externalAction, QuestionInteractionKind.form]) {
