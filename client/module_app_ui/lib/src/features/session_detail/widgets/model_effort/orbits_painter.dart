@@ -312,33 +312,27 @@ final class OrbitsPainter({
         size: size,
         stagger: OrbitsMotion.ringStagger(ringCount: ringCount, ringIndex: ringIndex),
         paint: () {
-          if (now == before || fade >= 1) {
-            _paintRing(canvas: canvas, ringIndex: ringIndex, choice: now);
-            _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null);
-            return;
+          void ring(OrbitChoice? choice) {
+            _paintRing(canvas: canvas, ringIndex: ringIndex, choice: choice);
+            _paintName(canvas: canvas, ringIndex: ringIndex, chosen: choice != null);
           }
-          // The new picture fades in over the old one, so what both share
-          // stays put.
-          _paintRing(canvas: canvas, ringIndex: ringIndex, choice: before);
-          _faded(
-            canvas: canvas,
-            opacity: fade,
-            paint: () => _paintRing(canvas: canvas, ringIndex: ringIndex, choice: now),
+
+          if (now == before || fade >= 1) return ring(now);
+          // A true cross-fade: the old picture at 1 - fade plus the new at
+          // fade, in their own layer. What both share stays put, and what
+          // only the old one has fades out.
+          canvas.saveLayer(null, Paint());
+          _faded(canvas: canvas, opacity: 1 - fade, paint: () => ring(before));
+          canvas.saveLayer(
+            null,
+            Paint()
+              ..color = Color.fromRGBO(0, 0, 0, fade)
+              ..blendMode = BlendMode.plus,
           );
-          if ((now == null) == (before == null)) {
-            _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null);
-            return;
-          }
-          _faded(
-            canvas: canvas,
-            opacity: 1 - fade,
-            paint: () => _paintName(canvas: canvas, ringIndex: ringIndex, chosen: before != null),
-          );
-          _faded(
-            canvas: canvas,
-            opacity: fade,
-            paint: () => _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null),
-          );
+          ring(now);
+          canvas
+            ..restore()
+            ..restore();
         },
       );
     }
