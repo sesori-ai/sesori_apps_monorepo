@@ -11,7 +11,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../session_detail_presentation_scope.dart";
-import "question_page_image.dart";
 import "question_page_question.dart";
 
 typedef PendingPageCubitFactory = PendingPageCubit Function({required String requestId, required String sessionId});
@@ -447,10 +446,6 @@ class const _PageBody({
                   ],
                   if (section.body case final body?) ...[
                     QuestionPageMarkdown(data: body),
-                    const SizedBox(height: PregoSpacing.md),
-                  ],
-                  for (final image in section.images) ...[
-                    QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
                     const SizedBox(height: PregoSpacing.md),
                   ],
                   for (final question in section.questions) ...[

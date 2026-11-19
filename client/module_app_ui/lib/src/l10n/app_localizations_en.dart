@@ -4818,7 +4818,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get questionPageUnknownResult => 'Sesori didn\'t understand the reply. Update the app and try again.';
-
-  @override
-  String get questionPageImageUnavailable => 'Image unavailable';
 }

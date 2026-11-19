@@ -3257,6 +3257,5 @@
   "questionPageClosingNoteHint": "Anything the agent should know (optional)",
   "questionPageSubmitFailed": "Couldn't send your answers. Try again.",
   "questionPageDismissFailed": "Couldn't dismiss the page. Try again.",
-  "questionPageUnknownResult": "Sesori didn't understand the reply. Update the app and try again.",
-  "questionPageImageUnavailable": "Image unavailable"
+  "questionPageUnknownResult": "Sesori didn't understand the reply. Update the app and try again."
 }
