@@ -13,6 +13,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../helpers/trackpad_overscroll.dart";
+
 SideChatExchange _exchange({required String id, required String question, required String answer}) =>
     SideChatExchange(id: id, question: question, answer: answer, answerNotice: null, askedAt: 1, answeredAt: 2);
 
@@ -329,4 +331,29 @@ void main() {
     expect(find.byKey(SideChatView.questionFieldKey), findsNothing);
     expect(find.byKey(SideChatView.newChatButtonKey), findsNothing);
   });
+
+  testWidgets(
+    "a trackpad overscroll stretches steadily while a copy button slides under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      when(() => repository.listSideChats(sessionId: any(named: "sessionId"))).thenAnswer(
+        (_) async => ApiResponse.success(
+          SideChatListResponse(
+            sideChats: [
+              SideChat(
+                id: "chat-long",
+                exchanges: [
+                  for (var index = 0; index < 6; index++)
+                    _exchange(id: "l$index", question: "Question $index", answer: "Fixture text\n\n" * 4),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+      // An archived session opens straight on its newest chat.
+      await pumpView(tester, isArchived: true);
+      await expectSteadyTrackpadOverscroll(tester: tester, target: find.byType(PregoCopyIconButton).last);
+    },
+  );
 }

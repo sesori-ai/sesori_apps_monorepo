@@ -329,50 +329,60 @@ class _SideChatViewState() extends State<SideChatView> {
     GlobalKey turnKey(int index) => _turnKeys.putIfAbsent(index, GlobalKey.new);
     final pending = ready.ask;
     // Not a lazy list: every turn stays built, so the newest one can be
-    // brought into view however long the chat is.
-    return SingleChildScrollView(
+    // brought into view however long the chat is. A sliver viewport, like the
+    // chat's, so the overscroll stretch holds when the thread lays out again
+    // mid-scroll, as a button does when it slides under a resting trackpad
+    // cursor. A SingleChildScrollView snaps its overscroll back to the edge on
+    // every layout.
+    return CustomScrollView(
       key: ValueKey(_threadEpoch),
       // The earlier chats take the sheet's drags while they cover the thread.
       controller: _showingEarlier ? null : widget.scrollController,
-      padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.xs, PregoSpacing.xl, PregoSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (canAsk) const _Footnote(),
-          for (final (index, exchange) in exchanges.indexed)
-            _SideChatTurn(
-              key: turnKey(index),
-              question: exchange.question,
-              animateIn: false,
-              reply: _Answer(key: ValueKey(exchange.id), exchange: exchange),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.xs, PregoSpacing.xl, PregoSpacing.xl),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (canAsk) const _Footnote(),
+                for (final (index, exchange) in exchanges.indexed)
+                  _SideChatTurn(
+                    key: turnKey(index),
+                    question: exchange.question,
+                    animateIn: false,
+                    reply: _Answer(key: ValueKey(exchange.id), exchange: exchange),
+                  ),
+                if (pending
+                    case SideQuestionWaiting(:final question) ||
+                        SideQuestionRefused(:final question) ||
+                        SideQuestionFailed(:final question))
+                  _SideChatTurn(
+                    key: turnKey(exchanges.length),
+                    question: question,
+                    animateIn: true,
+                    reply: switch (pending) {
+                      SideQuestionRefused(:final reason) => _Unanswered(
+                        key: ValueKey(reason),
+                        message: _refusalMessage(reason: reason),
+                        onRetry: switch (reason) {
+                          SideQuestionRefusal.harnessUnsupported || SideQuestionRefusal.tooLong => null,
+                          _ => _retry,
+                        },
+                      ),
+                      SideQuestionFailed() => _Unanswered(
+                        key: const ValueKey("failed"),
+                        message: context.loc.sideChatAskFailed,
+                        onRetry: _retry,
+                      ),
+                      SideQuestionWaiting() || SideQuestionIdle() => const _Thinking(key: ValueKey("thinking")),
+                    },
+                  ),
+              ],
             ),
-          if (pending
-              case SideQuestionWaiting(:final question) ||
-                  SideQuestionRefused(:final question) ||
-                  SideQuestionFailed(:final question))
-            _SideChatTurn(
-              key: turnKey(exchanges.length),
-              question: question,
-              animateIn: true,
-              reply: switch (pending) {
-                SideQuestionRefused(:final reason) => _Unanswered(
-                  key: ValueKey(reason),
-                  message: _refusalMessage(reason: reason),
-                  onRetry: switch (reason) {
-                    SideQuestionRefusal.harnessUnsupported || SideQuestionRefusal.tooLong => null,
-                    _ => _retry,
-                  },
-                ),
-                SideQuestionFailed() => _Unanswered(
-                  key: const ValueKey("failed"),
-                  message: context.loc.sideChatAskFailed,
-                  onRetry: _retry,
-                ),
-                SideQuestionWaiting() || SideQuestionIdle() => const _Thinking(key: ValueKey("thinking")),
-              },
-            ),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 
