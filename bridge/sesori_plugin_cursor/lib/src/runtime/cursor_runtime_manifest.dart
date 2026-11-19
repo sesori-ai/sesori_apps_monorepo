@@ -13,11 +13,12 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///    semver treats the suffix as a prerelease. Cursor therefore pins
 ///    [CalendarRuntimeVersion], which orders on the date and ignores the
 ///    build suffix.
-/// 2. **No published checksums.** Cursor serves the archive straight from
-///    `downloads.cursor.com` with no digest manifest, so the SHA-256 values
-///    below are computed by us at pin time (see the `update-backend-runtimes`
-///    skill). A silently re-published asset therefore fails verification with a
-///    clear message instead of installing unverified bytes — fail closed.
+/// 2. **Pinned digests, no signed manifest.** Cursor serves each archive from
+///    `downloads.cursor.com` next to a same-host `<archive>.sha256` file, so
+///    the SHA-256 values below are hashed from our own download at pin time and
+///    checked against that file (see the `update-backend-runtimes` skill). A
+///    silently re-published asset therefore fails verification with a clear
+///    message instead of installing unverified bytes — fail closed.
 /// 3. **A package directory, not a lone binary.** The archive contains a
 ///    `dist-package/` tree whose `cursor-agent` entry binary loads sibling
 ///    files (node runtime, native modules), so the assets declare
@@ -31,7 +32,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///
 /// ## Bumping Cursor
 /// Change [targetVersion], re-download all four assets, recompute their
-/// SHA-256 values, and raise [minPathVersion] only when bridge behavior needs a
+/// SHA-256 values, compare each with its published `.sha256`, and raise [minPathVersion] only when bridge behavior needs a
 /// newer Cursor capability.
 class const CursorRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed (PATH) Cursor CLI build the bridge uses as-is.
@@ -41,7 +42,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
   static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.09.23");
 
   /// The latest official-installer Cursor build targeted by this plugin.
-  static const String targetVersion = "2026.11.17-f532c45";
+  static const String targetVersion = "2026.11.19-f005e9d";
 
   /// The exact Cursor CLI build the managed runtime installs, preserved
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
@@ -65,7 +66,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "2e4a679c498d98eb2706ad7d90ccd256e5eb2f6cb3fe2cb4a9dd7f2dbd3efce0",
+        sha256: "16bb33c59733725b466d31f988490de332747f0910d2d64b393c363e510e6c7d",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -73,7 +74,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "291995e57b14290abf0d7a154055a1460a24b89770754812ad70b4f723bd8fa6",
+        sha256: "0cac2e918bdf9a0ff1a38700929bb3164730354a347dd6b373fe48a83814b236",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -83,7 +84,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "dff929e5e5ace2ced880290095df5938545267d73fd1d84be669be75dbdc1558",
+        sha256: "5ff05be0d7c0b7754574dbcd677c35254a3ff190ed6457e71bbee0f276237e29",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -91,7 +92,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "189ed41d8963cd22dcdafbbd62f072cc55ac08374c922dbd04aee525f4018ab6",
+        sha256: "a25986eaf0c9330aeeec599a139711cb9f267c64562d073a72b751edf5161695",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
