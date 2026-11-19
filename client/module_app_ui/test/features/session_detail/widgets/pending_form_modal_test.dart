@@ -13,6 +13,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/trackpad_overscroll.dart";
+
 const _count = PendingFormField(
   id: "count",
   label: "Fixture count",
@@ -178,6 +180,9 @@ void main() {
     final button = find.widgetWithText(PregoButtonsSolid, label);
     final finder = button.evaluate().isEmpty ? find.text(label) : button;
     await tester.ensureVisible(finder);
+    // The form's sliver viewport places its content again only in the next
+    // frame, so each scroll settles before tapping.
+    await tester.pumpAndSettle();
     await tester.tap(finder);
     await tester.pumpAndSettle();
   }
@@ -198,6 +203,7 @@ void main() {
       matching: find.text("Clear answer"),
     );
     await tester.ensureVisible(clear);
+    await tester.pump();
     await tester.tap(clear);
     await tester.pump();
     await tap(tester: tester, label: "Submit answers");
@@ -384,7 +390,7 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 320);
     addTearDown(tester.view.resetViewInsets);
     await tester.pumpAndSettle();
-    final viewport = find.descendant(of: find.byType(PendingFormModal), matching: find.byType(SingleChildScrollView));
+    final viewport = find.descendant(of: find.byType(PendingFormModal), matching: find.byType(CustomScrollView)).last;
     expect(tester.getRect(viewport).bottom, lessThanOrEqualTo(844 - 320));
     await tap(tester: tester, label: "Cancel request");
     expect(harness.settlements, 1);
@@ -426,4 +432,36 @@ void main() {
       expect(harness.settlements, 0);
     });
   }
+
+  testWidgets(
+    "a trackpad overscroll stretches steadily while fields slide under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      // The text field last, so it stays in view at the end of the form.
+      when(() => harness.repository.getPendingForms(sessionId: "owner")).thenAnswer(
+        (_) async => ApiResponse.success(
+          PendingFormsResponse(
+            data: [
+              PendingForm(
+                id: _form.id,
+                sessionID: _form.sessionID,
+                displaySessionId: _form.displaySessionId,
+                title: _form.title,
+                message: _form.message,
+                fields: [
+                  ..._form.fields.where((field) => field.id != "text"),
+                  ..._form.fields.where((field) => field.id == "text"),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+      await open(tester: tester, size: const Size(390, 844));
+      await expectSteadyTrackpadOverscroll(
+        tester: tester,
+        target: input(id: "text"),
+      );
+    },
+  );
 }
