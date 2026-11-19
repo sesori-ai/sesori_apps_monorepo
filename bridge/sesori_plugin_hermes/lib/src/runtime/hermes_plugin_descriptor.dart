@@ -400,6 +400,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     final processFactory = hostProcessAcpFactory(
       processes: host.processes,
       environment: host.environment,
+      sharedHelperArguments: const <String>{},
     );
     final commandExecutor = HostProcessCommandExecutor(
       includeParentEnvironment: true,

@@ -48,8 +48,10 @@ class ProcessRepository({
     return _toMatch(identity: identity);
   }
 
-  /// POSIX only: the processes descending from [pid] right now.
-  Future<List<int>> listPosixDescendants({required int pid}) => _api.listPosixDescendants(pid: pid);
+  /// POSIX only: the processes descending from [pid] right now, without a
+  /// shared helper marked by [sharedHelperArguments] or anything below it.
+  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) =>
+      _api.listPosixDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
 
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     return _api.sendGracefulSignal(pid: pid);

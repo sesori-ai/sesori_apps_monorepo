@@ -127,13 +127,13 @@ void main() {
       },
     );
 
-    test("launches omp acp with inherited environment and local agent auth", () async {
+    test("launches omp acp with intent tracing and local agent auth", () async {
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(AcpMethods.initialize);
       expect(launchSpec.command, "omp");
       expect(launchSpec.args, ["acp"]);
       expect(launchSpec.cwd, "/repo");
-      expect(launchSpec.environment, isEmpty);
+      expect(launchSpec.environment, {"PI_INTENT_TRACING": "1"});
       final params = (initialize["params"] as Map).cast<String, dynamic>();
       expect((params["clientCapabilities"] as Map)["elicitation"], {
         "form": <String, dynamic>{},

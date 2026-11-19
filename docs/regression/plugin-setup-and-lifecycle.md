@@ -442,12 +442,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - On macOS and Linux, stopping a running backend runtime (bridge shutdown or plugin
   restart) signals the runtime and every process descending from it at that moment,
   detached ones included, so tool commands and helpers it started end with it. Oh My
-  Pi's named `bash` services run under a detached per-project broker that outlives
-  `omp` by design; when Sesori's `omp` spawned that broker, a bridge SIGTERM ends the
-  broker and its services, including any a terminal `omp` in the same project started
-  there; a broker another `omp` spawned is not reached. Short commands keep root-only signals, so the detached
-  OpenCode 2 service survives. Failure signal: after a bridge SIGTERM mid-turn, `ps`
-  still shows a tool command or `__omp_worker_daemon_broker` reparented to init.
+  Pi's shared helper (the per-user `__omp_worker_daemon` from 19.0.0, the per-project
+  `__omp_worker_daemon_broker` before) is spared with everything under it, whichever
+  `omp` spawned it: it serves terminal sessions too, keeps named `bash` services
+  running until `omp ps stop`, and exits on its own once idle. Short commands keep
+  root-only signals, so the detached OpenCode 2 service survives. Failure signals:
+  after a bridge SIGTERM mid-turn, `ps` still shows a tool command reparented to
+  init, or a terminal `omp` session loses its daemon or services.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   Codex PATH installs newer than the managed target (0.162.1, and 0.169.0 under API-key

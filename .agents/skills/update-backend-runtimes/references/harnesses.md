@@ -453,8 +453,22 @@ concrete problem can justify a documented temporary hold with a resolution path.
   commit a bridge compaction mid-turn during a long tool call, through the same
   automatic start/end pair.
 - **Tool titles:** ACP tool titles prefer the model's intent field. From 19.0.0
-  intent tracing is off by default outside the interactive TUI (`tools.intentTracing`
-  or `PI_INTENT_TRACING` turns it on), so titles fall back to `<tool>: <subject>`.
+  intent tracing is off by default outside the interactive TUI, so titles fall
+  back to `<tool>: <subject>`. `OmpBinary.launchSpec` sets `PI_INTENT_TRACING=1`,
+  which outranks every settings file (17.2.13 and 18.x read the same variable).
+  Live on 19.0.0: a read is titled `read: notes.txt` without it and by its intent
+  with it. Re-check the variable name and precedence on each bump.
+- **Shared helper:** OMP spawns its daemon (`__omp_worker_daemon`, 19.0.0) or
+  per-project broker (`__omp_worker_daemon_broker`, 18.x) detached, and the
+  bridge's POSIX tree signal skips it by those arguments
+  (`OmpBinary.sharedHelperArguments`). On each bump, confirm the helper's
+  arguments and its idle exit (19.0.0: 3 s after nothing is connected and no
+  persistent unit runs). Live probe: let Sesori's `omp acp` start a named
+  service, join from a second `omp acp` that starts another, stop Sesori's
+  process mid tool call, and check with `ps` that the helper and both services
+  remain; `omp ps stop <name>` then lets the helper exit. A model that always
+  sends `timeout` needs `ready` (for example `ready.log`) on a named call, or
+  OMP rejects it.
 
 ## DeepSeek
 

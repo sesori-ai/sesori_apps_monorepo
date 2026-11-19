@@ -317,6 +317,7 @@ final class const CopilotPluginDescriptor({
       processFactory: hostProcessAcpFactory(
         processes: host.processes,
         environment: host.environment,
+        sharedHelperArguments: const <String>{},
       ),
       sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );

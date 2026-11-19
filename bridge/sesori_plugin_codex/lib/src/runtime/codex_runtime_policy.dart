@@ -103,7 +103,7 @@ Future<SpawnedProcess> spawnCodexProcess({
     environment: host.environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
-    lifetime: ProcessLifetime.endsWithBridge,
+    lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
   );
   return DrainingSpawnedProcess(inner: process);
 }

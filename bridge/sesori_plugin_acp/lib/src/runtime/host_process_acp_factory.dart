@@ -14,10 +14,14 @@ import "../acp_process_factory.dart";
 /// the ACP equivalent of the default [defaultAcpProcessFactory]: it merges the
 /// host [environment] under the launch spec's own entries only when inheritance
 /// is enabled, and hands back an
-/// [AcpProcessHandle] backed by the spawned child.
+/// [AcpProcessHandle] backed by the spawned child. The child ends with the
+/// bridge; [sharedHelperArguments] mark the agent's descendants that it shares
+/// with processes the bridge does not own, which stopping it leaves running
+/// (see [ProcessEndsWithBridge]).
 AcpProcessFactory hostProcessAcpFactory({
   required HostProcessService processes,
   required Map<String, String> environment,
+  required Set<String> sharedHelperArguments,
 }) {
   return (AcpLaunchSpec spec) async {
     final spawned = await processes.spawn(
@@ -29,7 +33,7 @@ AcpProcessFactory hostProcessAcpFactory({
       // ACP shims on Windows (e.g. `cursor-agent.cmd`) only resolve through a
       // shell — mirror the default factory's platform handling.
       runInShell: io.Platform.isWindows,
-      lifetime: ProcessLifetime.endsWithBridge,
+      lifetime: ProcessLifetime.endsWithBridge(sharedHelperArguments: sharedHelperArguments),
     );
     return HostProcessAcpHandle(process: spawned, processes: processes);
   };

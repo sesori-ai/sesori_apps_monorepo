@@ -117,7 +117,7 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   }
 
   @override
-  Future<List<int>> listPosixDescendants({required int pid}) {
+  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) {
     throw UnimplementedError();
   }
 

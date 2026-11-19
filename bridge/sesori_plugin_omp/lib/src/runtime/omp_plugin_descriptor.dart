@@ -341,7 +341,11 @@ final class const OmpPluginDescriptor({
       binaryPath: binaryPath,
       launchDirectory: io.Directory.current.path,
       scratchDirectory: null,
-      processFactory: hostProcessAcpFactory(processes: host.processes, environment: host.environment),
+      processFactory: hostProcessAcpFactory(
+        processes: host.processes,
+        environment: host.environment,
+        sharedHelperArguments: OmpBinary.sharedHelperArguments,
+      ),
       clock: host.clock,
       sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
