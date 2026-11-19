@@ -20,7 +20,14 @@ class const PregoPickerSearchOption({
   required final bool isSelected,
   required final VoidCallback onPick,
   required final Widget child,
-}) extends PregoPickerSearchRow;
+}) extends PregoPickerSearchRow {
+  /// A touch row's minimum height, its [touchPadding] included. A [child]
+  /// that grows from below the minimum is held at it until it outgrows it.
+  static const double touchMinHeight = 54;
+
+  /// The padding around a touch row's [child].
+  static const EdgeInsets touchPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+}
 
 /// A line of quiet text among the rows, such as why nothing below an option
 /// matches. The highlight passes over it.
@@ -540,11 +547,11 @@ class const _OptionRow({
               borderRadius: radius,
             ),
             child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: pointer ? 30 : 54),
+              constraints: BoxConstraints(minHeight: pointer ? 30 : PregoPickerSearchOption.touchMinHeight),
               child: Padding(
                 padding: pointer
                     ? const EdgeInsets.symmetric(horizontal: 10, vertical: 5)
-                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    : PregoPickerSearchOption.touchPadding,
                 child: Row(
                   children: [
                     Expanded(child: option.child),

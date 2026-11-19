@@ -466,6 +466,38 @@ void main() {
       expect(find.byType(ModelPicker), findsOneWidget);
     });
 
+    for (final mode in PregoInteractionMode.values) {
+      testWidgets("the list keeps its edges as the strip moves to a model without effort (${mode.name})", (
+        tester,
+      ) async {
+        await _pumpEffort(tester, initial: alpha, mode: mode);
+        await tester.tap(find.byType(mode == PregoInteractionMode.pointer ? PregoPickerButton : ModelEffortChip));
+        await tester.pumpAndSettle();
+        await tester.tap(_row("Gamma"));
+        await tester.pumpAndSettle();
+        final withLevels = tester.getRect(find.byType(ModelPicker));
+        final gammaOpen = tester.getSize(_row("Gamma")).height;
+
+        await tester.tap(_row("Beta"));
+        await tester.pump();
+        // Through the swap, as the old row shrinks and the new one grows.
+        for (var elapsed = 0; elapsed < 250; elapsed += 25) {
+          await tester.pump(const Duration(milliseconds: 25));
+          expect(tester.getRect(find.byType(ModelPicker)).top, moreOrLessEquals(withLevels.top), reason: "$elapsed ms");
+        }
+        await tester.pumpAndSettle();
+        expect(_strip(), findsNothing);
+        expect(tester.getRect(find.byType(ModelPicker)), withLevels);
+        expect(tester.getSize(_row("Beta")).height, gammaOpen);
+        // A collapsed row keeps the row's minimum height, its name centred.
+        expect(tester.getSize(_row("Gamma")).height, mode == PregoInteractionMode.pointer ? 30 : 54);
+        expect(
+          tester.getCenter(find.descendant(of: _row("Gamma"), matching: find.text("Gamma"))).dy,
+          moreOrLessEquals(tester.getCenter(_row("Gamma")).dy),
+        );
+      });
+    }
+
     testWidgets("a level commits the model and level together and closes the list", (tester) async {
       final picks = await _pumpEffort(tester, initial: alpha);
       await tester.tap(find.byType(ModelEffortChip));

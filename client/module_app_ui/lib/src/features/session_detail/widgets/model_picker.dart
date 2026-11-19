@@ -192,19 +192,37 @@ class _ModelRowState() extends State<_ModelRow> with SingleTickerProviderStateMi
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          widget.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-        ),
-        if (family != null)
-          Text(
-            family,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+        // Under touch the name alone fills the row's minimum height, so the
+        // levels add their full height from the first frame. Otherwise the
+        // minimum holds a growing row while the shrinking one still sheds
+        // height, and the list's top edge dips during the swap.
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: pointer
+                ? 0
+                : PregoPickerSearchOption.touchMinHeight - PregoPickerSearchOption.touchPadding.vertical,
           ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+              ),
+              if (family != null)
+                Text(
+                  family,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                ),
+            ],
+          ),
+        ),
         // Built only while it shows or eases away.
         AnimatedBuilder(
           animation: _size,
@@ -217,11 +235,20 @@ class _ModelRowState() extends State<_ModelRow> with SingleTickerProviderStateMi
               child: Padding(
                 padding: EdgeInsets.only(top: pointer ? 6 : 8),
                 child: widget.levels.isEmpty
-                    ? Text(
-                        context.loc.modelPickerNoEffort,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                    // As tall as the strip, so the list keeps its height when
+                    // the selection moves between a model with levels and one
+                    // without.
+                    ? SizedBox(
+                        height: ModelLevelStrip.heightFor(pointer: pointer),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            context.loc.modelPickerNoEffort,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                          ),
+                        ),
                       )
                     : ModelLevelStrip(
                         levels: widget.levels,
