@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
+import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_bridge/src/services/session_continuation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
@@ -34,6 +35,7 @@ void main() {
   late PluginRuntime runtime;
   late _OutcomeRepository records;
   late _Sessions sessions;
+  late _History history;
   late SessionOperationDispatcher operations;
   late _Prompts prompts;
   late _Mutations mutations;
@@ -51,6 +53,7 @@ void main() {
       runtime: runtime,
     );
     sessions = _Sessions();
+    history = _History();
     operations = SessionOperationDispatcher(sessionRepository: sessions);
     prompts = _Prompts(records: records);
     mutations = _Mutations();
@@ -65,6 +68,7 @@ void main() {
     service = SessionContinuationService(
       continuations: records,
       sessions: sessions,
+      history: history,
       views: views,
       operations: operations,
       prompts: prompts,
@@ -203,6 +207,23 @@ void main() {
       runtime: runtime,
     );
     expect((await reloaded.read(sessionId: "session")).outcome, isA<SessionContinuationSubmitted>());
+  });
+
+  test("sends the model the history service keeps over the imported one", () async {
+    history.kept = const SessionPromptDefaults(
+      agent: "agent",
+      model: AgentModel(providerID: "provider", modelID: "stored", variant: "low"),
+      fastMode: true,
+    );
+    await arm();
+    now = reset.add(const Duration(minutes: 2));
+    await service.runDue();
+    expect(prompts.sent.single.model, const PromptModel(providerID: "provider", modelID: "stored"));
+    expect(prompts.sent.single.variant, const SessionVariant(id: "low"));
+    expect(
+      history.imported.single?.model,
+      const AgentModel(providerID: "provider", modelID: "model", variant: "high"),
+    );
   });
 
   test("paused deadline survives repository recreation and suppresses premature reads", () async {
@@ -464,6 +485,24 @@ class _Sessions() implements SessionRepository {
         fastMode: true,
       ),
     );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Keeps [kept] in place of the imported defaults when set, else passes them through.
+class _History() implements ChatHistoryService {
+  SessionPromptDefaults? kept;
+  final List<SessionPromptDefaults?> imported = [];
+
+  @override
+  Future<SessionPromptDefaults?> keepingStoredModel({
+    required String sessionId,
+    required SessionPromptDefaults? imported,
+  }) async {
+    this.imported.add(imported);
+    return kept ?? imported;
   }
 
   @override

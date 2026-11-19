@@ -631,6 +631,7 @@ class Orchestrator({
       bridgeIdProvider: _bridgeRegistrationService,
       interruptions: sessionInterruptions,
       mutations: sessionMutationDispatcher,
+      sessionOptions: sessionOptionsService,
     );
     final sessionPromptService = SessionPromptService(
       continuations: sessionContinuations,
@@ -657,6 +658,7 @@ class Orchestrator({
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
       sessions: sessionRepository,
+      history: chatHistoryService,
       views: sessionViews,
       operations: sessionOperationDispatcher,
       prompts: sessionPromptService,
