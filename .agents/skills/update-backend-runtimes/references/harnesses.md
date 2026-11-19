@@ -386,18 +386,26 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Probe:** exact `omp/<version>` and the owning ACP launch/initialization.
   Use a disposable configured fixture for `authenticate(agent)`, list/new/load
   and persisted cleanup. Isolate `PI_CODING_AGENT_DIR` and all other profile
-  roots; use an allowlist, not inherited credentials, and preserve production
-  approval policy. Missing fixtures become final checks while the target moves
+  roots, including `OMP_DAEMON_DIR`: from `19.0.0` one per-user daemon lives
+  under `~/.omp/run/daemon` whatever the profile, so a probe that isolates only
+  the agent directory can reach the user's live daemon. Use an allowlist, not
+  inherited credentials, and preserve production approval policy. Run the
+  probe's own `dart` with the restricted `PATH` too: `Process.start` resolves a
+  bare `omp` through the parent's `PATH`, so a user install otherwise wins and
+  the installer stops at "The global Oh My Pi runtime now takes precedence".
+  Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
   Run the deletion probe without credentials: `session/new`, a prompt of
   `/session delete`, then `session/list` from a fresh process. From `18.18.9`
   until `18.20.1` (the fix landed there, not in `18.20.0` as the changelog says)
   the raw list holds a new empty, untitled replacement session (upstream
-  #19068). `session/new` alone still writes an empty untitled session
-  (`_meta.messageCount` 0, no title) on `18.22.2`, so the plugin's listing
-  filter stays; confirm both shapes on each bump.
+  #19068). `session/new` alone still writes an empty untitled session file
+  (`19.0.0`), so the plugin's listing filter stays. Without credentials that
+  file is not listed (`18.22.2` and `19.0.0`, same or fresh process, with or
+  without `cwd`); the `_meta.messageCount` 0 entry needs the configured fixture.
+  Confirm both shapes on each bump.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in the `18.22.2` source), `session/load` and `session/resume` fail
+  From `18.6.3` (still in the `19.0.0` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this
@@ -424,7 +432,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `ask` tool sends HTML-field keys, and may include `number`, `boolean`,
   `required` and `default`; the "other" field is `<name>__other` from 18.20.0
   (`12c017d1`) and `<name>_other` only in 18.18.3–18.19.0. `qN`/`qN__other`
-  names now come only from an extension's `ui.askDialog`. Do not interpret OMP's naming in the generic
+  names come from an extension's `ui.askDialog`; from 19.0.0 the `ask` tool
+  also rebuilds a model's legacy `questions` list as a form named by each
+  question's `id` or `qN` (no "other" field). Do not interpret OMP's naming in the generic
   mapper or add a second wire answer shape. Live
   `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
   scratch/catalog/cleanup form elicitation disabled. See
@@ -437,7 +447,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `tokensBefore`): `willRetry` means OMP re-sends the overflowed turn after a
   successful compaction, so it is ignored, and a failed method's fallback is a new
   start/end pair. If OMP starts signalling manual `/compact` or carries a summary,
-  freed count or attempt id, extend the mapping and the capability row.
+  freed count or attempt id, extend the mapping and the capability row. From
+  19.0.0 `/handoff` is `/compact handoff` (still inline over ACP, which sets no
+  `runCommandInBackground`), and the cache warmer's default `auto` strategy can
+  commit a bridge compaction mid-turn during a long tool call, through the same
+  automatic start/end pair.
+- **Tool titles:** ACP tool titles prefer the model's intent field. From 19.0.0
+  intent tracing is off by default outside the interactive TUI (`tools.intentTracing`
+  or `PI_INTENT_TRACING` turns it on), so titles fall back to `<tool>: <subject>`.
 
 ## DeepSeek
 
