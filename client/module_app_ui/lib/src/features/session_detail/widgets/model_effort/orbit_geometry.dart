@@ -76,6 +76,10 @@ final class OrbitGeometry({
 
   /// Where the fast-mode toggle sits, or null when there is none.
   required final Rect? fastToggleRect,
+
+  /// How long each ring's drawn name runs along its arc, by its index in
+  /// [ModelOrbits.rings], so the name can be picked where it is drawn.
+  required final List<double> nameLengths,
 }) {
   /// How much the rings shrank to fit the overlay, 1 when they fit. Only a
   /// small overlay shrinks them, such as a narrow or a landscape phone.
@@ -108,8 +112,9 @@ final class OrbitGeometry({
   /// Where a model name starts along its ring.
   static const double nameStartAngle = 95;
 
-  /// The angle a ring's touch area starts at, a little past the vertical.
-  static const double ringStartAngle = 96;
+  /// The angle a ring's touch area starts at, past the vertical, so the inner
+  /// rings' names reach the screen's edge.
+  static const double ringStartAngle = 104;
 
   /// Where the ring line starts and ends.
   static const double ringLineFromAngle = 93;
@@ -117,6 +122,15 @@ final class OrbitGeometry({
 
   /// How far a ring's name patch stops before its strongest dot.
   static const double _nameGap = 7;
+
+  /// Along the drawn name, a touch more than this far inside the ring line
+  /// is on the name's letters rather than on a dot.
+  static const double _nameDepth = 12;
+
+  /// The name can be picked along at least this much of its arc, short names
+  /// included, plus a little past its last letter.
+  static const double _minNameLength = 44;
+  static const double _namePad = 4;
 
   /// How far the weakest dot's patch reaches past it, short of the fast
   /// toggle.
@@ -214,6 +228,27 @@ final class OrbitGeometry({
     );
   }
 
+  /// The touch patch of the ring's drawn name: the inner part of its band,
+  /// where the letters sit, along the whole name. The dots it passes keep the
+  /// rest of their patches.
+  OrbitSector nameTextPatch({required int ringIndex}) {
+    final (inner, _) = ringBand(ringIndex: ringIndex);
+    final radius = ringRadii[ringIndex];
+    final length = math.max(nameLengths[ringIndex], _minNameLength) + _namePad;
+    return OrbitSector(
+      innerRadius: inner,
+      outerRadius: radius - _nameDepth * scale,
+      fromAngle: ringStartAngle,
+      toAngle: nameStartAngle - length / (radius - nameInset) * 180 / math.pi,
+    );
+  }
+
+  /// The middle of the ring's drawn name.
+  Offset nameCenter({required int ringIndex}) {
+    final radius = ringRadii[ringIndex] - nameInset;
+    return pointAt(radius: radius, angle: nameStartAngle - nameLengths[ringIndex] / 2 / radius * 180 / math.pi);
+  }
+
   /// The touch patch of a level dot, reaching halfway to its neighbours. The
   /// strongest patch reaches up to the name, the weakest a little past its
   /// dot.
@@ -252,7 +287,8 @@ final class OrbitGeometry({
     for (var ringIndex = 0; ringIndex < orbits.rings.length; ringIndex++) {
       final (inner, outer) = ringBand(ringIndex: ringIndex);
       if (radius < inner || radius >= outer) continue;
-      if (namePatch(ringIndex: ringIndex).contains(radius: radius, angle: angle)) {
+      if (namePatch(ringIndex: ringIndex).contains(radius: radius, angle: angle) ||
+          nameTextPatch(ringIndex: ringIndex).contains(radius: radius, angle: angle)) {
         return OrbitNameTarget(ringIndex: ringIndex);
       }
       final levelCount = orbits.rings[ringIndex].levels.length;

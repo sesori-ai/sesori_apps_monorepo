@@ -245,10 +245,12 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     super.dispose();
   }
 
-  OrbitGeometry _geometry(Size size) => OrbitGeometry(
+  OrbitGeometry _geometry({required Size size, required OrbitLabels labels}) => OrbitGeometry(
     orbits: widget.orbits,
     origin: _origin,
     size: size,
+    // The bold face is the longer one.
+    nameLengths: [for (final name in labels.chosenNames) name.length],
     fastToggleRect: _showsFastToggle
         ? Rect.fromLTWH(
             size.width - widget.anchorRect.left - _fastToggleSize.width,
@@ -331,8 +333,11 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   void _followHandoff() {
     final handoff = widget.handoff;
     final box = context.findRenderObject();
-    if (handoff == null || handoff.pointer != _pointer || box is! RenderBox || !box.hasSize) return;
-    final geometry = _geometry(box.size);
+    final labels = _labels;
+    if (handoff == null || handoff.pointer != _pointer || box is! RenderBox || !box.hasSize || labels == null) {
+      return;
+    }
+    final geometry = _geometry(size: box.size, labels: labels);
     OrbitTarget? targetAt(Offset position) => _hitTest(geometry: geometry, position: box.globalToLocal(position));
 
     switch (handoff.phase) {
@@ -436,7 +441,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     if (labels == null || palette == null) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final geometry = _geometry(constraints.biggest);
+        final geometry = _geometry(size: constraints.biggest, labels: labels);
         final fastToggleRect = geometry.fastToggleRect;
         return Listener(
           behavior: HitTestBehavior.opaque,
@@ -570,10 +575,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     return [
       for (var ringIndex = 0; ringIndex < orbits.rings.length; ringIndex++) ...[
         target(
-          center: geometry.pointAt(
-            radius: geometry.ringRadii[ringIndex],
-            angle: (OrbitGeometry.ringStartAngle + geometry.nameEndAngle(ringIndex: ringIndex)) / 2,
-          ),
+          center: geometry.nameCenter(ringIndex: ringIndex),
           size: dotSize,
           label: orbits.rings[ringIndex].name,
           selected: orbits.rings[ringIndex] == orbits.current && orbits.currentLevel == null,

@@ -32,6 +32,8 @@ OrbitGeometry _geometry({required ModelOrbits orbits}) => OrbitGeometry(
   origin: Offset(_anchor.left + _anchor.height / 2, _anchor.center.dy),
   size: const Size(393, 700),
   fastToggleRect: null,
+  // Only dots are located through this geometry.
+  nameLengths: [for (final _ in orbits.rings) 0],
 );
 
 Future<_Harness> _open(

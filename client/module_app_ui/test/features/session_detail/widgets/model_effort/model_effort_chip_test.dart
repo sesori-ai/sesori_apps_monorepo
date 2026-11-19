@@ -130,6 +130,8 @@ OrbitGeometry _geometry(WidgetTester tester, {required ModelOrbits orbits}) {
     origin: Offset(chip.left + chip.height / 2, chip.center.dy),
     size: _screen,
     fastToggleRect: null,
+    // Only dots are located through this geometry.
+    nameLengths: [for (final _ in orbits.rings) 0],
   );
 }
 

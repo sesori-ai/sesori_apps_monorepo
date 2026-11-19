@@ -1,3 +1,4 @@
+import "dart:math" as math;
 import "dart:ui";
 
 import "package:flutter_test/flutter_test.dart";
@@ -7,12 +8,14 @@ import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelO
 import "orbits_fixture.dart";
 
 /// The agreed mock's phone: a 393 x 700 screen with the rings' centre at
-/// (33.5, 610) and the fast toggle 14 pt from the right edge.
+/// (33.5, 610) and the fast toggle 14 pt from the right edge. Every name is
+/// 60 pt long, about as long as "Sonnet 5.5".
 OrbitGeometry _geometry({required ModelOrbits orbits, Size size = const Size(393, 700)}) => OrbitGeometry(
   orbits: orbits,
   origin: const Offset(33.5, 610),
   size: size,
   fastToggleRect: Rect.fromLTWH(size.width - 14 - 88, 592, 88, 36),
+  nameLengths: [for (final _ in orbits.rings) 60],
 );
 
 void main() {
@@ -153,12 +156,45 @@ void main() {
         geometry.hitTest(geometry.pointAt(radius: 260, angle: 88.9)),
         const OrbitLevelTarget(ringIndex: 1, levelIndex: 4),
       );
-      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 97)), isNull);
+      // Past the vertical up to 104°, so the inner names reach the edge.
+      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 103)), const OrbitNameTarget(ringIndex: 1));
+      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 105)), isNull);
       // Sonnet stops at high, so its name reaches down to just above it.
       expect(geometry.hitTest(geometry.pointAt(radius: 205, angle: 53.1)), const OrbitNameTarget(ringIndex: 2));
       expect(
         geometry.hitTest(geometry.pointAt(radius: 205, angle: 52.9)),
         const OrbitLevelTarget(ringIndex: 2, levelIndex: 2),
+      );
+    });
+
+    test("picks a name where its letters are drawn, and leaves the strongest dot its patch", () {
+      // Opus innermost, its max dot right after its name.
+      final inner = _geometry(orbits: orbits.copyWith(rings: [fable, sonnet, haiku, opus]));
+      final namePatch = inner.nameTextPatch(ringIndex: 3);
+      const nameRadius = 150 - OrbitGeometry.nameInset;
+      expect(
+        (OrbitGeometry.nameStartAngle - namePatch.toAngle) * math.pi / 180 * nameRadius,
+        greaterThanOrEqualTo(44),
+      );
+      // On the letters, under the max dot's angle, is the name.
+      expect(inner.hitTest(inner.pointAt(radius: nameRadius, angle: 80)), const OrbitNameTarget(ringIndex: 3));
+      expect(inner.hitTest(inner.nameCenter(ringIndex: 3)), const OrbitNameTarget(ringIndex: 3));
+      // The dot, and the band outward of the letters, stay the dot's.
+      expect(
+        inner.hitTest(inner.dotCenter(ringIndex: 3, levelIndex: 4)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 4),
+      );
+      expect(
+        inner.hitTest(inner.pointAt(radius: 150 - 11, angle: 80)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 4),
+      );
+      final strongest = inner.levelPatch(ringIndex: 3, levelIndex: 4);
+      expect(strongest.fromAngle, 89);
+      expect(strongest.toAngle, 73);
+      // Past the name's end the inner band is a dot's again.
+      expect(
+        inner.hitTest(inner.pointAt(radius: nameRadius, angle: 60)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 3),
       );
     });
 

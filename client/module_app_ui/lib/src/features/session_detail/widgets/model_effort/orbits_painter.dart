@@ -90,11 +90,23 @@ final class OrbitPalette({required PregoColors colors}) {
 final class ArcText({required String text, required TextStyle style}) {
   final List<(TextPainter glyph, double x, double baseline)> _glyphs = _layOut(text: text, style: style);
 
+  /// How long the text runs along its arc.
+  final double length = _measure(text: text, style: style);
+
+  static double _measure({required String text, required TextStyle style}) {
+    final line = _line(text: text, style: style);
+    final width = line.width;
+    line.dispose();
+    return width;
+  }
+
+  static TextPainter _line({required String text, required TextStyle style}) => TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
   static List<(TextPainter, double, double)> _layOut({required String text, required TextStyle style}) {
-    final line = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    final line = _line(text: text, style: style);
     final glyphs = <(TextPainter, double, double)>[];
     var offset = 0;
     for (final character in text.characters) {

@@ -770,7 +770,11 @@ variant, and worktree mode, and creating the session with its first input.
   name picks the model with the model picker's switch rule (the current level
   when the model offers it, else its fallbacks), with the same light haptic;
   releasing anywhere else closes the picker with no change and no haptic. A
-  second finger is ignored.
+  second finger is ignored. A name is picked across its ring from just past
+  the vertical to just before the strongest dot, and also along its drawn
+  letters inside the ring (at least about 44 pt, even for a short name); the
+  dots under the letters keep the band from just inside the ring line
+  outwards.
 - Tap: a tap on the chip opens the picker and leaves it open, and a tap on a dot
   or name then picks as a release would, with the same light haptic; a tap on
   empty space closes it.
@@ -1034,7 +1038,8 @@ startup-extension file failure, retry once the filesystem is usable.
   screen on a small or landscape phone.
 - The weakest level sits next to the model name, the trail runs from the name
   instead of from the weakest end, the innermost ring's dots sit closer than
-  about 44 pt, or the strongest dot's marker cuts into a model name.
+  about 44 pt, the strongest dot's marker cuts into a model name, or a touch
+  on a model name's letters picks a level instead of the model.
 - A held finger shows a pressed look that differs from the selected one, the
   committed choice stays marked while another dot is previewed, the preview
   stays after the finger leaves every target, or the level word is missing,
