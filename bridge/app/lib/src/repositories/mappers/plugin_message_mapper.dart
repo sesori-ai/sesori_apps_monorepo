@@ -98,7 +98,7 @@ extension PluginMessageWithPartsMapper on PluginMessageWithParts {
           sesoriNoticeRow(id: id, sessionId: sessionId, time: time.toShared()),
         (final message, _) => message.toSharedMessage(sessionId: sessionId),
       },
-      parts: [for (final part in visibleParts) part.withoutNoticeFrame().toShared(sessionId: sessionId)],
+      parts: [for (final part in visibleParts) part.toShared(sessionId: sessionId).withoutNoticeFrame()],
     );
   }
 }
@@ -128,15 +128,19 @@ extension PluginMessagePartSystemContext on PluginMessagePart {
     if (text == null) return null;
     return identical(text, part.text) ? part : part.copyWith(text: text);
   }
+}
 
+extension MessagePartNoticeFrame on MessagePart {
   /// This part with only its summary when it is a Sesori notice, which shows
-  /// to the user as that one line. Text-based for the same reason as
-  /// [withoutSystemContext].
-  PluginMessagePart withoutNoticeFrame() {
+  /// to the user as that one line, and with the page the notice settles, so
+  /// the line can reopen it. Text-based for the same reason as
+  /// [PluginMessagePartSystemContext.withoutSystemContext].
+  MessagePart withoutNoticeFrame() {
     final part = this;
-    if (part is! PluginMessagePartText) return part;
-    final summary = parseSessionNotice(text: part.text);
-    return summary == null ? part : part.copyWith(text: summary);
+    if (part is! MessagePartText) return part;
+    final notice = parseSessionNotice(text: part.text);
+    if (notice == null) return part;
+    return part.copyWith(text: notice.summary, noticePageRequestId: notice.pageRequestId);
   }
 }
 

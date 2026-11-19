@@ -158,6 +158,7 @@ import "routing/get_sessions_handler.dart";
 import "routing/get_side_chats_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
+import "routing/lookup_page_handler.dart";
 import "routing/mark_session_seen_handler.dart";
 import "routing/move_session_pin_handler.dart";
 import "routing/open_project_handler.dart";
@@ -197,6 +198,7 @@ import "routing/set_session_auto_continuation_handler.dart";
 import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/stop_accepting_edits_handler.dart";
+import "routing/submit_page_handler.dart";
 import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
@@ -965,6 +967,8 @@ class Orchestrator({
           agentPageService: agentPageService,
           pendingInteractionService: pendingInteractionService,
         ),
+        LookupPageHandler(agentPageService: agentPageService),
+        SubmitPageHandler(agentPageService: agentPageService),
         ReplyToPermissionHandler(
           scheduledTaskAgentService: scheduledTaskAgentService,
           pendingInteractionService: pendingInteractionService,
@@ -2193,9 +2197,9 @@ class OrchestratorSession._({
     required bool Function() shouldCapture,
   }) async {
     if (part.type == PluginMessagePartType.unknown) return null;
-    final visiblePart = part.withoutSystemContext()?.withoutNoticeFrame();
+    final visiblePart = part.withoutSystemContext();
     if (visiblePart == null) return null;
-    final sharedPart = _mapper.mapMessagePart(part: visiblePart);
+    final sharedPart = _mapper.mapMessagePart(part: visiblePart).withoutNoticeFrame();
     final visible = _mapper.isMessagePartVisible(part: visiblePart);
     if (!_chatHistoryService.requiresAwaitedAttachmentCapture(part: sharedPart)) {
       // Deliberately not awaited: an ordinary part's wire shape does not depend

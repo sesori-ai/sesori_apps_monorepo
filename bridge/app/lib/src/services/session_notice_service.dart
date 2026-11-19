@@ -103,7 +103,11 @@ class const SessionNoticeService({
       SessionQuietness.awaitingUser => false,
     };
     if (!ready) return _Attempt.waiting;
-    final text = buildSessionNotice(summary: notice.summary, guidance: notice.guidance);
+    final text = buildSessionNotice(
+      summary: notice.summary,
+      guidance: notice.guidance,
+      pageRequestId: notice.pageRequestId,
+    );
     await _prompts.sendWithDefaults(
       sessionId: sessionId,
       defaults: session.promptDefaults,
