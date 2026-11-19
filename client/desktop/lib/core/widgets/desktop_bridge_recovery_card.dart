@@ -92,7 +92,11 @@ class const DesktopBridgeRecoveryCard({
         // Long bundle-repair guidance stays usable at the 480px window minimum.
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 180),
-          child: SingleChildScrollView(
+          // Keeps the overscroll stretch when the card lays out again
+          // mid-scroll, as a button does when it slides under a resting
+          // trackpad cursor.
+          child: PregoSingleChildScrollView(
+            controller: null,
             padding: const EdgeInsets.all(PregoSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -23,6 +23,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../helpers/trackpad_overscroll.dart";
+
 void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
   late _MockConnectionOverlayCubit overlay;
@@ -1548,10 +1550,7 @@ void main() {
 
   testWidgets("renders retained bundle repair guidance with explicit retry but no child log action", (tester) async {
     when(bridgeControlCubit.startBridge).thenAnswer((_) async {});
-    const message =
-        "The bundled bridge is missing or does not match this app. Restart Sesori after an update. "
-        "If this persists, reinstall the matching desktop download.";
-    final failed = _state(processState: const BridgeProcessStartFailed(message: message));
+    final failed = _state(processState: const BridgeProcessStartFailed(message: _bundleRepairMessage));
     final widget = app(state: failed);
     final updates = StreamController<BridgeControlState>();
     addTearDown(updates.close);
@@ -1559,11 +1558,13 @@ void main() {
     await tester.pumpWidget(widget);
 
     expect(find.byKey(const Key("desktop-bridge-recovery")), findsOneWidget);
-    expect(find.text(message), findsOneWidget);
+    expect(find.text(_bundleRepairMessage), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
     verifyNever(bridgeControlCubit.startBridge);
     expect(find.text("Open logs"), findsNothing);
     await tester.ensureVisible(find.text("Retry"));
+    // The card's scroll view lays out the jump before the tap lands.
+    await tester.pump();
     await tester.tap(find.text("Retry"));
     verify(bridgeControlCubit.startBridge).called(1);
 
@@ -1571,6 +1572,18 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key("desktop-bridge-recovery")), findsNothing);
   });
+
+  testWidgets("a trackpad overscroll stretches steadily while the buttons slide under a resting cursor", (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        state: _state(processState: const BridgeProcessStartFailed(message: _bundleRepairMessage)),
+      ),
+    );
+
+    await expectSteadyTrackpadOverscroll(tester: tester, target: find.widgetWithText(PregoButtonsSolid, "Retry"));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets("integrates crash recovery and logs in the sidebar", (tester) async {
     when(bridgeControlCubit.openLogs).thenAnswer((_) async {});
@@ -1849,6 +1862,10 @@ BridgeControlState _state({
   ),
   updateState: const DesktopUpdateManagedBySystem(),
 );
+
+const _bundleRepairMessage =
+    "The bundled bridge is missing or does not match this app. Restart Sesori after an update. "
+    "If this persists, reinstall the matching desktop download.";
 
 const _sesori = ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null);
 const _landing = ProjectSummary(id: "project-2", name: "Landing page", path: "/work/landing", time: null);

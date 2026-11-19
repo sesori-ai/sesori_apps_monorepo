@@ -447,11 +447,15 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             fadingIdle(chrome.topBar),
             Expanded(
               child: Center(
-                child: SingleChildScrollView(
-                  key: const Key("new_session_options_scroll"),
-                  padding: const EdgeInsets.all(PregoSpacing.xl),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: chrome.maxContentWidth),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: chrome.maxContentWidth + 2 * PregoSpacing.xl),
+                  // Keeps the overscroll stretch when the column lays out again
+                  // mid-scroll, as the composer does when it slides under a
+                  // resting trackpad cursor.
+                  child: PregoSingleChildScrollView(
+                    key: const Key("new_session_options_scroll"),
+                    controller: null,
+                    padding: const EdgeInsets.all(PregoSpacing.xl),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,

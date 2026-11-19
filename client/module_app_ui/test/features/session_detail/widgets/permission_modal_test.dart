@@ -210,7 +210,7 @@ void main() {
     await _openPermissionModal(tester);
 
     final rejectBefore = tester.getRect(find.text("Don’t allow"));
-    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -5000));
+    await tester.drag(find.byType(PregoSingleChildScrollView).first, const Offset(0, -5000));
     await tester.pumpAndSettle();
     expect(tester.getRect(find.text("Don’t allow")), rejectBefore);
     expect(find.widgetWithText(PregoButtonsSolid, "Don’t allow").hitTestable(), findsOneWidget);

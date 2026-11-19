@@ -1,7 +1,10 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/components/menus/anchored_flat_panel.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../helpers/trackpad_overscroll.dart";
 
 Widget _harness({
   required PregoPopoverContentBuilder contentBuilder,
@@ -93,7 +96,7 @@ void main() {
 
     // No overflow was thrown, and the content rides the panel's scroll view.
     expect(tester.takeException(), isNull);
-    expect(find.byType(SingleChildScrollView), findsOneWidget);
+    expect(find.byType(PregoSingleChildScrollView), findsOneWidget);
   }, variant: _everyPlatform);
 
   testWidgets("opens and closes at once under reduced motion", (tester) async {
@@ -161,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.byType(PregoSingleChildScrollView), findsNothing);
     expect(_panel(tester: tester).height, 200);
     expect(find.text("Pinned"), findsOneWidget);
   });
@@ -197,4 +200,35 @@ void main() {
     expect(panel.right, lessThanOrEqualTo(375 - 12));
     expect(panel.top, greaterThanOrEqualTo(_trigger(tester: tester).bottom));
   });
+
+  testWidgets(
+    "a trackpad overscroll stretches steadily while buttons slide under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: _harness(
+            popoverMaxHeight: 300,
+            contentBuilder: (context, close) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var index = 0; index < 20; index++)
+                  PregoButtonsSolid(
+                    label: "Option $index",
+                    hierarchy: PregoButtonsSolidHierarchy.secondary,
+                    size: PregoButtonsSolidSize.md,
+                    fullWidth: true,
+                    onPressed: () {},
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byIcon(Icons.more_horiz));
+      await tester.pumpAndSettle();
+      await expectSteadyTrackpadOverscroll(tester: tester, target: find.text("Option 19"));
+    },
+  );
 }

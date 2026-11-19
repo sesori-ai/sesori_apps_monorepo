@@ -25,7 +25,7 @@ AgentInfo _agent({required String name, required String description}) =>
     AgentInfo(name: name, description: description, model: null, mode: AgentMode.all);
 
 Finder _menuItem(String label) => find.descendant(
-  of: find.byType(SingleChildScrollView),
+  of: find.byType(PregoSingleChildScrollView),
   matching: find.widgetWithText(InkWell, label),
 );
 
@@ -342,7 +342,7 @@ void main() {
       await tester.tap(find.widgetWithText(PregoPickerButton, "minimal"));
       await tester.pumpAndSettle();
 
-      final scrollView = find.byType(SingleChildScrollView);
+      final scrollView = find.byType(PregoSingleChildScrollView);
       final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
       expect(position.maxScrollExtent, greaterThan(0));
       expect(_menuItem("max").hitTestable(), findsOneWidget);

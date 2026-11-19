@@ -12,6 +12,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../helpers/trackpad_overscroll.dart";
+
 const _action = PendingExternalAction(
   id: "request",
   sessionID: "owner",
@@ -215,4 +217,16 @@ void main() {
     expect(find.textContaining("connection changed"), findsOneWidget);
     verifyNever(() => harness.repository.replyToExternalAction(request: any(named: "request")));
   });
+
+  testWidgets("a trackpad overscroll stretches steadily while the buttons slide under a resting cursor", (
+    tester,
+  ) async {
+    // Large text, so the request scrolls.
+    await open(tester, scale: 2);
+
+    await expectSteadyTrackpadOverscroll(
+      tester: tester,
+      target: find.widgetWithText(PregoButtonsSolid, "Cancel request"),
+    );
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
