@@ -1,18 +1,22 @@
 import "dart:math" as math;
 
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelOrbits;
 import "package:theme_prego/module_prego.dart";
 
-/// The touch composer's model and effort control: the same pill as the
-/// composer's other pickers, reading `Opus 5.5 · High`, with a small bolt while
-/// fast mode is on and the pickers' selector caret.
+/// The touch composer's model and effort control on every harness: the same
+/// pill as the composer's other pickers, reading `Opus 5.5 · High` (or only the
+/// model when it has no effort), with a small bolt while fast mode is on and
+/// the pickers' selector caret.
 ///
 /// A new model, level or speed cross-fades in while the pill eases to its new
 /// width, so nothing snaps.
 class const ModelEffortChip({
   super.key,
-  required final ModelOrbits orbits,
+  required final String name,
+
+  /// The selected effort level as the harness names it, or null for a model
+  /// without one.
+  required final String? level,
   required final bool fast,
 
   /// Whether the selector caret shows. A read-only chip keeps the caret's
@@ -34,8 +38,7 @@ class const ModelEffortChip({
     final prego = context.prego;
     final colors = prego.colors;
     final style = prego.textTheme.textXs.medium;
-    final level = orbits.currentLevel;
-    final name = orbits.current.name;
+    final level = this.level;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
     return SizedBox(
       height: height,
@@ -80,7 +83,7 @@ class const ModelEffortChip({
                                 maxWidth: math.max(0, constraints.maxWidth - (fast ? _boltWidth : 0)) / 2,
                               ),
                               child: Text(
-                                " · ${_levelWord(level: level)}",
+                                " · ${effortLevelWord(level: level)}",
                                 maxLines: 1,
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
@@ -123,8 +126,7 @@ class const ModelEffortChip({
   );
 }
 
-/// The level as the chip names it: the ladder word with a capital, `High`.
-String _levelWord({required EffortLevel level}) {
-  final word = level.wireId;
-  return word.substring(0, 1).toUpperCase() + word.substring(1);
-}
+/// A level as the chip and the model list name it: the harness's word with a
+/// capital, `High`.
+String effortLevelWord({required String level}) =>
+    level.isEmpty ? level : level.substring(0, 1).toUpperCase() + level.substring(1);

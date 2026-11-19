@@ -911,25 +911,28 @@ keep it offered, with a log. Per-turn reasons from result messages are not track
 
 ## Model and effort orbits (touch composer)
 
-The touch composer (phone and touch iPad) replaces the model, effort and ⚡
-pills with the model and effort chip and its orbits picker when the catalog fits, and
-keeps the pills otherwise. The client decides from the catalog alone, never the
-harness name: exactly one provider has available models, every effort it
-reports (`none` ignored) is an exact level of `off, minimal, low, medium,
-high, xhigh, max, ultra`, and at least one model reports a level. One other effort
-name rejects the whole catalog. The pointer layout always keeps the pills.
+Every harness shows the model and its effort as one control, `Model · Level`
+(a chip on touch, a pill under a pointer), and its model list sets both: the
+selected row carries a strip of exactly the levels the harness reports. On the
+touch composer (phone and touch iPad) the chip opens the orbits picker when the
+catalog fits, and the model list otherwise. The client decides from the catalog
+alone, never the harness name: exactly one provider has available models, every
+effort it reports (`none` ignored) is an exact level of `off, minimal, low,
+medium, high, xhigh, max, ultra`, and at least one model reports a level. One
+other effort name rejects the whole catalog. The pointer layout always opens the
+model list.
 
 | Harness | Status |
 |---|---|
 | Claude | ✅ Always: one provider and the closed level set `low` to `max`. |
-| Codex, Grok, Cursor | ✅ Typically: one provider; levels pass through from the backend, so an off-ladder name would bring back the pills. |
+| Codex, Grok, Cursor | ✅ Typically: one provider; levels pass through from the backend, so an off-ladder name would make the chip open the model list instead. |
 | Antigravity | ✅ When at least one account model has High, Medium and Low variants; one provider. |
 | Copilot | ✅ Typically: one provider. A model's levels are known only once it has been the current model, so the others show as rings without levels. |
 | DeepSeek | ✅ Only when exactly one upstream provider is in use; it reports one provider per upstream provider. |
 | OpenCode | ✅ Rarely: only with exactly one usable connected provider; it reports one provider per connected provider. |
 | Pi | ✅ Only when exactly one provider is in use; its `off` (thinking off) is the weakest level. |
-| OMP | ⬜ Keeps the pills: every model offers `auto`, which has no place on the ladder, and orbits must not hide a level the "All N models" list cannot pick. On macOS it also adds an on-device provider. |
-| Hermes | ⬜ Keeps the pills: it reports no effort levels (see Option pickers). |
+| OMP | ⬜ The chip opens the model list, whose strip offers `auto` first. Every model offers `auto`, which has no place on the ladder, and "All N models" (the only way from the orbits to the list) shows only when the catalog has more models than rings. On macOS it also adds an on-device provider. |
+| Hermes | ⬜ The chip opens the model list: it reports no effort levels (see Option pickers), so the list says "No effort setting". |
 
 ## Agent selection and harness modes
 
@@ -975,7 +978,7 @@ Antigravity, Copilot, Hermes and OMP produce no child sessions.
 - Claude streams no effort, so a child seen only live names no variant until
   the bridge reads its history. A model the catalog does not list shows its raw
   id.
-- OpenCode leaves the variant pill out when the child ran without one. Right
+- OpenCode shows only the model when the child ran without a variant. Right
   after a child compacts, its agent reads `compaction` until its next reply.
 - Codex takes a child's model and effort from its rollout's `turn_context`. A
   running child whose rollout is not flushed yet is stamped live with the
@@ -992,7 +995,7 @@ Antigravity, Copilot, Hermes and OMP produce no child sessions.
 
 Archived sessions of every harness show the agent and model of their newest
 agent reply. Archiving clears the bridge's stored defaults and a reply records
-no variant, so the variant pill never shows (⬜). Display names and the
+no variant, so the model shows without a level (⬜). Display names and the
 OpenCode agent choice come from the cached option catalog, so opening an
 archived session never wakes its harness. Without a cached catalog the model
 shows its id and the agent pill is left out.

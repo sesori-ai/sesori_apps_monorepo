@@ -2083,6 +2083,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orbitsPickerNoEffort => 'no effort setting';
 
   @override
+  String get modelPickerNoEffort => 'No effort setting';
+
+  @override
+  String modelPickerLevel(String level) {
+    return '$level effort';
+  }
+
+  @override
   String orbitsPickerAllModels(int count) {
     return 'All $count models';
   }

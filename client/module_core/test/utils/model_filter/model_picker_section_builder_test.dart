@@ -69,6 +69,27 @@ void main() {
       expect(sections.map((s) => s.providerName), ["Alpha", "Zeta"]);
     });
 
+    test("lists each model's levels weakest first, without none", () {
+      final sections = build(
+        providers: [
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "m").copyWith(variants: const ["xhigh", "high", "low", "none", "off", "auto"]),
+              _model(id: "plain"),
+            ],
+          ),
+        ],
+      );
+      final levels = {
+        for (final entry in sections.single.models) entry.modelID: entry.levels.map((level) => level.id).toList(),
+      };
+      expect(levels, {
+        "m": ["auto", "off", "low", "high", "xhigh"],
+        "plain": <String>[],
+      });
+    });
+
     test("omits providers without available models", () {
       final sections = build(
         providers: [

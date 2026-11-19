@@ -62,8 +62,7 @@ const _claudeNew = AgentModel(providerID: "anthropic", modelID: "claude-new", va
 Widget _buildApp({
   required AgentModel selected,
   required PregoInteractionMode mode,
-  required void Function({required String providerID, required String modelID, required SessionVariant? variant})
-  onModelSelected,
+  required ModelSelectionHandler onModelSelected,
 }) {
   return PregoInteractionScope(
     mode: mode,
@@ -85,8 +84,6 @@ Widget _buildApp({
               providers: _providers(),
               selectedAgentModel: selected,
               onModelSelected: onModelSelected,
-              availableVariants: const [],
-              onVariantSelected: (_) {},
               modelOrbits: null,
               fastModeControl: FastModeControl.hidden,
               decideFastModeToggle: () => null,
@@ -101,10 +98,23 @@ Widget _buildApp({
   );
 }
 
+/// The model control: a chip on touch, a pill under a pointer.
+final _trigger = find.bySemanticsLabel("Claude Sonnet (latest)");
+
 Future<void> _openPicker({required WidgetTester tester}) async {
-  await tester.tap(find.byType(PregoPickerButton));
+  await tester.tap(_trigger);
   await tester.pumpAndSettle();
 }
+
+/// Records each pick and applies it, as the cubits do.
+ModelSelectionHandler _recording(List<(String, String)> selected) =>
+    ({required providerID, required modelID, required variant}) {
+      selected.add((providerID, modelID));
+      return AgentModel(providerID: providerID, modelID: modelID, variant: null);
+    };
+
+Finder _checked(String label) =>
+    find.descendant(of: find.widgetWithText(InkWell, label), matching: find.byIcon(TablerRegular.check));
 
 /// The option row painted with the keyboard and mouse highlight.
 Finder _highlighted({required String label}) => find.ancestor(
@@ -123,7 +133,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID, required variant}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) => null,
       ),
     );
     await _openPicker(tester: tester);
@@ -141,12 +151,16 @@ void main() {
     );
     // The picker opens above the pill, clear of the composer.
     final panel = tester.getRect(find.byType(ModelPicker));
-    expect(panel.bottom, lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).top));
+    expect(panel.bottom, lessThanOrEqualTo(tester.getRect(_trigger).top));
     expect(panel.height, lessThanOrEqualTo(PregoPickerPopover.maxHeight));
   });
 
   testWidgets("an open picker follows a selection made elsewhere and keeps its search", (tester) async {
-    void onModelSelected({required String providerID, required String modelID, required SessionVariant? variant}) {}
+    AgentModel? onModelSelected({
+      required String providerID,
+      required String modelID,
+      required SessionVariant? variant,
+    }) => null;
     await tester.pumpWidget(
       _buildApp(selected: _claudeNew, mode: PregoInteractionMode.touch, onModelSelected: onModelSelected),
     );
@@ -175,7 +189,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID, required variant}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) => null,
       ),
     );
     await _openPicker(tester: tester);
@@ -189,15 +203,10 @@ void main() {
     expect(find.text("ZETA AI"), findsNothing);
   });
 
-  testWidgets("tapping a model selects it and closes the picker", (tester) async {
+  testWidgets("tapping another model selects it and keeps the list open; tapping it again closes", (tester) async {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
-      _buildApp(
-        selected: _claudeNew,
-        mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID, required variant}) =>
-            selected.add((providerID, modelID)),
-      ),
+      _buildApp(selected: _claudeNew, mode: PregoInteractionMode.touch, onModelSelected: _recording(selected)),
     );
     await _openPicker(tester: tester);
 
@@ -205,18 +214,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selected, [("zeta", "z-1")]);
+    expect(find.byType(ModelPicker), findsOneWidget);
+    expect(_checked("Zeta One"), findsOneWidget);
+    expect(_checked("Claude Sonnet"), findsNothing);
+
+    await tester.tap(find.text("Zeta One"));
+    await tester.pumpAndSettle();
+    expect(selected, [("zeta", "z-1")]);
     expect(find.byType(ModelPicker), findsNothing);
   });
 
   testWidgets("under a pointer, the keyboard and mouse move one highlight and Enter picks it", (tester) async {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
-      _buildApp(
-        selected: _claudeNew,
-        mode: PregoInteractionMode.pointer,
-        onModelSelected: ({required providerID, required modelID, required variant}) =>
-            selected.add((providerID, modelID)),
-      ),
+      _buildApp(selected: _claudeNew, mode: PregoInteractionMode.pointer, onModelSelected: _recording(selected)),
     );
     await _openPicker(tester: tester);
 
@@ -246,18 +257,19 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(selected, [("zeta", "z-1")]);
+    expect(_checked("Zeta One"), findsOneWidget);
+
+    // Enter on the selected model keeps it and closes the list.
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(selected, [("zeta", "z-1")]);
     expect(find.byType(ModelPicker), findsNothing);
   });
 
   testWidgets("under a pointer, Esc closes the picker without a selection", (tester) async {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
-      _buildApp(
-        selected: _claudeNew,
-        mode: PregoInteractionMode.pointer,
-        onModelSelected: ({required providerID, required modelID, required variant}) =>
-            selected.add((providerID, modelID)),
-      ),
+      _buildApp(selected: _claudeNew, mode: PregoInteractionMode.pointer, onModelSelected: _recording(selected)),
     );
     await _openPicker(tester: tester);
 
@@ -273,7 +285,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID, required variant}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) => null,
       ),
     );
     await _openPicker(tester: tester);

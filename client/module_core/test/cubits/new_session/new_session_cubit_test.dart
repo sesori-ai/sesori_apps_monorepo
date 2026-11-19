@@ -2186,7 +2186,11 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null);
+        // The cubit returns what it applied.
+        expect(
+          cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null),
+          const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "provisional-effort"),
+        );
       },
       expect: () => [
         composingWith<NewSessionPhaseIdle>().having(

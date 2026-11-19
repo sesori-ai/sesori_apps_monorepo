@@ -19,14 +19,16 @@ import "model_effort/model_effort_chip.dart";
 import "model_effort/orbits_picker.dart";
 import "model_picker.dart";
 
-/// Composer header exposing the available agent / model / variant selections
-/// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
-/// beside it: a [PregoAnchorMenu] for agents and variants, and a searchable
-/// [ModelPicker] for models.
+/// Composer header exposing the agent and the model with its effort as solid
+/// pill buttons. The model and its effort always show and pick together: one
+/// control reading `Opus 5.5 · High` opens the searchable [ModelPicker], whose
+/// selected row sets the effort.
 ///
-/// On touch, a catalog the orbits picker can draw ([modelOrbits]) gets one
-/// [ModelEffortChip] in place of the model, variant and fast-mode pills. The chip
-/// leads the row; the agent pill and [trailing] chips sit at its end.
+/// On touch that control is a [ModelEffortChip] leading the row, with the
+/// agent pill, the fast-mode pill and [trailing] chips at its end. A catalog
+/// the orbits picker can draw ([modelOrbits]) opens the orbits picker from the
+/// chip instead, which also covers fast mode. Under a pointer it is a pill like
+/// the agent's.
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
@@ -38,10 +40,7 @@ class const AgentModelButtons({
   required final ValueChanged<String> onAgentSelected,
   required final List<ProviderInfo> providers,
   required final AgentModel? selectedAgentModel,
-  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
-  onModelSelected,
-  required final List<SessionVariant> availableVariants,
-  required final ValueChanged<SessionVariant> onVariantSelected,
+  required final ModelSelectionHandler onModelSelected,
 
   /// The orbits picker's content, or null when the catalog does not fit it.
   required final ModelOrbits? modelOrbits,
@@ -128,65 +127,56 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     );
     // The pointer layout keeps its pills.
     final orbits = compact ? null : widget.modelOrbits;
-    final selectors = [
-      if (orbits != null) ...[
-        // The chip leads and hugs its text; everything else on the line sits
-        // at the end, so the gap between them stays open.
-        Expanded(
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: lock(
-              _OrbitsMenu(
-                surfaceStyle: widget.surfaceStyle,
-                readOnly: widget.readOnly,
-                orbits: orbits,
-                sections: _modelSections,
-                selected: selected,
-                onModelSelected: widget.onModelSelected,
-                fastModeControl: widget.fastModeControl,
-                decideFastModeToggle: widget.decideFastModeToggle,
-                onFastModeChanged: widget.onFastModeChanged,
-              ),
-            ),
-          ),
-        ),
-        if (selectedAgent != null)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _endAlignedPickerMaxWidth),
-            child: lock(agentMenu(agent: selectedAgent, hugLabel: true)),
-          ),
-      ] else ...[
-        if (selectedAgent != null) slot(agentMenu(agent: selectedAgent, hugLabel: compact)),
-        slot(
-          _ModelMenu(
+    final Widget modelMenu = orbits != null
+        ? _OrbitsMenu(
             surfaceStyle: widget.surfaceStyle,
-            hugLabel: compact,
+            readOnly: widget.readOnly,
+            orbits: orbits,
+            sections: _modelSections,
+            selected: selected,
+            onModelSelected: widget.onModelSelected,
+            fastModeControl: widget.fastModeControl,
+            decideFastModeToggle: widget.decideFastModeToggle,
+            onFastModeChanged: widget.onFastModeChanged,
+          )
+        : _ModelEffortMenu(
+            surfaceStyle: widget.surfaceStyle,
+            compact: compact,
+            readOnly: widget.readOnly,
             sections: _modelSections,
             selected: selected,
             providers: widget.providers,
             onModelSelected: widget.onModelSelected,
-          ),
-        ),
-        if (widget.availableVariants.isNotEmpty)
-          slot(
-            _VariantMenu(
-              surfaceStyle: widget.surfaceStyle,
-              hugLabel: compact,
-              availableVariants: widget.availableVariants,
-              selectedVariant: selected?.variant,
-              onVariantSelected: widget.onVariantSelected,
-            ),
-          ),
-        if (widget.fastModeControl != FastModeControl.hidden)
-          lock(
+          );
+    // The orbits picker carries fast mode; any other model control leaves it
+    // to its own pill.
+    final fastModeButton = orbits != null || widget.fastModeControl == FastModeControl.hidden
+        ? null
+        : lock(
             _FastModeButton(
               surfaceStyle: widget.surfaceStyle,
               control: widget.fastModeControl,
               decide: widget.decideFastModeToggle,
               onFastModeChanged: widget.onFastModeChanged,
             ),
+          );
+    final selectors = [
+      if (compact) ...[
+        if (selectedAgent != null) slot(agentMenu(agent: selectedAgent, hugLabel: true)),
+        slot(modelMenu),
+      ] else ...[
+        // The chip leads and hugs its text; everything else on the line sits
+        // at the end, so the gap between them stays open.
+        Expanded(
+          child: Align(alignment: AlignmentDirectional.centerStart, child: lock(modelMenu)),
+        ),
+        if (selectedAgent != null)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _endAlignedPickerMaxWidth),
+            child: lock(agentMenu(agent: selectedAgent, hugLabel: true)),
           ),
       ],
+      ?fastModeButton,
       for (final chip in widget.trailing) _pillHalo(reachesLayerBottom: false, child: chip),
     ];
     final row = _pillRow(compact: compact, pills: selectors);
@@ -215,35 +205,63 @@ class const ReadOnlyAgentModelPills({
   Widget build(BuildContext context) {
     final agent = this.agent;
     final model = this.model;
-    final variant = model?.variant;
-    Widget pill({required IconData icon, required String label}) => _pickerSlot(
-      compact: compact,
-      child: _pillHalo(
-        // The bottom-most row: its halos run on to the bottom edge, so nothing
-        // shows below the pills.
-        reachesLayerBottom: true,
-        child: _pickerButton(
-          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-          pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-          hugLabel: compact,
-          leadingIcon: icon,
-          label: label,
-          surfaceStyle: PregoComposerSurfaceStyle.subtle,
-          onPressed: null,
-        ),
-      ),
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    // The bottom-most row: its halos run on to the bottom edge, so nothing
+    // shows below the pills.
+    Widget halo(Widget child) => _pillHalo(reachesLayerBottom: true, child: child);
+    Widget pill({required IconData icon, required String label}) => _pickerButton(
+      pointer: pointer,
+      hugLabel: compact,
+      leadingIcon: icon,
+      label: label,
+      surfaceStyle: PregoComposerSurfaceStyle.subtle,
+      onPressed: null,
     );
+    // As in the composer, a harness with a single agent has none to name.
+    final agentPill = agents.length > 1 && agent != null ? pill(icon: TablerRegular.robot, label: agent) : null;
+    final modelLabel = model == null
+        ? null
+        : (name: _resolveModelName(context, providers: providers, selected: model), level: model.variant);
     final pills = [
-      // As in the composer, a harness with a single agent has none to name.
-      if (agents.length > 1 && agent != null) pill(icon: TablerRegular.robot, label: agent),
-      if (model != null)
-        pill(
-          icon: TablerRegular.cpu,
-          label: _resolveModelName(context, providers: providers, selected: model),
+      if (compact) ...[
+        if (agentPill != null) _pickerSlot(compact: true, child: halo(agentPill)),
+        if (modelLabel != null)
+          _pickerSlot(
+            compact: true,
+            child: halo(
+              pill(
+                icon: TablerRegular.cpu,
+                label: _modelEffortText(name: modelLabel.name, level: modelLabel.level),
+              ),
+            ),
+          ),
+      ] else ...[
+        // Laid out as the live touch composer: the chip leads, the agent ends.
+        Expanded(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: modelLabel == null
+                ? const SizedBox.shrink()
+                : halo(
+                    ModelEffortChip(
+                      name: modelLabel.name,
+                      level: modelLabel.level,
+                      fast: false,
+                      showsCaret: false,
+                      surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                    ),
+                  ),
+          ),
         ),
-      if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
+        if (agentPill != null)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _endAlignedPickerMaxWidth),
+            child: halo(agentPill),
+          ),
+      ],
     ];
-    if (pills.isEmpty) return const SizedBox.shrink();
+    if (modelLabel == null && agentPill == null) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
       child: _pillRow(compact: compact, pills: pills),
@@ -353,58 +371,76 @@ class const _AgentMenu({
   }
 }
 
-/// Model-selection pill + its searchable picker.
-class const _ModelMenu({
+/// The model and its effort as one control, opening the searchable
+/// [ModelPicker] that picks both: a [ModelEffortChip] on touch, and a pill
+/// reading the same under a pointer.
+class const _ModelEffortMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
-  required final bool hugLabel,
+
+  /// Shows the pointer shells' pill, which hugs its label, instead of the
+  /// touch chip.
+  required final bool compact,
+
+  /// Shows the chip without its caret, as the read-only pills do.
+  required final bool readOnly,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
-  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
-  onModelSelected,
+  required final ModelSelectionHandler onModelSelected,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final name = _resolveModelName(context, providers: providers, selected: selected);
+    final level = selected?.variant;
     return PregoPickerPopover(
       pointerWidth: 300,
       onClosed: null,
-      triggerBuilder: (context, toggle) => _pickerButton(
-        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-        hugLabel: hugLabel,
-        leadingIcon: TablerRegular.cpu,
-        label: _resolveModelName(context, providers: providers, selected: selected),
-        surfaceStyle: surfaceStyle,
-        onPressed: toggle,
-      ),
-      contentBuilder: (context, close) => _modelPicker(
+      triggerBuilder: (context, toggle) {
+        if (compact) {
+          return _pickerButton(
+            // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+            pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+            hugLabel: true,
+            leadingIcon: TablerRegular.cpu,
+            label: _modelEffortText(name: name, level: level),
+            surfaceStyle: surfaceStyle,
+            onPressed: toggle,
+          );
+        }
+        final borderRadius = BorderRadius.circular(PregoRadius.full);
+        return Semantics(
+          button: true,
+          label: _modelEffortSemantics(context, name: name, level: level),
+          excludeSemantics: true,
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: borderRadius,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
+              borderRadius: borderRadius,
+              onTap: toggle,
+              child: ModelEffortChip(
+                name: name,
+                level: level,
+                fast: false,
+                showsCaret: !readOnly,
+                surfaceStyle: surfaceStyle,
+              ),
+            ),
+          ),
+        );
+      },
+      contentBuilder: (context, close) => ModelPicker(
         sections: sections,
         showsEveryModel: false,
         selected: selected,
         onModelSelected: onModelSelected,
-        close: close,
+        onClose: close,
       ),
     );
   }
 }
-
-Widget _modelPicker({
-  required List<ModelPickerSection> sections,
-  required bool showsEveryModel,
-  required AgentModel? selected,
-  required void Function({required String providerID, required String modelID, required SessionVariant? variant})
-  onModelSelected,
-  required VoidCallback close,
-}) => ModelPicker(
-  sections: sections,
-  showsEveryModel: showsEveryModel,
-  selected: selected,
-  onModelSelected: ({required String providerID, required String modelID, required SessionVariant? variant}) {
-    close();
-    onModelSelected(providerID: providerID, modelID: modelID, variant: variant);
-  },
-  onClose: close,
-);
 
 /// The model and effort chip and the orbits picker it opens, with the searchable
 /// [ModelPicker] behind the picker's "All N models".
@@ -414,8 +450,7 @@ class const _OrbitsMenu({
   required final ModelOrbits orbits,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
-  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
-  onModelSelected,
+  required final ModelSelectionHandler onModelSelected,
   required final FastModeControl fastModeControl,
   required final FastModeToggleDecision? Function() decideFastModeToggle,
   required final ValueChanged<bool> onFastModeChanged,
@@ -439,13 +474,15 @@ class const _OrbitsMenu({
           toggle();
         },
       ),
-      // Opened from "All N models", so it lists every model, not one per family.
-      contentBuilder: (context, close) => _modelPicker(
+      // Opened from "All N models", so it lists every model, not one per
+      // family, and sets the effort of any of them, as the other harnesses'
+      // list does.
+      contentBuilder: (context, close) => ModelPicker(
         sections: sections,
         showsEveryModel: true,
         selected: selected,
         onModelSelected: onModelSelected,
-        close: close,
+        onClose: close,
       ),
     );
   }
@@ -553,7 +590,8 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
                     : null,
               ),
               child: ModelEffortChip(
-                orbits: orbits,
+                name: orbits.current.name,
+                level: orbits.currentLevel?.wireId,
                 fast: widget.fastModeControl == FastModeControl.on,
                 showsCaret: !widget.readOnly,
                 surfaceStyle: widget.surfaceStyle,
@@ -562,47 +600,6 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Variant-selection pill + its popup.
-class const _VariantMenu({
-  required final PregoComposerSurfaceStyle surfaceStyle,
-  required final bool hugLabel,
-  required final List<SessionVariant> availableVariants,
-  required final String? selectedVariant,
-  required final ValueChanged<SessionVariant> onVariantSelected,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    return PregoAnchorMenu(
-      flat: true,
-      menuWidth: 220,
-      menuMaxHeight: PregoPickerPopover.maxHeight,
-      reverseScroll: true,
-      triggerBuilder: (context, toggle) => _pickerButton(
-        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-        hugLabel: hugLabel,
-        leadingIcon: TablerRegular.gauge,
-        label: selectedVariant ?? availableVariants.first.id,
-        surfaceStyle: surfaceStyle,
-        onPressed: toggle,
-      ),
-      entriesBuilder: () => [
-        PregoMenuLabel(text: loc.sessionDetailPickerVariant),
-        // Catalogs are strongest-first; keep those efforts nearest the composer.
-        for (final variant in availableVariants.reversed)
-          PregoMenuItem(
-            title: variant.id,
-            subtitle: null,
-            isSelected: variant.id == selectedVariant,
-            shortcutLabel: null,
-            onTap: () => onVariantSelected(variant),
-          ),
-      ],
     );
   }
 }
@@ -692,4 +689,17 @@ String _resolveModelName(
     }
   }
   return modelID.isNotEmpty ? modelID : fallback;
+}
+
+/// The model and its effort as the pointer pill reads them, `Opus 5.5 · High`,
+/// or only the model when it has no effort.
+String _modelEffortText({required String name, required String? level}) =>
+    level == null ? name : "$name · ${effortLevelWord(level: level)}";
+
+/// What a screen reader hears for the model and effort control.
+String _modelEffortSemantics(BuildContext context, {required String name, required String? level}) {
+  final loc = context.loc;
+  if (level == null) return name;
+  if (EffortLevel.tryParse(value: level) == EffortLevel.off) return loc.orbitsPickerLevelOff(name);
+  return loc.orbitsPickerLevel(name, level);
 }

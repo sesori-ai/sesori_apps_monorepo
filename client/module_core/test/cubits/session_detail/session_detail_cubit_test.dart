@@ -876,7 +876,7 @@ void main() {
         clearInteractions(mockProductAnalyticsService);
         final blockedState = cubit.state;
         cubit.selectAgent("coder");
-        cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model", variant: null);
+        expect(cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model", variant: null), isNull);
         cubit.selectVariant(const SessionVariant(id: "blocked-variant"));
         cubit.stageCommand(testCommandInfo());
         cubit.clearStagedCommand();
@@ -2629,8 +2629,11 @@ void main() {
       act: (cubit) async {
         await _awaitLoaded(cubit);
         // gpt-5 offers no high, so the reviewer agent's declared medium wins
-        // over gpt-5's own default (low).
-        cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null);
+        // over gpt-5's own default (low). The cubit returns what it applied.
+        expect(
+          cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null),
+          const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "medium"),
+        );
       },
       expect: () => [
         isA<SessionDetailLoaded>().having(

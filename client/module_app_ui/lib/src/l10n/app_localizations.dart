@@ -3661,6 +3661,18 @@ abstract class AppLocalizations {
   /// **'no effort setting'**
   String get orbitsPickerNoEffort;
 
+  /// Shown under the selected model in the composer's model list when the model has no effort levels to pick.
+  ///
+  /// In en, this message translates to:
+  /// **'No effort setting'**
+  String get modelPickerNoEffort;
+
+  /// Screen-reader label of one level in the effort strip under the selected model in the composer's model list, such as 'High effort'.
+  ///
+  /// In en, this message translates to:
+  /// **'{level} effort'**
+  String modelPickerLevel(String level);
+
   /// Pill in the orbits picker that opens the full model list. The count is always two or more.
   ///
   /// In en, this message translates to:

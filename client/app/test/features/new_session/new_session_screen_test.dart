@@ -953,25 +953,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(PregoPickerButton, "review"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsOneWidget);
   });
 
-  testWidgets("shows variant picker when selected agent has a variant", (tester) async {
+  testWidgets("the model chip shows the level and its list offers the model's levels", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
+    await tester.tap(find.text(" · Xhigh"));
     await tester.pumpAndSettle();
 
-    // Tapping the variant pill opens a popup listing the model's variants.
-    expect(_pickerMenuItem("xhigh"), findsOneWidget);
+    // The selected model's row offers its levels; a level closes the list.
+    final level = find.descendant(of: find.byType(ModelPicker), matching: find.text("Xhigh"));
+    expect(level, findsOneWidget);
 
-    await tester.tap(_pickerMenuItem("xhigh"));
+    await tester.tap(level);
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.byType(ModelPicker), findsNothing);
+    expect(find.text(" · Xhigh"), findsOneWidget);
   });
 
   testWidgets("renders bridge order with generic degraded and blocked presentation", (tester) async {
@@ -1297,8 +1299,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(TablerRegular.robot), findsNothing);
-    expect(find.widgetWithText(PregoPickerButton, "Claude 3.5 Sonnet"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.text("Claude 3.5 Sonnet"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsOneWidget);
   });
 
   testWidgets("scrolls plugin and worktree options while keeping the composer pinned", (tester) async {
@@ -2731,85 +2733,30 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    // Initially shows the agent's default variant.
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    // Initially shows the agent's default level.
+    expect(find.text(" · Xhigh"), findsOneWidget);
 
-    // Open variant picker.
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
+    await tester.tap(find.text(" · Xhigh"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(ModelPicker), matching: find.text("Low")));
     await tester.pumpAndSettle();
 
-    // Select a different variant.
-    await tester.tap(_pickerMenuItem("low"));
-    await tester.pumpAndSettle();
-
-    // The UI should now reflect the newly selected variant.
-    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
-  });
-
-  testWidgets("selecting another variant updates the displayed variant", (tester) async {
-    when(
-      () => sessionApi.listProviders(
-        projectId: any(named: "projectId"),
-        pluginId: any(named: "pluginId"),
-      ),
-    ).thenAnswer(
-      (_) async => ApiResponse.success(
-        const ProviderListResponse(
-          connectedOnly: false,
-          items: [
-            ProviderInfo(
-              id: "anthropic",
-              name: "Anthropic",
-              defaultModelID: "claude-3-5-sonnet",
-              models: {
-                "claude-3-5-sonnet": ProviderModel(
-                  fastMode: null,
-                  id: "claude-3-5-sonnet",
-                  providerID: "anthropic",
-                  name: "Claude 3.5 Sonnet",
-                  variants: ["xhigh", "low"],
-                  defaultVariant: null,
-                  family: null,
-                  releaseDate: null,
-                ),
-              },
-            ),
-            testSecondProvider,
-          ],
-        ),
-      ),
-    );
-
-    await tester.pumpWidget(_buildApp());
-    await tester.pumpAndSettle();
-
-    // Initially shows the agent's default variant.
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
-
-    // Open variant picker.
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
-    await tester.pumpAndSettle();
-
-    // Select the model's other variant.
-    await tester.tap(_pickerMenuItem("low"));
-    await tester.pumpAndSettle();
-
-    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
+    expect(find.byType(ModelPicker), findsNothing);
+    expect(find.text(" · Low"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsNothing);
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
+    await tester.tap(find.text(" · Xhigh"));
     await tester.pumpAndSettle();
 
-    await tester.tap(_pickerMenuItem("xhigh"));
+    await tester.tap(find.descendant(of: find.byType(ModelPicker), matching: find.text("Xhigh")));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsOneWidget);
 
     await tester.tap(find.widgetWithText(PregoPickerButton, "coder"));
     await tester.pumpAndSettle();
@@ -2820,7 +2767,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "reviewer"), findsOneWidget);
     // Variant intent is independent, so the explicit xhigh choice survives the
     // agent change while that variant remains valid for the selected model.
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsOneWidget);
   });
 
   testWidgets("shows the submitted message as a sending bubble during sending", (tester) async {
