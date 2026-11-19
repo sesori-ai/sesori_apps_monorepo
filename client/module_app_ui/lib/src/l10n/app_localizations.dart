@@ -8227,11 +8227,41 @@ abstract class AppLocalizations {
   /// **'From {source}'**
   String questionPageSource(String source);
 
-  /// Progress in the bottom bar of an agent's question page.
+  /// Pill beside Submit in the bottom bar of an agent's question page, counting the questions still unanswered, required or optional.
   ///
   /// In en, this message translates to:
-  /// **'{answered} of {total} answered'**
-  String questionPageProgress(int answered, int total);
+  /// **'{count} left'**
+  String questionPageLeft(int count);
+
+  /// Screen-reader label of the check mark that replaces the questions-left pill once every question on a page is answered.
+  ///
+  /// In en, this message translates to:
+  /// **'All answered'**
+  String get questionPageAllAnswered;
+
+  /// Title of the confirmation shown when the user taps Submit on a question page where every required question is answered but some optional ones aren't.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Submit with 1 unanswered question?} other{Submit with {count} unanswered questions?}}'**
+  String questionPageSubmitGapsTitle(int count);
+
+  /// Line under the partial-submit confirmation's title, explaining what the agent gets for the unanswered questions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The agent sees it as \"no answer\" and may ask again.} other{The agent sees them as \"no answer\" and may ask again.}}'**
+  String questionPageSubmitGapsBody(int count);
+
+  /// Button of the partial-submit confirmation that closes it and scrolls the page to the first unanswered question.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to first'**
+  String get questionPageSubmitGapsGoToFirst;
+
+  /// Button of the partial-submit confirmation that sends the answers with the optional questions left unanswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit anyway'**
+  String get questionPageSubmitGapsConfirm;
 
   /// No description provided for @questionPageSubmit.
   ///

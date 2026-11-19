@@ -3229,11 +3229,27 @@
     "description": "Second header line of an agent's question page, naming the session that sent it, such as 'From Claude Code · Fix the login'.",
     "placeholders": {"source": {"type": "String"}}
   },
-  "questionPageProgress": "{answered} of {total} answered",
-  "@questionPageProgress": {
-    "description": "Progress in the bottom bar of an agent's question page.",
-    "placeholders": {"answered": {"type": "int"}, "total": {"type": "int"}}
+  "questionPageLeft": "{count} left",
+  "@questionPageLeft": {
+    "description": "Pill beside Submit in the bottom bar of an agent's question page, counting the questions still unanswered, required or optional.",
+    "placeholders": {"count": {"type": "int"}}
   },
+  "questionPageAllAnswered": "All answered",
+  "@questionPageAllAnswered": {"description": "Screen-reader label of the check mark that replaces the questions-left pill once every question on a page is answered."},
+  "questionPageSubmitGapsTitle": "{count, plural, =1{Submit with 1 unanswered question?} other{Submit with {count} unanswered questions?}}",
+  "@questionPageSubmitGapsTitle": {
+    "description": "Title of the confirmation shown when the user taps Submit on a question page where every required question is answered but some optional ones aren't.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "questionPageSubmitGapsBody": "{count, plural, =1{The agent sees it as \"no answer\" and may ask again.} other{The agent sees them as \"no answer\" and may ask again.}}",
+  "@questionPageSubmitGapsBody": {
+    "description": "Line under the partial-submit confirmation's title, explaining what the agent gets for the unanswered questions.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "questionPageSubmitGapsGoToFirst": "Go to first",
+  "@questionPageSubmitGapsGoToFirst": {"description": "Button of the partial-submit confirmation that closes it and scrolls the page to the first unanswered question."},
+  "questionPageSubmitGapsConfirm": "Submit anyway",
+  "@questionPageSubmitGapsConfirm": {"description": "Button of the partial-submit confirmation that sends the answers with the optional questions left unanswered."},
   "questionPageSubmit": "Submit",
   "questionPageDone": "Done",
   "@questionPageDone": {"description": "Submit button of a question page that has no questions, only information."},

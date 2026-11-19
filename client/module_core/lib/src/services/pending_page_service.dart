@@ -28,15 +28,20 @@ class PendingPageService({
     };
   }
 
-  /// The required questions [draft] leaves unanswered, in page order. A
-  /// question of a kind this app doesn't know can't be answered here, so it
-  /// never blocks Submit.
-  List<String> unansweredRequired({required PendingPage page, required PageDraft draft}) => [
+  /// The questions [draft] leaves unanswered, required or optional, in page
+  /// order. A question of a kind this app doesn't know can't be answered here,
+  /// so it never counts.
+  List<PageQuestion> unanswered({required PendingPage page, required PageDraft draft}) => [
     for (final question in _questions(page: page))
-      if (question.isRequired &&
-          question.kind is! PageQuestionKindUnknown &&
+      if (question.kind is! PageQuestionKindUnknown &&
           !_isAnswered(question: question, answer: draft.answers[question.id]))
-        question.id,
+        question,
+  ];
+
+  /// The required questions [draft] leaves unanswered, in page order.
+  List<String> unansweredRequired({required PendingPage page, required PageDraft draft}) => [
+    for (final question in unanswered(page: page, draft: draft))
+      if (question.isRequired) question.id,
   ];
 
   /// Refuses locally, without asking the bridge, while a required question is
@@ -75,7 +80,6 @@ class PendingPageService({
   Iterable<PageQuestion> _questions({required PendingPage page}) =>
       page.sections.expand((section) => section.questions);
 
-  /// A note alone doesn't answer a question.
   bool _isAnswered({required PageQuestion question, required PageAnswer? answer}) =>
       switch ((question.kind, answer?.value)) {
         (PageSingleChoice(), PageChoiceAnswer()) || (PageTextInput(), PageTextAnswer()) => true,

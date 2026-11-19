@@ -154,6 +154,58 @@ void main() {
     expect(reportedEvents(), 1);
   });
 
+  test("submitting one of three pages in a session leaves the other two pages' drafts alone", () async {
+    submitAnswers(const PageSubmitResult.accepted());
+    PendingPage pageWith({required String id}) => PendingPage(
+      id: id,
+      sessionId: page.sessionId,
+      displaySessionId: page.displaySessionId,
+      title: page.title,
+      intro: page.intro,
+      sections: page.sections,
+    );
+    when(() => repository.lookupPage(request: any(named: "request"))).thenAnswer((invocation) async {
+      final request = invocation.namedArguments[#request] as PageLookupRequest;
+      return ApiResponse.success(PageLookupResponse.pending(page: pageWith(id: request.requestId)));
+    });
+    PendingPageCubit open({required String requestId}) {
+      final cubit = PendingPageCubit(
+        service: PendingPageService(repository: repository, productAnalyticsService: analytics),
+        drafts: drafts,
+        filePreviews: previews,
+        connectionService: connection,
+        requestId: requestId,
+        sessionId: "root",
+      );
+      addTearDown(cubit.close);
+      return cubit;
+    }
+
+    final first = open(requestId: "page-1");
+    final second = open(requestId: "page-2");
+    final third = open(requestId: "page-3");
+    await Future.wait([editing(first), editing(second), editing(third)]);
+    first.setChoice(questionId: "plan", optionId: "a");
+    third.setText(questionId: "why", text: "Later");
+    answerAll(second);
+
+    await second.submit();
+    expect(second.state, isA<PageSettledHere>());
+    verify(
+      () => repository.submitPage(
+        request: any(
+          named: "request",
+          that: isA<SubmitPageRequest>().having((r) => r.requestId, "requestId", "page-2"),
+        ),
+      ),
+    ).called(1);
+    expect(first.state, isA<PageEditing>().having((s) => s.draft.answers.keys, "answered", ["plan"]));
+    expect(third.state, isA<PageEditing>().having((s) => s.draft.answers.keys, "answered", ["why"]));
+    expect(drafts.get(requestId: "page-2"), isNull);
+    expect(drafts.get(requestId: "page-1")?.answers.keys, ["plan"]);
+    expect(drafts.get(requestId: "page-3")?.answers.keys, ["why"]);
+  });
+
   test("an already settled submit keeps the local picks read-only as answered elsewhere", () async {
     submitAnswers(const PageSubmitResult.alreadySettled());
     final cubit = create();

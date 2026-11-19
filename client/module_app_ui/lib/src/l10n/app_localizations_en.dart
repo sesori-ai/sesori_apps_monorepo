@@ -4744,9 +4744,40 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String questionPageProgress(int answered, int total) {
-    return '$answered of $total answered';
+  String questionPageLeft(int count) {
+    return '$count left';
   }
+
+  @override
+  String get questionPageAllAnswered => 'All answered';
+
+  @override
+  String questionPageSubmitGapsTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Submit with $count unanswered questions?',
+      one: 'Submit with 1 unanswered question?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String questionPageSubmitGapsBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The agent sees them as \"no answer\" and may ask again.',
+      one: 'The agent sees it as \"no answer\" and may ask again.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get questionPageSubmitGapsGoToFirst => 'Go to first';
+
+  @override
+  String get questionPageSubmitGapsConfirm => 'Submit anyway';
 
   @override
   String get questionPageSubmit => 'Submit';
