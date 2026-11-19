@@ -1194,6 +1194,10 @@ SessionDeletionService _deletionService({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: p.join(uploadsParent, "transcripts"),
     ),
+    pageImageRepository: PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: p.join(uploadsParent, "page-images"),
+    ),
   );
 }
 

@@ -283,14 +283,20 @@ send_page {
 - **Persistence.** The `agent_pages` Drift table moves the schema from 30 to 31
   through a generated migration step.
   - Columns: `id` (primary key), `session_id` (referencing `SessionTable` with
-    `onDelete: cascade`), `root_session_id`, `display_session_id?`, `page_json`
-    (the `PendingPage`), `status` (an enum of `pending`, `answered` and
-    `dismissed`), `answers_json?`, `created_at` and `settled_at?`.
-  - An index on (`root_session_id`, `status`).
+    `onDelete: cascade`), `root_session_id`, `page_json` (the `PendingPage`,
+    through a converter), `status` (an enum of `pending`, `answered` and
+    `dismissed`), `outcome_json?` (the `AgentPageOutcome`: answers and note, or
+    dismissed), `created_at` and `settled_at?`. There is no
+    `display_session_id` column: it is `page_json`'s, and `root_session_id`
+    already holds `displaySessionId ?? sessionId`.
+  - An index on (`status`, `root_session_id`), so the awaiting-roots query
+    seeks on `status`.
   - `AgentPagesDao` owns the queries.
 - **`AgentPageRepository`** (new) depends on `AgentPagesDao` and owns the events
-  stream (`asked`, `answered`, `dismissed`).
-  - `add`.
+  stream: `AgentPageAsked{page}` and `AgentPageSettled{page, outcome}`, whose
+  outcome is answered or dismissed.
+  - `add`, which mints the `sesori-page-<random>` id, as the approval
+    repository does, and returns the `PendingPage`.
   - `pendingPages({sessionId})`.
   - `find({id})`: the stored page with its status and answers.
   - `settle({id, outcome})`: a conditional update. It returns the settled page,
@@ -560,7 +566,7 @@ authored lines, with generated lines listed separately.
 |---|---|---|---|---|
 | 1/10 | 🌱 Raise the plan | ~450 docs | — | In PR |
 | 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | In PR #2813 |
-| 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | Planned |
+| 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | In PR |
 | 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | Planned |
 | 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | Planned |
 | 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | Planned |

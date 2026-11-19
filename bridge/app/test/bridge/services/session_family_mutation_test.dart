@@ -299,6 +299,7 @@ class _Fixture() {
       scratchRepository: _UnusedScratchRepository(),
       promptUploadRepository: _NoPromptUploadRepository(),
       transcriptRepository: _NoPromptUploadRepository(),
+      pageImageRepository: _NoPromptUploadRepository(),
     );
   }
 

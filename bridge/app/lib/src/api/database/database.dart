@@ -10,11 +10,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/data_directory_hardening.dart";
 import "converters/agent_model_converter.dart";
+import "converters/pending_page_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/accepted_prompts_table.dart";
+import "tables/agent_pages_table.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
@@ -48,6 +50,7 @@ part "database.g.dart";
     ScheduledTaskRunsTable,
     SessionRunningTurnsTable,
     SessionInterruptionsTable,
+    AgentPagesTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -55,7 +58,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -406,6 +409,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // Earlier failed runs never recorded what they tried to use, so they
         // keep no attempt.
         await m.addColumn(schema.scheduledTaskRuns, schema.scheduledTaskRuns.attemptJson);
+      },
+      from30To31: (m, schema) async {
+        // No agent sent a page before v31, so the table starts empty.
+        await m.createTable(schema.agentPages);
+        await m.createIndex(schema.idxAgentPagesStatusRoot);
       },
     ),
     beforeOpen: (details) async {
