@@ -47,14 +47,9 @@ _PageQuestion _$PageQuestionFromJson(Map json) => _PageQuestion(
   images: (json['images'] as List<dynamic>)
       .map((e) => PageImage.fromJson(Map<String, dynamic>.from(e as Map)))
       .toList(),
-  kind: $enumDecode(
-    _$PageQuestionKindEnumMap,
-    json['kind'],
-    unknownValue: PageQuestionKind.unknown,
+  kind: PageQuestionKind.fromJson(
+    Map<String, dynamic>.from(json['kind'] as Map),
   ),
-  options: (json['options'] as List<dynamic>)
-      .map((e) => PageOption.fromJson(Map<String, dynamic>.from(e as Map)))
-      .toList(),
   isRequired: json['isRequired'] as bool,
 );
 
@@ -64,17 +59,48 @@ Map<String, dynamic> _$PageQuestionToJson(_PageQuestion instance) =>
       'title': instance.title,
       'body': ?instance.body,
       'images': instance.images.map((e) => e.toJson()).toList(),
-      'kind': _$PageQuestionKindEnumMap[instance.kind]!,
-      'options': instance.options.map((e) => e.toJson()).toList(),
+      'kind': instance.kind.toJson(),
       'isRequired': instance.isRequired,
     };
 
-const _$PageQuestionKindEnumMap = {
-  PageQuestionKind.unknown: 'unknown',
-  PageQuestionKind.single: 'single',
-  PageQuestionKind.multiple: 'multiple',
-  PageQuestionKind.text: 'text',
-};
+PageQuestionKindUnknown _$PageQuestionKindUnknownFromJson(Map json) =>
+    PageQuestionKindUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$PageQuestionKindUnknownToJson(
+  PageQuestionKindUnknown instance,
+) => <String, dynamic>{'type': instance.$type};
+
+PageSingleChoice _$PageSingleChoiceFromJson(Map json) => PageSingleChoice(
+  options: (json['options'] as List<dynamic>)
+      .map((e) => PageOption.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PageSingleChoiceToJson(PageSingleChoice instance) =>
+    <String, dynamic>{
+      'options': instance.options.map((e) => e.toJson()).toList(),
+      'type': instance.$type,
+    };
+
+PageMultipleChoice _$PageMultipleChoiceFromJson(Map json) => PageMultipleChoice(
+  options: (json['options'] as List<dynamic>)
+      .map((e) => PageOption.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PageMultipleChoiceToJson(PageMultipleChoice instance) =>
+    <String, dynamic>{
+      'options': instance.options.map((e) => e.toJson()).toList(),
+      'type': instance.$type,
+    };
+
+PageTextInput _$PageTextInputFromJson(Map json) =>
+    PageTextInput($type: json['type'] as String?);
+
+Map<String, dynamic> _$PageTextInputToJson(PageTextInput instance) =>
+    <String, dynamic>{'type': instance.$type};
 
 _PageSection _$PageSectionFromJson(Map json) => _PageSection(
   heading: json['heading'] as String?,
@@ -118,20 +144,52 @@ Map<String, dynamic> _$PendingPageToJson(_PendingPage instance) =>
 
 _PageAnswer _$PageAnswerFromJson(Map json) => _PageAnswer(
   questionId: json['questionId'] as String,
-  optionIds: (json['optionIds'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList(),
-  text: json['text'] as String?,
+  value: json['value'] == null
+      ? null
+      : PageAnswerValue.fromJson(
+          Map<String, dynamic>.from(json['value'] as Map),
+        ),
   note: json['note'] as String?,
 );
 
 Map<String, dynamic> _$PageAnswerToJson(_PageAnswer instance) =>
     <String, dynamic>{
       'questionId': instance.questionId,
-      'optionIds': instance.optionIds,
-      'text': ?instance.text,
+      'value': ?instance.value?.toJson(),
       'note': ?instance.note,
     };
+
+PageAnswerUnknown _$PageAnswerUnknownFromJson(Map json) =>
+    PageAnswerUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$PageAnswerUnknownToJson(PageAnswerUnknown instance) =>
+    <String, dynamic>{'type': instance.$type};
+
+PageChoiceAnswer _$PageChoiceAnswerFromJson(Map json) => PageChoiceAnswer(
+  optionId: json['optionId'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PageChoiceAnswerToJson(PageChoiceAnswer instance) =>
+    <String, dynamic>{'optionId': instance.optionId, 'type': instance.$type};
+
+PageChoicesAnswer _$PageChoicesAnswerFromJson(Map json) => PageChoicesAnswer(
+  optionIds: (json['optionIds'] as List<dynamic>)
+      .map((e) => e as String)
+      .toList(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PageChoicesAnswerToJson(PageChoicesAnswer instance) =>
+    <String, dynamic>{'optionIds': instance.optionIds, 'type': instance.$type};
+
+PageTextAnswer _$PageTextAnswerFromJson(Map json) => PageTextAnswer(
+  text: json['text'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$PageTextAnswerToJson(PageTextAnswer instance) =>
+    <String, dynamic>{'text': instance.text, 'type': instance.$type};
 
 _SubmitPageRequest _$SubmitPageRequestFromJson(Map json) => _SubmitPageRequest(
   requestId: json['requestId'] as String,

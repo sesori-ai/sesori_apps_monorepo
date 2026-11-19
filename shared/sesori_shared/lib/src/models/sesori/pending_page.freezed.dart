@@ -151,7 +151,7 @@ int get hashCode {
 /// @nodoc
 mixin _$PageQuestion {
 
- String get id; String get title; String? get body; List<PageImage> get images;@JsonKey(unknownEnumValue: PageQuestionKind.unknown) PageQuestionKind get kind; List<PageOption> get options; bool get isRequired;
+ String get id; String get title; String? get body; List<PageImage> get images; PageQuestionKind get kind; bool get isRequired;
 
   /// Serializes this PageQuestion to a JSON map.
   Map<String, dynamic> toJson();
@@ -160,14 +160,14 @@ mixin _$PageQuestion {
 @override
 bool operator ==(Object other) {
   final _this = this as PageQuestion;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PageQuestion&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.body, _this.body) || other.body == _this.body)&&const DeepCollectionEquality().equals(other.images, _this.images)&&(identical(other.kind, _this.kind) || other.kind == _this.kind)&&const DeepCollectionEquality().equals(other.options, _this.options)&&(identical(other.isRequired, _this.isRequired) || other.isRequired == _this.isRequired));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PageQuestion&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.body, _this.body) || other.body == _this.body)&&const DeepCollectionEquality().equals(other.images, _this.images)&&(identical(other.kind, _this.kind) || other.kind == _this.kind)&&(identical(other.isRequired, _this.isRequired) || other.isRequired == _this.isRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PageQuestion;
-  return Object.hash(runtimeType,_this.id,_this.title,_this.body,const DeepCollectionEquality().hash(_this.images),_this.kind,const DeepCollectionEquality().hash(_this.options),_this.isRequired);
+  return Object.hash(runtimeType,_this.id,_this.title,_this.body,const DeepCollectionEquality().hash(_this.images),_this.kind,_this.isRequired);
 }
 
 
@@ -182,7 +182,7 @@ int get hashCode {
 @JsonSerializable()
 
 class _PageQuestion implements PageQuestion {
-  const _PageQuestion({required this.id, required this.title, required this.body, required  List<PageImage> images, @JsonKey(unknownEnumValue: PageQuestionKind.unknown) required this.kind, required  List<PageOption> options, required this.isRequired}): _images = images,_options = options;
+  const _PageQuestion({required this.id, required this.title, required this.body, required  List<PageImage> images, required this.kind, required this.isRequired}): _images = images;
   factory _PageQuestion.fromJson(Map<String, dynamic> json) => _$PageQuestionFromJson(json);
 
 @override final  String id;
@@ -195,14 +195,7 @@ class _PageQuestion implements PageQuestion {
   return EqualUnmodifiableListView(_images);
 }
 
-@override@JsonKey(unknownEnumValue: PageQuestionKind.unknown) final  PageQuestionKind kind;
- final  List<PageOption> _options;
-@override List<PageOption> get options {
-  if (_options is EqualUnmodifiableListView) return _options;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_options);
-}
-
+@override final  PageQuestionKind kind;
 @override final  bool isRequired;
 
 
@@ -213,14 +206,221 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PageQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&const DeepCollectionEquality().equals(other.images, _images)&&(identical(other.kind, kind) || other.kind == kind)&&const DeepCollectionEquality().equals(other.options, _options)&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PageQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&const DeepCollectionEquality().equals(other.images, _images)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.isRequired, isRequired) || other.isRequired == isRequired));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,title,body,const DeepCollectionEquality().hash(_images),kind,const DeepCollectionEquality().hash(_options),isRequired);
+    return Object.hash(runtimeType,id,title,body,const DeepCollectionEquality().hash(_images),kind,isRequired);
 }
+
+
+
+}
+
+
+
+
+PageQuestionKind _$PageQuestionKindFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'single':
+          return PageSingleChoice.fromJson(
+            json
+          );
+                case 'multiple':
+          return PageMultipleChoice.fromJson(
+            json
+          );
+                case 'text':
+          return PageTextInput.fromJson(
+            json
+          );
+        
+          default:
+            return PageQuestionKindUnknown.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$PageQuestionKind {
+
+
+
+  /// Serializes this PageQuestionKind to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageQuestionKind);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageQuestionKindUnknown implements PageQuestionKind {
+  const PageQuestionKindUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory PageQuestionKindUnknown.fromJson(Map<String, dynamic> json) => _$PageQuestionKindUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageQuestionKindUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageQuestionKindUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageSingleChoice implements PageQuestionKind {
+  const PageSingleChoice({required  List<PageOption> options,  String? $type}): _options = options,$type = $type ?? 'single';
+  factory PageSingleChoice.fromJson(Map<String, dynamic> json) => _$PageSingleChoiceFromJson(json);
+
+ final  List<PageOption> _options;
+ List<PageOption> get options {
+  if (_options is EqualUnmodifiableListView) return _options;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_options);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageSingleChoiceToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageSingleChoice&&const DeepCollectionEquality().equals(other.options, _options));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_options));
+}
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageMultipleChoice implements PageQuestionKind {
+  const PageMultipleChoice({required  List<PageOption> options,  String? $type}): _options = options,$type = $type ?? 'multiple';
+  factory PageMultipleChoice.fromJson(Map<String, dynamic> json) => _$PageMultipleChoiceFromJson(json);
+
+ final  List<PageOption> _options;
+ List<PageOption> get options {
+  if (_options is EqualUnmodifiableListView) return _options;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_options);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageMultipleChoiceToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageMultipleChoice&&const DeepCollectionEquality().equals(other.options, _options));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_options));
+}
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageTextInput implements PageQuestionKind {
+  const PageTextInput({ String? $type}): $type = $type ?? 'text';
+  factory PageTextInput.fromJson(Map<String, dynamic> json) => _$PageTextInputFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageTextInputToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageTextInput);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
 
 
 
@@ -387,7 +587,7 @@ int get hashCode {
 /// @nodoc
 mixin _$PageAnswer {
 
- String get questionId; List<String> get optionIds; String? get text; String? get note;
+ String get questionId; PageAnswerValue? get value; String? get note;
 
   /// Serializes this PageAnswer to a JSON map.
   Map<String, dynamic> toJson();
@@ -396,14 +596,14 @@ mixin _$PageAnswer {
 @override
 bool operator ==(Object other) {
   final _this = this as PageAnswer;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PageAnswer&&(identical(other.questionId, _this.questionId) || other.questionId == _this.questionId)&&const DeepCollectionEquality().equals(other.optionIds, _this.optionIds)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.note, _this.note) || other.note == _this.note));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PageAnswer&&(identical(other.questionId, _this.questionId) || other.questionId == _this.questionId)&&(identical(other.value, _this.value) || other.value == _this.value)&&(identical(other.note, _this.note) || other.note == _this.note));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PageAnswer;
-  return Object.hash(runtimeType,_this.questionId,const DeepCollectionEquality().hash(_this.optionIds),_this.text,_this.note);
+  return Object.hash(runtimeType,_this.questionId,_this.value,_this.note);
 }
 
 
@@ -418,18 +618,11 @@ int get hashCode {
 @JsonSerializable()
 
 class _PageAnswer implements PageAnswer {
-  const _PageAnswer({required this.questionId, required  List<String> optionIds, required this.text, required this.note}): _optionIds = optionIds;
+  const _PageAnswer({required this.questionId, required this.value, required this.note});
   factory _PageAnswer.fromJson(Map<String, dynamic> json) => _$PageAnswerFromJson(json);
 
 @override final  String questionId;
- final  List<String> _optionIds;
-@override List<String> get optionIds {
-  if (_optionIds is EqualUnmodifiableListView) return _optionIds;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_optionIds);
-}
-
-@override final  String? text;
+@override final  PageAnswerValue? value;
 @override final  String? note;
 
 
@@ -440,13 +633,216 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PageAnswer&&(identical(other.questionId, questionId) || other.questionId == questionId)&&const DeepCollectionEquality().equals(other.optionIds, _optionIds)&&(identical(other.text, text) || other.text == text)&&(identical(other.note, note) || other.note == note));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PageAnswer&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.value, value) || other.value == value)&&(identical(other.note, note) || other.note == note));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,questionId,const DeepCollectionEquality().hash(_optionIds),text,note);
+    return Object.hash(runtimeType,questionId,value,note);
+}
+
+
+
+}
+
+
+
+
+PageAnswerValue _$PageAnswerValueFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'choice':
+          return PageChoiceAnswer.fromJson(
+            json
+          );
+                case 'choices':
+          return PageChoicesAnswer.fromJson(
+            json
+          );
+                case 'text':
+          return PageTextAnswer.fromJson(
+            json
+          );
+        
+          default:
+            return PageAnswerUnknown.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$PageAnswerValue {
+
+
+
+  /// Serializes this PageAnswerValue to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageAnswerValue);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageAnswerUnknown implements PageAnswerValue {
+  const PageAnswerUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory PageAnswerUnknown.fromJson(Map<String, dynamic> json) => _$PageAnswerUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageAnswerUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageAnswerUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageChoiceAnswer implements PageAnswerValue {
+  const PageChoiceAnswer({required this.optionId,  String? $type}): $type = $type ?? 'choice';
+  factory PageChoiceAnswer.fromJson(Map<String, dynamic> json) => _$PageChoiceAnswerFromJson(json);
+
+ final  String optionId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageChoiceAnswerToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageChoiceAnswer&&(identical(other.optionId, optionId) || other.optionId == optionId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,optionId);
+}
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageChoicesAnswer implements PageAnswerValue {
+  const PageChoicesAnswer({required  List<String> optionIds,  String? $type}): _optionIds = optionIds,$type = $type ?? 'choices';
+  factory PageChoicesAnswer.fromJson(Map<String, dynamic> json) => _$PageChoicesAnswerFromJson(json);
+
+ final  List<String> _optionIds;
+ List<String> get optionIds {
+  if (_optionIds is EqualUnmodifiableListView) return _optionIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_optionIds);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageChoicesAnswerToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageChoicesAnswer&&const DeepCollectionEquality().equals(other.optionIds, _optionIds));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_optionIds));
+}
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PageTextAnswer implements PageAnswerValue {
+  const PageTextAnswer({required this.text,  String? $type}): $type = $type ?? 'text';
+  factory PageTextAnswer.fromJson(Map<String, dynamic> json) => _$PageTextAnswerFromJson(json);
+
+ final  String text;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PageTextAnswerToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PageTextAnswer&&(identical(other.text, text) || other.text == text));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,text);
 }
 
 

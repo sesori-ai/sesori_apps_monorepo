@@ -248,9 +248,13 @@ send_page {
 - **Page.** `PendingPage{id, sessionId, displaySessionId?, title, intro?,
   sections}`, built from `PageSection`, `PageQuestion`, `PageOption` and
   `PageImage{path, width, height, caption?}`. `path` points at the bridge's
-  copy.
+  copy. `PageQuestion{id, title, body?, images, kind, isRequired}` carries a
+  sealed `PageQuestionKind`: `single{options}`, `multiple{options}`, `text`, or
+  the fallback `unknown`, so only choice questions hold options.
 - **Submit.** `POST /page/submit` takes `SubmitPageRequest{requestId, sessionId,
-  answers: List<PageAnswer{questionId, optionIds, text?, note?}>, note?}`. It
+  answers: List<PageAnswer{questionId, value?, note?}>, note?}`. The sealed
+  `PageAnswerValue` is `choice{optionId}`, `choices{optionIds}`, `text{text}`,
+  or the fallback `unknown`; a null value with a note is a note-only answer. It
   returns the sealed `PageSubmitResult`: `accepted`, `alreadySettled`,
   `invalid{questionIds}`, or the fallback `unknown`.
 - **Lookup.** `POST /page {sessionId, requestId}` returns the sealed

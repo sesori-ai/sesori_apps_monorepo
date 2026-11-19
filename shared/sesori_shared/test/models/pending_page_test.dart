@@ -24,11 +24,12 @@ void main() {
             title: "Pick one",
             body: null,
             images: [],
-            kind: PageQuestionKind.single,
-            options: [
-              PageOption(id: "a", label: "First", description: "Detail", image: image, recommended: true),
-              PageOption(id: "b", label: "Second", description: null, image: null, recommended: false),
-            ],
+            kind: PageQuestionKind.single(
+              options: [
+                PageOption(id: "a", label: "First", description: "Detail", image: image, recommended: true),
+                PageOption(id: "b", label: "Second", description: null, image: null, recommended: false),
+              ],
+            ),
             isRequired: true,
           ),
           PageQuestion(
@@ -36,8 +37,7 @@ void main() {
             title: "Explain",
             body: "Optional context",
             images: [image],
-            kind: PageQuestionKind.text,
-            options: [],
+            kind: PageQuestionKind.text(),
             isRequired: false,
           ),
         ],
@@ -46,8 +46,22 @@ void main() {
     ],
   );
   const answers = [
-    PageAnswer(questionId: "q-single", optionIds: ["a"], text: null, note: "Because"),
-    PageAnswer(questionId: "q-text", optionIds: [], text: "Fixture answer", note: null),
+    PageAnswer(
+      questionId: "q-single",
+      value: PageAnswerValue.choice(optionId: "a"),
+      note: "Because",
+    ),
+    PageAnswer(
+      questionId: "q-many",
+      value: PageAnswerValue.choices(optionIds: ["a", "b"]),
+      note: null,
+    ),
+    PageAnswer(
+      questionId: "q-text",
+      value: PageAnswerValue.text(text: "Fixture answer"),
+      note: null,
+    ),
+    PageAnswer(questionId: "q-note", value: null, note: "Only a note"),
   ];
 
   test("a page round trips and omits absent optional text", () {
@@ -57,9 +71,14 @@ void main() {
     expect((sections.last as Map<String, dynamic>).containsKey("heading"), isFalse);
   });
 
-  test("a future question kind stays explicitly unknown", () {
-    final json = _roundTrip(page.sections.first.questions.first.toJson())..["kind"] = "future";
-    expect(PageQuestion.fromJson(json).kind, PageQuestionKind.unknown);
+  test("future question kinds and answer values stay explicitly unknown", () {
+    final json = _roundTrip(page.sections.first.questions.first.toJson())..["kind"] = {"type": "future"};
+    expect(PageQuestion.fromJson(json).kind, isA<PageQuestionKindUnknown>());
+    final answer = PageAnswer.fromJson({
+      "questionId": "q",
+      "value": {"type": "future"},
+    });
+    expect(answer.value, isA<PageAnswerUnknown>());
   });
 
   test("submit requests round trip answers and the page note", () {

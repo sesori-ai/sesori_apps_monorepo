@@ -3,13 +3,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "pending_page.freezed.dart";
 part "pending_page.g.dart";
 
-enum PageQuestionKind() {
-  unknown,
-  single,
-  multiple,
-  text,
-}
-
 /// An image the bridge copied when the page was sent. [path] points at that
 /// copy, which the client reads through the file preview route.
 @Freezed(copyWith: false, fromJson: true, toJson: true, toStringOverride: false)
@@ -38,7 +31,6 @@ sealed class PageOption with _$PageOption {
   factory fromJson(Map<String, dynamic> json) => _$PageOptionFromJson(json);
 }
 
-/// Text questions carry no options.
 @Freezed(copyWith: false, fromJson: true, toJson: true, toStringOverride: false)
 sealed class PageQuestion with _$PageQuestion {
   const factory({
@@ -46,12 +38,29 @@ sealed class PageQuestion with _$PageQuestion {
     required String title,
     required String? body,
     required List<PageImage> images,
-    @JsonKey(unknownEnumValue: PageQuestionKind.unknown) required PageQuestionKind kind,
-    required List<PageOption> options,
+    required PageQuestionKind kind,
     required bool isRequired,
   }) = _PageQuestion;
 
   factory fromJson(Map<String, dynamic> json) => _$PageQuestionFromJson(json);
+}
+
+/// How a question is answered. Only choice questions carry options.
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  copyWith: false,
+  fromJson: true,
+  toJson: true,
+  toStringOverride: false,
+)
+sealed class PageQuestionKind with _$PageQuestionKind {
+  const factory unknown() = PageQuestionKindUnknown;
+  const factory single({required List<PageOption> options}) = PageSingleChoice;
+  const factory multiple({required List<PageOption> options}) = PageMultipleChoice;
+  const factory text() = PageTextInput;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageQuestionKindFromJson(json);
 }
 
 @Freezed(copyWith: false, fromJson: true, toJson: true, toStringOverride: false)
@@ -82,17 +91,33 @@ sealed class PendingPage with _$PendingPage {
   factory fromJson(Map<String, dynamic> json) => _$PendingPageFromJson(json);
 }
 
-/// Omit an unanswered question. A text answer carries [text] and no option ids.
+/// Omit an unanswered question. A null [value] with a [note] is a note-only answer.
 @Freezed(copyWith: false, fromJson: true, toJson: true, toStringOverride: false)
 sealed class PageAnswer with _$PageAnswer {
   const factory({
     required String questionId,
-    required List<String> optionIds,
-    required String? text,
+    required PageAnswerValue? value,
     required String? note,
   }) = _PageAnswer;
 
   factory fromJson(Map<String, dynamic> json) => _$PageAnswerFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  copyWith: false,
+  fromJson: true,
+  toJson: true,
+  toStringOverride: false,
+)
+sealed class PageAnswerValue with _$PageAnswerValue {
+  const factory unknown() = PageAnswerUnknown;
+  const factory choice({required String optionId}) = PageChoiceAnswer;
+  const factory choices({required List<String> optionIds}) = PageChoicesAnswer;
+  const factory text({required String text}) = PageTextAnswer;
+
+  factory fromJson(Map<String, dynamic> json) => _$PageAnswerValueFromJson(json);
 }
 
 @Freezed(copyWith: false, fromJson: true, toJson: true, toStringOverride: false)
