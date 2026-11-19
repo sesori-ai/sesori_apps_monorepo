@@ -300,7 +300,8 @@ class SesoriMcpRequestDispatcher({
 
   /// [args] as the page service takes them. Strict-schema providers fill
   /// fields they leave out with "", so an empty optional text reads as
-  /// absent and an empty required one as missing.
+  /// absent, an empty required one as missing, and an image with neither a
+  /// path nor a caption as no image.
   AgentPageDraft _pageDraft({required SendPageArguments args}) {
     return AgentPageDraft(
       title: _requiredText(value: args.title, field: "title"),
@@ -354,13 +355,18 @@ class SesoriMcpRequestDispatcher({
   }
 
   List<AgentPageImageDraft> _pageImages({required List<PageImageArgument> images, required String field}) => [
-    for (final (index, image) in images.indexed) _pageImage(image: image, field: "$field[$index]"),
+    for (final (index, image) in images.indexed) ?_pageImage(image: image, field: "$field[$index]"),
   ];
 
-  AgentPageImageDraft _pageImage({required PageImageArgument image, required String field}) {
+  /// [image] as the page service takes it, or null for an image with an empty
+  /// path and no caption, which is how strict-schema providers fill in one
+  /// they leave out.
+  AgentPageImageDraft? _pageImage({required PageImageArgument image, required String field}) {
+    final caption = _optionalText(value: image.caption);
+    if (caption == null && image.path.trim().isEmpty) return null;
     return AgentPageImageDraft(
       path: _requiredText(value: image.path, field: "$field.path"),
-      caption: _optionalText(value: image.caption),
+      caption: caption,
     );
   }
 

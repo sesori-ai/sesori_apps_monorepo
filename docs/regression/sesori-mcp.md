@@ -45,7 +45,8 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   `isError` text results, not protocol errors. An unexpected failure is logged by tool name only and answered with a
   generic error.
 - An empty string in any tool argument reads as left out, since strict-schema providers make the model fill every
-  field. Arguments that still do not parse are refused with the field and the reason, for example
+  field. A `send_page` image with an empty path and no caption reads as no image; an empty path with a caption is
+  refused as a missing path. Arguments that still do not parse are refused with the field and the reason, for example
   `schedule.time is required when schedule.kind is daily.`
 - Results are text only, with no `structuredContent`. Read tools and `send_page` are advertised with
   `readOnlyHint: true`, proposing tools with `false`.
