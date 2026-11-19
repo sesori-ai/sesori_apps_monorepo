@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart" show PointerDeviceKind;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -201,7 +202,10 @@ void main() {
     await tester.tap(find.text("Canary"));
     verify(() => cubit.setChoice(questionId: "plan", optionId: null)).called(1);
 
+    // The page's sliver viewport places its content again only in the next
+    // frame, so each scroll pumps one before tapping.
     await tester.ensureVisible(find.text("End-to-end tests"));
+    await tester.pump();
     await tester.tap(find.text("End-to-end tests"));
     verify(() => cubit.setChoices(questionId: "checks", optionIds: ["e2e"])).called(1);
     await emit(
@@ -211,6 +215,7 @@ void main() {
       ),
     );
     await tester.ensureVisible(find.text("Unit tests"));
+    await tester.pump();
     await tester.tap(find.text("Unit tests"));
     // Kept in the options' order.
     verify(() => cubit.setChoices(questionId: "checks", optionIds: ["unit", "e2e"])).called(1);
@@ -228,6 +233,7 @@ void main() {
     // A text question has no separate note; its box already is free text.
     expect(find.byKey(const Key("question-page-note-why")), findsNothing);
     await tester.ensureVisible(find.byKey(const Key("question-page-closing-note")));
+    await tester.pump();
     expect(find.text("Anything else?"), findsOneWidget);
     await tester.enterText(
       find.descendant(of: find.byKey(const Key("question-page-closing-note")), matching: find.byType(TextField)),
@@ -256,7 +262,7 @@ void main() {
       tester,
       state: PageEditing(page: long, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
     );
-    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final viewport = tester.getRect(find.byType(CustomScrollView));
     expect(tester.getRect(find.text("Rollout plan")).top, greaterThan(viewport.bottom));
 
     await tester.tap(find.byKey(const Key("question-page-submit")));
@@ -278,6 +284,60 @@ void main() {
     expect(find.text("Answer this question to submit."), findsOneWidget);
     expect(find.text("1 question needs your attention"), findsOneWidget);
   });
+
+  testWidgets(
+    "a trackpad overscroll stretches steadily while fields slide under a resting cursor",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      final long = _page(
+        sections: [
+          for (var index = 0; index < 6; index++)
+            PageSection(
+              heading: "Background $index",
+              body: "Fixture text\n\n" * 4,
+              images: const [],
+              questions: [
+                PageQuestion(
+                  id: "plan-$index",
+                  title: "Plan $index",
+                  body: null,
+                  images: const [],
+                  kind: _plan.kind,
+                  isRequired: false,
+                ),
+              ],
+            ),
+        ],
+      );
+      await pumpScreen(
+        tester,
+        state: PageEditing(page: long, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
+      );
+      final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final center = tester.getCenter(find.byType(CustomScrollView));
+      // Hovering a field rebuilds it, so the page lays out again as fields
+      // slide under the cursor.
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: center);
+      await tester.pump();
+
+      final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+      await trackpad.panZoomStart(center);
+      var previous = position.pixels;
+      for (var step = 1; step <= 40; step++) {
+        await trackpad.panZoomUpdate(center, pan: Offset(0, -12.0 * step));
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(position.pixels, greaterThanOrEqualTo(previous), reason: "step $step snapped back");
+        previous = position.pixels;
+      }
+      expect(position.pixels, greaterThan(position.maxScrollExtent));
+      await trackpad.panZoomEnd();
+      await tester.pumpAndSettle();
+      expect(position.pixels, position.maxScrollExtent);
+    },
+  );
 
   for (final (reason, label) in [
     (PageReadOnlyReason.answered, "Answered"),
