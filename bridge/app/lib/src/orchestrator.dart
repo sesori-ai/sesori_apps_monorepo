@@ -400,6 +400,12 @@ class Orchestrator({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriTranscriptsDirectory(),
     );
+    // The same for the images agents send on pages: an answered page reopens
+    // with its images for as long as its session exists.
+    final pageImageRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriPageImagesDirectory(),
+    );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -681,6 +687,7 @@ class Orchestrator({
       scratchRepository: scratchRepository,
       promptUploadRepository: promptUploadRepository,
       transcriptRepository: transcriptRepository,
+      pageImageRepository: pageImageRepository,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
