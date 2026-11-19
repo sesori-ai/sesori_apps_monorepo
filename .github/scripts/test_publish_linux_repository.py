@@ -66,25 +66,25 @@ class RepositoryPublicationTest(unittest.TestCase):
 
     def test_content_first_inrelease_last_and_retry_does_not_replace_identical_objects(self):
         self.remote["apt/pool/internal/amd64/old-package.deb"] = b"retained old payload"
-        publisher.publish(root=self.root, channel=INTERNAL)
+        publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
         self.assertEqual(self.writes[-1], "apt/dists/internal/InRelease")
         orders = [publisher.publication_order(name=name) for name in self.writes]
         self.assertEqual(orders, sorted(orders))
         self.assertEqual(self.remote["apt/pool/internal/amd64/old-package.deb"], b"retained old payload")
         self.writes.clear()
-        publisher.publish(root=self.root, channel=INTERNAL)
+        publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
         self.assertEqual(self.writes, [])
 
     def test_conflicting_immutable_bytes_refuse_before_entrypoint_updates(self):
         self.remote["apt/pool/internal/amd64/package.deb"] = b"conflicting bytes"
         with self.assertRaisesRegex(ValueError, "Conflicting immutable"):
-            publisher.publish(root=self.root, channel=INTERNAL)
+            publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
         self.assertFalse(any(publisher.publication_order(name=name) >= 3 for name in self.writes))
 
     def test_failed_anonymous_delivery_never_completes_entrypoints(self):
         with mock.patch.object(publisher, "public_digest", return_value=None):
             with self.assertRaisesRegex(ValueError, "Anonymous delivery differs"):
-                publisher.publish(root=self.root, channel=INTERNAL)
+                publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
         self.assertEqual(len(self.writes), 1)
         self.assertNotIn("apt/dists/internal/InRelease", self.remote)
 
@@ -98,25 +98,41 @@ class RepositoryPublicationTest(unittest.TestCase):
                     self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = (
                         f"<repomd><revision>9.8.7-{revision}</revision></repomd>".encode())
                 with self.assertRaisesRegex(ValueError, "downgrade"):
-                    publisher.publish(root=self.root, channel=INTERNAL)
+                    publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
                 self.assertEqual(self.writes, [])
+
+    def test_a_channel_not_being_released_keeps_its_newer_build_without_failing(self):
+        # Stable 1.14.1 was released while internal already held a newer 1.15.0 build.
+        for arch in ("aarch64", "x86_64"):
+            self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = b"<repomd><revision>9.9.0-99</revision></repomd>"
+        for released_channel in (STABLE, None):
+            with self.subTest(released_channel=released_channel):
+                summary = self.base / f"summary-{released_channel}.md"
+                output = io.StringIO()
+                with mock.patch.dict(publisher.os.environ, {"GITHUB_STEP_SUMMARY": str(summary)}):
+                    with contextlib.redirect_stdout(output):
+                        publisher.publish(root=self.root, channel=INTERNAL, released_channel=released_channel)
+                self.assertEqual(self.writes, [])
+                self.assertIn("::notice title=Linux internal repository unchanged::", output.getvalue())
+                self.assertIn("internal repository at 9.9.0-99; its newest completed release 9.8.7-42 is older",
+                              summary.read_text())
 
     def test_stable_publishes_its_own_paths_and_ignores_newer_internal_revisions(self):
         for arch in ("aarch64", "x86_64"):
             self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = b"<repomd><revision>9.9.0-99</revision></repomd>"
         self.fixture(channel=STABLE)
-        publisher.publish(root=self.root, channel=STABLE)
+        publisher.publish(root=self.root, channel=STABLE, released_channel=STABLE)
         self.verify.assert_called_once_with(root=self.root, channel=STABLE)
         self.assertEqual(self.writes[-1], "apt/dists/stable/InRelease")
         self.assertTrue(all(name == publisher.PUBLIC_KEY or "/stable/" in name for name in self.writes))
         self.remote["rpm/stable/x86_64/repodata/repomd.xml"] = b"<repomd><revision>9.8.8-41</revision></repomd>"
         with self.assertRaisesRegex(ValueError, "downgrade"):
-            publisher.publish(root=self.root, channel=STABLE)
+            publisher.publish(root=self.root, channel=STABLE, released_channel=STABLE)
 
     def test_verification_failure_prevents_any_publication(self):
         with mock.patch.object(publisher, "verify", side_effect=ValueError("bad signature")):
             with self.assertRaisesRegex(ValueError, "bad signature"):
-                publisher.publish(root=self.root, channel=INTERNAL)
+                publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
         self.assertEqual(self.writes, [])
 
 
@@ -284,6 +300,12 @@ class RepositoryWorkflowTest(unittest.TestCase):
         self.assertNotIn("LINUX_GPG_PRIVATE_KEY", publish)
         self.assertNotIn("LINUX_GPG_PASSPHRASE", publish)
         self.assertIn("id-token: write", publish)
+        # The channel a release did not publish must not fail the call its update feeds wait on.
+        best_effort = ("continue-on-error: ${{ inputs.released_channel != '' "
+                       "&& matrix.channel != inputs.released_channel }}")
+        for job in (sign, publish):
+            self.assertIn(best_effort, job)
+        self.assertIn('${RELEASED_CHANNEL:+--released-channel "$RELEASED_CHANNEL"}', publish)
         self.assertIn("schedule:", workflow)
         self.assertIn("group: linux-repository-publication\n  cancel-in-progress: false", workflow)
         self.assertNotIn("release create", workflow)
@@ -298,6 +320,7 @@ class RepositoryWorkflowTest(unittest.TestCase):
         self.assertIn("--role=roles/storage.objectUser", setup)
         parent = (SCRIPTS.parent / "workflows/desktop-linux-release.yml").read_text().split("\n  repositories:\n")[1]
         self.assertIn("needs: publish", parent)
+        self.assertIn("released_channel: ${{ inputs.channel }}", parent)
         self.assertIn("secrets: inherit", parent)
         self.assertIn("id-token: write", parent)
 

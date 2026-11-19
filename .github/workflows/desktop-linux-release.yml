@@ -100,4 +100,6 @@ jobs:
       actions: read
       id-token: write
     uses: ./.github/workflows/linux-repository.yml
+    with:
+      released_channel: ${{ inputs.channel }}
     secrets: inherit

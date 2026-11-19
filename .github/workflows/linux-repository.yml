@@ -4,6 +4,11 @@ name: Publish Linux repositories
 # Every run refreshes every channel that has one, so a replaced pending run loses no channel.
 on:
   workflow_call:
+    inputs:
+      released_channel:
+        description: Channel the calling release published; the other channel is refreshed best-effort
+        required: true
+        type: string
   workflow_dispatch:
   schedule:
     - cron: '17 5 * * 1'
@@ -38,6 +43,8 @@ jobs:
     needs: select
     # No completed release (stable before its first Linux publication) is a no-op, not a failure.
     if: needs.select.outputs.channels != '[]'
+    # A channel the calling release did not publish must not block that release's update feeds.
+    continue-on-error: ${{ inputs.released_channel != '' && matrix.channel != inputs.released_channel }}
     strategy:
       fail-fast: false
       matrix:
@@ -98,6 +105,7 @@ jobs:
     needs: [select, sign]
     # One channel's signing failure must not hold back the other; its own artifact is required.
     if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.channels != '[]' }}
+    continue-on-error: ${{ inputs.released_channel != '' && matrix.channel != inputs.released_channel }}
     strategy:
       fail-fast: false
       matrix:
@@ -128,9 +136,11 @@ jobs:
       - name: Publish immutable content before signed entrypoints and verify anonymous bytes
         env:
           CHANNEL: ${{ matrix.channel }}
+          RELEASED_CHANNEL: ${{ inputs.released_channel }}
+        # Only the released channel refuses an older build; scheduled and manual refreshes release none.
         run: |
           python .github/scripts/publish_linux_repository.py publish --channel "$CHANNEL" \
-            --root build/linux-repository-publication
+            --root build/linux-repository-publication ${RELEASED_CHANNEL:+--released-channel "$RELEASED_CHANNEL"}
       # Housekeeping after publication: a failure shows on the step but must not block the update feeds.
       - name: Prune internal packages older than the newest five builds
         if: matrix.channel == 'internal'
