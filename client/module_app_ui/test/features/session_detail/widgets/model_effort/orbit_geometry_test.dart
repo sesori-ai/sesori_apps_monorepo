@@ -1,3 +1,4 @@
+import "dart:math" as math;
 import "dart:ui";
 
 import "package:flutter_test/flutter_test.dart";
@@ -7,30 +8,66 @@ import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelO
 import "orbits_fixture.dart";
 
 /// The agreed mock's phone: a 393 x 700 screen with the rings' centre at
-/// (33.5, 610) and the fast toggle 14 pt from the right edge.
+/// (33.5, 610) and the fast toggle 14 pt from the right edge. Every name is
+/// 60 pt long, about as long as "Sonnet 5.5".
 OrbitGeometry _geometry({required ModelOrbits orbits, Size size = const Size(393, 700)}) => OrbitGeometry(
   orbits: orbits,
   origin: const Offset(33.5, 610),
   size: size,
   fastToggleRect: Rect.fromLTWH(size.width - 14 - 88, 592, 88, 36),
+  nameLengths: [for (final _ in orbits.rings) 60],
 );
 
 void main() {
   final orbits = claudeOrbits(totalModels: 4, current: opus, currentLevel: EffortLevel.high);
 
   group("rays", () {
-    test("match the mock for five and six levels", () {
-      expect(OrbitGeometry.rayAnglesFor(levelCount: 5), [68, 54, 40, 26, 12]);
-      expect(OrbitGeometry.rayAnglesFor(levelCount: 6), [74, 62, 50, 38, 26, 14]);
+    test("rise upwards, five levels from 10° to 82°", () {
+      expect(OrbitGeometry.rayAnglesFor(levelCount: 5), [10, 28, 46, 64, 82]);
+      final six = OrbitGeometry.rayAnglesFor(levelCount: 6);
+      expect(six.first, 10);
+      expect(six.last, closeTo(83, 1e-9));
     });
 
-    test("keep the five-level span for fewer levels and widen it for more", () {
-      expect(OrbitGeometry.rayAnglesFor(levelCount: 1), [40]);
-      expect(OrbitGeometry.rayAnglesFor(levelCount: 3), [68, 40, 12]);
+    test("keep the five-level span for fewer levels and lift the strongest for more", () {
+      expect(OrbitGeometry.rayAnglesFor(levelCount: 1), [46]);
+      expect(OrbitGeometry.rayAnglesFor(levelCount: 3), [10, 46, 82]);
       final seven = OrbitGeometry.rayAnglesFor(levelCount: 7);
-      expect(seven.first, 80);
-      expect(seven.last, closeTo(16, 1e-9));
+      expect(seven.first, 10);
+      expect(seven.last, closeTo(84, 1e-9));
       expect(OrbitGeometry.rayAnglesFor(levelCount: 0), isEmpty);
+    });
+  });
+
+  group("direction and spacing", () {
+    test("puts the strongest level right after the name and the weakest farthest from it", () {
+      final geometry = _geometry(orbits: orbits);
+      for (final ringIndex in [0, 1, 2]) {
+        final strongest = orbits.rings[ringIndex].levels.length - 1;
+        final strongestAngle = geometry.levelAngle(ringIndex: ringIndex, levelIndex: strongest);
+        expect(geometry.nameEndAngle(ringIndex: ringIndex), greaterThan(strongestAngle));
+        for (var levelIndex = 0; levelIndex < strongest; levelIndex++) {
+          expect(geometry.levelAngle(ringIndex: ringIndex, levelIndex: levelIndex), lessThan(strongestAngle));
+        }
+      }
+      // Up the screen means more effort.
+      expect(
+        geometry.dotCenter(ringIndex: 1, levelIndex: 4).dy,
+        lessThan(geometry.dotCenter(ringIndex: 1, levelIndex: 0).dy),
+      );
+    });
+
+    test("spaces five dots on the innermost ring at least 44 pt apart on a 393 pt phone", () {
+      // Opus innermost, so the smallest ring carries the whole ladder.
+      final geometry = _geometry(orbits: orbits.copyWith(rings: [fable, sonnet, haiku, opus]));
+      expect(geometry.scale, 1);
+      for (var levelIndex = 1; levelIndex < 5; levelIndex++) {
+        final gap =
+            (geometry.dotCenter(ringIndex: 3, levelIndex: levelIndex) -
+                    geometry.dotCenter(ringIndex: 3, levelIndex: levelIndex - 1))
+                .distance;
+        expect(gap, greaterThanOrEqualTo(44));
+      }
     });
   });
 
@@ -73,51 +110,92 @@ void main() {
     test("gives each ring the band halfway to its neighbours", () {
       // Opus (260) and Sonnet (205) meet at 232.5.
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 233, angle: 40)),
+        geometry.hitTest(geometry.pointAt(radius: 233, angle: 46)),
         const OrbitLevelTarget(ringIndex: 1, levelIndex: 2),
       );
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 232, angle: 40)),
+        geometry.hitTest(geometry.pointAt(radius: 232, angle: 46)),
         const OrbitLevelTarget(ringIndex: 2, levelIndex: 2),
       );
       // The outermost and innermost bands reach 34 pt past their ring.
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 348, angle: 40)),
+        geometry.hitTest(geometry.pointAt(radius: 348, angle: 46)),
         const OrbitLevelTarget(ringIndex: 0, levelIndex: 2),
       );
-      expect(geometry.hitTest(geometry.pointAt(radius: 350, angle: 40)), isNull);
+      expect(geometry.hitTest(geometry.pointAt(radius: 350, angle: 46)), isNull);
       expect(geometry.hitTest(geometry.pointAt(radius: 117, angle: 60)), const OrbitNameTarget(ringIndex: 3));
       expect(geometry.hitTest(geometry.pointAt(radius: 115, angle: 60)), isNull);
     });
 
     test("splits a ring halfway between its dots", () {
-      // Fable's high (40°) and xhigh (26°) meet at 33°.
+      // Fable's high (46°) and xhigh (64°) meet at 55°.
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 315, angle: 33.1)),
+        geometry.hitTest(geometry.pointAt(radius: 315, angle: 54.9)),
         const OrbitLevelTarget(ringIndex: 0, levelIndex: 2),
       );
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 315, angle: 32.9)),
+        geometry.hitTest(geometry.pointAt(radius: 315, angle: 55.1)),
         const OrbitLevelTarget(ringIndex: 0, levelIndex: 3),
       );
     });
 
-    test("ends the last patch 7° past the strongest dot, clear of the fast toggle", () {
+    test("ends the weakest patch 7° past the weakest dot", () {
+      // Sonnet, clear of the fast toggle, which keeps its own corner.
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 315, angle: 5.1)),
-        const OrbitLevelTarget(ringIndex: 0, levelIndex: 4),
+        geometry.hitTest(geometry.pointAt(radius: 205, angle: 3.1)),
+        const OrbitLevelTarget(ringIndex: 2, levelIndex: 0),
       );
-      expect(geometry.hitTest(geometry.pointAt(radius: 315, angle: 4.9)), isNull);
+      expect(geometry.hitTest(geometry.pointAt(radius: 205, angle: 2.9)), isNull);
+      expect(geometry.hitTest(geometry.pointAt(radius: 315, angle: 3.1)), const OrbitFastToggleTarget());
     });
 
-    test("gives the name the start of the ring, up to 7° before its first dot", () {
+    test("gives the name the start of the ring, up to 7° before its strongest dot", () {
       expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 95)), const OrbitNameTarget(ringIndex: 1));
-      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 75.1)), const OrbitNameTarget(ringIndex: 1));
+      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 89.1)), const OrbitNameTarget(ringIndex: 1));
       expect(
-        geometry.hitTest(geometry.pointAt(radius: 260, angle: 74.9)),
-        const OrbitLevelTarget(ringIndex: 1, levelIndex: 0),
+        geometry.hitTest(geometry.pointAt(radius: 260, angle: 88.9)),
+        const OrbitLevelTarget(ringIndex: 1, levelIndex: 4),
       );
-      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 97)), isNull);
+      // Past the vertical up to 104°, so the inner names reach the edge.
+      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 103)), const OrbitNameTarget(ringIndex: 1));
+      expect(geometry.hitTest(geometry.pointAt(radius: 260, angle: 105)), isNull);
+      // Sonnet stops at high, so its name reaches down to just above it.
+      expect(geometry.hitTest(geometry.pointAt(radius: 205, angle: 53.1)), const OrbitNameTarget(ringIndex: 2));
+      expect(
+        geometry.hitTest(geometry.pointAt(radius: 205, angle: 52.9)),
+        const OrbitLevelTarget(ringIndex: 2, levelIndex: 2),
+      );
+    });
+
+    test("picks a name where its letters are drawn, and leaves the strongest dot its patch", () {
+      // Opus innermost, its max dot right after its name.
+      final inner = _geometry(orbits: orbits.copyWith(rings: [fable, sonnet, haiku, opus]));
+      final namePatch = inner.nameTextPatch(ringIndex: 3);
+      const nameRadius = 150 - OrbitGeometry.nameInset;
+      expect(
+        (OrbitGeometry.nameStartAngle - namePatch.toAngle) * math.pi / 180 * nameRadius,
+        greaterThanOrEqualTo(44),
+      );
+      // On the letters, under the max dot's angle, is the name.
+      expect(inner.hitTest(inner.pointAt(radius: nameRadius, angle: 80)), const OrbitNameTarget(ringIndex: 3));
+      expect(inner.hitTest(inner.nameCenter(ringIndex: 3)), const OrbitNameTarget(ringIndex: 3));
+      // The dot, and the band outward of the letters, stay the dot's.
+      expect(
+        inner.hitTest(inner.dotCenter(ringIndex: 3, levelIndex: 4)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 4),
+      );
+      expect(
+        inner.hitTest(inner.pointAt(radius: 150 - 11, angle: 80)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 4),
+      );
+      final strongest = inner.levelPatch(ringIndex: 3, levelIndex: 4);
+      expect(strongest.fromAngle, 89);
+      expect(strongest.toAngle, 73);
+      // Past the name's end the inner band is a dot's again.
+      expect(
+        inner.hitTest(inner.pointAt(radius: nameRadius, angle: 60)),
+        const OrbitLevelTarget(ringIndex: 3, levelIndex: 3),
+      );
     });
 
     test("makes a ring without levels one name patch", () {
@@ -145,13 +223,14 @@ void main() {
       );
 
       expect(full.scale, 1);
-      expect(full.rayAngles.first, 86);
-      expect(full.rayAngles.last, closeTo(18, 1e-9));
+      expect(full.rayAngles.first, 10);
+      expect(full.rayAngles.last, closeTo(85, 1e-9));
       for (var ringIndex = 0; ringIndex < rings.length; ringIndex++) {
         final name = full.namePatch(ringIndex: ringIndex);
         expect(name.fromAngle, greaterThan(name.toAngle));
         var reached = name.toAngle;
-        for (var levelIndex = 0; levelIndex < EffortLevel.values.length; levelIndex++) {
+        // From ULTRA beside the name down to OFF.
+        for (var levelIndex = EffortLevel.values.length - 1; levelIndex >= 0; levelIndex--) {
           final patch = full.levelPatch(ringIndex: ringIndex, levelIndex: levelIndex);
           expect(patch.fromAngle, reached);
           expect(patch.toAngle, lessThan(patch.fromAngle));

@@ -728,11 +728,17 @@ variant, and worktree mode, and creating the session with its first input.
 - The orbits picker opens over a near-opaque scrim from the chip, so the
   transcript and composer behind it read as background, its rings centred on the
   chip's leading end: one ring per ring model, outermost first in catalog order, with
-  the name along the arc, and one ray per ladder level any ring offers, from the
-  lowest at the low angle to the highest. Only the current choice is drawn
-  filled: an ink ring with an ink centre dot, like a selected radio button, in
-  a thin gap of the background, and a trail along its ring; every other dot
-  is the same hollow dot. The Fast toggle fills with ink while on. In dark mode the hollow dots and the
+  the name along the arc, and one ray per ladder level any ring offers. Effort
+  rises upwards: the strongest level sits right after the model name near the
+  vertical and the weakest at the far end near the horizontal, so up and out
+  (the strongest model is outermost) both mean more. Five levels fan from 10°
+  to 82°, about 47 pt apart on the innermost ring; fewer keep that fan, more
+  lift the strongest a degree each. The level words sit on the rays past the
+  outermost ring. The current choice is an ink ring with an ink centre dot,
+  like a selected radio button, in a thin gap of the background; a trail runs
+  along its ring from the weakest level up to it, and every level dot the
+  trail passes is a solid dot (white in dark mode, ink in light mode). Every other dot is the same hollow dot. The Fast toggle fills with
+  ink while on. In dark mode the hollow dots and the
   "All N models" pill are tinted beads a little lighter than the track, with
   a lighter edge, and the level words are brighter; light mode keeps white
   dots. Up to eight levels (`OFF` to `ULTRA`) fit a ring without overlapping
@@ -746,15 +752,29 @@ variant, and worktree mode, and creating the session with its first input.
   the rings still sit in catalog order. A catalog without families (an older
   bridge, Claude Code today) gets its first four models this way.
 - Press, slide and release: the picker opens as the finger lands on the chip,
-  with a light haptic, and the same finger slides into the rings. The dot under
-  the finger grows, and entering a new dot's patch plays a selection haptic; a
+  with a light haptic, and the same finger slides into the rings. While the
+  finger is down, the picker draws what lifting it there would pick exactly
+  as the selected state: the marker on the dot under the finger, its ring's
+  trail and solid trail dots, its name in bold, and the committed choice as
+  ordinary dots. A ring's name previews the model at the current level when
+  it offers it, otherwise with no level marked; a model without levels
+  previews its single dot. Off every target (and the "All N models" pill)
+  the committed choice shows again. Each change cross-fades in about 0.12 s
+  and nothing moves under the finger. The dot under the finger also names its
+  level (`HIGH`, `OFF`) in a small ink pill just above it, which follows the
+  finger from dot to dot and shows nothing over a name or with no finger
+  down. Entering a new dot's patch plays a selection haptic; a
   patch already under the finger when the picker opens does not add a second
   one. Releasing on a level dot picks that model and level together in one
   change, with a light haptic; releasing on a ring's
   name picks the model with the model picker's switch rule (the current level
   when the model offers it, else its fallbacks), with the same light haptic;
   releasing anywhere else closes the picker with no change and no haptic. A
-  second finger is ignored.
+  second finger is ignored. A name is picked across its ring from just past
+  the vertical to just before the strongest dot, and also along its drawn
+  letters inside the ring (at least about 44 pt, even for a short name); the
+  dots under the letters keep the band from just inside the ring line
+  outwards.
 - Tap: a tap on the chip opens the picker and leaves it open, and a tap on a dot
   or name then picks as a release would, with the same light haptic; a tap on
   empty space closes it.
@@ -1016,6 +1036,14 @@ startup-extension file failure, retry once the filesystem is usable.
   draws the hollow dots as dark holes.
 - The ripple overshoots or plays under reduced motion, or rings overflow the
   screen on a small or landscape phone.
+- The weakest level sits next to the model name, the trail runs from the name
+  instead of from the weakest end, the innermost ring's dots sit closer than
+  about 44 pt, the strongest dot's marker cuts into a model name, or a touch
+  on a model name's letters picks a level instead of the model.
+- A held finger shows a pressed look that differs from the selected one, the
+  committed choice stays marked while another dot is previewed, the preview
+  stays after the finger leaves every target, or the level word is missing,
+  hidden under the finger, or shown with no finger down.
 - Codex's model picker shows the oldest model of a family by default, a bare id
   gains a family subtitle, or an undated catalog starts on the alphabetically
   first model instead of the first listed.
