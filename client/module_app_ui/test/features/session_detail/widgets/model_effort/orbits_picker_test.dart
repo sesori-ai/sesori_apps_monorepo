@@ -32,6 +32,8 @@ OrbitGeometry _geometry({required ModelOrbits orbits}) => OrbitGeometry(
   origin: Offset(_anchor.left + _anchor.height / 2, _anchor.center.dy),
   size: const Size(393, 700),
   fastToggleRect: null,
+  // Only dots are located through this geometry.
+  nameLengths: [for (final _ in orbits.rings) 0],
 );
 
 Future<_Harness> _open(
@@ -226,6 +228,125 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.picks, [(providerID: "anthropic", modelID: "pi", variant: const SessionVariant(id: "off"))]);
+  });
+
+  group("while a finger is down", () {
+    final painter = find.byWidgetPredicate((widget) => widget is CustomPaint && widget.painter is OrbitsPainter);
+    final palette = OrbitPalette(colors: PregoDesignSystem.light.colors);
+
+    /// Dots painted in this order, each `(ring, level, fill)`, among any
+    /// other drawing.
+    PaintPattern dots(List<(int, int, Color)> expected) {
+      final pattern = paints;
+      for (final (ringIndex, levelIndex, color) in expected) {
+        final center = geometry.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex);
+        pattern.something(
+          (method, arguments) =>
+              method == #drawCircle &&
+              ((arguments[0] as Offset) - center).distance < .01 &&
+              (arguments[2] as Paint).color.toARGB32() == color.toARGB32(),
+        );
+      }
+      return pattern;
+    }
+
+    testWidgets("shows no level word with no finger down", (tester) async {
+      await _open(tester, orbits: orbits);
+
+      for (final level in EffortLevel.values) {
+        expect(find.text(level.wireId.toUpperCase()), findsNothing);
+      }
+    });
+
+    testWidgets("the touched dot names its level just above it, following the finger", (tester) async {
+      await _open(tester, orbits: orbits);
+
+      final xhigh = geometry.dotCenter(ringIndex: 0, levelIndex: 3);
+      final gesture = await tester.startGesture(xhigh);
+      await tester.pumpAndSettle();
+      expect(find.text("XHIGH"), findsOneWidget);
+      final word = tester.getRect(find.text("XHIGH"));
+      expect(word.bottom, lessThan(xhigh.dy - 20));
+      expect(word.center.dx, closeTo(xhigh.dx, 1));
+
+      await gesture.moveTo(geometry.dotCenter(ringIndex: 0, levelIndex: 4));
+      await tester.pumpAndSettle();
+      expect(find.text("MAX"), findsOneWidget);
+      expect(find.text("XHIGH"), findsNothing);
+
+      // A model name gets no word.
+      await gesture.moveTo(geometry.pointAt(radius: 315, angle: 92));
+      await tester.pumpAndSettle();
+      expect(find.text("MAX"), findsNothing);
+
+      await gesture.moveTo(const Offset(370, 80));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("draws the committed choice with solid dots along its trail", (tester) async {
+      await _open(tester, orbits: orbits);
+
+      // Opus at high: low and medium are on the trail, xhigh above it.
+      expect(
+        painter,
+        dots([
+          (1, 0, palette.trailDot),
+          (1, 1, palette.trailDot),
+          (1, 2, palette.background),
+          (1, 3, palette.bead),
+        ]),
+      );
+      expect(painter, isNot(dots([(0, 0, palette.trailDot)])));
+    });
+
+    testWidgets("draws the touched dot exactly as if it were picked", (tester) async {
+      await _open(tester, orbits: orbits);
+
+      final gesture = await tester.startGesture(geometry.dotCenter(ringIndex: 0, levelIndex: 3));
+      await tester.pumpAndSettle();
+
+      // Fable's trail lights up to xhigh, and Opus at high goes plain.
+      expect(
+        painter,
+        dots([
+          (0, 0, palette.trailDot),
+          (0, 2, palette.trailDot),
+          (0, 3, palette.background),
+          (0, 4, palette.bead),
+          (1, 0, palette.bead),
+          (1, 2, palette.bead),
+        ]),
+      );
+      expect(painter, isNot(dots([(1, 2, palette.background)])));
+
+      // Off every target, the committed choice is back.
+      await gesture.moveTo(const Offset(370, 80));
+      await tester.pumpAndSettle();
+      expect(painter, dots([(1, 2, palette.background)]));
+      expect(painter, isNot(dots([(0, 2, palette.trailDot)])));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    test("a name shows the model at the current level when it offers it, else without a level", () {
+      expect(shownOrbitChoice(orbits: orbits, hot: null), (ringIndex: 1, levelIndex: 2));
+      expect(
+        shownOrbitChoice(orbits: orbits, hot: const OrbitLevelTarget(ringIndex: 0, levelIndex: 4)),
+        (ringIndex: 0, levelIndex: 4),
+      );
+      expect(shownOrbitChoice(orbits: orbits, hot: const OrbitNameTarget(ringIndex: 2)), (ringIndex: 2, levelIndex: 2));
+      expect(shownOrbitChoice(orbits: orbits, hot: const OrbitNameTarget(ringIndex: 3)), (
+        ringIndex: 3,
+        levelIndex: null,
+      ));
+      final atMax = claudeOrbits(totalModels: 4, current: opus, currentLevel: EffortLevel.max);
+      expect(shownOrbitChoice(orbits: atMax, hot: const OrbitNameTarget(ringIndex: 2)), (
+        ringIndex: 2,
+        levelIndex: null,
+      ));
+      expect(shownOrbitChoice(orbits: atMax, hot: const OrbitAllModelsTarget()), (ringIndex: 1, levelIndex: 4));
+    });
   });
 
   test("dark mode tints the hollow dots and the All pill, light mode keeps its look", () {
