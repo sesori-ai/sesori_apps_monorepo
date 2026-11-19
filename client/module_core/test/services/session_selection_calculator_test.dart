@@ -215,7 +215,6 @@ void main() {
       expect(resolved.agentName, "plan");
       expect(resolved.model?.modelID, "opus");
       expect(resolved.model?.variant, "low");
-      expect(resolved.availableVariants.map((variant) => variant.id), ["high", "low"]);
     });
 
     test("an unset variant resolves to the model's declared default, not the first listed", () {
@@ -316,7 +315,7 @@ void main() {
       // even when a retained provider cache does not list it.
       expect(resolved.model?.providerID, "openai");
       expect(resolved.model?.modelID, "gpt-4.1");
-      expect(resolved.availableVariants, isEmpty);
+      expect(_calculator.availableVariants(providers: providers, model: resolved.model), isEmpty);
     });
 
     test("an unlisted retained model keeps the variant it carries as its only one", () {
@@ -331,7 +330,9 @@ void main() {
       );
 
       expect(resolved.model, sessionModel);
-      expect(resolved.availableVariants.map((variant) => variant.id), ["high"]);
+      expect(_calculator.availableVariants(providers: providers, model: resolved.model).map((variant) => variant.id), [
+        "high",
+      ]);
     });
 
     test("a surviving candidate outranks the retained model", () {
@@ -373,19 +374,6 @@ void main() {
       );
 
       expect(resolved.model?.variant, "high");
-    });
-
-    test("variants always describe the model that was chosen", () {
-      final resolved = _calculator.reconcile(
-        agents: agents,
-        providers: providers,
-        agentNameCandidates: ["build"],
-        modelCandidates: [const AgentModel(providerID: "anthropic", modelID: "retired", variant: null)],
-        retainedModel: null,
-      );
-
-      expect(resolved.model?.modelID, "opus");
-      expect(resolved.availableVariants.map((variant) => variant.id), ["high", "low"]);
     });
   });
 }

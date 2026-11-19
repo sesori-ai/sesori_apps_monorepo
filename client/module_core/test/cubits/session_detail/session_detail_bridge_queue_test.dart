@@ -641,8 +641,6 @@ void main() {
         expect(loaded, isNotEmpty);
         for (final state in loaded) {
           expect(state.selectedAgentModel, sessionModel);
-          // The variant the session recorded, and nothing the catalog guesses.
-          expect(state.availableVariants.map((variant) => variant.id), ["high"]);
         }
       }
 
@@ -4932,7 +4930,6 @@ void main() {
           agent: "plan",
           providers: const [],
           agentModel: null,
-          availableVariants: const [],
           commands: const [],
           fastMode: false,
           supportsPromptAttachments: true,

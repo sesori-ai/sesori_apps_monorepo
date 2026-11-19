@@ -877,7 +877,6 @@ void main() {
         final blockedState = cubit.state;
         cubit.selectAgent("coder");
         expect(cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model", variant: null), isNull);
-        cubit.selectVariant(const SessionVariant(id: "blocked-variant"));
         cubit.stageCommand(testCommandInfo());
         cubit.clearStagedCommand();
         await cubit.loadOlderMessages();
@@ -2445,7 +2444,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectVariant updates selectedAgentModel variant",
+      "selectModel switches the current model to another level",
       build: () {
         when(
           () => mockSessionApi.listProviders(
@@ -2482,7 +2481,11 @@ void main() {
       },
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        cubit.selectVariant(const SessionVariant(id: "slow"));
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "slow"),
+        );
       },
       expect: () => [
         isA<SessionDetailLoaded>().having(

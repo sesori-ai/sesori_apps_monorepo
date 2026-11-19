@@ -1560,10 +1560,6 @@ class SessionDetailCubit(
             null => latest.selectedAgentModel,
             final reconciled => reconciled.model,
           };
-          final availableVariants = _selection.availableVariants(
-            providers: availableProviders,
-            model: preservedSelectedAgentModel,
-          );
           // Assistant metadata describes the transcript actually installed,
           // not the raw fetched page a live assistant may have outrun.
           final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
@@ -1642,7 +1638,6 @@ class SessionDetailCubit(
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
               localSend: queue.localSend,
               isRefreshing: false,
-              availableVariants: availableVariants,
             ),
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
@@ -2255,7 +2250,6 @@ class SessionDetailCubit(
       current.copyWith(
         selectedAgent: reconciled.agentName ?? current.selectedAgent,
         selectedAgentModel: reconciled.model,
-        availableVariants: reconciled.availableVariants,
         promptDefaults: promptDefaults,
         // The bridge owns the stored choice and sends it with every change.
         fastMode: promptDefaults.fastMode,
@@ -3369,7 +3363,6 @@ class SessionDetailCubit(
             availableCommands: commands,
             selectedAgent: selectedAgent,
             selectedAgentModel: selectedModel,
-            availableVariants: reconciled.availableVariants,
             stagedCommand: _selection.resolveStagedCommand(
               commands: commands,
               staged: latest.stagedCommand,
@@ -4216,7 +4209,6 @@ class SessionDetailCubit(
       current.copyWith(
         selectedAgent: agent,
         selectedAgentModel: reconciled.model,
-        availableVariants: reconciled.availableVariants,
       ),
     );
   }
@@ -4239,10 +4231,6 @@ class SessionDetailCubit(
       modelID: modelID,
     );
     final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
-    final availableVariants = _selection.availableVariants(
-      providers: current.availableProviders,
-      model: newModel,
-    );
     final resolvedVariant = _selection.switchedModelVariant(
       providers: current.availableProviders,
       model: newModel,
@@ -4251,19 +4239,8 @@ class SessionDetailCubit(
 
     if (isClosed) return null;
     final selected = agentModel?.copyWith(variant: resolvedVariant);
-    emit(current.copyWith(selectedAgentModel: selected, availableVariants: availableVariants));
+    emit(current.copyWith(selectedAgentModel: selected));
     return selected;
-  }
-
-  void selectVariant(SessionVariant variant) {
-    if (_refuseWhenInteractionBlocked(action: "select a model variant")) return;
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-    final agentModel = current.selectedAgentModel;
-    if (agentModel == null) return;
-
-    if (isClosed) return;
-    emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant.id)));
   }
 
   /// What tapping the fast-mode control should do right now, or null before
@@ -4699,7 +4676,6 @@ class SessionDetailCubit(
       composerRestorations: _composerRestorations,
       composerMode: _composerMode,
       isRefreshing: false,
-      availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
       mainAgentRunning: _mainAgentRunning,
       isUpdatingApproval: _approvalUpdateInFlight,

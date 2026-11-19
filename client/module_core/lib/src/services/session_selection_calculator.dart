@@ -3,17 +3,11 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../utils/model_filter/default_model_selector.dart";
 
-/// A selection that survived reconciliation against a catalog: what the screen
-/// may offer, and what stays chosen.
-///
-/// [availableVariants] always belongs to [model]. Producing the two together is
-/// the point of [SessionSelectionCalculator.reconcile] — a caller that emitted
-/// a new model while keeping the previous variant list could offer a variant
-/// the model does not have.
+/// A selection that survived reconciliation against a catalog: what stays
+/// chosen.
 class const ReconciledSelection({
   required final String? agentName,
   required final AgentModel? model,
-  required final List<SessionVariant> availableVariants,
 });
 
 /// Resolves an agent/model/variant/fast-mode/command selection against the catalog a
@@ -92,11 +86,9 @@ class const SessionSelectionCalculator() extends SessionOptionsCatalogCalculator
         _firstAvailable(providers: providers, candidates: [declaredModel]) ??
         _catalogDefault(providers: providers);
 
-    final variants = availableVariants(providers: providers, model: model);
     return ReconciledSelection(
       agentName: agentName,
       model: withResolvedVariant(providers: providers, model: model),
-      availableVariants: variants,
     );
   }
 

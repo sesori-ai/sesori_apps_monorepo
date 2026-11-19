@@ -207,7 +207,6 @@ typedef AgentModelData = ({
   String? agent,
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
-  List<SessionVariant> availableVariants,
 
   /// Whether the session starts in fast mode.
   bool runsFastMode,
@@ -246,7 +245,6 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
       agent: data?.selectedAgent,
       agentModel: agentModel,
       stagedCommand: data?.stagedCommand,
-      availableVariants: data?.availableVariants ?? const [],
       runsFastMode: runsFastMode,
       fastModeControl: _fastModeToggle.control(
         support: _selection.fastModeSupport(providers: providers, model: agentModel),
@@ -277,5 +275,4 @@ extension NewSessionStateAgentModel on NewSessionState {
   String? get selectedAgent => agentModelData?.agent;
   AgentModel? get selectedAgentModel => agentModelData?.agentModel;
   CommandInfo? get stagedCommand => agentModelData?.stagedCommand;
-  List<SessionVariant> get availableVariants => agentModelData?.availableVariants ?? const [];
 }

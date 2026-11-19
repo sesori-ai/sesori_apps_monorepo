@@ -1065,7 +1065,6 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
-    availableVariants: const [SessionVariant(id: "xhigh")],
     cannotContinueMessage: null,
     namesCommandInvocations: false,
   );

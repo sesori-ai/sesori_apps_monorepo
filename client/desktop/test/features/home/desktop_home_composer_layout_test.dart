@@ -72,7 +72,6 @@ final _options = NewSessionOptionsData(
   selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
   fastMode: false,
   stagedCommand: null,
-  availableVariants: const [],
 );
 
 /// The home composer as the bridge answers it part by part: harness discovery,

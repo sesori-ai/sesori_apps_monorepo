@@ -27,7 +27,6 @@ sealed class NewSessionOptionsData with _$NewSessionOptionsData {
     /// fast mode is available.
     required bool fastMode,
     required CommandInfo? stagedCommand,
-    required List<SessionVariant> availableVariants,
   }) = _NewSessionOptionsData;
 }
 
@@ -297,7 +296,6 @@ class NewSessionOptionsService({
         commands: commands,
         staged: previousOptions?.stagedCommand,
       ),
-      availableVariants: reconciled.availableVariants,
     );
   }
 
@@ -376,7 +374,6 @@ class NewSessionOptionsService({
       selectedAgentModel: selectedAgentModel,
       fastMode: options.fastMode,
       stagedCommand: options.stagedCommand,
-      availableVariants: _selection.availableVariants(providers: options.providers, model: selectedAgentModel),
     );
   }
 
@@ -406,7 +403,6 @@ class NewSessionOptionsService({
         candidates: [variant?.id, variantIntent?.id, options.selectedAgentModel?.variant, agentModel?.variant],
       ),
     );
-    final variants = _selection.availableVariants(providers: options.providers, model: requested);
 
     return NewSessionOptionsData(
       agents: options.agents,
@@ -416,26 +412,6 @@ class NewSessionOptionsService({
       selectedAgentModel: selectedAgentModel,
       fastMode: options.fastMode,
       stagedCommand: options.stagedCommand,
-      availableVariants: variants,
-    );
-  }
-
-  NewSessionOptionsData? selectVariant({
-    required NewSessionOptionsData options,
-    required SessionVariant variant,
-  }) {
-    final model = options.selectedAgentModel;
-    if (model == null) return null;
-    if (!options.availableVariants.any((available) => available.id == variant.id)) return null;
-    return NewSessionOptionsData(
-      agents: options.agents,
-      providers: options.providers,
-      commands: options.commands,
-      selectedAgent: options.selectedAgent,
-      selectedAgentModel: model.copyWith(variant: variant.id),
-      fastMode: options.fastMode,
-      stagedCommand: options.stagedCommand,
-      availableVariants: options.availableVariants,
     );
   }
 
@@ -460,7 +436,6 @@ class NewSessionOptionsService({
       selectedAgentModel: options.selectedAgentModel,
       fastMode: options.fastMode,
       stagedCommand: available,
-      availableVariants: options.availableVariants,
     );
   }
 
@@ -473,7 +448,6 @@ class NewSessionOptionsService({
       selectedAgentModel: options.selectedAgentModel,
       fastMode: options.fastMode,
       stagedCommand: null,
-      availableVariants: options.availableVariants,
     );
   }
 }

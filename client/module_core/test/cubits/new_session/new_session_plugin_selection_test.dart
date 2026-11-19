@@ -241,7 +241,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "high"),
+      );
       cubit.stageCommand(command);
       final beforeRefresh = cubit.state.agentModelData ?? fail("no agent and model data");
 
@@ -263,7 +267,6 @@ void main() {
       expect(afterRefresh.commands, beforeRefresh.commands);
       expect(afterRefresh.agent, beforeRefresh.agent);
       expect(afterRefresh.agentModel, beforeRefresh.agentModel);
-      expect(afterRefresh.availableVariants, beforeRefresh.availableVariants);
       expect(afterRefresh.stagedCommand, beforeRefresh.stagedCommand);
       expect(afterRefresh.isLoading, isFalse);
       expect(afterRefresh.isPluginDiscoveryInFlight, isFalse);
@@ -1089,7 +1092,11 @@ void main() {
       await _waitForComposer(cubit);
       expect(cubit.state.agentModelData?.agentModel?.variant, "high");
 
-      cubit.selectVariant(const SessionVariant(id: "max"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "max"),
+      );
       expect(cubit.state.agentModelData?.agentModel?.variant, "max");
 
       refreshed.complete(
@@ -1123,7 +1130,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "max"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "max"),
+      );
 
       refreshed.complete(
         const SessionOptionsRepositoryAuthenticationRequired(
@@ -1641,7 +1652,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "high"),
+      );
       final logLines = <String>[];
       await runZoned(
         cubit.refreshOptions,
@@ -1652,7 +1667,6 @@ void main() {
       expect(afterRefresh.optionsState, isA<NewSessionOptionsRefreshFailureUnavailableState>());
       expect(afterRefresh.providers, isEmpty);
       expect(afterRefresh.agentModel, isNull);
-      expect(afterRefresh.availableVariants, isEmpty);
       expect(
         logLines,
         contains(
@@ -1684,7 +1698,6 @@ void main() {
       expect(cubit.state.agentModelData?.plugin, pluginB);
       expect(cubit.state.agentModelData?.providers, isEmpty);
       expect(cubit.state.agentModelData?.agentModel, isNull);
-      expect(cubit.state.agentModelData?.availableVariants, isEmpty);
     });
 
     test("successful provider refresh authoritatively removes missing selections", () async {
@@ -1704,7 +1717,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "high"),
+      );
 
       connectionStatus
         ..add(const ConnectionStatus.disconnected())
@@ -1713,7 +1730,6 @@ void main() {
 
       expect(cubit.state.agentModelData?.providers, isEmpty);
       expect(cubit.state.agentModelData?.agentModel, isNull);
-      expect(cubit.state.agentModelData?.availableVariants, isEmpty);
     });
 
     test("reconnect clears a staged command immediately when the plugin falls back", () async {
@@ -2046,7 +2062,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "high"),
+      );
       cubit.stageCommand(testCommandInfo());
 
       cubit.selectPlugin(pluginId: "plugin-b");
@@ -2060,7 +2080,6 @@ void main() {
       expect(state.availableCommands, isEmpty);
       expect(state.selectedAgent, isNull);
       expect(state.selectedAgentModel, isNull);
-      expect(state.availableVariants, isEmpty);
       expect(state.stagedCommand, isNull);
       bAgents.complete(ApiResponse.success(const Agents(agents: [])));
     });
@@ -2279,7 +2298,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "high"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "high"),
+      );
       cubit.stageCommand(command);
       await _waitForComposer(cubit);
 
@@ -2311,7 +2334,11 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      cubit.selectVariant(const SessionVariant(id: "max"));
+      cubit.selectModel(
+        providerID: "provider",
+        modelID: "model",
+        variant: const SessionVariant(id: "max"),
+      );
       expect(cubit.state.agentModelData?.agentModel?.variant, "max");
 
       connectionStatus

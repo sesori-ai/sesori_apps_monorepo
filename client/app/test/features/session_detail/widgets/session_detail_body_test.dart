@@ -232,10 +232,6 @@ SessionDetailLoaded _loadedState({
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
-    availableVariants: const [
-      SessionVariant(id: "xhigh"),
-      SessionVariant(id: "low"),
-    ],
     cannotContinueMessage: null,
     namesCommandInvocations: false,
   );
@@ -840,7 +836,6 @@ void main() {
       agent: "planner",
       providers: loaded.availableProviders,
       agentModel: loaded.selectedAgentModel,
-      availableVariants: loaded.availableVariants,
       commands: const [],
       fastMode: false,
       supportsPromptAttachments: true,
@@ -975,7 +970,6 @@ void main() {
         agent: "coder",
         providers: loaded.availableProviders,
         agentModel: loaded.selectedAgentModel,
-        availableVariants: loaded.availableVariants,
         commands: const [],
         fastMode: false,
         supportsPromptAttachments: true,
@@ -1747,10 +1741,6 @@ void main() {
       fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: const [
-        SessionVariant(id: "xhigh"),
-        SessionVariant(id: "low"),
-      ],
       cannotContinueMessage: null,
       namesCommandInvocations: false,
     );
