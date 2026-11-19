@@ -213,9 +213,8 @@ rather than none.
 
 Question pages: every harness that gets the server can call `send_page`; the
 answer arrives with the same notice timing, so a steering harness hears it in
-its running turn and the others after the turn. A large nested page call is
-accepted on Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot (see the
-live check in the step 4 PR).
+its running turn and the others after the turn. Whether each harness passes
+the tool's nested schema to its model unchanged is not verified live yet.
 
 ## Transcript turn boundaries
 
