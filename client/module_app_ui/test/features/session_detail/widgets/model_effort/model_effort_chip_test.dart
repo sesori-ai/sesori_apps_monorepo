@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/model_effort_chip.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/model_level_strip.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbit_geometry.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbits_picker.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, FastModeControl, ModelOrbits, OrbitRing;
@@ -80,13 +81,10 @@ Future<List<_Pick>> _pump(
                     onAgentSelected: (_) {},
                     providers: _providers,
                     selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
-                    onModelSelected: ({required providerID, required modelID, required variant}) =>
-                        picks.add((providerID: providerID, modelID: modelID, variant: variant)),
-                    availableVariants: const [
-                      SessionVariant(id: "high"),
-                      SessionVariant(id: "low"),
-                    ],
-                    onVariantSelected: (_) {},
+                    onModelSelected: ({required providerID, required modelID, required variant}) {
+                      picks.add((providerID: providerID, modelID: modelID, variant: variant));
+                      return null;
+                    },
                     modelOrbits: orbits,
                     fastModeControl: fastModeControl,
                     decideFastModeToggle: () => null,
@@ -169,18 +167,21 @@ void main() {
     expect(agent.left - tester.getRect(chip).right, greaterThan(40));
   });
 
-  testWidgets("the pointer layout keeps its pills for an orbit catalog", (tester) async {
+  testWidgets("under a pointer an orbit catalog reads model and level in one pill", (tester) async {
     await _pump(tester, orbits: orbits, mode: PregoInteractionMode.pointer);
 
     expect(chip, findsNothing);
-    expect(find.byType(PregoPickerButton), findsNWidgets(2));
+    expect(find.byType(PregoPickerButton), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "Opus 5.5 · High"), findsOneWidget);
   });
 
-  testWidgets("a catalog without orbits keeps its pills on touch", (tester) async {
+  testWidgets("a catalog without orbits gets the same chip on touch, beside its fast pill", (tester) async {
     await _pump(tester, orbits: null);
 
-    expect(chip, findsNothing);
-    expect(find.byType(PregoPickerButton), findsNWidgets(2));
+    expect(chip, findsOneWidget);
+    expect(find.descendant(of: chip, matching: find.text(" · High")), findsOneWidget);
+    expect(find.byType(PregoPickerButton), findsNothing);
+    expect(find.bySemanticsLabel("Fast mode"), findsOneWidget);
   });
 
   testWidgets("read-only keeps the chip in place without opening the picker", (tester) async {
@@ -318,10 +319,27 @@ void main() {
     expect(find.descendant(of: find.byType(ModelPicker), matching: find.text("Opus 4.1")), findsOneWidget);
   });
 
-  testWidgets("the model pill's list keeps one model per family until a search", (tester) async {
+  testWidgets("All models sets the effort too: a level commits model and level and closes", (tester) async {
+    final picks = await _pump(tester, orbits: orbits);
+    final geometry = _geometry(tester, orbits: orbits);
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+    await tester.tapAt(geometry.allModelsCenter);
+    await tester.pumpAndSettle();
+
+    final strip = find.byType(ModelLevelStrip);
+    expect(strip, findsOneWidget);
+    await tester.tap(find.descendant(of: strip, matching: find.text("Low")));
+    await tester.pumpAndSettle();
+
+    expect(picks, [(providerID: "anthropic", modelID: "opus", variant: const SessionVariant(id: "low"))]);
+    expect(find.byType(ModelPicker), findsNothing);
+  });
+
+  testWidgets("the chip's list keeps one model per family until a search", (tester) async {
     await _pump(tester, orbits: null);
 
-    await tester.tap(find.byType(PregoPickerButton).first);
+    await tester.tap(chip);
     await tester.pumpAndSettle();
 
     expect(find.byType(ModelPicker), findsOneWidget);
@@ -393,7 +411,8 @@ void main() {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 150),
             child: ModelEffortChip(
-              orbits: orbits.copyWith(currentLevel: level),
+              name: orbits.current.name,
+              level: level.wireId,
               fast: false,
               showsCaret: true,
               surfaceStyle: PregoComposerSurfaceStyle.subtle,

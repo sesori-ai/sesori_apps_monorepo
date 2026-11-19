@@ -3,7 +3,7 @@
 ## Status and scope
 
 Antigravity discovers account models before the first user chat through one retained, hidden, no-prompt native
-session. Model families expose High/Medium/Low through the existing variant picker. No database or wire-schema change
+session. Model families expose High/Medium/Low through the model list's level strip. No database or wire-schema change
 is required. Authenticated native discovery remains unverified; automated evidence uses composed fake ACP processes.
 The official `1.5.0` runtime (Zed gate unchanged since `1.3.0`) enables account-advertised third-party models through the explicitly approved
 Zed compatibility identity. Native authenticated Claude/GPT discovery and execution remain unverified.
@@ -36,7 +36,7 @@ Zed compatibility identity. Native authenticated Claude/GPT discovery and execut
 - Group a model only when its native `-high`, `-medium`, or `-low` suffix agrees with its advertised
   ` (High)`, ` (Medium)`, or ` (Low)` label suffix. Expose the stripped model name/ID and strongest-first variant IDs
   while retaining the backend's default and exact native ID for dispatch. A single advertised level still uses the
-  variant picker instead of returning its suffix to the model name. Unmatched, future, whitespace-bearing or ambiguous
+  level strip instead of returning its suffix to the model name. Unmatched, future, whitespace-bearing or ambiguous
   entries stay standalone. Duplicate labels alone do not merge opaque identities. No static model manifest is used.
 - Empty catalogs, blank IDs/labels, duplicate native IDs, unsupported selector types, duplicate model selectors,
   missing current models and malformed entries fail without replacing last-good data. An ordinary session response

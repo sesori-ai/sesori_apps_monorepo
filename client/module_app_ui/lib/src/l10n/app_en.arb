@@ -1560,6 +1560,13 @@
   "@orbitsPickerFastToggle": {"description": "Label of the fast-mode toggle in the corner of the orbits model and effort picker."},
   "orbitsPickerNoEffort": "no effort setting",
   "@orbitsPickerNoEffort": {"description": "Shown along the ring of a model that has no effort levels in the orbits picker."},
+  "modelPickerNoEffort": "No effort setting",
+  "@modelPickerNoEffort": {"description": "Shown under the selected model in the composer's model list when the model has no effort levels to pick."},
+  "modelPickerLevel": "{level} effort",
+  "@modelPickerLevel": {
+    "description": "Screen-reader label of one level in the effort strip under the selected model in the composer's model list, such as 'High effort'.",
+    "placeholders": {"level": {"type": "String"}}
+  },
   "orbitsPickerAllModels": "All {count} models",
   "@orbitsPickerAllModels": {
     "description": "Pill in the orbits picker that opens the full model list. The count is always two or more.",

@@ -87,7 +87,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         selectedAgent: composer.agent,
         providers: composer.providers,
         selectedAgentModel: composer.agentModel,
-        availableVariants: composer.availableVariants,
         modelOrbits: composer.modelOrbits,
         fastModeControl: composer.fastModeControl,
         statusChips: ({required surfaceStyle, required pointer}) => const [],
@@ -135,7 +134,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     selectedAgent: state.selectedAgent,
     providers: state.availableProviders,
     selectedAgentModel: state.selectedAgentModel,
-    availableVariants: state.availableVariants,
     modelOrbits: state.modelOrbits,
     fastModeControl: state.fastModeControl,
     statusChips: ({required surfaceStyle, required pointer}) =>
@@ -235,7 +233,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required String? selectedAgent,
     required List<ProviderInfo> providers,
     required AgentModel? selectedAgentModel,
-    required List<SessionVariant> availableVariants,
     required ModelOrbits? modelOrbits,
     required FastModeControl fastModeControl,
     required List<Widget> Function({required PregoComposerSurfaceStyle surfaceStyle, required bool pointer})
@@ -332,8 +329,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                   providers: providers,
                   selectedAgentModel: selectedAgentModel,
                   onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                  availableVariants: availableVariants,
-                  onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
                   modelOrbits: modelOrbits,
                   fastModeControl: fastModeControl,
                   decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,

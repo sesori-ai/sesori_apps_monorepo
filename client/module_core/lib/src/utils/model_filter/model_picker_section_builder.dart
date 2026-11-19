@@ -21,6 +21,11 @@ class const ModelPickerModelEntry({
   /// Whether the entry is shown when the search query is empty — true for
   /// each family's representative and for the currently selected model.
   required final bool visibleByDefault,
+
+  /// The effort levels the model offers, weakest first: the catalog's
+  /// strongest-first variants reversed, so a level off the shared ladder (Oh
+  /// My Pi's `auto`) keeps its catalog place. Empty for a model without effort.
+  required final List<SessionVariant> levels,
 });
 
 /// One provider's section in the model picker.
@@ -49,6 +54,7 @@ class const ModelPickerSection({
 /// "default for the whole provider".
 class const ModelPickerSectionBuilder() {
   static const _defaultModelSelector = DefaultModelSelector();
+  static const _catalog = SessionOptionsCatalogCalculator();
 
   /// Builds the provider sections for the given catalog.
   ///
@@ -87,6 +93,13 @@ class const ModelPickerSectionBuilder() {
                 family: model.family,
                 searchText: "${model.name} ${model.family ?? ""} ${model.id} ${provider.name}".toLowerCase(),
                 visibleByDefault: visibleIds.contains(model.id),
+                levels: _catalog
+                    .availableVariants(
+                      providers: [provider],
+                      model: AgentModel(providerID: provider.id, modelID: model.id, variant: null),
+                    )
+                    .reversed
+                    .toList(growable: false),
               ),
           ],
         ),

@@ -692,11 +692,11 @@ void main() {
 
       expect(find.byType(SessionDetailComposerControls), findsNothing);
       final pills = find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(PregoPickerButton));
-      expect(pills, findsNWidgets(2));
-      // Without a catalog entry the model shows its id.
-      expect(find.descendant(of: pills.first, matching: find.text("claude-sonnet-4-5")), findsOneWidget);
-      expect(find.descendant(of: pills.last, matching: find.text("high")), findsOneWidget);
-      expect(tester.getSize(pills.last).width, lessThan(tester.getSize(pills.first).width));
+      // One pill reads the model and its level together. Without a catalog
+      // entry the model shows its id.
+      expect(pills, findsOneWidget);
+      expect(find.descendant(of: pills, matching: find.text("claude-sonnet-4-5 · High")), findsOneWidget);
+      expect(tester.getSize(pills).width, lessThan(desktopComposerWidth / 2));
       expect(find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(InkWell)), findsNothing);
     });
 

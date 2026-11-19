@@ -4225,10 +4225,13 @@ class SessionDetailCubit(
   /// (picked together with the model), the previous model's variant, and the
   /// variant an agent declares for this model; otherwise at the model's
   /// default.
-  void selectModel({required String providerID, required String modelID, required SessionVariant? variant}) {
-    if (_refuseWhenInteractionBlocked(action: "select a model")) return;
+  ///
+  /// Returns the selection it applied, so an open model list can show the
+  /// level the switch landed on, or null when nothing changed.
+  AgentModel? selectModel({required String providerID, required String modelID, required SessionVariant? variant}) {
+    if (_refuseWhenInteractionBlocked(action: "select a model")) return null;
     final current = state;
-    if (current is! SessionDetailLoaded) return;
+    if (current is! SessionDetailLoaded) return null;
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,
@@ -4246,13 +4249,10 @@ class SessionDetailCubit(
       candidates: [variant?.id, current.selectedAgentModel?.variant, agentModel?.variant],
     );
 
-    if (isClosed) return;
-    emit(
-      current.copyWith(
-        selectedAgentModel: agentModel?.copyWith(variant: resolvedVariant),
-        availableVariants: availableVariants,
-      ),
-    );
+    if (isClosed) return null;
+    final selected = agentModel?.copyWith(variant: resolvedVariant);
+    emit(current.copyWith(selectedAgentModel: selected, availableVariants: availableVariants));
+    return selected;
   }
 
   void selectVariant(SessionVariant variant) {

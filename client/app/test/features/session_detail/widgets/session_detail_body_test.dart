@@ -17,6 +17,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/model_effort_chip.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
@@ -268,11 +269,6 @@ const _permission = SesoriPermissionAsked(
 final _openQuestion = find.descendant(
   of: find.byType(QuestionModal),
   matching: find.text("Choose a release channel"),
-);
-
-Finder _pickerMenuItem(String label) => find.descendant(
-  of: find.byType(PregoSingleChildScrollView),
-  matching: find.widgetWithText(InkWell, label),
 );
 
 List<Object?> _captureHapticFeedback({required bool throwsPlatformException}) {
@@ -1689,22 +1685,28 @@ void main() {
     expect(find.textContaining("Continues at"), findsOneWidget);
   });
 
-  testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
+  testWidgets("the model chip opens the list, and a level forwards model and level to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
+    await tester.tap(find.text(" · Xhigh"));
     await tester.pumpAndSettle();
 
-    expect(_pickerMenuItem("xhigh"), findsOneWidget);
-
-    await tester.tap(_pickerMenuItem("xhigh"));
+    expect(find.byType(ModelPicker), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(ModelPicker), matching: find.text("Xhigh")));
     await tester.pumpAndSettle();
 
-    verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
+    verify(
+      () => cubit.selectModel(
+        providerID: "anthropic",
+        modelID: "claude-3-5-sonnet",
+        variant: const SessionVariant(id: "xhigh"),
+      ),
+    ).called(1);
+    expect(find.byType(ModelPicker), findsNothing);
   });
 
-  testWidgets("selecting a different variant updates the displayed variant", (tester) async {
+  testWidgets("a level the cubit applies updates the model chip", (tester) async {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
       interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
@@ -1761,27 +1763,16 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    // Initially shows the selected variant.
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
-
-    // Open variant picker.
-    await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
-    await tester.pumpAndSettle();
-
-    // Select the other available variant.
-    await tester.tap(_pickerMenuItem("low"));
-    await tester.pumpAndSettle();
-
-    verify(() => cubit.selectVariant(const SessionVariant(id: "low"))).called(1);
+    // Initially shows the selected level beside the model.
+    expect(find.text(" · Xhigh"), findsOneWidget);
 
     // Emit the updated state to simulate the cubit update.
     when(() => cubit.state).thenReturn(updatedState);
     controller.add(updatedState);
     await tester.pumpAndSettle();
 
-    // The UI should now show the newly selected variant.
-    expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
+    expect(find.text(" · Low"), findsOneWidget);
+    expect(find.text(" · Xhigh"), findsNothing);
   });
 
   testWidgets("the bar carries only Prompts and the menu, and the menu holds Changes", (tester) async {
@@ -3507,6 +3498,7 @@ void main() {
     // Nothing names what it ran with, so no pill guesses from the composer's
     // catalog fallbacks.
     expect(find.byType(PregoPickerButton), findsNothing);
+    expect(find.byType(ModelEffortChip), findsNothing);
   });
 
   group("read-only run details", () {
@@ -3529,12 +3521,18 @@ void main() {
 
       expect(find.byType(PromptInput), findsNothing);
       expect(pill("explore"), findsOneWidget);
+      // The model and its level read together, as the live composer's chip.
       expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
-      expect(pill("high"), findsOneWidget);
+      expect(pill(" · High"), findsOneWidget);
       // Quiet information: no caret, no press feedback, no button to announce.
-      expect(find.descendant(of: pills, matching: find.byIcon(TablerRegular.selector)), findsNothing);
+      // The chip keeps its caret's room but never shows it.
+      final caret = find.descendant(of: pills, matching: find.byIcon(TablerRegular.selector));
+      expect(
+        tester.widget<AnimatedOpacity>(find.ancestor(of: caret, matching: find.byType(AnimatedOpacity))).opacity,
+        0,
+      );
       expect(find.descendant(of: pills, matching: find.byType(InkWell)), findsNothing);
-      expect(tester.getSemantics(pill("high")), isSemantics(isButton: false, hasTapAction: false));
+      expect(tester.getSemantics(pill(" · High")), isSemantics(isButton: false, hasTapAction: false));
       await tester.tap(find.ancestor(of: pill("explore"), matching: find.byType(PregoPickerButton)));
       await tester.pumpAndSettle();
       expect(find.text("Agent"), findsNothing);
@@ -3570,7 +3568,7 @@ void main() {
       expect(pill("explore"), findsOneWidget);
       expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
       // The composer's selection carries "xhigh"; a reply records no variant.
-      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsNWidgets(2));
+      expect(find.descendant(of: pills, matching: find.textContaining("·")), findsNothing);
     });
 
     testWidgets("a harness with one agent names none, and the harness notice stays above the pills", (tester) async {
@@ -3586,7 +3584,7 @@ void main() {
       await tester.pumpWidget(_buildApp(cubit: cubit, readOnly: true));
       await tester.pumpAndSettle();
 
-      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsOneWidget);
+      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsNothing);
       expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
       final notice = tester.getRect(find.text("Sign in to Claude Code to continue."));
       expect(notice.bottom, lessThanOrEqualTo(tester.getRect(pills).top));
@@ -4163,11 +4161,12 @@ void main() {
 
       // The unfocused, empty composer collapses back to its resting pill,
       // unmounting the field, while the Android-style menu remains open.
-      await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
+      await tester.tap(find.text(" · Xhigh"));
       await tester.pumpAndSettle();
-      expect(_pickerMenuItem("xhigh"), findsOneWidget);
+      expect(find.byType(ModelPicker), findsOneWidget);
+      // The list's own search field waits for a tap; the composer's is gone.
       expect(
-        find.byType(EditableText),
+        find.descendant(of: find.byType(SessionDetailBody), matching: find.byType(EditableText)),
         findsNothing,
         reason: "opening a composer menu must dismiss the keyboard and collapse the composer",
       );
@@ -4209,7 +4208,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final picker = find.byType(PregoPickerButton).first;
+    final picker = find.byType(ModelEffortChip);
     final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
@@ -4277,7 +4276,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final picker = find.byType(PregoPickerButton).first;
+    final picker = find.byType(ModelEffortChip);
     final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
@@ -4359,7 +4358,7 @@ void main() {
   testWidgets("text-first fresh session rests as a tap-to-type field with the mic alongside", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: ChatInputMode.textFirst));
     expect(
-      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(ModelEffortChip)),
       PregoColorsLight.borderPrimary,
     );
     await tester.pumpAndSettle();
@@ -5541,7 +5540,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(
-      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(ModelEffortChip)),
       PregoColorsLight.borderSecondary,
     );
 
@@ -5552,7 +5551,7 @@ void main() {
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.byIcon(TablerRegular.microphone), findsOneWidget);
     expect(
-      composerSurfaceBorderColor(tester: tester, surface: find.byType(PregoPickerButton).first),
+      composerSurfaceBorderColor(tester: tester, surface: find.byType(ModelEffortChip)),
       PregoColorsLight.borderPrimary,
     );
   });
