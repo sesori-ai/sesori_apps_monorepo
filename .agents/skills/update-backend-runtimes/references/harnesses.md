@@ -245,11 +245,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
   calendar date; preserve that separate minimum and the raw bundled build value.
   The minimum is `2026.09.23`, the oldest build with evidence for the native
   sub-agent child sessions Sesori always enables (`_meta.subagents`).
-- **Assets:** four self-hashed archives at
+- **Assets:** four archives at
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
   for `darwin`/`linux` and `arm64`/`x64`. Cursor also publishes
   `windows/<arch>/agent-cli-package.zip`, which Sesori does not manage yet. Download/hash all
-  four; no upstream checksum manifest is currently published. Preserve
+  four and compare each with the same-host `<archive URL>.sha256` file
+  (`<hex>  agent-cli-package.tar.gz`; present since at least `2026.11.11-b912975`,
+  verified 2026-11-19, and checked by the CLI's own updater from `2026.11.19-f005e9d`).
+  It is same-CDN integrity, not a signed manifest. Preserve
   `dist-package/` and the `cursor-agent` entrypoint's siblings. The CDN answers 403
   to Python `urllib`'s default user agent; download with `curl`. Re-published bytes
   must fail the old pin rather than bypass checksum verification.
