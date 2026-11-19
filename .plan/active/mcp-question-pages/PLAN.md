@@ -584,7 +584,7 @@ authored lines, with generated lines listed separately.
 | 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | In PR #2815 |
 | 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | In PR #2818 |
 | 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Planned |
-| 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | Planned |
+| 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | In PR #2820 |
 | 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | Planned |
 | 10/10 | Headless iOS simulator and live-harness verification, then retire the plan | docs | 9 | Planned |
 
