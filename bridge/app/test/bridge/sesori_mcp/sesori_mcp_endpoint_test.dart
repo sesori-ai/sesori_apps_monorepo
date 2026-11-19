@@ -1199,6 +1199,79 @@ void main() {
       expect(second.isRequired, isFalse);
     });
 
+    test("reads the empty fields a strict-schema model fills in as left out", () async {
+      final shot = png("shot.png");
+      const noImage = {"path": "", "caption": ""};
+
+      // The arguments Claude Code, Pi and GitHub Copilot sent in the live check.
+      final result = await call(
+        tool: "send_page",
+        arguments: {
+          "title": "Fixture page",
+          "intro": "",
+          "sections": [
+            {
+              "heading": "Overview",
+              "body": "",
+              "images": [
+                {"path": shot, "caption": "Fixture gradient"},
+                noImage,
+              ],
+              "questions": <Object?>[],
+            },
+            {
+              "heading": "",
+              "body": "",
+              "images": [noImage],
+              "questions": [
+                {
+                  "id": "color",
+                  "title": "Pick one color",
+                  "body": "",
+                  "images": [noImage],
+                  "kind": "single",
+                  "options": [
+                    {"id": "red", "label": "Red", "description": "", "image": noImage, "recommended": false},
+                    {"id": "green", "label": "Green", "description": "", "image": noImage, "recommended": true},
+                  ],
+                  "required": true,
+                },
+                {
+                  "id": "notes",
+                  "title": "Anything else?",
+                  "body": "",
+                  "images": <Object?>[],
+                  "kind": "text",
+                  "options": <Object?>[],
+                  "required": false,
+                },
+              ],
+            },
+          ],
+        },
+      );
+
+      expect(result.isError, isFalse, reason: result.text);
+      final [page] = await pages.pendingPages(sessionId: "s1");
+      expect(page.intro, isNull);
+      final [overview, choices] = page.sections;
+      expect(overview.images.map((image) => image.caption), ["Fixture gradient"]);
+      expect((choices.heading, choices.body), (null, null));
+      expect(choices.images, isEmpty);
+      final [color, notes] = choices.questions;
+      expect(color.body, isNull);
+      expect(color.images, isEmpty);
+      final options = switch (color.kind) {
+        PageSingleChoice(:final options) => options,
+        _ => fail("color is not a single choice"),
+      };
+      expect(options.map((option) => (option.description, option.image, option.recommended)), [
+        (null, null, false),
+        (null, null, true),
+      ]);
+      expect(notes.kind, const PageQuestionKind.text());
+    });
+
     test("refuses a page over a limit and stores nothing", () async {
       final results = [
         await send(title: "x" * 201, sections: []),
@@ -1386,6 +1459,22 @@ void main() {
           ],
         }),
         contains("sections[0].questions[0].options[0].label is required."),
+      );
+      expect(
+        await withQuestion({
+          "id": "q1",
+          "title": "Pick",
+          "kind": "single",
+          "options": [
+            {
+              "id": "a",
+              "label": "A",
+              "image": {"path": "", "caption": "Now"},
+            },
+          ],
+        }),
+        contains("sections[0].questions[0].options[0].image.path is required."),
+        reason: "a caption says the agent meant an image",
       );
       expect(await pages.pendingPages(sessionId: "s1"), isEmpty);
     });
