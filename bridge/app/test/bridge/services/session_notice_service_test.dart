@@ -65,9 +65,7 @@ void main() {
     plugins.handling = PluginBusyPromptHandling.stopTurn;
     sessions.quietness = SessionQuietness.working;
     var done = false;
-    final delivery = service
-        .deliver(sessionId: "s1", notice: _notice)
-        .then((_) => done = true);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice).then((_) => done = true);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
