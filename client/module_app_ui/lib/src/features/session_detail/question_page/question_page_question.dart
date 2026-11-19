@@ -86,11 +86,14 @@ class const QuestionPageTextField({
   }
 }
 
-/// One question: its title, text and images, then the control its kind needs,
-/// and for a choice question a note.
+/// One question: its number and title, text and images, then the control its
+/// kind needs, and for a choice question a note.
 class const QuestionPageQuestion({
   super.key,
   required final PageQuestion question,
+
+  /// Its place on the page, such as "2" or "1.2".
+  required final String number,
   required final PageAnswer? answer,
   required final bool enabled,
   required final QuestionPageIssue? issue,
@@ -111,19 +114,35 @@ class const QuestionPageQuestion({
     final loc = context.loc;
     final cubit = context.read<PendingPageCubit>();
     final body = question.body;
+    final titleStyle = prego.textTheme.textMd.bold;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: PregoSpacing.md,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        // The number hangs before the title, so a long title wraps under
+        // itself rather than under its number.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(question.title, style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary)),
-            if (question.isRequired)
-              Text(
-                loc.questionPageRequired,
-                style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+            Text(
+              number,
+              key: Key("question-page-number-${question.id}"),
+              style: titleStyle.copyWith(color: prego.colors.textBrandSecondary),
+            ),
+            const SizedBox(width: PregoSpacing.sm),
+            Expanded(
+              child: Wrap(
+                spacing: PregoSpacing.md,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(question.title, style: titleStyle.copyWith(color: prego.colors.textPrimary)),
+                  if (question.isRequired)
+                    Text(
+                      loc.questionPageRequired,
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
         // The reason grows in below the title, so the question it explains

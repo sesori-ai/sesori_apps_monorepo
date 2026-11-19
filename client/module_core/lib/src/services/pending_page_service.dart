@@ -32,11 +32,8 @@ class PendingPageService({
   /// question of a kind this app doesn't know can't be answered here, so it
   /// never blocks Submit.
   List<String> unansweredRequired({required PendingPage page, required PageDraft draft}) => [
-    for (final question in _questions(page: page))
-      if (question.isRequired &&
-          question.kind is! PageQuestionKindUnknown &&
-          !_isAnswered(question: question, answer: draft.answers[question.id]))
-        question.id,
+    for (final question in draft.unanswered(page: page))
+      if (question.isRequired) question.id,
   ];
 
   /// Refuses locally, without asking the bridge, while a required question is
@@ -74,14 +71,6 @@ class PendingPageService({
 
   Iterable<PageQuestion> _questions({required PendingPage page}) =>
       page.sections.expand((section) => section.questions);
-
-  /// A note alone doesn't answer a question.
-  bool _isAnswered({required PageQuestion question, required PageAnswer? answer}) =>
-      switch ((question.kind, answer?.value)) {
-        (PageSingleChoice(), PageChoiceAnswer()) || (PageTextInput(), PageTextAnswer()) => true,
-        (PageMultipleChoice(), PageChoicesAnswer(:final optionIds)) => optionIds.isNotEmpty,
-        _ => false,
-      };
 
   void _report({required AnalyticsQuestionPageOutcome outcome, required PendingPage page}) {
     final event = QuestionPageFinishedEvent.of(outcome: outcome, page: page);

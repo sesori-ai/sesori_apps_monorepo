@@ -344,8 +344,11 @@ for a sub-agent's page.
   window or as a wide panel over the dimmed session from 960 px. Reduced motion
   shows and hides it at once. A fixed header holds the title, "From <harness ·
   session>", Close and a Page actions menu with Dismiss page. The intro and the
-  sections scroll below it. A sticky bar shows "<n> of <total> answered" with
-  Submit, or Done on a page with no questions, and keeps one height in every
+  sections scroll below it. A sticky bar shows a "<n> left" pill beside Submit,
+  counting unanswered required and optional questions, which cross-fades to a
+  check mark ("All answered" to screen readers) once none is left, at once
+  under reduced motion; a change in the pill never moves Submit. A page with
+  no questions offers Done and no pill. The bar keeps one height in every
   state. Close, Escape or a tap on the dimmed area slides the page down and
   leaves it pending, and the card comes back. Picks and notes stay in memory
   per surface until the page settles, so reopening keeps them. They are not
@@ -355,6 +358,17 @@ for a sub-agent's page.
   option shows "Recommended" and is never preselected. A question of a kind the
   app doesn't know says "This question needs an updated Sesori app. You can
   submit without it." and never blocks Submit.
+- Each question title starts with its number in the accent colour. Each
+  heading starts a section, and questions before the first heading form their
+  own; sections holding questions are numbered 1, 2, 3 and their questions
+  restart in each ("1.1", "2.1"). A page with one section of questions numbers
+  them plainly ("1", "2").
+- Submit with every required question answered but an optional one left asks
+  first in the dismiss question's floating sheet: "Submit with <n> unanswered
+  question(s)?" and 'The agent sees them as "no answer" and may ask again.'
+  "Go to first" closes it and smoothly scrolls the first unanswered question
+  into view; "Submit anyway" sends. A page with a required question unanswered
+  goes straight to the refusal below, and a fully answered one submits at once.
 - Each image sits in a box at the size its file declared, with a height cap
   that narrows a tall image. It shimmers while loading and then fades in, so
   nothing below it moves. An image that can't load shows a neutral placeholder

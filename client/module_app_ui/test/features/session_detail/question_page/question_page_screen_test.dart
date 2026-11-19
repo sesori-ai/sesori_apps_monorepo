@@ -177,7 +177,7 @@ void main() {
 
     expect(find.text("Release plan"), findsWidgets);
     expect(find.text("From Claude Code · Fix the login"), findsOneWidget);
-    expect(find.text("0 of 3 answered"), findsOneWidget);
+    expect(find.text("3 left"), findsOneWidget);
     expect(find.text("Required"), findsNWidgets(2));
     // Recommended is a label, never a pick.
     expect(find.text("Recommended"), findsOneWidget);
@@ -196,7 +196,7 @@ void main() {
       ),
     );
     expect(optionIcon(tester, "canary"), TablerRegular.circle_dot);
-    expect(find.text("1 of 3 answered"), findsOneWidget);
+    expect(find.text("2 left"), findsOneWidget);
     // Tapping the pick again clears it.
     await tester.tap(find.text("Canary"));
     verify(() => cubit.setChoice(questionId: "plan", optionId: null)).called(1);
@@ -453,7 +453,7 @@ void main() {
     );
 
     expect(find.text("Done"), findsOneWidget);
-    expect(find.textContaining("answered"), findsNothing);
+    expect(find.byKey(const Key("question-page-left")), findsNothing);
   });
 
   testWidgets("an accepted Submit closes the page once, as it looked while sending", (tester) async {
@@ -582,6 +582,134 @@ void main() {
     });
   }
 
+  testWidgets("numbers questions by section once the page has more than one", (tester) async {
+    String? number(String questionId) => tester.widget<Text>(find.byKey(Key("question-page-number-$questionId"))).data;
+
+    await pumpScreen(tester, state: editing(draft: PageDraft.empty));
+    expect(
+      [
+        for (final id in ["plan", "checks", "why", "future"]) number(id),
+      ],
+      ["1", "2", "3", "4"],
+    );
+
+    final sectioned = _page(
+      sections: const [
+        PageSection(heading: "Rollout", body: null, images: [], questions: [_plan, _checks]),
+        PageSection(heading: "Follow-up", body: null, images: [], questions: [_why]),
+      ],
+    );
+    await emit(tester, PageEditing(page: sectioned, draft: PageDraft.empty, feedback: const PageFeedbackNone()));
+    expect(
+      [
+        for (final id in ["plan", "checks", "why"]) number(id),
+      ],
+      ["1.1", "1.2", "2.1"],
+    );
+  });
+
+  testWidgets("the left pill turns into a check mark once all is answered, and Submit stays put", (tester) async {
+    final answered = PageDraft.empty
+        .withChoice(questionId: "plan", optionId: "canary")
+        .withChoices(questionId: "checks", optionIds: ["unit"])
+        .withText(questionId: "why", text: "Fixture");
+    await pumpScreen(
+      tester,
+      state: editing(draft: answered.withText(questionId: "why", text: null)),
+    );
+    expect(find.text("1 left"), findsOneWidget);
+    final submit = tester.getRect(find.byKey(const Key("question-page-submit")));
+
+    await emit(tester, editing(draft: answered));
+    expect(find.byKey(const Key("question-page-left")), findsNothing);
+    expect(find.byKey(const Key("question-page-all-answered")), findsOneWidget);
+    expect(tester.widget<Icon>(find.byKey(const Key("question-page-all-answered"))).semanticLabel, "All answered");
+    expect(tester.getRect(find.byKey(const Key("question-page-submit"))), submit);
+  });
+
+  group("Submit", () {
+    Future<void> tapSubmit(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key("question-page-submit")));
+      await tester.pumpAndSettle();
+    }
+
+    for (final (name, draft) in [
+      ("a required question unanswered", PageDraft.empty.withChoices(questionId: "checks", optionIds: ["unit"])),
+      (
+        "everything answered",
+        PageDraft.empty
+            .withChoice(questionId: "plan", optionId: "canary")
+            .withChoices(questionId: "checks", optionIds: ["unit"])
+            .withText(questionId: "why", text: "Fixture"),
+      ),
+    ]) {
+      testWidgets("with $name submits without asking", (tester) async {
+        await pumpScreen(tester, state: editing(draft: draft));
+
+        await tapSubmit(tester);
+        expect(find.byKey(const Key("question-page-gaps-submit")), findsNothing);
+        verify(() => cubit.submit()).called(1);
+      });
+    }
+
+    testWidgets("with only optional questions unanswered asks first, and Submit anyway sends", (tester) async {
+      await pumpScreen(
+        tester,
+        state: editing(
+          draft: PageDraft.empty.withChoice(questionId: "plan", optionId: "canary"),
+        ),
+      );
+
+      await tapSubmit(tester);
+      expect(find.text("Submit with 2 unanswered questions?"), findsOneWidget);
+      expect(find.text('The agent sees them as "no answer" and may ask again.'), findsOneWidget);
+      verifyNever(() => cubit.submit());
+
+      await tester.tap(find.byKey(const Key("question-page-gaps-submit")));
+      await tester.pumpAndSettle();
+      expect(find.text("Submit with 2 unanswered questions?"), findsNothing);
+      verify(() => cubit.submit()).called(1);
+    });
+
+    testWidgets("Go to first closes the question and scrolls to the first unanswered question", (tester) async {
+      final long = _page(
+        sections: [
+          const PageSection(heading: "Rollout", body: null, images: [], questions: [_plan]),
+          for (var index = 0; index < 6; index++)
+            PageSection(
+              heading: "Background $index",
+              body: "Fixture text\n\n" * 6,
+              images: const [],
+              questions: const [],
+            ),
+          const PageSection(heading: "Follow-up", body: null, images: [], questions: [_why]),
+        ],
+      );
+      await pumpScreen(
+        tester,
+        state: PageEditing(
+          page: long,
+          draft: PageDraft.empty.withChoice(questionId: "plan", optionId: "canary"),
+          feedback: const PageFeedbackNone(),
+        ),
+      );
+      final viewport = tester.getRect(find.byType(SingleChildScrollView));
+      expect(tester.getRect(find.text("Anything to watch?")).top, greaterThan(viewport.bottom));
+
+      await tapSubmit(tester);
+      expect(find.text("Submit with 1 unanswered question?"), findsOneWidget);
+      expect(find.text('The agent sees it as "no answer" and may ask again.'), findsOneWidget);
+      await tester.tap(find.byKey(const Key("question-page-gaps-go-to-first")));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Submit with 1 unanswered question?"), findsNothing);
+      final title = tester.getRect(find.text("Anything to watch?"));
+      expect(title.top, greaterThanOrEqualTo(viewport.top));
+      expect(title.bottom, lessThanOrEqualTo(viewport.bottom));
+      verifyNever(() => cubit.submit());
+    });
+  });
+
   group("images", () {
     PendingPageState imagePage({required PageImage image}) => PageEditing(
       page: _page(
@@ -667,7 +795,7 @@ void main() {
     expect(tester.element(find.byType(QuestionPageScreen)).read<SessionDetailCubit>(), session);
 
     await emit(tester, PageEditing(page: _questionsPage, draft: PageDraft.empty, feedback: const PageFeedbackNone()));
-    expect(find.text("0 of 3 answered"), findsOneWidget);
+    expect(find.text("3 left"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("question-page-close")));
     await tester.pumpAndSettle();

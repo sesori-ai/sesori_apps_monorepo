@@ -12,6 +12,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../session_detail_presentation_scope.dart";
 import "question_page_image.dart";
+import "question_page_numbers.dart";
 import "question_page_question.dart";
 
 typedef PendingPageCubitFactory = PendingPageCubit Function({required String requestId, required String sessionId});
@@ -22,6 +23,7 @@ const _contentDuration = Duration(milliseconds: 200);
 const _scrollDuration = Duration(milliseconds: 320);
 const _headerHeight = 52.0;
 const _barHeight = 64.0;
+const _pillHeight = 28.0;
 
 /// From this window width the page opens as a wide overlay over the session
 /// rather than covering it.
@@ -209,21 +211,62 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
       // The question is the sheet's own title, which wraps; a modal's
       // header would cut it to one line.
       final topInset = MediaQuery.paddingOf(context).top;
+      final loc = context.loc;
       final confirmed = await showPregoModalRoute<bool>(
         context: context,
-        builder: (_) => _DismissConfirmation(topInset: topInset),
+        builder: (_) => _DecisionSheet(
+          topInset: topInset,
+          title: loc.questionPageDismissConfirmTitle,
+          body: null,
+          secondary: (key: const Key("question-page-dismiss-cancel"), label: loc.questionPageDismissConfirmCancel),
+          primary: (key: const Key("question-page-dismiss-confirm"), label: loc.questionPageDismissConfirmAction),
+          primaryType: PregoButtonsSolidType.destructive,
+        ),
       );
       if (!mounted || confirmed != true) return;
     }
     await cubit.dismiss();
   }
 
-  /// Brings the first question Submit flagged into view.
-  void _scrollToIssue({required List<String> questionIds}) {
-    final target = switch (questionIds.firstOrNull) {
-      final id? => _questionKeys[id]?.currentContext,
-      null => null,
-    };
+  /// Submits the page, asking first when every required question is answered
+  /// but an optional one isn't. An unanswered required question goes straight
+  /// to Submit, which flags it.
+  Future<void> _submit() async {
+    final cubit = context.read<PendingPageCubit>();
+    if (cubit.state case PageEditing(:final page, :final draft)) {
+      final unanswered = draft.unanswered(page: page);
+      if (unanswered case [final first, ...] when !unanswered.any((question) => question.isRequired)) {
+        final topInset = MediaQuery.paddingOf(context).top;
+        final loc = context.loc;
+        final submitAnyway = await showPregoModalRoute<bool>(
+          context: context,
+          builder: (_) => _DecisionSheet(
+            topInset: topInset,
+            title: loc.questionPageSubmitGapsTitle(unanswered.length),
+            body: loc.questionPageSubmitGapsBody(unanswered.length),
+            secondary: (key: const Key("question-page-gaps-go-to-first"), label: loc.questionPageSubmitGapsGoToFirst),
+            primary: (key: const Key("question-page-gaps-submit"), label: loc.questionPageSubmitGapsConfirm),
+            primaryType: PregoButtonsSolidType.regular,
+          ),
+        );
+        if (!mounted) return;
+        switch (submitAnyway) {
+          case true:
+            break;
+          case false:
+            _scrollToQuestion(questionId: first.id);
+            return;
+          case null:
+            return;
+        }
+      }
+    }
+    await cubit.submit();
+  }
+
+  /// Brings the question [questionId] into view.
+  void _scrollToQuestion({required String questionId}) {
+    final target = _questionKeys[questionId]?.currentContext;
     if (target == null) return;
     FocusScope.of(context).unfocus();
     Scrollable.ensureVisible(
@@ -256,8 +299,9 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
           // outcome keeps it open to say why.
           case PageSettledHere():
             widget.onSettledHere();
-          case PageEditing(feedback: PageFeedbackInvalid(:final questionIds)):
-            _scrollToIssue(questionIds: questionIds);
+          // Brings the first question Submit flagged into view.
+          case PageEditing(feedback: PageFeedbackInvalid(questionIds: [final first, ...])):
+            _scrollToQuestion(questionId: first);
           case _:
             break;
         }
@@ -325,6 +369,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                             noteField: (id) =>
                                 _field(fields: _noteFields, questionId: id, text: draft.answers[id]?.note),
                             closingNote: _closingNote ??= TextEditingController(text: draft.note),
+                            onSubmit: _submit,
                           ),
                         },
                       ),
@@ -450,35 +495,46 @@ class const _Header({
   }
 }
 
-/// The dismiss question with Cancel and a destructive Dismiss. Pops `true`
-/// only for Dismiss.
-class const _DismissConfirmation({required final double topInset}) extends StatelessWidget {
+/// A short decision in a floating sheet: its [title], which wraps rather than
+/// being cut, an optional [body] line, and two actions. Pops `true` for
+/// [primary], `false` for [secondary], and null when closed any other way.
+class const _DecisionSheet({
+  required final double topInset,
+  required final String title,
+  required final String? body,
+  required final ({Key key, String label}) secondary,
+  required final ({Key key, String label}) primary,
+  required final PregoButtonsSolidType primaryType,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
+    final prego = context.prego;
     return PregoActionSheet(
-      title: loc.questionPageDismissConfirmTitle,
+      title: title,
       topInset: topInset,
       actions: PregoSheetActions(
         secondary: PregoButtonsSolid(
-          key: const Key("question-page-dismiss-cancel"),
-          label: loc.questionPageDismissConfirmCancel,
+          key: secondary.key,
+          label: secondary.label,
           hierarchy: PregoButtonsSolidHierarchy.secondary,
           size: PregoButtonsSolidSize.lg,
           fullWidth: true,
           onPressed: () => Navigator.of(context).pop(false),
         ),
         primary: PregoButtonsSolid(
-          key: const Key("question-page-dismiss-confirm"),
-          label: loc.questionPageDismissConfirmAction,
+          key: primary.key,
+          label: primary.label,
           hierarchy: PregoButtonsSolidHierarchy.primary,
-          type: PregoButtonsSolidType.destructive,
+          type: primaryType,
           size: PregoButtonsSolidSize.lg,
           fullWidth: true,
           onPressed: () => Navigator.of(context).pop(true),
         ),
       ),
-      child: const SizedBox.shrink(),
+      child: switch (body) {
+        final body? => Text(body, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
+        null => const SizedBox.shrink(),
+      },
     );
   }
 }
@@ -524,12 +580,14 @@ class const _PageBody({
   required final TextEditingController Function(String questionId) answerField,
   required final TextEditingController Function(String questionId) noteField,
   required final TextEditingController closingNote,
+  required final VoidCallback onSubmit,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final cubit = context.read<PendingPageCubit>();
+    final numbers = questionPageNumbers(sections: page.sections);
     final enabled = state is PageEditing;
     final readOnly = state is PageReadOnly;
     final flagged = switch (state) {
@@ -551,7 +609,7 @@ class const _PageBody({
               children: [
                 Text(page.title, style: prego.textTheme.textXl.medium.copyWith(color: prego.colors.textPrimary)),
                 if (intro != null) ...[const SizedBox(height: PregoSpacing.md), QuestionPageMarkdown(data: intro)],
-                for (final section in page.sections) ...[
+                for (final (sectionIndex, section) in page.sections.indexed) ...[
                   const SizedBox(height: PregoSpacing.x3l),
                   if (section.heading case final heading?) ...[
                     Text(heading, style: prego.textTheme.textLg.bold.copyWith(color: prego.colors.textPrimary)),
@@ -565,11 +623,12 @@ class const _PageBody({
                     QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
                     const SizedBox(height: PregoSpacing.md),
                   ],
-                  for (final question in section.questions) ...[
+                  for (final (questionIndex, question) in section.questions.indexed) ...[
                     const SizedBox(height: PregoSpacing.lg),
                     QuestionPageQuestion(
                       key: questionKeys[question.id] ??= GlobalKey(debugLabel: "question-page-${question.id}"),
                       question: question,
+                      number: numbers[sectionIndex][questionIndex],
                       answer: draft.answers[question.id],
                       enabled: enabled,
                       issue: switch ((flagged.contains(question.id), draft.answers[question.id]?.value)) {
@@ -613,13 +672,13 @@ class const _PageBody({
             ),
           ),
         ),
-        _Bar(page: page, draft: draft, state: state, bottomInset: bottomInset),
+        _Bar(page: page, draft: draft, state: state, bottomInset: bottomInset, onSubmit: onSubmit),
       ],
     );
   }
 }
 
-/// The sticky bar: progress and Submit while the page waits, or how it
+/// The sticky bar: what's left and Submit while the page waits, or how it
 /// settled. It keeps one height in every state, so a change never moves the
 /// page above it.
 class const _Bar({
@@ -627,18 +686,15 @@ class const _Bar({
   required final PageDraft draft,
   required final PendingPageState state,
   required final double bottomInset,
+  required final VoidCallback onSubmit,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final cubit = context.read<PendingPageCubit>();
-    final questions = [
-      for (final section in page.sections)
-        for (final question in section.questions)
-          if (question.kind is! PageQuestionKindUnknown) question,
-    ];
-    final answered = questions.where((question) => draft.answers[question.id]?.value != null).length;
+    final hasQuestions = page.sections.any(
+      (section) => section.questions.any((question) => question.kind is! PageQuestionKindUnknown),
+    );
     final duration = context.isReducedMotion ? Duration.zero : _contentDuration;
     final settled = switch (state) {
       PageReadOnly(reason: PageReadOnlyReason.answered) => (TablerRegular.circle_check, loc.questionPageAnswered),
@@ -666,7 +722,7 @@ class const _Bar({
         ],
       );
     } else {
-      final status = _status(state: state, loc: loc, answered: answered, total: questions.length);
+      final problem = _problem(state: state, loc: loc);
       content = Row(
         key: const ValueKey("open"),
         children: [
@@ -677,15 +733,13 @@ class const _Bar({
                 duration: duration,
                 layoutBuilder: (current, previous) =>
                     Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
-                child: switch (status) {
-                  (:final text, :final isProblem) => Text(
-                    text,
-                    key: ValueKey(text),
+                child: switch (problem) {
+                  final problem? => Text(
+                    problem,
+                    key: ValueKey(problem),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.regular.copyWith(
-                      color: isProblem ? prego.colors.textErrorPrimary : prego.colors.textSecondary,
-                    ),
+                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textErrorPrimary),
                   ),
                   null => const SizedBox.shrink(),
                 },
@@ -693,9 +747,13 @@ class const _Bar({
             ),
           ),
           const SizedBox(width: PregoSpacing.lg),
+          if (hasQuestions) ...[
+            _LeftPill(left: draft.unanswered(page: page).length),
+            const SizedBox(width: PregoSpacing.md),
+          ],
           PregoButtonsSolid(
             key: const Key("question-page-submit"),
-            label: questions.isEmpty ? loc.questionPageDone : loc.questionPageSubmit,
+            label: hasQuestions ? loc.questionPageSubmit : loc.questionPageDone,
             hierarchy: PregoButtonsSolidHierarchy.primary,
             size: PregoButtonsSolidSize.md,
             isLoading: switch (state) {
@@ -703,7 +761,7 @@ class const _Bar({
               PageSubmitting(action: PageAction.submit) || PageSettledHere(action: PageAction.submit) => true,
               _ => false,
             },
-            onPressed: state is PageEditing ? cubit.submit : null,
+            onPressed: state is PageEditing ? onSubmit : null,
           ),
         ],
       );
@@ -728,36 +786,68 @@ class const _Bar({
     );
   }
 
-  /// Null on a page with no questions, which has no progress to show.
-  static ({String text, bool isProblem})? _status({
-    required PendingPageState state,
-    required AppLocalizations loc,
-    required int answered,
-    required int total,
-  }) {
-    final progress = total == 0 ? null : (text: loc.questionPageProgress(answered, total), isProblem: false);
-    return switch (state) {
-      PageEditing(feedback: PageFeedbackFailed(action: PageAction.submit)) => (
-        text: loc.questionPageSubmitFailed,
-        isProblem: true,
+  /// What the last submit or dismiss left wrong, if anything.
+  static String? _problem({required PendingPageState state, required AppLocalizations loc}) => switch (state) {
+    PageEditing(feedback: PageFeedbackFailed(action: PageAction.submit)) => loc.questionPageSubmitFailed,
+    PageEditing(feedback: PageFeedbackFailed(action: PageAction.dismiss)) => loc.questionPageDismissFailed,
+    PageEditing(feedback: PageFeedbackUnknownResult()) => loc.questionPageUnknownResult,
+    PageEditing(feedback: PageFeedbackInvalid(:final questionIds)) when questionIds.isNotEmpty =>
+      loc.questionPageInvalid(
+        questionIds.length,
       ),
-      PageEditing(feedback: PageFeedbackFailed(action: PageAction.dismiss)) => (
-        text: loc.questionPageDismissFailed,
-        isProblem: true,
+    PageEditing() ||
+    PageSubmitting() ||
+    PageSettledHere() ||
+    PageReadOnly() ||
+    PageLoading() ||
+    PageMissing() ||
+    PageUnsupported() ||
+    PageLoadFailed() => null,
+  };
+}
+
+/// How many questions are [left] unanswered, or a check mark once none is.
+/// It cross-fades between counts and eases to each one's width; Submit sits
+/// after it at the bar's end, so a change never moves Submit.
+class const _LeftPill({required final int left}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final duration = context.isReducedMotion ? Duration.zero : _contentDuration;
+    return AnimatedSize(
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      alignment: AlignmentDirectional.centerEnd,
+      child: AnimatedSwitcher(
+        duration: duration,
+        layoutBuilder: (current, previous) =>
+            Stack(alignment: AlignmentDirectional.centerEnd, children: [...previous, ?current]),
+        child: Container(
+          key: ValueKey(left),
+          height: _pillHeight,
+          constraints: const BoxConstraints(minWidth: _pillHeight),
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: left == 0 ? prego.colors.bgSuccessSecondary : prego.colors.bgTertiary,
+            borderRadius: BorderRadius.circular(PregoRadius.full),
+          ),
+          child: left == 0
+              ? Icon(
+                  TablerRegular.check,
+                  key: const Key("question-page-all-answered"),
+                  size: PregoIconSize.sm,
+                  color: prego.colors.fgSuccessPrimary,
+                  semanticLabel: loc.questionPageAllAnswered,
+                )
+              : Text(
+                  loc.questionPageLeft(left),
+                  key: const Key("question-page-left"),
+                  style: prego.textTheme.textXs.bold.copyWith(color: prego.colors.textSecondary),
+                ),
+        ),
       ),
-      PageEditing(feedback: PageFeedbackUnknownResult()) => (text: loc.questionPageUnknownResult, isProblem: true),
-      PageEditing(feedback: PageFeedbackInvalid(:final questionIds)) when questionIds.isNotEmpty => (
-        text: loc.questionPageInvalid(questionIds.length),
-        isProblem: true,
-      ),
-      PageEditing() ||
-      PageSubmitting() ||
-      PageSettledHere() ||
-      PageReadOnly() ||
-      PageLoading() ||
-      PageMissing() ||
-      PageUnsupported() ||
-      PageLoadFailed() => progress,
-    };
+    );
   }
 }
