@@ -276,9 +276,11 @@ def publish(*, root: Path, channel: Channel, released_channel: Channel | None) -
         if current is not None:
             previous = ET.fromstring(current).find("{*}revision").text
             if incoming < version_order(version=previous):
-                # Only the channel this run released must advance. Every other channel is a
-                # best-effort refresh that already holds a newer build, so it stays as it is.
-                require(channel is not released_channel, "Refusing to downgrade an already-published repository")
+                # Only a stable release must advance its channel. Internal goes back a version while a
+                # patch release is cut, and a channel this run did not release is a best-effort refresh,
+                # so either keeps its newer build.
+                require(not (channel is Channel.STABLE and released_channel is Channel.STABLE),
+                        "Refusing to downgrade an already-published repository")
                 report_unchanged(channel=channel, previous=previous, incoming=version)
                 return
     for row in sorted(report["files"], key=lambda row: (publication_order(name=row["name"]), row["name"])):

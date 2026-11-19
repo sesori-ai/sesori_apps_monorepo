@@ -135,10 +135,10 @@ there is no new public release pointer. RPM XML/signature replacement can briefl
 refuse refresh; retrying is safe. This is not atomic multi-object publication.
 
 Retry a failed publisher job using its original signed artifact. A newer published
-RPM revision prevents an older failed run from rolling the channel back: the released
-channel fails, and any other channel stays as it is with a notice in the job summary.
-That happens when a patch release is cut after main moved on and internal already
-holds a newer build. Re-running
+RPM revision prevents an older failed run from rolling the channel back: a stable
+release fails, and internal or a channel the run did not release stays as it is with a
+notice in the job summary. That happens when a patch release is cut after main moved on
+and internal already holds a newer build. Re-running
 signing intentionally generates fresh metadata and signatures; do not assume their
 bytes remain identical. Immutable packages and content hashes remain unchanged.
 Key changes that conflict with the existing public key require explicit key-maintenance
