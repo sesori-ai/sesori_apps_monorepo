@@ -4802,9 +4802,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionPageNoteHint => 'Add a note (optional)';
 
   @override
-  String get questionPageNoNote => 'No note';
-
-  @override
   String get questionPageClosingNoteTitle => 'Anything else?';
 
   @override
@@ -4818,4 +4815,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get questionPageUnknownResult => 'Sesori didn\'t understand the reply. Update the app and try again.';
+
+  @override
+  String get questionPageImageUnavailable => 'Image unavailable';
 }

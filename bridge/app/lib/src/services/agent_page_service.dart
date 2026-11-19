@@ -139,13 +139,15 @@ class AgentPageService({
   }
 
   /// The page [requestId] names, pending or settled, when [sessionId] is its
-  /// session or the root session it shows on. Archive state doesn't matter:
-  /// an archived session's pages still open read-only on the client, and
-  /// submit refuses them.
+  /// session or the root session it shows on. A pending page of an archived
+  /// session is missing, as it is from the session's questions; the page
+  /// isn't settled, so the agent hears nothing. A settled page keeps its
+  /// outcome when archived.
   Future<PageLookupResponse> lookup({required String sessionId, required String requestId}) async {
     final stored = await _find(requestId: requestId, sessionId: sessionId);
     if (stored == null) return const PageLookupMissing();
     return switch (stored.outcome) {
+      null when !await _isShown(sessionId: stored.page.sessionId) => const PageLookupMissing(),
       null => PageLookupPending(page: stored.page),
       AgentPageAnswered(:final answers, :final note) => PageLookupAnswered(
         page: stored.page,

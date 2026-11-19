@@ -3252,10 +3252,10 @@
   "questionPageAnswerHint": "Type your answer",
   "questionPageNoAnswer": "No answer",
   "questionPageNoteHint": "Add a note (optional)",
-  "questionPageNoNote": "No note",
   "questionPageClosingNoteTitle": "Anything else?",
   "questionPageClosingNoteHint": "Anything the agent should know (optional)",
   "questionPageSubmitFailed": "Couldn't send your answers. Try again.",
   "questionPageDismissFailed": "Couldn't dismiss the page. Try again.",
-  "questionPageUnknownResult": "Sesori didn't understand the reply. Update the app and try again."
+  "questionPageUnknownResult": "Sesori didn't understand the reply. Update the app and try again.",
+  "questionPageImageUnavailable": "Image unavailable"
 }

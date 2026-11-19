@@ -1,7 +1,53 @@
 # Agents ask the user through Sesori pages (MCP question pages)
 
-Status: active. Based on origin/main `3a9f8d9300`, 2026-11-18.
-Product version 1.14.2 (bridge and client). The current public release is v1.14.1.
+Status: done, retired by step 10 (2026-11-18). Based on origin/main `3a9f8d9300`,
+2026-11-18. Product version 1.14.2 (bridge and client). The current public
+release is v1.14.1. Durable truth lives in `docs/regression/questions-and-permissions.md`,
+`docs/regression/sesori-mcp.md` and the question-pages line of
+`docs/HARNESS_CAPABILITIES.md`.
+
+**Release gate (still open at retirement).** The app release that ships question
+pages waits until the `question_page_finished` analytics warehouse rollout is
+done; see "Release gate" under Client below for the exact steps.
+
+## Deviations
+
+- **4.b (#2819)** split from step 4 after the live check: OpenAI-style models
+  fill an optional image object with an empty path, which now reads as no image.
+- **7.b (#2821)** split page images out of step 7 for size.
+- **Archive lookup (step 10).** The plan let the lookup open an archived
+  session's pending page, so an open page kept a Submit the bridge refused with
+  409. The lookup now reports it as missing; see Lifecycle.
+- **Step 10 ran before step 9 merged.** #2822 edits this file and drops its
+  plan edits when it merges after step 10.
+
+## Closing verification (step 10)
+
+Headless iOS simulator (iPhone 17, local bridge, fixture project, Claude Code
+through a test model), 2026-11-18:
+
+- A page with text and images arrives and the card grows in above the composer
+  without the page opening. The page slides up; images keep their boxes and
+  cross-fade in without moving anything below. Answering, Submit, the "You
+  answered" line and the agent's reply all work. Tapping the line reopens the
+  page read-only with the answers.
+- Submit with a required question unanswered marks it and counts the questions
+  that need attention. Dismiss shows the "You closed … without answering" line.
+- A second simulator submitting first turns the open page read-only with
+  "Answered on another device".
+- Archiving while the page is open: Submit shows "This page is no longer
+  available." and the lookup reports missing. There is no unarchive path, so
+  "the card returns after unarchive" doesn't apply.
+- Restarting the bridge with a page pending, then answering it, delivers the
+  answer and its line.
+- A deleted session's page reference shows "This page is no longer available."
+- Released v1.14.1 (built from its tag): the needs-you card opens the "MCP
+  request" sheet with "This client cannot complete this MCP request." and
+  "Cancel request"; cancelling dismisses the page and the "You closed …
+  without answering" line appears.
+
+Live harness checks: see the question-pages line in
+`docs/HARNESS_CAPABILITIES.md`.
 
 ## Goal
 
@@ -509,9 +555,13 @@ send_page {
 
 ## Lifecycle
 
-- **Archive.** The service filter hides the marker, and unarchiving restores it.
-  Submit and dismiss are refused with the archived rejection and send no notice.
-  The lookup still opens the page.
+- **Archive.** The service filter hides the marker. Submit and dismiss are
+  refused with the archived rejection and send no notice. The lookup reports a
+  pending page of an archived session as missing, so an open page answers
+  Submit with "This page is no longer available."; an answered or dismissed
+  page keeps its outcome. The page is never settled on archive and the agent
+  gets no notice. Archiving is permanent in the bridge (`archived: false` is
+  refused), so no unarchive path brings a page back.
 - **Delete.** Rows cascade with the session row, and `SessionDeletionService`
   deletes the session's image folder.
 - **Bridge restart or desktop relaunch.** Pending pages reload from the database
@@ -576,33 +626,23 @@ authored lines, with generated lines listed separately.
 
 | Step | PR | Size | After | Status |
 |---|---|---|---|---|
-| 1/10 | 🌱 Raise the plan | ~450 docs | — | In PR |
-| 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | In PR #2813 |
-| 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | In PR #2814 |
-| 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | In PR #2816 |
+| 1/10 | 🌱 Raise the plan | ~450 docs | — | Merged in #2812 |
+| 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | Merged in #2813 |
+| 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | Merged in #2814 |
+| 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | Merged in #2816 |
 | 4.b/10 | 🌱 Treat a filled-in empty image as no image | ~100 | 4 | Merged in #2819 |
-| 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | In PR #2817 |
-| 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | In PR #2815 |
-| 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | In PR #2818 |
-| 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | In PR #2821 |
-| 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | In PR #2820 |
-| 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | In PR #2822 |
-| 10/10 | Headless iOS simulator and live-harness verification, then retire the plan | docs | 9 | Planned |
+| 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | Merged in #2817 |
+| 6/10 | ⚙️ Client core: API, repository methods, `PendingPageService`, `PageDraftRepository`, `PendingPageCubit` (editing and read-only), analytics event, tests | ~700–900 | 2 | Merged in #2815 |
+| 7/10 | 🚧 Client page screen: screen and widgets, read-only mode, dispatch from the needs-you card, both shells, ARB, widget tests, fixture visuals and recording; a failed submit or dismiss looks the page up before showing the failure | ~1,000–1,300 | 6 | Merged in #2818 |
+| 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Merged in #2821 |
+| 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | Merged in #2820 |
+| 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | In PR #2822 (merges after step 10) |
+| 10/10 | 🌿 Withdraw an archived session's pending page from the lookup, headless iOS simulator and live-harness verification, retire the plan | ~50 code + docs | 8 | In PR #2823 |
 
 After step 2, the bridge steps (3 to 5) and the client steps (6 to 8) run in
 parallel, since they touch disjoint packages. The feature only becomes usable
 once steps 5 and 8 have merged. Until then the code ships unused, all within one
 release.
-
-Deviations:
-
-- **4.b** came out of the step 4 live check. Claude Code, Pi and GitHub Copilot
-  fill in every optional field, so each option arrived with
-  `image: {"path": "", "caption": ""}` and the bridge refused the page. An image
-  with an empty path and no caption now reads as no image.
-- **7.b** split the page images off step 7 to keep that PR within the size cap.
-- **9** leaves `file-previews.md` alone: the page's image viewer is the chat's
-  attachment viewer, not the file preview.
 
 ## Risks
 

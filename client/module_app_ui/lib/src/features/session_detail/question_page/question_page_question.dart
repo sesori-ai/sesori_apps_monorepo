@@ -10,7 +10,11 @@ import "../../../widgets/markdown_styles.dart";
 import "../file_preview/file_reference_code_syntax.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "../widgets/request_option_tile.dart";
+import "question_page_image.dart";
 
+/// Images in a page's text box are this tall at most.
+const questionPageImageMaxHeight = 420.0;
+const _optionImageMaxHeight = 160.0;
 const _issueDuration = Duration(milliseconds: 200);
 
 /// What Submit found wrong with one question.
@@ -82,7 +86,7 @@ class const QuestionPageTextField({
   }
 }
 
-/// One question: its title and text, then the control its kind needs,
+/// One question: its title, text and images, then the control its kind needs,
 /// and for a choice question a note.
 class const QuestionPageQuestion({
   super.key,
@@ -96,6 +100,10 @@ class const QuestionPageQuestion({
 
   /// The choice question's note.
   required final TextEditingController noteController,
+
+  /// Whether the choice question shows its note row. A read-only page hides
+  /// an empty note; a submitting page keeps it so nothing below moves.
+  required final bool showsNote,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -143,6 +151,10 @@ class const QuestionPageQuestion({
           },
         ),
         if (body != null) ...[const SizedBox(height: PregoSpacing.sm), QuestionPageMarkdown(data: body)],
+        for (final image in question.images) ...[
+          const SizedBox(height: PregoSpacing.md),
+          QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
+        ],
         const SizedBox(height: PregoSpacing.lg),
         switch (question.kind) {
           PageSingleChoice(:final options) => _Options(
@@ -197,18 +209,27 @@ class const QuestionPageQuestion({
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
           ),
         },
-        if (question.kind case PageSingleChoice() || PageMultipleChoice()) ...[
-          const SizedBox(height: PregoSpacing.xs),
-          QuestionPageTextField(
-            key: Key("question-page-note-${question.id}"),
-            controller: noteController,
-            hint: enabled ? loc.questionPageNoteHint : loc.questionPageNoNote,
-            enabled: enabled,
-            isFlagged: false,
-            minLines: 1,
-            onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
+        // The row folds away when the page settles while open.
+        if (question.kind case PageSingleChoice() || PageMultipleChoice())
+          AnimatedSize(
+            duration: context.isReducedMotion ? Duration.zero : _issueDuration,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: showsNote
+                ? Padding(
+                    padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+                    child: QuestionPageTextField(
+                      key: Key("question-page-note-${question.id}"),
+                      controller: noteController,
+                      hint: loc.questionPageNoteHint,
+                      enabled: enabled,
+                      isFlagged: false,
+                      minLines: 1,
+                      onChanged: (note) => cubit.setQuestionNote(questionId: question.id, note: note),
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
-        ],
       ],
     );
   }
@@ -250,6 +271,10 @@ class const _Options({
                     ),
                   )
                 : null,
+            footer: switch (option.image) {
+              final image? => QuestionPageImage(image: image, maxHeight: _optionImageMaxHeight),
+              null => null,
+            },
           ),
       ],
     );

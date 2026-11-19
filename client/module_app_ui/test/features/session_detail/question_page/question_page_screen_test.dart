@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:convert";
+import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -13,6 +15,11 @@ import "package:theme_prego/module_prego.dart";
 class _MockPendingPageCubit() extends MockCubit<PendingPageState> implements PendingPageCubit;
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+/// A 1×1 transparent PNG.
+final _png = base64Decode(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+);
 
 const _plan = PageQuestion(
   id: "plan",
@@ -72,6 +79,9 @@ final _questionsPage = _page(
     PageSection(heading: "Rollout", body: "Fixture section", images: [], questions: [_plan, _checks, _why, _future]),
   ],
 );
+
+PageImage _image({required int width, required int height}) =>
+    PageImage(path: "/fixture/page-images/$width-$height.png", width: width, height: height, caption: null);
 
 Widget _scoped({required PendingPageCubitFactory createPendingPageCubit, required Widget child}) => MaterialApp(
   theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -297,6 +307,8 @@ void main() {
       expect(find.byKey(const Key("question-page-menu")), findsNothing);
       expect(optionIcon(tester, "all"), TablerRegular.circle_dot);
       expect(find.text("Watch EU"), findsOneWidget);
+      expect(find.byKey(const Key("question-page-note-plan")), findsOneWidget);
+      expect(find.byKey(const Key("question-page-note-checks")), findsNothing);
       expect(find.text("Error rate"), findsOneWidget);
       expect(find.text("Thanks"), findsOneWidget);
       for (final field in tester.widgetList<TextField>(find.byType(TextField))) {
@@ -322,6 +334,9 @@ void main() {
     expect(tester.getRect(find.text("Rollout plan")), before);
     expect(find.text("Answered on another device"), findsOneWidget);
     expect(optionIcon(tester, "canary"), TablerRegular.circle_dot);
+    // Empty notes fold away once the page is read-only.
+    expect(find.byKey(const Key("question-page-note-plan")), findsNothing);
+    expect(find.byKey(const Key("question-page-closing-note")), findsNothing);
   });
 
   testWidgets("a dismiss refused because the page settled elsewhere turns read-only without an error", (tester) async {
@@ -336,6 +351,9 @@ void main() {
       PageSubmitting(page: _questionsPage, draft: PageDraft.empty, action: PageAction.dismiss),
       animating: true,
     );
+    // Empty notes stay while the request is in flight, so nothing moves.
+    expect(find.byKey(const Key("question-page-note-plan")), findsOneWidget);
+    expect(find.byKey(const Key("question-page-closing-note")), findsOneWidget);
     // The cubit looks the page up before it would show the failure.
     await emit(
       tester,
@@ -385,6 +403,44 @@ void main() {
     await tester.tap(find.text("Dismiss page"));
     await tester.pumpAndSettle();
     verify(() => cubit.dismiss()).called(1);
+  });
+
+  group("images", () {
+    PendingPageState imagePage({required PageImage image}) => PageEditing(
+      page: _page(
+        sections: [
+          PageSection(heading: null, body: null, images: [image], questions: const []),
+        ],
+      ),
+      draft: PageDraft.empty,
+      feedback: const PageFeedbackNone(),
+    );
+
+    testWidgets("hold their declared aspect ratio while loading and after a failed load", (tester) async {
+      final image = _image(width: 800, height: 400);
+      final load = Completer<Uint8List?>();
+      when(() => cubit.loadImage(image: image)).thenAnswer((_) => load.future);
+      await pumpScreen(tester, state: imagePage(image: image), animating: true);
+
+      final loading = tester.getSize(find.byKey(const Key("question-page-image-box")));
+      expect(loading.width / loading.height, closeTo(2, 0.01));
+
+      load.complete(null);
+      await settle(tester, animating: true);
+      expect(find.byKey(const Key("question-page-image-unavailable")), findsOneWidget);
+      expect(tester.getSize(find.byKey(const Key("question-page-image-box"))), loading);
+    });
+
+    testWidgets("a tall image narrows to the height cap", (tester) async {
+      final image = _image(width: 400, height: 1600);
+      when(() => cubit.loadImage(image: image)).thenAnswer((_) async => _png);
+      await pumpScreen(tester, state: imagePage(image: image), animating: true);
+
+      final size = tester.getSize(find.byKey(const Key("question-page-image-box")));
+      expect(size.height, 420);
+      expect(size.width, 105);
+      expect(find.byType(Image), findsOneWidget);
+    });
   });
 
   testWidgets("the scope's opener slides the page up and down over the session", (tester) async {

@@ -211,17 +211,21 @@ own. Verified live on
 after several minutes), so the notice asks the agent for a one-line reply
 rather than none.
 
-Question pages: every harness that gets the server (Claude Code, Codex, Pi, Oh
-My Pi, Grok and GitHub Copilot) can call `send_page`, with no harness-specific
-code. The answer arrives with the same notice timing, so a steering harness
-hears it in its running turn and the others after the turn. The other harnesses
-have no `send_page`: Antigravity, Hermes and Cursor stay off until verified,
-DeepSeek is unsupported, and OpenCode has no per-session seam. Live on 2026-11-18, a large nested `send_page` call was accepted on
-Codex, Oh My Pi and Grok. Claude Code, Pi and GitHub Copilot fill in every
-optional field, including `image: {"path": "", "caption": ""}`, which the
-bridge refused until it learned to read that as no image (#2819). No harness
-showed its own permission prompt for `send_page`. The answer roundtrip, and the
-call on Claude Code, Pi and Copilot since #2819, are not verified live yet.
+Question pages: every harness that gets the server can call `send_page`, with
+no harness-specific code; the answer arrives with the same notice timing, so a
+steering harness hears it in its running turn and the others after the turn.
+Antigravity, Hermes and Cursor stay off until verified, DeepSeek is
+unsupported, and OpenCode has no per-session seam. Verified live on 2026-11-18
+through a test model: Claude Code 2.1.325, Codex 0.169.0, Pi 1.5.2, Oh My Pi
+18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 all accepted a large nested page,
+including options whose empty image fields the model filled in, and each heard
+the answer. Claude Code, Codex and Oh My Pi heard it mid-turn, Pi at the next
+tool boundary, and Grok and Copilot in a new turn. Codex reaches the tool through
+a namespace with `strict: false`, Grok through `search_tool` and `use_tool`, and
+Oh My Pi through an `xd://` virtual file it reads and then writes. These versions
+sit slightly below the current pins but above the minimums. No harness
+showed its own permission prompt for `send_page`. Dismissal was checked on
+Claude Code only.
 
 ## Transcript turn boundaries
 

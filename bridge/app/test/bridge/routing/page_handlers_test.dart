@@ -159,11 +159,20 @@ void main() {
       expect(await look(sessionId: "ses-other", requestId: page.id), const PageLookupResponse.missing());
     });
 
-    test("an archived session's page still opens", () async {
-      final page = await addPage();
+    test("an archived session's pending page is missing; a settled one keeps its outcome", () async {
+      final pending = await addPage();
+      final answered = await addPage();
+      await pages.settle(
+        id: answered.id,
+        outcome: const AgentPageAnswered(answers: [_palette], note: null),
+      );
       await db.sessionDao.setArchived(sessionId: "ses-1", archivedAt: 7, updatedAt: 7, projectionUpdatedAt: 7);
 
-      expect(await look(sessionId: "ses-1", requestId: page.id), isA<PageLookupPending>());
+      expect(await look(sessionId: "ses-1", requestId: pending.id), const PageLookupResponse.missing());
+      expect(
+        await look(sessionId: "ses-1", requestId: answered.id),
+        PageLookupResponse.answered(page: answered, answers: const [_palette], note: null),
+      );
     });
   });
 
@@ -283,7 +292,7 @@ void main() {
       );
 
       expect(response.status, 409);
-      expect(await look(sessionId: "ses-1", requestId: page.id), isA<PageLookupPending>());
+      expect((await pages.find(id: page.id))?.outcome, isNull);
       expect(notices.delivered, isEmpty);
     });
 
