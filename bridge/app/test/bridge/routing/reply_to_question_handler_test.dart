@@ -1,10 +1,12 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/agent_page_repository.dart";
 import "package:sesori_bridge/src/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/agent_page_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -13,6 +15,8 @@ void main() {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late ReplyToQuestionHandler handler;
+    late AgentPageRepository pages;
+    late RecordingSessionNotices notices;
 
     setUp(() async {
       plugin = FakeBridgePlugin();
@@ -29,7 +33,14 @@ void main() {
       final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
       addTearDown(pending.dispatcher.dispose);
       addTearDown(pending.service.dispose);
-      handler = ReplyToQuestionHandler(pendingInteractionService: pending.service);
+      final agentPages = buildTestAgentPages(database: db, plugin: plugin);
+      pages = agentPages.pages;
+      notices = agentPages.notices;
+      addTearDown(pages.dispose);
+      handler = ReplyToQuestionHandler(
+        pendingInteractionService: pending.service,
+        agentPageService: agentPages.service,
+      );
     });
 
     tearDown(() => plugin.close());
@@ -55,6 +66,32 @@ void main() {
 
       expect(response.status, 409);
       expect(plugin.lastReplyQuestionId, isNull);
+    });
+
+    test("an old app's reply to a page dismisses it, once", () async {
+      final pageId = await addTestPage(pages: pages, sessionId: "ses-1");
+      final request = makeRequest(
+        "POST",
+        "/question/reply",
+        body: jsonEncode(
+          ReplyToQuestionRequest(
+            requestId: pageId,
+            sessionId: "ses-1",
+            answers: const [
+              ReplyAnswer(values: ["Cancel"]),
+            ],
+          ).toJson(),
+        ),
+      );
+
+      final first = await handler.routeForTest(request);
+      final second = await handler.routeForTest(request);
+
+      expect(first.status, 200);
+      expect(second.status, 404);
+      expect(plugin.lastReplyQuestionId, isNull);
+      expect(await pages.pendingPages(sessionId: "ses-1"), isEmpty);
+      expect(notices.delivered, hasLength(1));
     });
 
     test("canHandle POST /question/reply", () {

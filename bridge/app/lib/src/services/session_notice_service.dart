@@ -9,6 +9,7 @@ import "../repositories/models/normalized_bridge_event.dart";
 import "../repositories/models/session_notice.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_quietness.dart";
+import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/prompt_stamp.dart";
 import "plugin_lifecycle_service.dart";
@@ -21,7 +22,9 @@ import "session_prompt_service.dart";
 /// The notice is a bridge prompt marked [PromptStampNotice], so it shows as a
 /// Sesori row with only its summary. It never stops the agent's work or cuts
 /// across input the user has not given: a harness that steers takes it into
-/// the running turn, and otherwise it waits until the session is quiet.
+/// the running turn, and otherwise it waits until the session is quiet. A
+/// scheduled run's session hears it only after its turn, so the turn the
+/// notice starts is its own and the run's final reply stays the run's.
 /// Nothing is kept across a bridge restart. Logs carry the session id and
 /// the reason, never the notice text.
 class const SessionNoticeService({
@@ -30,15 +33,12 @@ class const SessionNoticeService({
   required final SessionPromptService _prompts,
   required final SessionEventDispatcher _events,
   required final PluginLifecycleService _plugins,
+  required final ScheduledTaskRepository _tasks,
 }) {
-  /// Sends [notice] into [sessionId] as [timing] allows, skipping an archived
-  /// or deleted session. Completes once it is sent, skipped or dropped; never
-  /// throws.
-  Future<void> deliver({
-    required String sessionId,
-    required SessionNotice notice,
-    required SessionNoticeTiming timing,
-  }) async {
+  /// Sends [notice] into [sessionId] as soon as its timing allows, skipping
+  /// an archived or deleted session. Completes once it is sent, skipped or
+  /// dropped; never throws.
+  Future<void> deliver({required String sessionId, required SessionNotice notice}) async {
     if (await _promptableSession(sessionId: sessionId) == null) {
       Log.i("Skipped a notice for session $sessionId: it is archived or deleted");
       return;
@@ -58,6 +58,8 @@ class const SessionNoticeService({
       },
     );
     try {
+      final isRun = (await _tasks.marksOfSessions(sessionIds: {sessionId})).containsKey(sessionId);
+      final timing = isRun ? _SessionNoticeTiming.afterTurn : _SessionNoticeTiming.intoRunningTurn;
       while (true) {
         final attempt = await _operations.dispatch(
           sessionId: sessionId,
@@ -87,16 +89,16 @@ class const SessionNoticeService({
   Future<_Attempt> _sendIfReady({
     required String sessionId,
     required SessionNotice notice,
-    required SessionNoticeTiming timing,
+    required _SessionNoticeTiming timing,
   }) async {
     final session = await _promptableSession(sessionId: sessionId);
     if (session == null) return _Attempt.skipped;
     final ready = switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
       SessionQuietness.quiet || SessionQuietness.unknown => true,
       SessionQuietness.working => switch (timing) {
-        SessionNoticeTiming.intoRunningTurn =>
+        _SessionNoticeTiming.intoRunningTurn =>
           _plugins.busyPromptHandling(pluginId: session.pluginId) == PluginBusyPromptHandling.steer,
-        SessionNoticeTiming.afterTurn => false,
+        _SessionNoticeTiming.afterTurn => false,
       },
       SessionQuietness.awaitingUser => false,
     };
@@ -140,6 +142,15 @@ class const SessionNoticeService({
       _ => false,
     };
   }
+}
+
+/// When a notice may reach a session whose agent is working.
+enum _SessionNoticeTiming() {
+  /// Into the running turn on a harness that steers; after the turn otherwise.
+  intoRunningTurn,
+
+  /// Only once the turn has ended, so the notice starts a turn of its own.
+  afterTurn,
 }
 
 enum _Attempt() {

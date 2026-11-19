@@ -435,6 +435,21 @@ void main() {
         deniedRepository.readPreviewFile(absolutePath: "/secret.txt", acceptsPdf: false),
         const FilePreviewResponse.denied(),
       );
+      expect(deniedRepository.readImageFile(absolutePath: "/secret.png"), isA<ImageFileDenied>());
+    });
+
+    test("readImageFile returns an image's bytes and MIME type, and refuses anything else", () {
+      File("${tempDir.path}/shot.WEBP").writeAsBytesSync([1, 2, 3]);
+      File("${tempDir.path}/notes.txt").writeAsStringSync("text");
+      Directory("${tempDir.path}/folder.png").createSync();
+
+      final read = repository.readImageFile(absolutePath: "${tempDir.path}/shot.WEBP");
+      expect(read, isA<ImageFileContent>().having((content) => content.mime, "mime", "image/webp"));
+      expect((read as ImageFileContent).bytes, [1, 2, 3]);
+      for (final name in ["notes.txt", "folder.png"]) {
+        expect(repository.readImageFile(absolutePath: "${tempDir.path}/$name"), isA<ImageFileUnsupported>());
+      }
+      expect(repository.readImageFile(absolutePath: "${tempDir.path}/absent.png"), isA<ImageFileMissing>());
     });
 
     test("reports a denied lookup as denied rather than missing", () {
