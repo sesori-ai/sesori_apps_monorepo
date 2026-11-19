@@ -8358,6 +8358,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sesori didn\'t understand the reply. Update the app and try again.'**
   String get questionPageUnknownResult;
+
+  /// No description provided for @questionPageImageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Image unavailable'**
+  String get questionPageImageUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
