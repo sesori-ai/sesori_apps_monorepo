@@ -4,6 +4,7 @@ import argparse
 import gzip
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -256,17 +257,30 @@ def publication_order(*, name: str) -> int:
     return 1
 
 
-def publish(*, root: Path, channel: Channel) -> None:
+def report_unchanged(*, channel: Channel, previous: str, incoming: str) -> None:
+    message = f"Kept the Linux {channel} repository at {previous}; its newest completed release {incoming} is older"
+    print(f"::notice title=Linux {channel} repository unchanged::{message}")
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a") as output:
+            output.write(f"{message}\n")
+
+
+def publish(*, root: Path, channel: Channel, released_channel: Channel | None) -> None:
     report = verify(root=root, channel=channel)
     # A newer run can fail between architecture entrypoints. Inspect both before
     # writing anything; their existing revisions own the version, not a new pointer.
-    incoming = version_order(version=f"{report['version']}-{report['buildNumber']}")
+    version = f"{report['version']}-{report['buildNumber']}"
+    incoming = version_order(version=version)
     for _, rpm_arch in ARCHITECTURES.values():
         current = public_bytes(name=f"rpm/{channel}/{rpm_arch}/repodata/repomd.xml")
         if current is not None:
             previous = ET.fromstring(current).find("{*}revision").text
-            require(incoming >= version_order(version=previous),
-                    "Refusing to downgrade an already-published repository")
+            if incoming < version_order(version=previous):
+                # Only the channel this run released must advance. Every other channel is a
+                # best-effort refresh that already holds a newer build, so it stays as it is.
+                require(channel is not released_channel, "Refusing to downgrade an already-published repository")
+                report_unchanged(channel=channel, previous=previous, incoming=version)
+                return
     for row in sorted(report["files"], key=lambda row: (publication_order(name=row["name"]), row["name"])):
         name, digest = row["name"], row["sha256"]
         immutable = publication_order(name=name) == 1
@@ -317,6 +331,9 @@ def main() -> None:
         command = commands.add_parser(operation)
         command.add_argument("--channel", type=Channel, choices=list(Channel), required=True)
         command.add_argument(directory, type=Path, required=True)
+        if operation == "publish":
+            # Absent for scheduled and manual refreshes, which release no channel.
+            command.add_argument("--released-channel", type=Channel, choices=list(Channel))
     arguments = parser.parse_args()
     if arguments.command == "select":
         # GitHub step output for the per-channel matrix; an empty list skips signing and hosting.
@@ -329,7 +346,7 @@ def main() -> None:
         verify(root=arguments.root, channel=arguments.channel)
         print("Independent repository signatures, references and inventory verified")
     else:
-        publish(root=arguments.root, channel=arguments.channel)
+        publish(root=arguments.root, channel=arguments.channel, released_channel=arguments.released_channel)
 
 
 if __name__ == "__main__":

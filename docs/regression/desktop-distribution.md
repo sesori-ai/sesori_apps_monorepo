@@ -306,7 +306,10 @@ public-sharing exception tag; untagged resources retain their previous domain re
 Before any write, verify independent key trust, signed index/package references and
 exact public inventory. Altering a producer inventory must not conceal modified package
 or index bytes. Reject expired APT metadata, immutable conflicts and rollback from a
-retried older run, each per channel. Retain previous content, publish dependencies first and InRelease
+retried older run, each per channel. A channel the run did not release keeps a newer
+published build with a job-summary notice instead of failing, and its failures never
+block the released channel's AppImage feeds (a stable patch release while internal holds
+a newer build). Retain previous content, publish dependencies first and InRelease
 last; verify anonymous SHA-256 delivery and do not publish the private CI inventory.
 
 L2 covers real signed references, ordered writes, retry/failure behavior and existing

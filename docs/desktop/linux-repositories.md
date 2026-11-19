@@ -66,7 +66,9 @@ newer repository metadata.
   channel that has a completed release, so a replaced pending run loses no channel.
   A `select` job lists those channels; signing and publication run one independent
   matrix leg per channel. A channel without a completed release is skipped and the run
-  still succeeds.
+  still succeeds. In a release run, only the released channel's legs can fail the run;
+  the other channel's legs are best-effort, so they never hold back the released
+  channel's AppImage feeds.
 - Internal follows the newest completed `v<X.Y.Z>-internal.<N>` pre-release by package
   version, not the most recently republished old tag. Stable follows the newest
   non-draft `v<X.Y.Z>` carrying `desktop-linux-release.json`. Like macOS, that includes a
@@ -133,7 +135,10 @@ there is no new public release pointer. RPM XML/signature replacement can briefl
 refuse refresh; retrying is safe. This is not atomic multi-object publication.
 
 Retry a failed publisher job using its original signed artifact. A newer published
-RPM revision prevents an older failed run from rolling the channel back. Re-running
+RPM revision prevents an older failed run from rolling the channel back: the released
+channel fails, and any other channel stays as it is with a notice in the job summary.
+That happens when a patch release is cut after main moved on and internal already
+holds a newer build. Re-running
 signing intentionally generates fresh metadata and signatures; do not assume their
 bytes remain identical. Immutable packages and content hashes remain unchanged.
 Key changes that conflict with the existing public key require explicit key-maintenance
