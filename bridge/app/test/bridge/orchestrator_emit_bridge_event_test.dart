@@ -933,7 +933,7 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
-  test("archiving a session publishes a fresh projects summary without it", () async {
+  test("archiving a session publishes it as updated and a fresh projects summary without it", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
       pluginIds: const ["one"],
@@ -963,6 +963,11 @@ void main() {
         .cast<SesoriProjectsSummary>()
         .listen(summaries.add);
     addTearDown(summarySubscription.cancel);
+    // Other devices' open lists and session pages learn the archive from it.
+    final archivedUpdate = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>()
+        .firstWhere((event) => event.info.id == "stable-session" && event.info.time?.archived != null);
 
     plugin.emitEvent(const BridgeSseProjectUpdated());
     await _waitFor(() => summaries.length == 1, reason: "the live summary");
@@ -985,6 +990,7 @@ void main() {
       ),
     );
     expect(response.status, 200);
+    await archivedUpdate.timeout(const Duration(seconds: 2));
     await _waitFor(() => summaries.length == 2, reason: "the post-archive summary");
     expect(summaries.last.projects.expand((project) => project.activeSessions), isEmpty);
 
