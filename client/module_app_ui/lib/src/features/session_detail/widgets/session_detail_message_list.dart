@@ -1891,7 +1891,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             final requestId? => () => unawaited(
               SessionDetailPresentationScope.read(
                 context,
-              ).openPage(context: context, requestId: requestId, sessionId: message.info.sessionID),
+              ).openPage(context: context, requestId: requestId, sessionId: message.info.sessionID, title: null),
             ),
             _ => null,
           },

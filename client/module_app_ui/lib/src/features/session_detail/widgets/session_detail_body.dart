@@ -1335,9 +1335,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         // A page that settled while open stays read-only until closed, so the
         // card comes back for whatever else waits rather than opening it.
         onWithdrawn: _unfoldCard,
-        closed: SessionDetailPresentationScope.read(
-          context,
-        ).openPage(context: context, requestId: question.id, sessionId: question.sessionID),
+        closed: SessionDetailPresentationScope.read(context).openPage(
+          context: context,
+          requestId: question.id,
+          sessionId: question.sessionID,
+          // The page's marker carries its title, so the header has it before the lookup.
+          title: question.questions.firstOrNull?.header,
+        ),
       );
       return true;
     }
