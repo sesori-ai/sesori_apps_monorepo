@@ -1096,14 +1096,12 @@ class Orchestrator({
     required SessionViewService sessionViews,
   }) async {
     final session = switch (mutation) {
-      SessionDeleted() ||
-      SessionContinuationUpdated() ||
-      SessionArchived() ||
-      SessionMessagesRewound() => mutation.session,
+      SessionDeleted() || SessionContinuationUpdated() || SessionMessagesRewound() => mutation.session,
       SessionTitleUpdated() ||
       SessionApprovalOverrideUpdated() ||
       SessionPinnedUpdated() ||
-      SessionInterruptionUpdated() => await sessionViews.enrich(session: mutation.session),
+      SessionInterruptionUpdated() ||
+      SessionArchived() => await sessionViews.enrich(session: mutation.session),
     };
     return (
       pluginId: session.pluginId,
@@ -1116,9 +1114,14 @@ class Orchestrator({
           BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         ],
         SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
-        // A backend may keep reporting an archived session running or waiting,
-        // so rebuild the summary, which drops archived sessions, at once.
-        SessionArchived() => const [BridgeSseProjectUpdated()],
+        // Open lists and session pages on other devices learn the archive from
+        // the updated session. A backend may keep reporting an archived session
+        // running or waiting, so the summary, which drops archived sessions, is
+        // rebuilt at once too.
+        SessionArchived() => [
+          BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+          const BridgeSseProjectUpdated(),
+        ],
         // Each removal is stored and fanned out like a backend's own.
         SessionMessagesRewound(:final removedMessageIds) => [
           for (final messageId in removedMessageIds)
