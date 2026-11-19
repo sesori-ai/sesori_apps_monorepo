@@ -12,6 +12,12 @@ import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
 import "pending_request_auto_dismiss.dart";
 
+// Shared by the touch and pointer layouts so integration tests find a
+// decision whichever layout the platform shows.
+const _allowKey = Key("permission-allow");
+const _alwaysKey = Key("permission-always");
+const _rejectKey = Key("permission-reject");
+
 /// Presents every supported tool permission using the shared Prego action sheet.
 /// The backend's tool and description remain intact; this surface does not infer
 /// permission kinds or offer reply scopes the request cannot accept.
@@ -131,6 +137,7 @@ class const PermissionModal({
                 spacing: prego.spacing.xl,
                 children: [
                   PregoButtonsSolid(
+                    key: _allowKey,
                     label: context.loc.diffPermissionOnce,
                     hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                     size: PregoButtonsSolidSize.lg,
@@ -139,6 +146,7 @@ class const PermissionModal({
                   ),
                   if (permission.allowAlways)
                     PregoButtonsSolid(
+                      key: _alwaysKey,
                       label: context.loc.diffPermissionAlwaysAllow,
                       hierarchy: PregoButtonsSolidHierarchy.secondary,
                       size: PregoButtonsSolidSize.lg,
@@ -146,6 +154,7 @@ class const PermissionModal({
                       onPressed: () => _reply(context, reply: PermissionReply.always),
                     ),
                   PregoButtonsSolid(
+                    key: _rejectKey,
                     label: context.loc.diffPermissionReject,
                     hierarchy: PregoButtonsSolidHierarchy.tertiary,
                     size: PregoButtonsSolidSize.lg,
@@ -324,19 +333,19 @@ class const _PointerPermissionActions({
         children: [
           if (allowAlways)
             button(
-              key: const Key("permission-always"),
+              key: _alwaysKey,
               label: loc.diffPermissionAlwaysAllowEllipsis,
               hierarchy: PregoButtonsSolidHierarchy.tertiary,
               onPressed: () => onConfirmingAlwaysChanged(true),
             ),
           button(
-            key: const Key("permission-reject"),
+            key: _rejectKey,
             label: loc.diffPermissionReject,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             onPressed: () => onReply(PermissionReply.reject),
           ),
           button(
-            key: const Key("permission-allow"),
+            key: _allowKey,
             label: loc.diffPermissionOnce,
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             onPressed: () => onReply(PermissionReply.once),
