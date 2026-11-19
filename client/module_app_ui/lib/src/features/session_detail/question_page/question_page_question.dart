@@ -116,7 +116,10 @@ class const QuestionPageQuestion({
           children: [
             Text(question.title, style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary)),
             if (question.isRequired)
-              Text(loc.questionPageRequired, style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary)),
+              Text(
+                loc.questionPageRequired,
+                style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+              ),
           ],
         ),
         // The reason grows in below the title, so the question it explains

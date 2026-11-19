@@ -248,11 +248,14 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
                             state: state,
                             scroll: _scroll,
                             questionKeys: _questionKeys,
-                            answerField: (id) =>
-                                _field(fields: _answerFields, questionId: id, text: switch (draft.answers[id]?.value) {
-                                  PageTextAnswer(:final text) => text,
-                                  _ => null,
-                                }),
+                            answerField: (id) => _field(
+                              fields: _answerFields,
+                              questionId: id,
+                              text: switch (draft.answers[id]?.value) {
+                                PageTextAnswer(:final text) => text,
+                                _ => null,
+                              },
+                            ),
                             noteField: (id) =>
                                 _field(fields: _noteFields, questionId: id, text: draft.answers[id]?.note),
                             closingNote: _closingNote ??= TextEditingController(text: draft.note),

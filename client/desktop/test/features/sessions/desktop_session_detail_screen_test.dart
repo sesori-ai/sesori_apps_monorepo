@@ -334,7 +334,8 @@ void main() {
                 return _MockImageSharer();
               },
               sessionRepository: _MockSessionRepository.new,
-              createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
+              createPendingPageCubit: ({required requestId, required sessionId}) =>
+                  throw StateError("Unused fixture page"),
               createPendingFormCubit: ({required requestId, required sessionId}) =>
                   throw StateError("Unused fixture form"),
               createFilePreviewCubit: ({required reference}) =>
@@ -464,7 +465,8 @@ void main() {
                 imageClipboard: _MockImageClipboard.new,
                 imageSharer: _MockImageSharer.new,
                 sessionRepository: _MockSessionRepository.new,
-                createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
+                createPendingPageCubit: ({required requestId, required sessionId}) =>
+                    throw StateError("Unused fixture page"),
                 createPendingFormCubit: ({required requestId, required sessionId}) =>
                     throw StateError("Unused fixture form"),
                 createFilePreviewCubit: ({required reference}) =>

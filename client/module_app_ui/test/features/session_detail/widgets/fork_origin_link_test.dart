@@ -34,7 +34,8 @@ void main() {
             imageClipboard: () => throw UnimplementedError(),
             imageSharer: () => throw UnimplementedError(),
             sessionRepository: () => throw UnimplementedError(),
-            createPendingPageCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture page"),
+            createPendingPageCubit: ({required requestId, required sessionId}) =>
+                throw StateError("Unused fixture page"),
             createPendingFormCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
             createFilePreviewCubit: ({required reference}) => throw UnimplementedError(),
             createExternalActionCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),

@@ -65,8 +65,14 @@ const _future = PageQuestion(
   isRequired: true,
 );
 
-PendingPage _page({required List<PageSection> sections}) =>
-    PendingPage(id: "page-1", sessionId: "session-1", displaySessionId: null, title: "Release plan", intro: "Fixture intro", sections: sections);
+PendingPage _page({required List<PageSection> sections}) => PendingPage(
+  id: "page-1",
+  sessionId: "session-1",
+  displaySessionId: null,
+  title: "Release plan",
+  intro: "Fixture intro",
+  sections: sections,
+);
 
 final _questionsPage = _page(
   sections: const [
@@ -160,7 +166,11 @@ void main() {
       PageEditing(page: _questionsPage, draft: draft, feedback: feedback);
 
   testWidgets("names its source and sends picks, text and notes to the cubit", (tester) async {
-    await pumpScreen(tester, state: editing(draft: PageDraft.empty), source: "Claude Code · Fix the login");
+    await pumpScreen(
+      tester,
+      state: editing(draft: PageDraft.empty),
+      source: "Claude Code · Fix the login",
+    );
 
     expect(find.text("Release plan"), findsWidgets);
     expect(find.text("From Claude Code · Fix the login"), findsOneWidget);
@@ -178,7 +188,9 @@ void main() {
 
     await emit(
       tester,
-      editing(draft: PageDraft.empty.withChoice(questionId: "plan", optionId: "canary")),
+      editing(
+        draft: PageDraft.empty.withChoice(questionId: "plan", optionId: "canary"),
+      ),
     );
     expect(optionIcon(tester, "canary"), TablerRegular.circle_dot);
     expect(find.text("1 of 3 answered"), findsOneWidget);
@@ -191,22 +203,33 @@ void main() {
     verify(() => cubit.setChoices(questionId: "checks", optionIds: ["e2e"])).called(1);
     await emit(
       tester,
-      editing(draft: PageDraft.empty.withChoices(questionId: "checks", optionIds: ["e2e"])),
+      editing(
+        draft: PageDraft.empty.withChoices(questionId: "checks", optionIds: ["e2e"]),
+      ),
     );
     await tester.ensureVisible(find.text("Unit tests"));
     await tester.tap(find.text("Unit tests"));
     // Kept in the options' order.
     verify(() => cubit.setChoices(questionId: "checks", optionIds: ["unit", "e2e"])).called(1);
 
-    await tester.enterText(find.descendant(of: find.byKey(const Key("question-page-answer-why")), matching: find.byType(TextField)), "Error rate");
+    await tester.enterText(
+      find.descendant(of: find.byKey(const Key("question-page-answer-why")), matching: find.byType(TextField)),
+      "Error rate",
+    );
     verify(() => cubit.setText(questionId: "why", text: "Error rate")).called(1);
-    await tester.enterText(find.descendant(of: find.byKey(const Key("question-page-note-plan")), matching: find.byType(TextField)), "Watch EU");
+    await tester.enterText(
+      find.descendant(of: find.byKey(const Key("question-page-note-plan")), matching: find.byType(TextField)),
+      "Watch EU",
+    );
     verify(() => cubit.setQuestionNote(questionId: "plan", note: "Watch EU")).called(1);
     // A text question has no separate note; its box already is free text.
     expect(find.byKey(const Key("question-page-note-why")), findsNothing);
     await tester.ensureVisible(find.byKey(const Key("question-page-closing-note")));
     expect(find.text("Anything else?"), findsOneWidget);
-    await tester.enterText(find.descendant(of: find.byKey(const Key("question-page-closing-note")), matching: find.byType(TextField)), "Thanks");
+    await tester.enterText(
+      find.descendant(of: find.byKey(const Key("question-page-closing-note")), matching: find.byType(TextField)),
+      "Thanks",
+    );
     verify(() => cubit.setNote(note: "Thanks")).called(1);
 
     await tester.tap(find.byKey(const Key("question-page-submit")));
@@ -217,11 +240,19 @@ void main() {
     final long = _page(
       sections: [
         for (var index = 0; index < 6; index++)
-          PageSection(heading: "Background $index", body: "Fixture text\n\n" * 6, images: const [], questions: const []),
+          PageSection(
+            heading: "Background $index",
+            body: "Fixture text\n\n" * 6,
+            images: const [],
+            questions: const [],
+          ),
         const PageSection(heading: null, body: null, images: [], questions: [_plan]),
       ],
     );
-    await pumpScreen(tester, state: PageEditing(page: long, draft: PageDraft.empty, feedback: const PageFeedbackNone()));
+    await pumpScreen(
+      tester,
+      state: PageEditing(page: long, draft: PageDraft.empty, feedback: const PageFeedbackNone()),
+    );
     final viewport = tester.getRect(find.byType(SingleChildScrollView));
     expect(tester.getRect(find.text("Rollout plan")).top, greaterThan(viewport.bottom));
 
@@ -230,7 +261,11 @@ void main() {
     await emit(tester, PageSubmitting(page: long, draft: PageDraft.empty, action: PageAction.submit), animating: true);
     await emit(
       tester,
-      PageEditing(page: long, draft: PageDraft.empty, feedback: PageFeedbackInvalid(questionIds: const ["plan"])),
+      PageEditing(
+        page: long,
+        draft: PageDraft.empty,
+        feedback: PageFeedbackInvalid(questionIds: const ["plan"]),
+      ),
     );
 
     final title = tester.getRect(find.text("Rollout plan"));
@@ -249,12 +284,23 @@ void main() {
     testWidgets("read-only $reason fills in the answers and disables the controls", (tester) async {
       final draft = PageDraft(
         answers: const {
-          "plan": PageAnswer(questionId: "plan", value: PageChoiceAnswer(optionId: "all"), note: "Watch EU"),
-          "why": PageAnswer(questionId: "why", value: PageTextAnswer(text: "Error rate"), note: null),
+          "plan": PageAnswer(
+            questionId: "plan",
+            value: PageChoiceAnswer(optionId: "all"),
+            note: "Watch EU",
+          ),
+          "why": PageAnswer(
+            questionId: "why",
+            value: PageTextAnswer(text: "Error rate"),
+            note: null,
+          ),
         },
         note: "Thanks",
       );
-      await pumpScreen(tester, state: PageReadOnly(page: _questionsPage, draft: draft, reason: reason));
+      await pumpScreen(
+        tester,
+        state: PageReadOnly(page: _questionsPage, draft: draft, reason: reason),
+      );
 
       expect(find.text(label), findsOneWidget);
       expect(find.byKey(const Key("question-page-submit")), findsNothing);
@@ -267,7 +313,12 @@ void main() {
         expect(field.enabled, isFalse);
       }
       await tester.tap(find.text("Canary"));
-      verifyNever(() => cubit.setChoice(questionId: any(named: "questionId"), optionId: any(named: "optionId")));
+      verifyNever(
+        () => cubit.setChoice(
+          questionId: any(named: "questionId"),
+          optionId: any(named: "optionId"),
+        ),
+      );
     });
   }
 
@@ -281,6 +332,29 @@ void main() {
     expect(tester.getRect(find.text("Rollout plan")), before);
     expect(find.text("Answered on another device"), findsOneWidget);
     expect(optionIcon(tester, "canary"), TablerRegular.circle_dot);
+  });
+
+  testWidgets("a dismiss refused because the page settled elsewhere turns read-only without an error", (tester) async {
+    await pumpScreen(tester, state: editing(draft: PageDraft.empty));
+    final before = tester.getRect(find.text("Rollout plan"));
+
+    await tester.tap(find.byKey(const Key("question-page-menu")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Dismiss page"));
+    await emit(
+      tester,
+      PageSubmitting(page: _questionsPage, draft: PageDraft.empty, action: PageAction.dismiss),
+      animating: true,
+    );
+    // The cubit looks the page up before it would show the failure.
+    await emit(
+      tester,
+      PageReadOnly(page: _questionsPage, draft: PageDraft.empty, reason: PageReadOnlyReason.dismissed),
+    );
+
+    expect(find.text("Dismissed"), findsOneWidget);
+    expect(find.textContaining("Couldn't"), findsNothing);
+    expect(tester.getRect(find.text("Rollout plan")), before);
   });
 
   testWidgets("a missing page says it is no longer available", (tester) async {
@@ -301,7 +375,9 @@ void main() {
     await pumpScreen(
       tester,
       state: PageEditing(
-        page: _page(sections: const [PageSection(heading: "Heads up", body: "Fixture", images: [], questions: [])]),
+        page: _page(
+          sections: const [PageSection(heading: "Heads up", body: "Fixture", images: [], questions: [])],
+        ),
         draft: PageDraft.empty,
         feedback: const PageFeedbackNone(),
       ),
@@ -323,7 +399,11 @@ void main() {
 
   group("images", () {
     PendingPageState imagePage({required PageImage image}) => PageEditing(
-      page: _page(sections: [PageSection(heading: null, body: null, images: [image], questions: const [])]),
+      page: _page(
+        sections: [
+          PageSection(heading: null, body: null, images: [image], questions: const []),
+        ],
+      ),
       draft: PageDraft.empty,
       feedback: const PageFeedbackNone(),
     );
