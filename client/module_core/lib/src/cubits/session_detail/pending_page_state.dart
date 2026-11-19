@@ -10,6 +10,9 @@ enum PageReadOnlyReason() {
 
   /// Another surface answered the page while it was open here.
   answeredElsewhere,
+
+  /// The page was dismissed before it was opened, or by another surface while
+  /// it was open here.
   dismissed,
 }
 
@@ -43,9 +46,13 @@ final class const PageSubmitting({
   required final PageAction action,
 }) extends PendingPageState;
 
-/// The bridge accepted this surface's submit. The page leaves as it was, so
-/// nothing on it moves while it goes.
-final class const PageSent({required final PendingPage page, required final PageDraft draft}) extends PendingPageState;
+/// The bridge accepted this surface's submit or dismiss. The page leaves as it
+/// was, so nothing on it moves while it goes.
+final class const PageSettledHere({
+  required final PendingPage page,
+  required final PageDraft draft,
+  required final PageAction action,
+}) extends PendingPageState;
 
 /// [draft] holds the answers the page settled with, or this surface's own
 /// picks when the page settled elsewhere while open.

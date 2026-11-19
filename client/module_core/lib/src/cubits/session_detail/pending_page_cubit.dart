@@ -87,8 +87,7 @@ class PendingPageCubit({
       if (isClosed) return;
       switch (result) {
         case PageSubmitAccepted():
-          _drafts.remove(requestId: requestId);
-          emit(PageSent(page: current.page, draft: current.draft));
+          _settleHere(from: current, action: PageAction.submit);
         case PageSubmitAlreadySettled():
           _settle(page: current.page, draft: current.draft, reason: PageReadOnlyReason.answeredElsewhere);
         case PageSubmitInvalid(:final questionIds):
@@ -118,7 +117,7 @@ class PendingPageCubit({
     emit(PageSubmitting(page: current.page, draft: current.draft, action: PageAction.dismiss));
     try {
       await _service.dismiss(page: current.page);
-      if (!isClosed) _settle(page: current.page, draft: current.draft, reason: PageReadOnlyReason.dismissed);
+      if (!isClosed) _settleHere(from: current, action: PageAction.dismiss);
       // ApiError is an expected transport failure despite extending Error.
       // ignore: avoid_catching_errors
     } on ApiError catch (error) {
@@ -165,7 +164,7 @@ class PendingPageCubit({
         case PageEditing():
           // The page stays editable; the next reconnect looks again.
           logw("Failed to look page $requestId up again", error);
-        case PageSubmitting() || PageSent() || PageReadOnly() || PageMissing() || PageUnsupported():
+        case PageSubmitting() || PageSettledHere() || PageReadOnly() || PageMissing() || PageUnsupported():
           break;
       }
     }
@@ -199,7 +198,7 @@ class PendingPageCubit({
   /// The state [response] leads to from [current], or null to keep [current].
   PendingPageState? _afterLookup({required PageLookupResponse response, required PendingPageState current}) {
     // A submit in flight or a settled page knows more than this lookup.
-    if (current is PageSubmitting || current is PageSent || current is PageReadOnly) return null;
+    if (current is PageSubmitting || current is PageSettledHere || current is PageReadOnly) return null;
     final editing = current is PageEditing ? current : null;
     switch (response) {
       case PageLookupPending(:final page):
@@ -267,6 +266,11 @@ class PendingPageCubit({
 
   PageEditing _editing({required PageEditing from, required PageFeedback feedback}) =>
       PageEditing(page: from.page, draft: from.draft, feedback: feedback);
+
+  void _settleHere({required PageEditing from, required PageAction action}) {
+    _drafts.remove(requestId: requestId);
+    emit(PageSettledHere(page: from.page, draft: from.draft, action: action));
+  }
 
   void _settle({required PendingPage page, required PageDraft draft, required PageReadOnlyReason reason}) {
     _drafts.remove(requestId: requestId);

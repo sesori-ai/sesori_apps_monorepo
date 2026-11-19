@@ -147,7 +147,8 @@ void main() {
     expect(cubit.state, isA<PageSubmitting>().having((s) => s.action, "action", PageAction.submit));
     await submitting;
 
-    final state = cubit.state as PageSent;
+    final state = cubit.state as PageSettledHere;
+    expect(state.action, PageAction.submit);
     expect(state.draft.note, "Thanks");
     expect(drafts.get(requestId: page.id), isNull);
     expect(reportedEvents(), 1);
@@ -219,7 +220,7 @@ void main() {
     expect(reportedEvents(), 0);
   });
 
-  test("a confirmed dismiss turns read-only as dismissed and reports once; a failed one stays editable", () async {
+  test("a confirmed dismiss settles here, drops the draft and reports once; a failed one stays editable", () async {
     when(() => repository.rejectQuestion(requestId: page.id, sessionId: "owner"))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     final cubit = create();
@@ -234,7 +235,8 @@ void main() {
     when(() => repository.rejectQuestion(requestId: page.id, sessionId: "owner"))
         .thenAnswer((_) async => ApiResponse.success(null));
     await cubit.dismiss();
-    expect((cubit.state as PageReadOnly).reason, PageReadOnlyReason.dismissed);
+    expect(cubit.state, isA<PageSettledHere>().having((s) => s.action, "action", PageAction.dismiss));
+    expect(drafts.get(requestId: page.id), isNull);
     expect(reportedEvents(), 1);
   });
 
@@ -388,7 +390,7 @@ void main() {
     expect(cubit.state, isA<PageSubmitting>());
     answer.complete(ApiResponse.success(const PageSubmitResult.accepted()));
     await submitting;
-    expect(cubit.state, isA<PageSent>());
+    expect(cubit.state, isA<PageSettledHere>());
   });
 
   test("a reconnect looks the open page up again and catches a settlement it missed", () async {
