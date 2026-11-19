@@ -44,6 +44,7 @@ class _QuestionPageImageState() extends State<QuestionPageImage> {
       builder: (context, constraints) {
         var width = constraints.maxWidth;
         if (width / aspectRatio > widget.maxHeight) width = widget.maxHeight * aspectRatio;
+        final pixelRatio = MediaQuery.devicePixelRatioOf(context);
         return Align(
           alignment: AlignmentDirectional.centerStart,
           child: SizedBox(
@@ -59,6 +60,8 @@ class _QuestionPageImageState() extends State<QuestionPageImage> {
                     bytes: bytes,
                     heroTag: _heroTag,
                     caption: caption,
+                    decodeWidth: (width * pixelRatio).ceil(),
+                    decodeHeight: (width / aspectRatio * pixelRatio).ceil(),
                   ),
                   AsyncSnapshot(connectionState: ConnectionState.done) => const _Unavailable(),
                   AsyncSnapshot() => const _Loading(leaving: false),
@@ -114,20 +117,18 @@ class const _Loaded({
   required final Uint8List bytes,
   required final Key heroTag,
   required final String? caption,
+
+  /// The box's size in physical pixels. The page decodes each image only this
+  /// large, so a page full of images stays light; the viewer decodes the full
+  /// image when it opens.
+  required final int decodeWidth,
+  required final int decodeHeight,
 }) extends StatefulWidget {
   @override
   State<_Loaded> createState() => _LoadedState();
 }
 
 class _LoadedState() extends State<_Loaded> {
-  // Bounded like the chat's attachment viewer, so a huge image cannot exhaust
-  // memory when decoded.
-  late final ImageProvider _provider = ResizeImage(
-    MemoryImage(widget.bytes),
-    width: _maxDecodedImageDimension,
-    height: _maxDecodedImageDimension,
-    policy: ResizeImagePolicy.fit,
-  );
   bool _shown = false;
   bool _failed = false;
 
@@ -135,6 +136,7 @@ class _LoadedState() extends State<_Loaded> {
   Widget build(BuildContext context) {
     if (_failed) return const _Unavailable();
     final duration = context.isReducedMotion ? Duration.zero : _fadeDuration;
+    final bytes = MemoryImage(widget.bytes);
     return Semantics(
       button: true,
       label: context.loc.sessionDetailImageOpen,
@@ -144,7 +146,17 @@ class _LoadedState() extends State<_Loaded> {
             ? () => unawaited(
                 showImageAttachmentViewer(
                   context: context,
-                  image: ViewOnlyMessageImage(provider: _provider, originalUri: null),
+                  // Bounded like the chat's attachment viewer, so a huge
+                  // image cannot exhaust memory when decoded.
+                  image: ViewOnlyMessageImage(
+                    provider: ResizeImage(
+                      bytes,
+                      width: _maxDecodedImageDimension,
+                      height: _maxDecodedImageDimension,
+                      policy: ResizeImagePolicy.fit,
+                    ),
+                    originalUri: null,
+                  ),
                   heroPresentation: ImageAttachmentHeroPresentation.contained,
                   filename: widget.caption,
                   heroTag: widget.heroTag,
@@ -158,7 +170,12 @@ class _LoadedState() extends State<_Loaded> {
             Hero(
               tag: widget.heroTag,
               child: Image(
-                image: _provider,
+                image: ResizeImage(
+                  bytes,
+                  width: widget.decodeWidth,
+                  height: widget.decodeHeight,
+                  policy: ResizeImagePolicy.fit,
+                ),
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
                 frameBuilder: (context, child, frame, _) {
