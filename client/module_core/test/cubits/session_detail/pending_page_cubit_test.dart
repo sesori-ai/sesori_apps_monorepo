@@ -206,6 +206,20 @@ void main() {
     expect(state.draft.note, "Thanks");
   });
 
+  test("a failed submit looks again and catches the page settling meanwhile", () async {
+    when(() => repository.submitPage(request: any(named: "request")))
+        .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    final cubit = create();
+    await editing(cubit);
+    answerAll(cubit);
+    lookupAnswers(const PageLookupResponse.answered(page: page, answers: [], note: null));
+    await cubit.submit();
+    final state = cubit.state as PageReadOnly;
+    expect(state.reason, PageReadOnlyReason.answeredElsewhere);
+    expect(state.draft.note, "Thanks");
+    expect(reportedEvents(), 0);
+  });
+
   test("a confirmed dismiss turns read-only as dismissed and reports once; a failed one stays editable", () async {
     when(() => repository.rejectQuestion(requestId: page.id, sessionId: "owner"))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
