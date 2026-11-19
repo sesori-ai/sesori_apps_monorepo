@@ -11,22 +11,6 @@ final class PageDraft({required Map<String, PageAnswer> answers, required final 
   /// Whether the user has picked or written anything on the page.
   bool get hasInput => answers.isNotEmpty || note != null;
 
-  /// The questions on [page] this draft leaves unanswered, in page order. A
-  /// question of a kind this app doesn't know can't be answered here, so it is
-  /// never listed.
-  List<PageQuestion> unanswered({required PendingPage page}) => [
-    for (final section in page.sections)
-      for (final question in section.questions)
-        if (question.kind is! PageQuestionKindUnknown && !_answers(question: question)) question,
-  ];
-
-  /// A note alone doesn't answer a question.
-  bool _answers({required PageQuestion question}) => switch ((question.kind, answers[question.id]?.value)) {
-    (PageSingleChoice(), PageChoiceAnswer()) || (PageTextInput(), PageTextAnswer()) => true,
-    (PageMultipleChoice(), PageChoicesAnswer(:final optionIds)) => optionIds.isNotEmpty,
-    _ => false,
-  };
-
   /// A null [optionId] clears a single-choice pick.
   PageDraft withChoice({required String questionId, required String? optionId}) => _withAnswer(
     questionId: questionId,

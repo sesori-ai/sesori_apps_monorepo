@@ -234,7 +234,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
   Future<void> _submit() async {
     final cubit = context.read<PendingPageCubit>();
     if (cubit.state case PageEditing(:final page, :final draft)) {
-      final unanswered = draft.unanswered(page: page);
+      final unanswered = cubit.unanswered(page: page, draft: draft);
       if (unanswered case [final first, ...] when !unanswered.any((question) => question.isRequired)) {
         final topInset = MediaQuery.paddingOf(context).top;
         final loc = context.loc;
@@ -748,7 +748,7 @@ class const _Bar({
           ),
           const SizedBox(width: PregoSpacing.lg),
           if (hasQuestions) ...[
-            _LeftPill(left: draft.unanswered(page: page).length),
+            _LeftPill(left: context.read<PendingPageCubit>().unanswered(page: page, draft: draft).length),
             const SizedBox(width: PregoSpacing.md),
           ],
           PregoButtonsSolid(

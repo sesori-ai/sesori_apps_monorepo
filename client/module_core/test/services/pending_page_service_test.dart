@@ -117,6 +117,14 @@ void main() {
     expectNothingReported();
   });
 
+  test("unanswered lists required and optional gaps in page order, and an emptied multiple choice counts", () {
+    String ids(PageDraft draft) => service.unanswered(page: page, draft: draft).map((q) => q.id).join(",");
+    expect(ids(PageDraft.empty), "plan,extras,why");
+    expect(ids(answeredDraft), "extras");
+    expect(ids(answeredDraft.withChoices(questionId: "extras", optionIds: [])), "extras");
+    expect(ids(answeredDraft.withChoices(questionId: "extras", optionIds: ["y"])), "");
+  });
+
   test("an accepted submit sends answers in page order and reports one answered outcome", () async {
     when(() => repository.submitPage(request: any(named: "request")))
         .thenAnswer((_) async => ApiResponse.success(const PageSubmitResult.accepted()));

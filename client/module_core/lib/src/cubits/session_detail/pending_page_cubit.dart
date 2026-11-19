@@ -78,6 +78,10 @@ class PendingPageCubit({
   /// The page's closing "Anything else?" note.
   void setNote({required String? note}) => _edit(questionId: null, change: (draft) => draft.withNote(note: note));
 
+  /// The questions [draft] leaves unanswered, required or optional, in page order.
+  List<PageQuestion> unanswered({required PendingPage page, required PageDraft draft}) =>
+      _service.unanswered(page: page, draft: draft);
+
   Future<void> submit() async {
     final current = state;
     if (current is! PageEditing) return;

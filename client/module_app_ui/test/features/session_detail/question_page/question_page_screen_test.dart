@@ -16,6 +16,26 @@ class _MockPendingPageCubit() extends MockCubit<PendingPageState> implements Pen
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
+class _MockSessionRepository() extends Mock implements SessionRepository;
+
+class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
+
+/// Answers [PendingPageCubit.unanswered] with the real service's rule.
+void _stubUnanswered(_MockPendingPageCubit cubit) {
+  final service = PendingPageService(
+    repository: _MockSessionRepository(),
+    productAnalyticsService: _MockProductAnalyticsService(),
+  );
+  when(
+    () => cubit.unanswered(page: any(named: "page"), draft: any(named: "draft")),
+  ).thenAnswer(
+    (invocation) => service.unanswered(
+      page: invocation.namedArguments[#page] as PendingPage,
+      draft: invocation.namedArguments[#draft] as PageDraft,
+    ),
+  );
+}
+
 /// A 1×1 transparent PNG.
 final _png = base64Decode(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
@@ -113,6 +133,11 @@ void main() {
   late StreamController<PendingPageState> states;
   late int settledHere;
 
+  setUpAll(() {
+    registerFallbackValue(_questionsPage);
+    registerFallbackValue(PageDraft.empty);
+  });
+
   setUp(() {
     settledHere = 0;
     cubit = _MockPendingPageCubit();
@@ -121,6 +146,7 @@ void main() {
     when(() => cubit.submit()).thenAnswer((_) async {});
     when(() => cubit.dismiss()).thenAnswer((_) async {});
     when(() => cubit.retry()).thenAnswer((_) async {});
+    _stubUnanswered(cubit);
   });
 
   // Shimmers and spinners never settle, so those states pump frames instead.
@@ -994,6 +1020,7 @@ void main() {
         initialState: state,
       );
       when(pageCubit.submit).thenAnswer((_) async {});
+      _stubUnanswered(pageCubit);
     }
     _MockPendingPageCubit pageCubit(String id) => cubits[id] ?? (throw StateError("no fixture page $id"));
     late BuildContext sessionContext;

@@ -28,11 +28,19 @@ class PendingPageService({
     };
   }
 
-  /// The required questions [draft] leaves unanswered, in page order. A
-  /// question of a kind this app doesn't know can't be answered here, so it
-  /// never blocks Submit.
+  /// The questions [draft] leaves unanswered, required or optional, in page
+  /// order. A question of a kind this app doesn't know can't be answered here,
+  /// so it never counts.
+  List<PageQuestion> unanswered({required PendingPage page, required PageDraft draft}) => [
+    for (final question in _questions(page: page))
+      if (question.kind is! PageQuestionKindUnknown &&
+          !_isAnswered(question: question, answer: draft.answers[question.id]))
+        question,
+  ];
+
+  /// The required questions [draft] leaves unanswered, in page order.
   List<String> unansweredRequired({required PendingPage page, required PageDraft draft}) => [
-    for (final question in draft.unanswered(page: page))
+    for (final question in unanswered(page: page, draft: draft))
       if (question.isRequired) question.id,
   ];
 
@@ -71,6 +79,13 @@ class PendingPageService({
 
   Iterable<PageQuestion> _questions({required PendingPage page}) =>
       page.sections.expand((section) => section.questions);
+
+  bool _isAnswered({required PageQuestion question, required PageAnswer? answer}) =>
+      switch ((question.kind, answer?.value)) {
+        (PageSingleChoice(), PageChoiceAnswer()) || (PageTextInput(), PageTextAnswer()) => true,
+        (PageMultipleChoice(), PageChoicesAnswer(:final optionIds)) => optionIds.isNotEmpty,
+        _ => false,
+      };
 
   void _report({required AnalyticsQuestionPageOutcome outcome, required PendingPage page}) {
     final event = QuestionPageFinishedEvent.of(outcome: outcome, page: page);
