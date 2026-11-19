@@ -59,8 +59,9 @@ final class const OrbitSector({
 /// gestures so what is drawn and what is touched cannot drift apart.
 ///
 /// The rings are quarter arcs centred on [origin], the chip's leading end near
-/// the bottom-left of the screen. A level is an angle: the weakest level sits
-/// near the vertical, the strongest near the horizontal. Each dot owns a
+/// the bottom-left of the screen. A level is an angle: effort rises upwards,
+/// so the strongest level sits near the vertical, right after the model name,
+/// and the weakest near the horizontal. Each dot owns a
 /// patch of its ring that reaches halfway to its neighbours, so a finger never
 /// has to hit the dot itself. All lengths are logical pixels; angles are
 /// degrees, counter-clockwise from the positive x axis with y pointing up.
@@ -114,11 +115,12 @@ final class OrbitGeometry({
   static const double ringLineFromAngle = 93;
   static const double ringLineToAngle = 4;
 
-  /// How far a ring's name patch stops before its first dot.
+  /// How far a ring's name patch stops before its strongest dot.
   static const double _nameGap = 7;
 
-  /// How far the last dot's patch reaches past it, short of the fast toggle.
-  static const double _lastPatchReach = 7;
+  /// How far the weakest dot's patch reaches past it, short of the fast
+  /// toggle.
+  static const double _weakestPatchReach = 7;
 
   /// The name patch of a ring without levels reaches almost to the horizontal.
   static const double _levellessEndAngle = 3;
@@ -138,7 +140,8 @@ final class OrbitGeometry({
   static const double rayInset = 18;
 
   /// The radius of a model's name baseline, inside its ring.
-  static const double nameInset = 17;
+  /// Deep enough that the strongest dot's marker clears the name's glyphs.
+  static const double nameInset = 20;
 
   /// The "All N models" pill: where it sits, its drawn size and its touch size.
   static const double _allModelsRadius = 80;
@@ -146,17 +149,18 @@ final class OrbitGeometry({
   static const Size allModelsPillSize = Size(76, 26);
   static const Size _allModelsTouchSize = Size(88, 44);
 
-  /// One ray per level, evenly spread. Five levels span 68° to 12° and six span
-  /// 74° to 14°; more levels widen the fan further, fewer keep the five-level
-  /// span so their patches grow.
+  /// One ray per level, weakest first, evenly spread so effort rises
+  /// upwards: the weakest at 10°, the strongest nearest the vertical. Five
+  /// levels span 10° to 82°, 47 pt apart on the innermost ring; each level
+  /// past five lifts the strongest by one more degree, and fewer keep the
+  /// five-level span so their patches grow.
   static List<double> rayAnglesFor({required int levelCount}) {
     if (levelCount == 0) return const [];
-    final extra = math.max(0, levelCount - 5);
-    final first = 68.0 + 6 * extra;
-    final last = 12.0 + 2 * extra;
-    if (levelCount == 1) return [(first + last) / 2];
-    final step = (first - last) / (levelCount - 1);
-    return [for (var index = 0; index < levelCount; index++) first - index * step];
+    const weakest = 10.0;
+    final strongest = 82.0 + math.max(0, levelCount - 5);
+    if (levelCount == 1) return [(weakest + strongest) / 2];
+    final step = (strongest - weakest) / (levelCount - 1);
+    return [for (var index = 0; index < levelCount; index++) weakest + index * step];
   }
 
   /// The point at [radius] and [angle] around [origin].
@@ -181,10 +185,11 @@ final class OrbitGeometry({
   Offset levellessDotCenter({required int ringIndex}) =>
       pointAt(radius: ringRadii[ringIndex], angle: levellessDotAngle);
 
-  /// Where the ring's name patch ends: just before its first dot.
+  /// Where the ring's name patch ends: just before its strongest dot.
   double nameEndAngle({required int ringIndex}) {
-    if (orbits.rings[ringIndex].levels.isEmpty) return _levellessEndAngle;
-    return levelAngle(ringIndex: ringIndex, levelIndex: 0) + _nameGap;
+    final levels = orbits.rings[ringIndex].levels;
+    if (levels.isEmpty) return _levellessEndAngle;
+    return levelAngle(ringIndex: ringIndex, levelIndex: levels.length - 1) + _nameGap;
   }
 
   /// The ring's band, reaching halfway to each neighbour.
@@ -209,17 +214,19 @@ final class OrbitGeometry({
     );
   }
 
-  /// The touch patch of a level dot, reaching halfway to its neighbours.
+  /// The touch patch of a level dot, reaching halfway to its neighbours. The
+  /// strongest patch reaches up to the name, the weakest a little past its
+  /// dot.
   OrbitSector levelPatch({required int ringIndex, required int levelIndex}) {
     final (inner, outer) = ringBand(ringIndex: ringIndex);
-    final levelCount = orbits.rings[ringIndex].levels.length;
+    final strongest = orbits.rings[ringIndex].levels.length - 1;
     double angle(int index) => levelAngle(ringIndex: ringIndex, levelIndex: index);
     final here = angle(levelIndex);
     return OrbitSector(
       innerRadius: inner,
       outerRadius: outer,
-      fromAngle: levelIndex == 0 ? nameEndAngle(ringIndex: ringIndex) : (angle(levelIndex - 1) + here) / 2,
-      toAngle: levelIndex == levelCount - 1 ? here - _lastPatchReach : (here + angle(levelIndex + 1)) / 2,
+      fromAngle: levelIndex == strongest ? nameEndAngle(ringIndex: ringIndex) : (here + angle(levelIndex + 1)) / 2,
+      toAngle: levelIndex == 0 ? here - _weakestPatchReach : (angle(levelIndex - 1) + here) / 2,
     );
   }
 

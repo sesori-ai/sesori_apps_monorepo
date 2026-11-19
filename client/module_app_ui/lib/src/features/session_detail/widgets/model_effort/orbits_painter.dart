@@ -17,8 +17,8 @@ abstract final class OrbitsMotion() {
   /// The plain fade used under reduced motion, both ways.
   static const fade = Duration(milliseconds: 200);
 
-  /// How long the dot under the finger takes to grow.
-  static const grow = Duration(milliseconds: 120);
+  /// How long the picture takes to follow the finger to a new target.
+  static const hotFade = Duration(milliseconds: 120);
 
   static const _staggerMs = 24.0;
   static const _settleMs = 240.0;
@@ -79,6 +79,10 @@ final class OrbitPalette({required PregoColors colors}) {
 
   /// The level words along the rays.
   final Color levelText = colors.brightness == Brightness.dark ? colors.textTertiary : colors.textQuaternary;
+
+  /// The solid dots the trail passes on its way up to the choice: full
+  /// contrast against the trail, white in dark and ink in light.
+  final Color trailDot = colors.textPrimary;
 }
 
 /// Text laid out once and bent along an arc at paint time, one glyph at a
@@ -141,8 +145,22 @@ final class OrbitLabels({
   required String noEffortText,
   required String allModelsText,
 }) {
-  /// Each ring's name.
-  final List<ArcText> names = [
+  /// Each ring's name, and its bolder face for the ring that holds the
+  /// choice.
+  final List<ArcText> names = _names(orbits: orbits, textTheme: textTheme, palette: palette, weight: FontWeight.w500);
+  final List<ArcText> chosenNames = _names(
+    orbits: orbits,
+    textTheme: textTheme,
+    palette: palette,
+    weight: FontWeight.w700,
+  );
+
+  static List<ArcText> _names({
+    required ModelOrbits orbits,
+    required PregoTextTheme textTheme,
+    required OrbitPalette palette,
+    required FontWeight weight,
+  }) => [
     for (final ring in orbits.rings)
       ArcText(
         text: ring.name,
@@ -151,7 +169,7 @@ final class OrbitLabels({
           height: 1,
           letterSpacing: 0,
           color: palette.text,
-          fontWeight: ring == orbits.current ? FontWeight.w700 : FontWeight.w500,
+          fontWeight: weight,
         ),
       ),
   ];
@@ -185,7 +203,7 @@ final class OrbitLabels({
   )..layout();
 
   void dispose() {
-    for (final name in names) {
+    for (final name in [...names, ...chosenNames]) {
       name.dispose();
     }
     noEffort.dispose();
@@ -194,6 +212,31 @@ final class OrbitLabels({
     }
     allModels.dispose();
   }
+}
+
+/// What the picker draws as chosen: a ring, and the level marked on it, or
+/// null when it marks none.
+typedef OrbitChoice = ({int ringIndex, int? levelIndex});
+
+/// The choice the picker draws while the finger is on [hot]: [hot] as if it
+/// were already picked, so the picture shows what lifting the finger there
+/// gives. Anywhere else, the committed choice.
+OrbitChoice shownOrbitChoice({required ModelOrbits orbits, required OrbitTarget? hot}) {
+  int? levelOn({required int ringIndex}) {
+    final index = orbits.rings[ringIndex].levels.indexWhere((level) => level.level == orbits.currentLevel);
+    return index < 0 ? null : index;
+  }
+
+  final ringIndex = switch (hot) {
+    OrbitLevelTarget(:final ringIndex) || OrbitNameTarget(:final ringIndex) => ringIndex,
+    OrbitAllModelsTarget() || OrbitFastToggleTarget() || null => orbits.rings.indexOf(orbits.current),
+  };
+  return switch (hot) {
+    OrbitLevelTarget(:final levelIndex) => (ringIndex: ringIndex, levelIndex: levelIndex),
+    // A name keeps the current level when its model offers it; otherwise the
+    // model switch rule decides, so no level is marked.
+    _ => (ringIndex: ringIndex, levelIndex: levelOn(ringIndex: ringIndex)),
+  };
 }
 
 extension OrbitRingFastMode on OrbitRing {
@@ -205,7 +248,7 @@ extension OrbitRingFastMode on OrbitRing {
 }
 
 /// Paints the scrim, the rings, their dots and the ripple. Repaints on its
-/// own as [entry] and [hotGrow] tick.
+/// own as [entry] and [hotFade] tick.
 final class OrbitsPainter({
   required final OrbitGeometry geometry,
   required final OrbitLabels labels,
@@ -218,17 +261,17 @@ final class OrbitsPainter({
   required final Animation<double> entry,
   required final bool reducedMotion,
 
-  /// What the finger is on, and what it just left.
+  /// What the finger is on, and what it just left. Each is drawn as if it
+  /// were the choice, see [shownOrbitChoice].
   required final OrbitTarget? hot,
   required final OrbitTarget? previousHot,
 
-  /// How far [hot] has grown, and [previousHot] shrunk back.
-  required final Animation<double> hotGrow,
+  /// How far the picture has cross-faded from [previousHot] to [hot].
+  required final Animation<double> hotFade,
 }) extends CustomPainter {
-  this : super(repaint: Listenable.merge([entry, hotGrow]));
+  this : super(repaint: Listenable.merge([entry, hotFade]));
 
   static const double _dotRadius = 5.5;
-  static const double _hotGrowth = .4;
 
   /// The current choice: an ink ring with a dot in it, in a thin gap.
   static const double _markerRadius = 7.5;
@@ -246,12 +289,45 @@ final class OrbitsPainter({
     _paintScrim(canvas: canvas, size: size);
     _group(canvas: canvas, size: size, stagger: 0, paint: () => _paintRays(canvas));
     final ringCount = _orbits.rings.length;
+    final fade = Curves.easeOut.transform(hotFade.value);
+    final shown = shownOrbitChoice(orbits: _orbits, hot: hot);
+    final shownBefore = shownOrbitChoice(orbits: _orbits, hot: previousHot);
     for (var ringIndex = 0; ringIndex < ringCount; ringIndex++) {
+      final now = shown.ringIndex == ringIndex ? shown : null;
+      final before = shownBefore.ringIndex == ringIndex ? shownBefore : null;
       _group(
         canvas: canvas,
         size: size,
         stagger: OrbitsMotion.ringStagger(ringCount: ringCount, ringIndex: ringIndex),
-        paint: () => _paintRing(canvas: canvas, ringIndex: ringIndex),
+        paint: () {
+          if (now == before || fade >= 1) {
+            _paintRing(canvas: canvas, ringIndex: ringIndex, choice: now);
+            _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null);
+            return;
+          }
+          // The new picture fades in over the old one, so what both share
+          // stays put.
+          _paintRing(canvas: canvas, ringIndex: ringIndex, choice: before);
+          _faded(
+            canvas: canvas,
+            opacity: fade,
+            paint: () => _paintRing(canvas: canvas, ringIndex: ringIndex, choice: now),
+          );
+          if ((now == null) == (before == null)) {
+            _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null);
+            return;
+          }
+          _faded(
+            canvas: canvas,
+            opacity: 1 - fade,
+            paint: () => _paintName(canvas: canvas, ringIndex: ringIndex, chosen: before != null),
+          );
+          _faded(
+            canvas: canvas,
+            opacity: fade,
+            paint: () => _paintName(canvas: canvas, ringIndex: ringIndex, chosen: now != null),
+          );
+        },
       );
     }
     if (geometry.showsAllModels) {
@@ -328,10 +404,27 @@ final class OrbitsPainter({
     }
   }
 
-  void _paintRing({required Canvas canvas, required int ringIndex}) {
+  void _faded({required Canvas canvas, required double opacity, required VoidCallback paint}) {
+    if (opacity <= 0) return;
+    canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, opacity));
+    paint();
+    canvas.restore();
+  }
+
+  void _paintName({required Canvas canvas, required int ringIndex, required bool chosen}) {
+    (chosen ? labels.chosenNames : labels.names)[ringIndex].paint(
+      canvas: canvas,
+      center: _origin,
+      radius: geometry.ringRadii[ringIndex] - OrbitGeometry.nameInset,
+      startAngle: OrbitGeometry.nameStartAngle,
+    );
+  }
+
+  /// One ring and its dots, holding [choice] when it is non-null.
+  void _paintRing({required Canvas canvas, required int ringIndex, required OrbitChoice? choice}) {
     final ring = _orbits.rings[ringIndex];
     final radius = geometry.ringRadii[ringIndex];
-    final isCurrent = ring == _orbits.current;
+    final isCurrent = choice != null;
     _arc(
       canvas: canvas,
       radius: radius,
@@ -347,30 +440,23 @@ final class OrbitsPainter({
               ..style = PaintingStyle.stroke
               ..strokeWidth = 1),
     );
-    labels.names[ringIndex].paint(
-      canvas: canvas,
-      center: _origin,
-      radius: radius - OrbitGeometry.nameInset,
-      startAngle: OrbitGeometry.nameStartAngle,
-    );
     if (ring.levels.isEmpty) {
       final center = geometry.levellessDotCenter(ringIndex: ringIndex);
-      final target = OrbitNameTarget(ringIndex: ringIndex);
       if (isCurrent) {
-        _paintMarker(canvas: canvas, center: center, target: target);
+        _paintMarker(canvas: canvas, center: center);
       } else {
-        _paintHollowDot(canvas: canvas, center: center, target: target);
+        _paintHollowDot(canvas: canvas, center: center);
       }
       labels.noEffort.paint(canvas: canvas, center: _origin, radius: radius + 4, startAngle: 46);
       return;
     }
-    final first = geometry.levelAngle(ringIndex: ringIndex, levelIndex: 0);
-    final last = geometry.levelAngle(ringIndex: ringIndex, levelIndex: ring.levels.length - 1);
+    final weakest = geometry.levelAngle(ringIndex: ringIndex, levelIndex: 0);
+    final strongest = geometry.levelAngle(ringIndex: ringIndex, levelIndex: ring.levels.length - 1);
     _arc(
       canvas: canvas,
       radius: radius,
-      from: first + 4,
-      to: last - 4,
+      from: strongest + 4,
+      to: weakest - 4,
       paint: Paint()
         ..color = palette.track
         ..style = PaintingStyle.stroke
@@ -380,22 +466,22 @@ final class OrbitsPainter({
     _arc(
       canvas: canvas,
       radius: radius + .8,
-      from: first + 4,
-      to: last - 4,
+      from: strongest + 4,
+      to: weakest - 4,
       paint: Paint()
         ..color = palette.surface.withValues(alpha: .85)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1
         ..strokeCap = StrokeCap.round,
     );
-    final currentLevel = isCurrent ? ring.levels.indexWhere((level) => level.level == _orbits.currentLevel) : -1;
-    if (currentLevel >= 0) {
-      // The trail from the weakest level up to the current one.
+    final chosenLevel = choice?.levelIndex;
+    if (chosenLevel != null) {
+      // The trail from the weakest level up to the chosen one.
       _arc(
         canvas: canvas,
         radius: radius,
-        from: first + 4,
-        to: geometry.levelAngle(ringIndex: ringIndex, levelIndex: currentLevel),
+        from: geometry.levelAngle(ringIndex: ringIndex, levelIndex: chosenLevel),
+        to: weakest - 4,
         paint: Paint()
           ..color = palette.trail
           ..style = PaintingStyle.stroke
@@ -405,30 +491,23 @@ final class OrbitsPainter({
     }
     for (var levelIndex = 0; levelIndex < ring.levels.length; levelIndex++) {
       final center = geometry.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex);
-      final target = OrbitLevelTarget(ringIndex: ringIndex, levelIndex: levelIndex);
-      if (levelIndex == currentLevel) {
-        _paintMarker(canvas: canvas, center: center, target: target);
+      if (chosenLevel == null || levelIndex > chosenLevel) {
+        _paintHollowDot(canvas: canvas, center: center);
+      } else if (levelIndex == chosenLevel) {
+        _paintMarker(canvas: canvas, center: center);
       } else {
-        _paintHollowDot(canvas: canvas, center: center, target: target);
+        // A level the trail passes on its way up to the choice.
+        canvas.drawCircle(center, _dotRadius, Paint()..color = palette.trailDot);
       }
     }
   }
 
-  /// How much the dot of [target] has grown under the finger.
-  double _growth(OrbitTarget target) {
-    final grown = Curves.easeOut.transform(hotGrow.value);
-    if (target == hot) return grown;
-    if (target == previousHot) return 1 - grown;
-    return 0;
-  }
-
-  void _paintHollowDot({required Canvas canvas, required Offset center, required OrbitTarget target}) {
-    final radius = _dotRadius * (1 + _hotGrowth * _growth(target));
+  void _paintHollowDot({required Canvas canvas, required Offset center}) {
     canvas
-      ..drawCircle(center, radius, Paint()..color = palette.bead)
+      ..drawCircle(center, _dotRadius, Paint()..color = palette.bead)
       ..drawCircle(
         center,
-        radius,
+        _dotRadius,
         Paint()
           ..color = palette.beadEdge
           ..style = PaintingStyle.stroke
@@ -438,21 +517,19 @@ final class OrbitsPainter({
 
   /// The current choice, like a selected radio button: an ink ring with an
   /// ink dot in it, set apart from the trail by a gap in the background.
-  void _paintMarker({required Canvas canvas, required Offset center, required OrbitTarget target}) {
-    // It grows less than a hollow dot under the finger: it is already large.
-    final scale = 1 + _hotGrowth * .4 * _growth(target);
+  void _paintMarker({required Canvas canvas, required Offset center}) {
     final ink = palette.text;
     canvas
-      ..drawCircle(center, (_markerRadius + _markerGap) * scale, Paint()..color = palette.background)
+      ..drawCircle(center, _markerRadius + _markerGap, Paint()..color = palette.background)
       ..drawCircle(
         center,
-        (_markerRadius - _markerStroke / 2) * scale,
+        _markerRadius - _markerStroke / 2,
         Paint()
           ..color = ink
           ..style = PaintingStyle.stroke
-          ..strokeWidth = _markerStroke * scale,
+          ..strokeWidth = _markerStroke,
       )
-      ..drawCircle(center, _markerDotRadius * scale, Paint()..color = ink);
+      ..drawCircle(center, _markerDotRadius, Paint()..color = ink);
   }
 
   void _paintAllModels(Canvas canvas) {

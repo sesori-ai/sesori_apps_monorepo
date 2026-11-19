@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/gestures.dart" show kTouchSlop;
 import "package:flutter/services.dart";
@@ -182,7 +183,7 @@ class const OrbitsPicker({
 class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProviderStateMixin {
   static const Size _fastToggleSize = Size(88, 36);
 
-  late final AnimationController _hotGrow = AnimationController(vsync: this, duration: OrbitsMotion.grow);
+  late final AnimationController _hotFade = AnimationController(vsync: this, duration: OrbitsMotion.hotFade);
 
   /// The fast-mode state as toggled here, since the route does not rebuild
   /// with the composer.
@@ -239,7 +240,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   @override
   void dispose() {
     widget.handoff?.follow(follower: null);
-    _hotGrow.dispose();
+    _hotFade.dispose();
     _labels?.dispose();
     super.dispose();
   }
@@ -268,7 +269,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
       _previousHot = _hot;
       _hot = hot;
     });
-    _hotGrow.forward(from: 0);
+    _hotFade.forward(from: 0);
     if (hot != null && haptic) unawaited(playOrbitsHaptic(play: HapticFeedback.selectionClick));
   }
 
@@ -456,7 +457,25 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
                     reducedMotion: context.isReducedMotion,
                     hot: _hot,
                     previousHot: _previousHot,
-                    hotGrow: _hotGrow,
+                    hotFade: _hotFade,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([widget.animation, _hotFade]),
+                      builder: (context, _) {
+                        final fade = Curves.easeOut.transform(_hotFade.value);
+                        return Stack(
+                          children: [
+                            ?_levelWord(geometry: geometry, palette: palette, target: _previousHot, opacity: 1 - fade),
+                            ?_levelWord(geometry: geometry, palette: palette, target: _hot, opacity: fade),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -473,6 +492,54 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
           ),
         );
       },
+    );
+  }
+
+  /// The level word of the dot under the finger, in a pill just above it, so
+  /// the finger never hides which level it is about to pick. Null for any
+  /// other target or a faded-out one.
+  Widget? _levelWord({
+    required OrbitGeometry geometry,
+    required OrbitPalette palette,
+    required OrbitTarget? target,
+    required double opacity,
+  }) {
+    if (target is! OrbitLevelTarget || opacity <= 0) return null;
+    final OrbitLevelTarget(:ringIndex, :levelIndex) = target;
+    // Follow the dot as drawn while the rings still ripple in.
+    final scale = OrbitsMotion.scaleOf(
+      entry: widget.animation,
+      reducedMotion: context.isReducedMotion,
+      stagger: OrbitsMotion.ringStagger(ringCount: widget.orbits.rings.length, ringIndex: ringIndex),
+    );
+    final dot = _origin + (geometry.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex) - _origin) * scale;
+    final prego = context.prego;
+    return Positioned.fill(
+      child: CustomSingleChildLayout(
+        delegate: _LevelWordLayout(dot: dot),
+        child: Opacity(
+          opacity: opacity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: palette.text,
+              borderRadius: BorderRadius.circular(PregoRadius.full),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              child: Text(
+                widget.orbits.rings[ringIndex].levels[levelIndex].level.wireId.toUpperCase(),
+                textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.6),
+                style: prego.textTheme.textXs.bold.copyWith(
+                  fontSize: 11,
+                  height: 1,
+                  letterSpacing: 1.1,
+                  color: palette.background,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -545,6 +612,26 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
         ),
     ];
   }
+}
+
+/// Sets the level-word pill centred above [dot], clear of the fingertip on
+/// it, and kept inside the overlay.
+final class _LevelWordLayout({required final Offset dot}) extends SingleChildLayoutDelegate {
+  /// From the dot's centre to the pill's bottom edge.
+  static const double _lift = 26;
+  static const double _margin = 8;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) => constraints.loosen();
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) => Offset(
+    (dot.dx - childSize.width / 2).clamp(_margin, math.max(_margin, size.width - _margin - childSize.width)),
+    math.max(_margin, dot.dy - _lift - childSize.height),
+  );
+
+  @override
+  bool shouldRelayout(_LevelWordLayout oldDelegate) => oldDelegate.dot != dot;
 }
 
 /// The fast-mode toggle's look: a plain pill at standard speed, filled with
