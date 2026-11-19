@@ -75,6 +75,11 @@ final class const CopilotPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Copilot's `session/load` replays the running turn under replay ids, not
+  /// the prompt-id rows the live stream stores.
+  @override
+  bool get replaysHistoryDuringTurn => false;
+
   /// Copilot advertises a native `/compact` over ACP (verified 1.0.109).
   @override
   bool get supportsCompactionOnRequest => true;

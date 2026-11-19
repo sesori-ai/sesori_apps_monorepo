@@ -592,6 +592,9 @@ class _BackfillingSessionRepository() implements SessionRepository {
   );
 
   @override
+  bool replaysHistoryDuringTurn({required String pluginId}) => true;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw UnsupportedError("${invocation.memberName} is not part of this test");
 }

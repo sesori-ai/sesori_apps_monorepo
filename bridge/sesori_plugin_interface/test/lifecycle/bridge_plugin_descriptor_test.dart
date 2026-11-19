@@ -12,6 +12,7 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isFalse);
       expect(descriptor.injectsSesoriTools, isFalse);
       expect(descriptor.supportsSideQuestions, isFalse);
+      expect(descriptor.replaysHistoryDuringTurn, isTrue);
       expect(descriptor.mcpCapabilities, isEmpty);
       expect(descriptor.mcpScopes, isEmpty);
     });

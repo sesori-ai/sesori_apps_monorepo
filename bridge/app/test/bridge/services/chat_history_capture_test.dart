@@ -3635,6 +3635,9 @@ class _FakeSessionRepository({
   );
 
   @override
+  bool replaysHistoryDuringTurn({required String pluginId}) => true;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

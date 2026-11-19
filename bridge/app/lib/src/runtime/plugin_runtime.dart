@@ -276,6 +276,9 @@ class PluginRuntime({
   bool namesCommandInvocations({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.namesCommandInvocations ?? false;
 
+  bool replaysHistoryDuringTurn({required String pluginId}) =>
+      _slots[pluginId]?.registration.descriptor.replaysHistoryDuringTurn ?? true;
+
   bool supportsSideQuestions({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.supportsSideQuestions ?? false;
 

@@ -398,6 +398,137 @@ void main() {
     expect(repository.fetchCount, 2);
   });
 
+  group("a backend that replays a running turn under other ids", () {
+    MessageWithParts replayed({required String id, required Message info, required String text}) => MessageWithParts(
+      info: info,
+      parts: [MessagePart.text(id: "$id-p1", sessionID: "ses_a", messageID: id, text: text)],
+    );
+
+    test("a mid-turn read keeps the live reply once and imports after the turn", () async {
+      final repository =
+          _FakeSessionRepository(
+              transcript: [
+                replayed(
+                  id: "ses_a-h1-user",
+                  info: _message(id: "ses_a-h1-user"),
+                  text: "Say ALPHA",
+                ),
+                replayed(
+                  id: "ses_a-h2-assistant",
+                  info: _assistant(id: "ses_a-h2-assistant"),
+                  text: "ALPH",
+                ),
+              ],
+            )
+            ..replaysDuringTurn = false
+            ..status = const SessionStatus.busy(since: null);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "prm_n-user"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: const MessagePart.text(
+          id: "prm_n-user-p1",
+          sessionID: "ses_a",
+          messageID: "prm_n-user",
+          text: "Say ALPHA",
+        ),
+      );
+      // The reply streams: its row is stored before its text finishes.
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _assistant(id: "live-reply"),
+      );
+
+      final midTurn = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(midTurn.messages.map((message) => message.info.id), const ["prm_n-user", "live-reply"]);
+      expect(midTurn.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 0, reason: "the replay would hold the reply under another id");
+
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: const MessagePart.text(id: "live-reply-p1", sessionID: "ses_a", messageID: "live-reply", text: "ALPHA"),
+      );
+      final stillRunning = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(stillRunning.messages.map((message) => message.info.id), const ["prm_n-user", "live-reply"]);
+
+      repository
+        ..status = const SessionStatus.idle()
+        ..transcript = [
+          replayed(
+            id: "ses_a-h1-user",
+            info: _message(id: "ses_a-h1-user"),
+            text: "Say ALPHA",
+          ),
+          replayed(
+            id: "ses_a-h2-assistant",
+            info: _assistant(id: "ses_a-h2-assistant"),
+            text: "ALPHA",
+          ),
+        ];
+      final refreshed = history.service.historyRefreshes.first;
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+
+      expect((await refreshed).sessionId, "ses_a");
+      expect(repository.fetchCount, 1);
+      final afterTurn = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(afterTurn.awaitingHarnessSync, isFalse);
+      expect(afterTurn.messages.map((message) => message.info), [isA<MessageUser>(), isA<MessageAssistant>()]);
+      expect(repository.fetchCount, 1);
+    });
+
+    test("an open during the turn re-reads in the background only after it", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      await history.service.observeBackendActivity(
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
+      );
+      repository
+        ..replaysDuringTurn = false
+        ..status = const SessionStatus.busy(since: null);
+
+      final served = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      await history.service.drain();
+
+      expect(served.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 1, reason: "the background re-read waits for the turn");
+
+      repository.status = const SessionStatus.idle();
+      final refreshed = history.service.historyRefreshes.first;
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      expect((await refreshed).sessionId, "ses_a");
+      expect(repository.fetchCount, 2);
+    });
+
+    test("an ended turn re-reads nothing when no import waited for it", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])..replaysDuringTurn = false;
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      await history.service.drain();
+
+      expect(repository.fetchCount, 1);
+    });
+  });
+
+  test("a backend that replays a running turn under live ids still imports during it", () async {
+    final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+      ..status = const SessionStatus.busy(since: null);
+    final history = createTestChatHistory(sessionRepository: repository);
+
+    final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+    expect(repository.fetchCount, 1);
+    expect(page.awaitingHarnessSync, isFalse);
+    expect(page.messages.map((message) => message.info.id), const ["m1"]);
+  });
+
   group("store-only reads", () {
     test("a never-backfilled session serves its captured rows instead of fetching", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
@@ -485,6 +616,16 @@ Message _message({required String id}) => Message.user(
   time: const MessageTime(created: 1, completed: null),
 );
 
+Message _assistant({required String id}) => Message.assistant(
+  id: id,
+  sessionID: "ses_a",
+  agent: null,
+  modelID: null,
+  providerID: null,
+  sender: MessageSender.agent,
+  time: null,
+);
+
 MessagePart _part({required String id, required String messageId}) => MessagePart.text(
   id: id,
   sessionID: "ses_a",
@@ -538,8 +679,17 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
     return SessionPromptDefaults(agent: agent, model: agentModel, fastMode: storedFastMode);
   }
 
+  /// Whether the plugin declares its history safe to import mid-turn.
+  bool replaysDuringTurn = true;
+
+  /// The session's live status, as its plugin reports it.
+  SessionStatus status = const SessionStatus.idle();
+
   @override
-  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
+  bool replaysHistoryDuringTurn({required String pluginId}) => replaysDuringTurn;
+
+  @override
+  Future<SessionStatus?> getSessionStatus({required String sessionId}) async => status;
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => !sessionKnown
