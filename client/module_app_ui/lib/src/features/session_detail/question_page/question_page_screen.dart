@@ -426,6 +426,7 @@ class const _PageBody({
     final loc = context.loc;
     final cubit = context.read<PendingPageCubit>();
     final enabled = state is PageEditing;
+    final readOnly = state is PageReadOnly;
     final flagged = switch (state) {
       PageEditing(feedback: PageFeedbackInvalid(:final questionIds)) => questionIds.toSet(),
       _ => const <String>{},
@@ -473,16 +474,18 @@ class const _PageBody({
                       },
                       answerController: answerField(question.id),
                       noteController: noteField(question.id),
+                      showsNote: !readOnly || draft.answers[question.id]?.note != null,
                     ),
                   ],
                 ],
                 // A read-only page shows the closing note only when one was
-                // written; it folds away when the page settles while open.
+                // written; a submitting page keeps it so nothing moves. It
+                // folds away when the page settles while open.
                 AnimatedSize(
                   duration: context.isReducedMotion ? Duration.zero : _contentDuration,
                   curve: Curves.easeOutCubic,
                   alignment: Alignment.topCenter,
-                  child: enabled || draft.note != null
+                  child: !readOnly || draft.note != null
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [

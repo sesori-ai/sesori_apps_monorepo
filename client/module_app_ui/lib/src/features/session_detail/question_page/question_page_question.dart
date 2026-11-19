@@ -100,6 +100,10 @@ class const QuestionPageQuestion({
 
   /// The choice question's note.
   required final TextEditingController noteController,
+
+  /// Whether the choice question shows its note row. A read-only page hides
+  /// an empty note; a submitting page keeps it so nothing below moves.
+  required final bool showsNote,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -205,14 +209,13 @@ class const QuestionPageQuestion({
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
           ),
         },
-        // A read-only page shows a note only when one was written; the row
-        // folds away when the page settles while open.
+        // The row folds away when the page settles while open.
         if (question.kind case PageSingleChoice() || PageMultipleChoice())
           AnimatedSize(
             duration: context.isReducedMotion ? Duration.zero : _issueDuration,
             curve: Curves.easeOutCubic,
             alignment: Alignment.topCenter,
-            child: enabled || answer?.note != null
+            child: showsNote
                 ? Padding(
                     padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
                     child: QuestionPageTextField(

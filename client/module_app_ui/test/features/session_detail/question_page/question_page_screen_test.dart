@@ -351,6 +351,9 @@ void main() {
       PageSubmitting(page: _questionsPage, draft: PageDraft.empty, action: PageAction.dismiss),
       animating: true,
     );
+    // Empty notes stay while the request is in flight, so nothing moves.
+    expect(find.byKey(const Key("question-page-note-plan")), findsOneWidget);
+    expect(find.byKey(const Key("question-page-closing-note")), findsOneWidget);
     // The cubit looks the page up before it would show the failure.
     await emit(
       tester,
