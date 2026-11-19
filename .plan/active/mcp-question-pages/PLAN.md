@@ -555,7 +555,7 @@ authored lines, with generated lines listed separately.
 | Step | PR | Size | After | Status |
 |---|---|---|---|---|
 | 1/10 | 🌱 Raise the plan | ~450 docs | — | In PR |
-| 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | Planned |
+| 2/10 | 🌿 Shared wire: `page` kind, page DTOs, submit and lookup requests and results, `MessagePartText.noticePageRequestId`, JSON tests | ~280 + ~1,200 generated | 1 | In PR #2813 |
 | 3/10 | ⚙️ Bridge page store: `agent_pages` table, migration 30→31, DAO, `AgentPageRepository`, page-images root and deletion, tests | ~450 + ~1,200 generated | 2 | Planned |
 | 4/10 | 🚧 Bridge send path: `AgentPageService.send` (image reads, dimensions, copies), `send_page`, marker mapper, questions-list merge with archive filter, reply/reject interception plus dismissal notice, SSE mapping, needs-you union, notice-timing move, sesori-mcp.md, HARNESS_CAPABILITIES | ~900–1,100 | 3 | Planned |
 | 5/10 | ⚙️ Bridge answers: lookup and submit routes, answer notice builder, `SessionNotice.pageRequestId`, fixed-position frame reference, parse into the shared text part on both strip paths, archive refusal, tests | ~550–750 | 4 | Planned |
