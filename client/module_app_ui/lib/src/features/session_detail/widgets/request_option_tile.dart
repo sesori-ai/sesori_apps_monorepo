@@ -36,6 +36,17 @@ class const RequestChoiceTile({
   }
 }
 
+/// An option card's shape. The edge keeps an unpicked card visible on a
+/// background of its own colour, as in dark mode.
+ShapeBorder requestOptionShape({required PregoDesignSystem prego, required bool isSelected}) => RoundedRectangleBorder(
+  borderRadius: BorderRadius.circular(PregoRadius.xl),
+  side: BorderSide(color: isSelected ? prego.colors.borderBrand : prego.colors.borderSecondary),
+);
+
+/// An option's radio or checkbox colour, visible on the card in both modes.
+Color requestOptionMarkColor({required PregoDesignSystem prego, required bool isSelected}) =>
+    isSelected ? prego.colors.fgBrandPrimaryAlt : prego.colors.fgQuaternary;
+
 /// One option of a question: a radio for a single choice, a checkbox for a
 /// multiple choice. [badge] sits beside the label, and [footer] below the
 /// description, such as the option's image.
@@ -58,9 +69,11 @@ class const RequestOptionTile({
       child: RequestChoiceTile(
         bottomSpacing: 8,
         // bgSurface1 so the card reads as raised against the sheet's
-        // bgSecondary surface (bgSecondary here would vanish into it).
+        // bgSecondary surface (bgSecondary here would vanish into it). A
+        // question page's background is bgSurface1 itself, so the edge is
+        // what shows the card there.
         color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
+        shape: requestOptionShape(prego: prego, isSelected: isSelected),
         onTap: onTap,
         child: Row(
           crossAxisAlignment: footer == null ? CrossAxisAlignment.center : CrossAxisAlignment.start,
@@ -69,7 +82,7 @@ class const RequestOptionTile({
               isMultiple
                   ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
                   : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
-              color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
+              color: requestOptionMarkColor(prego: prego, isSelected: isSelected),
             ),
             const SizedBox(width: 12),
             Expanded(
