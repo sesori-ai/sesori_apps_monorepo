@@ -637,7 +637,7 @@ authored lines, with generated lines listed separately.
 | 7.b/10 | 🌿 Client page images: image boxes at the declared size, shimmer and fade-in, viewer on tap, neutral placeholder, option images, tests (split from step 7 for size) | ~270 | 7 | Merged in #2821 |
 | 8/10 | 🌿 Client reopen: tappable Sesori card with a page reference, lookup, missing-page reason, tests, visuals | ~250–400 | 7 | Merged in #2820 |
 | 9/10 | 🌱 Regression docs reconcile: questions-and-permissions, sesori-mcp, file-previews if touched | ~150 | 5, 8 | In PR #2822 (merges after step 10) |
-| 10/10 | 🌿 Withdraw an archived session's pending page from the lookup, headless iOS simulator and live-harness verification, retire the plan | ~50 code + docs | 8 | In PR #STEP10 |
+| 10/10 | 🌿 Withdraw an archived session's pending page from the lookup, headless iOS simulator and live-harness verification, retire the plan | ~50 code + docs | 8 | In PR #2823 |
 
 After step 2, the bridge steps (3 to 5) and the client steps (6 to 8) run in
 parallel, since they touch disjoint packages. The feature only becomes usable
