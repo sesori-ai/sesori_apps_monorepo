@@ -1331,6 +1331,37 @@ void main() {
         contains("sections[].questions[].title is required"),
       );
       expect(
+        (await send(
+          sections: [
+            {"heading": "Scope", "colour": "red"},
+          ],
+        )).text,
+        contains("sections[].colour is not an argument"),
+      );
+      expect(
+        await withQuestion({
+          "id": "q1",
+          "title": "Pick",
+          "kind": "single",
+          "options": [
+            {"id": "a", "label": "A", "colour": "red"},
+          ],
+        }),
+        contains("sections[].questions[].options[].colour is not an argument"),
+      );
+      expect(
+        (await send(
+          sections: [
+            {
+              "images": [
+                {"caption": "Now"},
+              ],
+            },
+          ],
+        )).text,
+        contains("images[].path is required"),
+      );
+      expect(
         await withQuestion({"id": "q1", "title": "Pick", "kind": "single"}),
         contains("sections[0].questions[0].options is required when its kind is single."),
       );
