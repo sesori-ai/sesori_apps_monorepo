@@ -3,8 +3,8 @@
 ## Capability
 
 The bridge serves its own MCP server, `sesori_bridge`, to agents in the harness sessions it launches, so an agent can
-read the computer's scheduled tasks, their runs and a run's transcript, and propose task changes the user allows on
-their phone, through the same bridge services the app uses.
+read the computer's scheduled tasks, their runs and a run's transcript, propose task changes the user allows on
+their phone, and send the user a page of questions, through the same bridge services the app uses.
 The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON responses only, and a per-launch bearer token
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
@@ -22,6 +22,7 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
 | `create_task` | Proposes a new text task in the caller's project (or `project_id`) with the caller's harness; worktree off, fast mode off, default agent. |
 | `update_task` | Proposes changes to name, prompt text (or a command task's arguments), schedule, time zone, missed-run policy, run mode, model, effort and approval mode. Left-out or empty fields keep their value, so an agent cannot clear a command's arguments (the app can). The request lists only fields that differ from the task. |
 | `pause_task`, `resume_task`, `run_task_now` | Propose pausing, resuming or running a task once now. |
+| `send_page` | Shows the user a page: a title, an optional intro, and sections with headings, Markdown bodies, images and single, multiple or text questions. Returns at once; the answer arrives as a notice. |
 
 ## Required Behavior
 
@@ -44,10 +45,11 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   `isError` text results, not protocol errors. An unexpected failure is logged by tool name only and answered with a
   generic error.
 - An empty string in any tool argument reads as left out, since strict-schema providers make the model fill every
-  field. Arguments that still do not parse are refused with the field and the reason, for example
+  field. A `send_page` image with an empty path and no caption reads as no image; an empty path with a caption is
+  refused as a missing path. Arguments that still do not parse are refused with the field and the reason, for example
   `schedule.time is required when schedule.kind is daily.`
-- Results are text only, with no `structuredContent`. Read tools are advertised with `readOnlyHint: true`, proposing
-  tools with `false`.
+- Results are text only, with no `structuredContent`. Read tools and `send_page` are advertised with
+  `readOnlyHint: true`, proposing tools with `false`.
 - A proposing tool changes nothing by itself. A create or update is first validated as the app's editor would, so the
   user never allows a task that cannot be saved. A model the agent names, other than the task's current one, must be
   one the task's harness offers (an unreadable list lets it through), so an allowed change cannot leave runs failing
@@ -83,6 +85,39 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   is woken by it. Archived and
   deleted sessions get nothing; a bridge restart drops a notice still waiting. The notice is not user activity: it
   leaves the session's last user message time alone.
+- `send_page` parses strictly: an unknown key at any level is refused naming it (`sections[].questions[].colour is
+  not an argument`), and other errors name the indexed field (`sections[0].questions[1].options[2].label is required.`).
+  A single or multiple question needs options and a text question takes none. Caps: a 200-character title, 50
+  questions, 12 options a question, 20 images, 20 MiB an image and 50 MiB a page. Question ids are unique in the page
+  and option ids in their question.
+- A page image is an absolute path to a png, jpg, gif or webp file whose content matches its extension; a relative,
+  missing, unreadable, oversized or non-image path is refused naming it. Each distinct path is copied once into the
+  bridge's page-images folder with its width and height, so the page keeps the image however the original changes. A
+  failed send removes its copies. Page content and answers are never logged, only ids and counts.
+- A page from a sub-agent shows on its root session. It rides the pending-question pipeline as a marker
+  (`interactionKind: page`) whose header and question are the title: `/session/questions` lists it after the harness's
+  questions (never for an archived session), push says "Question requires input" with the title as its body, and the
+  session counts as awaiting input in project summaries until the page settles.
+- Apps before v1.10.1 show the marker as a plain question with one Cancel option. `/question/reject` and
+  `/question/reply` with a page's id dismiss the page instead of reaching the harness, refused with 409 for an
+  archived session; a page already answered or closed answers 404 "no longer pending", so only the dismiss that wins
+  succeeds. A dismissal tells the session "You closed “Title” without answering." with guidance not to send the page
+  again unless the user asks.
+- `POST /page/submit` settles a page with the user's answers. It is refused with 409 for an archived session and
+  answers 404 for an unknown id or another session's page. The first submit wins: a page already answered or closed
+  answers `alreadySettled`. Answers that leave a required question unanswered (a note alone doesn't answer), name an
+  option outside their own question (option ids are unique only within it), carry a value of another kind than the
+  question, name an unknown question or answer one twice answer `invalid` naming those questions, and the page stays
+  pending. An accepted submit tells the root session "You answered “Title”."; the guidance lists one line per question
+  with its id and title, the chosen option ids and labels or the text answer and its note, then the "Anything else"
+  note, marks those as the user's own words on one line each, names the sub-agent session that asked, and asks for a
+  one-line acknowledgement.
+- `POST /page` opens a page, pending, answered (with its answers and note) or dismissed, by its id on the page's own
+  session or the root session it shows on, archived or not; anything else is `missing`.
+- Answer and dismissal notices carry `[SESORI PAGE] <id>` as the first line after `[FOR THE AGENT]`. The bridge reads
+  it only there, live and on reload, into the text part's `noticePageRequestId`, so the user's line can reopen the
+  page; a reference line anywhere else, such as inside a user's note, never counts. Notices without it, and every
+  notice written before it, show as before, and released apps ignore the field.
 - A run's final reply (`list_task_runs`) is the agent's last text in the newest turn a user prompt started, read from
   the newest 10 messages. A turn a notice started is skipped, so the agent's answer to a notice never replaces the
   run's reply and a Sesori row is never one. A later same-session run's reply replaces it.
@@ -127,7 +162,7 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
 |---|---|
 | L1 Smoke | Not included. |
 | L2 Routine | Automated: `sesori_mcp_access_test.dart` (mint, bind, unknown and post-restart tokens, the setting, caller resolution from session rows), `sesori_mcp_server_test.dart` (loopback bind, Origin, Host, path, method, content type, bearer and size refusals), and `sesori_mcp_endpoint_test.dart` (protocol handshake, unbound and unknown tokens, every read tool, transcript paging end to end, an archived run, each proposing tool, the stale check for update, pause, resume, run now and a deleted task, several requests per session in either order, two requests changing one field, an edit applied over other fields' changes, the warning's approval mode, a project move, a time zone change under a schedule edit, a rebased update that no longer validates, a run now that does not start, a grandchild's request on the root session, refused proposals, a model the harness
-does not offer, the outcome notice for each answer with its target session, sub-agent line and created task id, and the final reply skipping notice turns), `session_notice_service_test.dart` (at once when quiet or on a steering harness, after the idle on others, waiting again when busy at the in-lane check, none for archived or deleted sessions, dropped at shutdown), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it, the notice reaches the plugin and its echo leaves the last user message time alone), `acp_sesori_mcp_test.dart` (the server on new, load and the live-process reload, none for the history process or with agent tools off) and `grok_approval_registry_test.dart` (Grok's prompt allowed only for Sesori's tools), for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list), and for Codex the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. Claude Code: `claude_launch_spec_test.dart` (the config file argument, a token-free environment, `--allowedTools`, no strict flag, nothing without a launch), `claude_session_process_repository_test.dart` (a bound token per launch in a file deleted after the handshake, none for a probe) and `claude_mcp_mapper_test.dart` (the server without controls). |
+does not offer, `send_page` (copied images with their sizes, every cap, each refused image, strict nested arguments), the outcome notice for each answer with its target session, sub-agent line and created task id, and the final reply skipping notice turns), `session_notice_service_test.dart` (at once when quiet or on a steering harness, after the turn for a scheduled run's session, after the idle on others, waiting again when busy at the in-lane check, none for archived or deleted sessions, dropped at shutdown), `scheduled_task_change_description_builder_test.dart` (order, the Approve everything line, escaping), the run note in `scheduled_task_run_service_test.dart` (text runs on a flagged harness with the setting on, both run start paths, none for a command, an unflagged harness or the setting off), `session_creation_service_test.dart` (after the worktree note, hidden from the user text), `session_prompt_service_test.dart` and `system_context_test.dart` (every leading note stripped; the page reference written and read only at its fixed position, a spoofed one ignored), the agent-approval case in `orchestrator_emit_bridge_event_test.dart` (a finished run stays awaiting input across a reconnect, YOLO on never answers, Allow over the reply route applies and clears it, the notice reaches the plugin and its echo leaves the last user message time alone; a sent page is a page question that marks the session awaiting, and closing it rejects the question and sends the dismissal notice; a submitted page sends the answer notice with its reference, and the echoed line carries `noticePageRequestId`), `page_handlers_test.dart` (lookup of pending, answered, dismissed, missing and another session's page, from the sub-agent and the root, archived; submit accepted with its notice, first submit wins, each invalid case, archived 409, unknown 404), `agent_page_answer_notice_builder_test.dart` (the answer lines, a spoofed reference in a note, the sub-agent line, both references), `plugin_message_mapper_test.dart` (a reloaded page notice keeps its reference), `get_session_questions_handler_test.dart` (page markers after the harness's questions, none for an archived session), `reject_question_handler_test.dart` and `reply_to_question_handler_test.dart` (a page id dismisses once, then 404; archived 409; another session's id reaches the harness), `acp_sesori_mcp_test.dart` (the server on new, load and the live-process reload, none for the history process or with agent tools off) and `grok_approval_registry_test.dart` (Grok's prompt allowed only for Sesori's tools), for Pi `pi_session_process_repository_test.dart` (only the resident process gets the environment, bound to its session, nothing in argv) and `pi_rpc_startup_extension_test.mjs` (tool names, schemas and forwarded calls, the variables removed and a reload, a refused list), and for Codex the `config` of `thread/start`, `thread/resume` and `thread/fork` and its binding in `codex_plugin_write_path_test.dart` and `codex_plugin_rewind_test.dart`, the inventory entry in `codex_mcp_repository_test.dart`. Claude Code: `claude_launch_spec_test.dart` (the config file argument, a token-free environment, `--allowedTools`, no strict flag, nothing without a launch), `claude_session_process_repository_test.dart` (a bound token per launch in a file deleted after the handshake, none for a probe) and `claude_mcp_mapper_test.dart` (the server without controls). |
 | L3 Release | Per injected harness, on an isolated home with the local test proxy and a user MCP server in the harness config: the tools are listed beside the user's; a scheduled run gets the note, calls `get_task` and resolves to its own task, and its proposal waits on the run session while a concurrent plain session's lands on that session; Allow applies and Reject leaves the task; no token in argv, URLs, the bridge log or harness session files; resuming in the harness's own CLI shows no `sesori_bridge` and leaves the config unchanged. Pi: also the agent's own `env` shows no `SESORI_MCP_` variables. Codex: a scheduled run gets the note, calls `get_task` and `update_task` with no Codex prompt, and the request names the run's own task; Allow changes the next run's prompt; the thread inventory lists `sesori_bridge` and the user's server; a concurrent plain session's `get_task` answers that it is not a scheduled run; after a bridge restart a resumed thread's tool call works; a resume in Codex's own app-server lists only the user's server, `config.toml` is unchanged, and no token or server URL is in `CODEX_HOME`; the agent's own `env` shows no token. ACP harnesses: also two concurrent runs each resolve to their own task and the agent's `env` shows no token. Oh My Pi 18.21.0, Grok 1.0.30 and GitHub Copilot 1.0.113 passed on 2026-11-17, except that a user server and resuming in the harness's own CLI were not rechecked; Copilot's `update_task` passed in the closing regression, after the empty-field fix. Claude Code: also the agent's own `env` shows no token, and an `update_task` whose optional strings are empty is accepted. Claude Code 2.1.325 passed on 2026-11-17. Client on a headless iOS simulator: a request already waiting when the session opens shows in the Review card, and Review opens the existing modal without "Always", with the Approve everything line first; Allow applies and Don't allow leaves the task; the run's user message shows only the task's prompt, with the bridge live and again after an app restart. Security: a direct request with a session's token only raises an approval, another slot's bridge answers that token with 401, and any `Origin` gets 403. All passed on 2026-11-17; the push for a scheduled run's approval was not checked, since the simulator has no real APNs delivery. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -154,6 +189,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 - Allowing a stale request shows a failure alert, reloads the chat ("Getting everything ready…"), or leaves the next
   waiting request unopened.
 - Transcript text, a prompt or tool arguments show up in bridge logs.
+- A page submit after another surface's settles the page again or sends a second notice, an archived session's page
+  accepts answers, or a reference line inside a user's note links the notice to another page.
 - An outcome notice stops a running turn, lands while a question or permission waits on the user, reaches an
   archived session, shows as the user's own message, or moves the session's last user message time.
 

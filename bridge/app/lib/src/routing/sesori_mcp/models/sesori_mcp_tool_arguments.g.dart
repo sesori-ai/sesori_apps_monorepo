@@ -193,3 +193,143 @@ Map<String, dynamic> _$UpdateTaskArgumentsToJson(
   'effort': ?instance.effort,
   'approval_mode': ?_$TaskApprovalModeEnumMap[instance.approvalMode],
 };
+
+_SendPageArguments _$SendPageArgumentsFromJson(Map json) =>
+    $checkedCreate('_SendPageArguments', json, ($checkedConvert) {
+      $checkKeys(json, allowedKeys: const ['title', 'intro', 'sections']);
+      final val = _SendPageArguments(
+        title: $checkedConvert('title', (v) => v as String),
+        intro: $checkedConvert('intro', (v) => v as String?),
+        sections: $checkedConvert(
+          'sections',
+          (v) => (v as List<dynamic>)
+              .map(
+                (e) => PageSectionArgument.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList(),
+        ),
+      );
+      return val;
+    });
+
+_PageSectionArgument _$PageSectionArgumentFromJson(Map json) =>
+    $checkedCreate('_PageSectionArgument', json, ($checkedConvert) {
+      $checkKeys(
+        json,
+        allowedKeys: const ['heading', 'body', 'images', 'questions'],
+      );
+      final val = _PageSectionArgument(
+        heading: $checkedConvert('heading', (v) => v as String?),
+        body: $checkedConvert('body', (v) => v as String?),
+        images: $checkedConvert(
+          'images',
+          (v) => (v as List<dynamic>?)
+              ?.map(
+                (e) => PageImageArgument.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList(),
+        ),
+        questions: $checkedConvert(
+          'questions',
+          (v) => (v as List<dynamic>?)
+              ?.map(
+                (e) => PageQuestionArgument.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList(),
+        ),
+      );
+      return val;
+    });
+
+_PageImageArgument _$PageImageArgumentFromJson(Map json) =>
+    $checkedCreate('_PageImageArgument', json, ($checkedConvert) {
+      $checkKeys(json, allowedKeys: const ['path', 'caption']);
+      final val = _PageImageArgument(
+        path: $checkedConvert('path', (v) => v as String),
+        caption: $checkedConvert('caption', (v) => v as String?),
+      );
+      return val;
+    });
+
+_PageQuestionArgument _$PageQuestionArgumentFromJson(Map json) =>
+    $checkedCreate('_PageQuestionArgument', json, ($checkedConvert) {
+      $checkKeys(
+        json,
+        allowedKeys: const [
+          'id',
+          'title',
+          'body',
+          'images',
+          'kind',
+          'options',
+          'required',
+        ],
+      );
+      final val = _PageQuestionArgument(
+        id: $checkedConvert('id', (v) => v as String),
+        title: $checkedConvert('title', (v) => v as String),
+        body: $checkedConvert('body', (v) => v as String?),
+        images: $checkedConvert(
+          'images',
+          (v) => (v as List<dynamic>?)
+              ?.map(
+                (e) => PageImageArgument.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList(),
+        ),
+        kind: $checkedConvert(
+          'kind',
+          (v) => $enumDecode(_$PageQuestionKindArgumentEnumMap, v),
+        ),
+        options: $checkedConvert(
+          'options',
+          (v) => (v as List<dynamic>?)
+              ?.map(
+                (e) => PageOptionArgument.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList(),
+        ),
+        required: $checkedConvert('required', (v) => v as bool? ?? false),
+      );
+      return val;
+    });
+
+const _$PageQuestionKindArgumentEnumMap = {
+  PageQuestionKindArgument.single: 'single',
+  PageQuestionKindArgument.multiple: 'multiple',
+  PageQuestionKindArgument.text: 'text',
+};
+
+_PageOptionArgument _$PageOptionArgumentFromJson(Map json) => $checkedCreate(
+  '_PageOptionArgument',
+  json,
+  ($checkedConvert) {
+    $checkKeys(
+      json,
+      allowedKeys: const ['id', 'label', 'description', 'image', 'recommended'],
+    );
+    final val = _PageOptionArgument(
+      id: $checkedConvert('id', (v) => v as String),
+      label: $checkedConvert('label', (v) => v as String),
+      description: $checkedConvert('description', (v) => v as String?),
+      image: $checkedConvert(
+        'image',
+        (v) => v == null
+            ? null
+            : PageImageArgument.fromJson(Map<String, dynamic>.from(v as Map)),
+      ),
+      recommended: $checkedConvert('recommended', (v) => v as bool? ?? false),
+    );
+    return val;
+  },
+);

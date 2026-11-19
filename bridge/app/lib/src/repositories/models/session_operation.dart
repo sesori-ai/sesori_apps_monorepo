@@ -48,5 +48,6 @@ enum SessionOperation() {
   getSessionQuietness,
   getPromptCacheLife,
   proposeTaskChange,
+  sendPage,
   deliverNotice,
 }

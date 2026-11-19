@@ -261,7 +261,7 @@ void main() {
   });
 
   group("PluginMessageWithPartsMapper.toSharedMessageWithParts()", () {
-    final notice = buildSessionNotice(summary: "Fixture summary", guidance: "Fixture guidance");
+    final notice = buildSessionNotice(summary: "Fixture summary", guidance: "Fixture guidance", pageRequestId: null);
     PluginMessageWithParts userTurn({required List<String> texts}) => PluginMessageWithParts(
       info: const PluginMessage.user(
         promptId: null,
@@ -292,6 +292,26 @@ void main() {
           ),
           parts: [MessagePart.text(id: "p0", sessionID: "stable-session", messageID: "m1", text: "Fixture summary")],
         ),
+      );
+    });
+
+    test("replays a page notice with its page reference", () {
+      final pageNotice = buildSessionNotice(
+        summary: "You answered “Palette”.",
+        guidance: "Fixture guidance",
+        pageRequestId: "sesori-page-1",
+      );
+      expect(
+        userTurn(texts: [pageNotice]).toSharedMessageWithParts(sessionId: "s1").parts,
+        const [
+          MessagePart.text(
+            id: "p0",
+            sessionID: "s1",
+            messageID: "m1",
+            text: "You answered “Palette”.",
+            noticePageRequestId: "sesori-page-1",
+          ),
+        ],
       );
     });
 

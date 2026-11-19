@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.da
 import "package:sesori_bridge/src/repositories/models/session_notice.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
@@ -11,17 +12,23 @@ import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show parseSessionNotice;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginBusyPromptHandling;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-const _notice = SessionNotice(summary: "You allowed pausing “Nightly”.", guidance: "The change is saved.");
+const _notice = SessionNotice(
+  summary: "You allowed pausing “Nightly”.",
+  guidance: "The change is saved.",
+  pageRequestId: null,
+);
 
 void main() {
   late _Sessions sessions;
   late _Prompts prompts;
   late _Events events;
   late _Plugins plugins;
+  late _Tasks tasks;
   late SessionNoticeService service;
 
   setUp(() {
@@ -29,6 +36,7 @@ void main() {
     prompts = _Prompts();
     events = _Events();
     plugins = _Plugins();
+    tasks = _Tasks();
     final operations = SessionOperationDispatcher(sessionRepository: sessions);
     addTearDown(operations.dispose);
     service = SessionNoticeService(
@@ -37,22 +45,40 @@ void main() {
       prompts: prompts,
       events: events,
       plugins: plugins,
+      tasks: tasks,
     );
   });
 
   test("a quiet session gets the notice at once, as a bridge notice prompt", () async {
-    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    await service.deliver(sessionId: "s1", notice: _notice);
 
     final sent = prompts.sent.single;
     expect(sent.mark, isA<PromptStampNotice>());
     expect(sent.text, contains("You allowed pausing “Nightly”."));
     expect(sent.text, contains("The change is saved."));
+    expect(parseSessionNotice(text: sent.text)?.pageRequestId, isNull);
+  });
+
+  test("a page notice carries its page reference into the frame", () async {
+    await service.deliver(
+      sessionId: "s1",
+      notice: const SessionNotice(
+        summary: "You answered “Palette”.",
+        guidance: "Fixture",
+        pageRequestId: "sesori-page-1",
+      ),
+    );
+
+    expect(
+      parseSessionNotice(text: prompts.sent.single.text),
+      (summary: "You answered “Palette”.", pageRequestId: "sesori-page-1"),
+    );
   });
 
   test("a steering harness takes the notice into the running turn", () async {
     sessions.quietness = SessionQuietness.working;
 
-    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    await service.deliver(sessionId: "s1", notice: _notice);
 
     expect(prompts.sent, hasLength(1));
   });
@@ -61,9 +87,7 @@ void main() {
     plugins.handling = PluginBusyPromptHandling.stopTurn;
     sessions.quietness = SessionQuietness.working;
     var done = false;
-    final delivery = service
-        .deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn)
-        .then((_) => done = true);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice).then((_) => done = true);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
@@ -86,7 +110,7 @@ void main() {
   test("a source error while the notice waits neither escapes nor drops it", () async {
     plugins.handling = PluginBusyPromptHandling.stopTurn;
     sessions.quietness = SessionQuietness.working;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
     await pumpEventQueue();
 
     events.fail();
@@ -97,9 +121,10 @@ void main() {
     expect(prompts.sent, hasLength(1));
   });
 
-  test("a notice for after the turn waits even on a steering harness", () async {
+  test("a scheduled run's session hears the notice only after its turn, even on a steering harness", () async {
+    tasks.runSessionIds = {"s1"};
     sessions.quietness = SessionQuietness.working;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.afterTurn);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
@@ -111,7 +136,7 @@ void main() {
 
   test("a session waiting on the user gets the notice after it is answered", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
     await pumpEventQueue();
     expect(prompts.sent, isEmpty);
 
@@ -123,16 +148,16 @@ void main() {
 
   test("an archived or deleted session gets nothing", () async {
     sessions.archived = true;
-    await service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    await service.deliver(sessionId: "s1", notice: _notice);
     sessions.archived = false;
-    await service.deliver(sessionId: "missing", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    await service.deliver(sessionId: "missing", notice: _notice);
 
     expect(prompts.sent, isEmpty);
   });
 
   test("a session archived while the notice waits gets nothing", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
     await pumpEventQueue();
 
     sessions.archived = true;
@@ -143,7 +168,7 @@ void main() {
 
   test("a waiting notice is dropped without throwing when the bridge shuts down", () async {
     sessions.quietness = SessionQuietness.awaitingUser;
-    final delivery = service.deliver(sessionId: "s1", notice: _notice, timing: SessionNoticeTiming.intoRunningTurn);
+    final delivery = service.deliver(sessionId: "s1", notice: _notice);
     await pumpEventQueue();
 
     await events.close();
@@ -253,6 +278,19 @@ final class _Plugins() implements PluginLifecycleService {
 
   @override
   PluginBusyPromptHandling? busyPromptHandling({required String pluginId}) => handling;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _Tasks() implements ScheduledTaskRepository {
+  Set<String> runSessionIds = {};
+
+  @override
+  Future<Map<String, SessionScheduledTaskMark>> marksOfSessions({required Set<String> sessionIds}) async => {
+    for (final sessionId in sessionIds.intersection(runSessionIds))
+      sessionId: const SessionScheduledTaskMark(taskId: "task-1", name: "Nightly", kind: ScheduledTaskKind.recurring),
+  };
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
