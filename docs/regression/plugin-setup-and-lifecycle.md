@@ -443,7 +443,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   restart) signals the runtime and every process descending from it at that moment,
   detached ones included, so tool commands and helpers it started end with it. Oh My
   Pi's shared helper (the per-user `__omp_worker_daemon` from 19.0.0, the per-project
-  `__omp_worker_daemon_broker` before) is spared with everything under it, whichever
+  `__omp_worker_daemon_broker` and the tiny and mnemopi shared workers before) is
+  spared with everything under it, whichever
   `omp` spawned it: it serves terminal sessions too, keeps named `bash` services
   running until `omp ps stop`, and exits on its own once idle. Short commands keep
   root-only signals, so the detached OpenCode 2 service survives. Failure signals:

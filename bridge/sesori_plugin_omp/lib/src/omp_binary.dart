@@ -9,11 +9,18 @@ abstract final class OmpBinary() {
   static const String acpAuthMethodId = "agent";
 
   /// Arguments of OMP's shared helper processes: the per-user daemon from
-  /// 19.0.0 and the per-project broker before it. An `omp` process spawns the
-  /// helper detached when none runs yet and every other `omp` process of the
-  /// user (or project) then uses it too, so stopping Sesori's `omp` leaves it
-  /// running. It exits on its own once idle.
-  static const Set<String> sharedHelperArguments = {"__omp_worker_daemon", "__omp_worker_daemon_broker"};
+  /// 19.0.0 and, before it, the per-project broker and the machine-wide tiny
+  /// title (ONNX) and mnemopi embedding workers. An `omp` process spawns a
+  /// helper detached when none runs yet and every other `omp` process then
+  /// uses it too, so stopping Sesori's `omp` leaves it running. Each exits on
+  /// its own once idle. 18.x's MLX tiny worker runs a staged Python script with
+  /// no stable argument, so it is not covered.
+  static const Set<String> sharedHelperArguments = {
+    "__omp_worker_daemon",
+    "__omp_worker_daemon_broker",
+    "__omp_worker_tiny_inference",
+    "__omp_worker_mnemopi_embed_server",
+  };
 
   /// From 19.0.0 OMP asks for a tool call's intent only in its own TUI unless
   /// this is set. ACP tool titles show that intent and fall back to

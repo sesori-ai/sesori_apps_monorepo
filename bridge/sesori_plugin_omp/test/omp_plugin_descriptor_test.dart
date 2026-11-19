@@ -304,7 +304,7 @@ void main() {
         isA<ProcessEndsWithBridge>().having(
           (lifetime) => lifetime.sharedHelperArguments,
           "sharedHelperArguments",
-          {"__omp_worker_daemon", "__omp_worker_daemon_broker"},
+          OmpBinary.sharedHelperArguments,
         ),
       );
       await plugin.shutdown(budget: null);

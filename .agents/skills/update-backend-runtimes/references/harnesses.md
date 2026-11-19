@@ -458,17 +458,20 @@ concrete problem can justify a documented temporary hold with a resolution path.
   which outranks every settings file (17.2.13 and 18.x read the same variable).
   Live on 19.0.0: a read is titled `read: notes.txt` without it and by its intent
   with it. Re-check the variable name and precedence on each bump.
-- **Shared helper:** OMP spawns its daemon (`__omp_worker_daemon`, 19.0.0) or
-  per-project broker (`__omp_worker_daemon_broker`, 18.x) detached, and the
-  bridge's POSIX tree signal skips it by those arguments
-  (`OmpBinary.sharedHelperArguments`). On each bump, confirm the helper's
-  arguments and its idle exit (19.0.0: 3 s after nothing is connected and no
-  persistent unit runs). Live probe: let Sesori's `omp acp` start a named
-  service, join from a second `omp acp` that starts another, stop Sesori's
-  process mid tool call, and check with `ps` that the helper and both services
-  remain; `omp ps stop <name>` then lets the helper exit. A model that always
-  sends `timeout` needs `ready` (for example `ready.log`) on a named call, or
-  OMP rejects it.
+- **Shared helper:** OMP spawns its daemon (`__omp_worker_daemon`, 19.0.0) or,
+  in 18.x, its per-project broker (`__omp_worker_daemon_broker`) and the
+  machine-wide tiny ONNX and mnemopi workers (`__omp_worker_tiny_inference`,
+  `__omp_worker_mnemopi_embed_server`; 19.0.0 runs them under the daemon)
+  detached. The bridge's POSIX tree signal skips them by those arguments
+  (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
+  detached spawns (`spawnDetached`, `detached: true`) that ACP mode reaches,
+  and confirm each helper's argument and idle exit (19.0.0 daemon: 3 s after
+  nothing is connected and no persistent unit runs). Live probe: let Sesori's
+  `omp acp` start a named service, join from a second `omp acp` that starts
+  another, stop Sesori's process mid tool call, and check with `ps` that the
+  helper and both services remain; `omp ps stop <name>` then lets the helper
+  exit. A model that always sends `timeout` needs `ready` (for example
+  `ready.log`) on a named call, or OMP rejects it.
 
 ## DeepSeek
 
