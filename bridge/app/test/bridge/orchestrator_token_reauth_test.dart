@@ -7,6 +7,7 @@ import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
+import "package:sesori_bridge/src/auth/token_refresh_exception.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
@@ -187,6 +188,29 @@ void main() {
       expect(secondAuth["bridgeId"], equals("br_revoked-fresh"));
     });
 
+    test("a rejected refresh token stops the session instead of reconnecting", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // The auth server answers 401 for an expired or revoked refresh token.
+      // Reconnecting with the cached token would only get the relay's
+      // auth-failure close and retry the refresh every backoff, so the session
+      // must end with the rejection after a single refresh attempt.
+      authority.rejectRefresh = true;
+      await firstSocket.close();
+
+      await expectLater(
+        harness.runFuture.timeout(const Duration(seconds: 10)),
+        throwsA(isA<TokenRefreshException>().having((e) => e.statusCode, "statusCode", 401)),
+      );
+      expect(authority.forcedRefreshCount, equals(1), reason: "a rejected refresh is never retried");
+      expect(harness.relayServer.acceptedClientCount, equals(1), reason: "no reconnect after the rejection");
+    });
+
     test("a refresh failure with no cached token does not reconnect", () async {
       final authority = _ScriptedTokenAuthority("token-1");
       final harness = await _ReauthHarness.start(authority: authority);
@@ -241,6 +265,8 @@ class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider
   final BehaviorSubject<String> _subject = BehaviorSubject<String>.seeded(current);
   bool failRefresh = false;
   bool transientFailRefresh = false;
+  bool rejectRefresh = false;
+  int forcedRefreshCount = 0;
   // When false, the synchronous getter throws — mirroring a service whose cache
   // is empty or sign-out-invalidated (no safe token to reconnect with).
   bool cachedTokenAvailable = true;
@@ -264,6 +290,12 @@ class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider
 
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
+    if (forceRefresh) forcedRefreshCount++;
+    if (rejectRefresh) {
+      // Mirror a standalone TokenService whose refresh token the auth server
+      // rejected (expired or revoked).
+      throw const TokenRefreshException(reason: "Token refresh failed with status 401", statusCode: 401);
+    }
     if (failRefresh) {
       // Mirror the supervised service: a signed-out / mid-login GUI surfaces a
       // typed unavailable failure (the orchestrator defers reconnect on this).

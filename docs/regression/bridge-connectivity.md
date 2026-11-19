@@ -47,6 +47,8 @@ account and per-bridge ownership, and the connection states the app presents.
   failures return 500.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
   a longer jittered curve, a revoked bridge re-registers, and a token change re-auths.
+  A standalone bridge whose refresh token the auth server rejects (401) stops with a
+  sign-in-expired message instead of reconnecting; transient refresh failures keep the backoff.
 - Ordered mutation and event lanes continue processing later work after one operation fails, and graceful shutdown drains work accepted before shutdown began.
 - The bridge forwards only event kinds something consumes. OpenCode editor and
   runtime housekeeping (PTY, file-watcher, LSP, MCP, installation-updated,
