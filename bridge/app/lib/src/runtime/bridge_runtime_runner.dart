@@ -44,6 +44,7 @@ import "../auth/login_email_repository.dart";
 import "../auth/login_oauth_service.dart";
 import "../auth/machine_id_api.dart";
 import "../auth/token.dart";
+import "../auth/token_refresh_exception.dart";
 import "../auth/token_refresher.dart";
 import "../auth/token_service.dart";
 import "../control/bridge_control_message_dispatcher.dart";
@@ -951,6 +952,13 @@ class const BridgeRuntimeRunner._() {
       }
       return 1;
     } catch (error, stackTrace) {
+      if (error is TokenRefreshException && error.statusCode == 401) {
+        // The saved sign-in expired or was revoked while running. Stop instead
+        // of retrying a refresh that can never succeed; the next start signs in.
+        Log.w("Saved sign-in rejected", error, stackTrace);
+        Console.error("Your Sesori sign-in has expired. Run `sesori-bridge` again to sign in.");
+        return 1;
+      }
       Log.e("Bridge startup or session failed", error, stackTrace);
       return 1;
     } finally {

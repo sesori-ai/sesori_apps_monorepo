@@ -31,6 +31,7 @@ import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
+import "auth/token_refresh_exception.dart";
 import "auth/token_refresher.dart";
 import "control/control_status_notifier.dart";
 import "foundation/filesystem_permission_validator.dart";
@@ -2621,6 +2622,12 @@ class OrchestratorSession._({
   /// standalone [TokenService] hitting a transiently-down auth-refresh endpoint
   /// while its cached JWT is still valid) — so the reconnect proceeds with that
   /// cached token, preserving the pre-existing standalone resilience.
+  ///
+  /// Rethrows a 401 [TokenRefreshException]: the auth server rejected the
+  /// refresh token itself (expired or revoked), so no retry can succeed, and
+  /// reconnecting with the cached token would only get the relay's auth-failure
+  /// close and loop. Ending the session stops the bridge so the next start signs
+  /// in again.
   Future<bool> _refreshAccessToken() async {
     try {
       await _tokenRefresher.getAccessToken(forceRefresh: true);
@@ -2630,6 +2637,7 @@ class OrchestratorSession._({
       Log.w("No access token available for reconnect", error, stackTrace);
       return false;
     } catch (e, st) {
+      if (e is TokenRefreshException && e.statusCode == 401) rethrow;
       // The refresh failed for some other reason. Only reconnect if a usable
       // cached token actually exists — reading it throws when the cache is empty
       // or sign-out-invalidated, in which case there is nothing safe to reconnect
