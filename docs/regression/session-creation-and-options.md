@@ -149,6 +149,13 @@ variant, and worktree mode, and creating the session with its first input.
   selected. Replayed transcripts and live turns without an explicit selection
   map resolved names (`claude-fable-5-1`) and short family/context aliases
   (`fable[1m]`) through the current catalog; an unknown name stays as recorded.
+- For every harness, a history re-import that names a model the cached catalog
+  doesn't offer (a gateway that answers under another name) keeps the session's
+  stored model, so the picker and every bridge-sent prompt (notices, quota
+  continuations) stay on a model that runs. An offered imported model still
+  replaces it, and with no stored model or no cached catalog the imported one
+  is taken. Failure signal: after a bridge restart, a notice or the picker
+  switches to the gateway's name and the turn fails with an unknown model.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
   in picker order and may name a default; when switching models, an existing
   compatible variant is kept; otherwise a model that offers variants uses the

@@ -20,6 +20,7 @@ import "../repositories/models/tool_output_lookup.dart";
 import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_options_service.dart";
 
 sealed class const SessionAttachmentResult();
 
@@ -134,6 +135,7 @@ class ChatHistoryService({
   required final BridgeIdProvider _bridgeIdProvider,
   required final SessionInterruptionRepository _interruptions,
   required final SessionMutationDispatcher _mutations,
+  required final SessionOptionsService _sessionOptions,
 }) {
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
@@ -1369,7 +1371,9 @@ class ChatHistoryService({
           interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
-        final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
+        final promptDefaults = shouldReconcilePromptDefaults
+            ? await keepingStoredModel(sessionId: sessionId, imported: snapshot.promptDefaults)
+            : null;
         if (promptDefaults == null) return null;
         try {
           // The stored value carries the session's fast mode, which history
@@ -1402,6 +1406,39 @@ class ChatHistoryService({
       operation: "history import",
       message: "the backend replays a running turn under other message ids",
     );
+  }
+
+  /// The prompt defaults [imported] from [sessionId]'s harness history, with
+  /// the session's stored model kept when the harness catalog doesn't offer
+  /// the imported one.
+  ///
+  /// History records the model name the backend's API answered with, which a
+  /// gateway can rename; sending that name back fails. A model the catalog
+  /// offers still wins, so a model changed natively in the harness carries
+  /// over. Without a stored model, or without a cached catalog to judge by,
+  /// [imported] is returned unchanged.
+  Future<SessionPromptDefaults?> keepingStoredModel({
+    required String sessionId,
+    required SessionPromptDefaults? imported,
+  }) async {
+    final importedModel = imported?.model;
+    if (imported == null || importedModel == null) return imported;
+    try {
+      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+      final storedModel = session?.promptDefaults?.model;
+      if (session == null || storedModel == null || storedModel == importedModel) return imported;
+      final catalog = await _sessionOptions.loadCacheOnly(pluginId: session.pluginId, projectId: session.projectID);
+      if (catalog is! SessionOptionsAvailable) return imported;
+      const calculator = SessionOptionsCatalogCalculator();
+      if (calculator.isModelAvailable(providers: catalog.response.providers.items, model: importedModel)) {
+        return imported;
+      }
+      Log.i("Kept the stored model of session $sessionId: its history names a model the catalog doesn't offer");
+      return imported.copyWith(model: storedModel);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not check the imported model of session $sessionId against its catalog", error, stackTrace);
+      return imported;
+    }
   }
 
   /// Records the [leftover] running turn an earlier bridge run left as the

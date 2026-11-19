@@ -31,13 +31,14 @@ const _wideOverlayGap = PregoSpacing.x4l;
 /// Slides the page [requestId] up over the session, whether it waits for an
 /// answer or has settled: its cubit's lookup decides how it opens. Its cubit
 /// comes from [scope] and lives as long as the route. The page names the
-/// session [context] shows as its source. Open it through
-/// [SessionDetailPresentationScope.openPage].
+/// session [context] shows as its source, and [title] until its lookup names
+/// it. Open it through [SessionDetailPresentationScope.openPage].
 Future<void> showQuestionPage({
   required BuildContext context,
   required SessionDetailPresentationScope scope,
   required String requestId,
   required String sessionId,
+  required String? title,
 }) {
   final sessionCubit = context.read<SessionDetailCubit>();
   final source = switch (sessionCubit.state.hydratedSession) {
@@ -63,7 +64,7 @@ Future<void> showQuestionPage({
         value: sessionCubit,
         child: BlocProvider(
           create: (_) => scope.createPendingPageCubit(requestId: requestId, sessionId: sessionId),
-          child: QuestionPageScreen(source: source, onClose: navigator.pop),
+          child: QuestionPageScreen(title: title, source: source, onClose: navigator.pop),
         ),
       ),
     ),
@@ -139,6 +140,10 @@ class const _QuestionPageFrame({
 class const QuestionPageScreen({
   super.key,
 
+  /// The page's title as known before its lookup, such as from its marker;
+  /// null when unknown, as for a page reopened from the transcript.
+  required final String? title,
+
   /// The session the page came from, such as "Claude Code · Fix the login".
   required final String? source,
   required final VoidCallback onClose,
@@ -153,6 +158,10 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
   final _answerFields = <String, TextEditingController>{};
   final _noteFields = <String, TextEditingController>{};
   TextEditingController? _closingNote;
+
+  /// The last title the page had, so it stays in the header once the page
+  /// goes missing.
+  late String? _title = widget.title;
 
   @override
   void dispose() {
@@ -195,6 +204,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
       PageEditing(:final page) || PageSubmitting(:final page) || PageReadOnly(:final page) => page,
       PageLoading() || PageMissing() || PageUnsupported() || PageLoadFailed() => null,
     };
+    final title = _title = page?.title ?? _title;
     return BlocListener<PendingPageCubit, PendingPageState>(
       listenWhen: (previous, current) =>
           previous is PageSubmitting && current is PageEditing && current.feedback is PageFeedbackInvalid,
@@ -215,7 +225,7 @@ class _QuestionPageScreenState() extends State<QuestionPageScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _Header(
-                  title: page?.title,
+                  title: title,
                   source: widget.source,
                   onClose: widget.onClose,
                   onDismiss: switch (state) {
@@ -295,6 +305,7 @@ class const _Header({
     final loc = context.loc;
     final padding = MediaQuery.paddingOf(context);
     final duration = context.isReducedMotion ? Duration.zero : _contentDuration;
+    final titleStyle = prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary);
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       constraints: BoxConstraints(minHeight: padding.top + _headerHeight),
@@ -316,7 +327,8 @@ class const _Header({
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The title fades in once the page has loaded.
+                // The title fades in once the page has loaded. Its line is
+                // kept while no title is known, so the source line never moves.
                 AnimatedSwitcher(
                   duration: duration,
                   layoutBuilder: (current, previous) =>
@@ -327,9 +339,9 @@ class const _Header({
                       key: ValueKey(title),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+                      style: titleStyle,
                     ),
-                    null => const SizedBox.shrink(),
+                    null => Text("", style: titleStyle),
                   },
                 ),
                 if (source case final source?)
@@ -342,10 +354,18 @@ class const _Header({
               ],
             ),
           ),
-          AnimatedSwitcher(
+          // The menu keeps its room while hidden, so the title and source keep
+          // their cut as the page settles or goes missing.
+          AnimatedOpacity(
+            opacity: showsMenu ? 1 : 0,
             duration: duration,
-            child: showsMenu
-                ? PregoAnchorMenu(
+            child: IgnorePointer(
+              ignoring: !showsMenu,
+              child: ExcludeFocus(
+                excluding: !showsMenu,
+                child: ExcludeSemantics(
+                  excluding: !showsMenu,
+                  child: PregoAnchorMenu(
                     key: const Key("question-page-menu"),
                     flat: true,
                     placement: PregoMenuPlacement.belowRightAligned,
@@ -369,8 +389,10 @@ class const _Header({
                       size: PregoButtonsSolidSize.sm,
                       onPressed: openMenu,
                     ),
-                  )
-                : const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
