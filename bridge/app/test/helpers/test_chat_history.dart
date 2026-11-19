@@ -14,9 +14,11 @@ import "package:sesori_bridge/src/repositories/session_interruption_repository.d
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "fake_session_options_service.dart";
 import "session_continuation_test_support.dart";
 import "session_interruption_test_support.dart";
 
@@ -43,6 +45,7 @@ TestChatHistory createTestChatHistory({
   BridgeIdProvider bridgeIdProvider = const _TestBridgeIdProvider("br_test1234"),
   SessionInterruptionRepository interruptions = const NoSessionInterruptions(),
   SessionMutationDispatcher mutations = const UnusedContinuationMutations(),
+  SessionOptionsService? sessionOptions,
 }) {
   final directory = Directory.systemTemp.createTempSync("sesori_chat_history_test");
   final database = ChatHistoryDatabase(NativeDatabase.memory());
@@ -73,6 +76,7 @@ TestChatHistory createTestChatHistory({
       bridgeIdProvider: bridgeIdProvider,
       interruptions: interruptions,
       mutations: mutations,
+      sessionOptions: sessionOptions ?? FakeSessionOptionsService(),
     ),
     directory: directory,
   );
@@ -120,6 +124,7 @@ class TestChatHistoryService({
   required super.bridgeIdProvider,
   required super.interruptions,
   required super.mutations,
+  required super.sessionOptions,
 }) extends ChatHistoryService {
   @override
   Future<SessionMessagesPage> getSessionMessages({

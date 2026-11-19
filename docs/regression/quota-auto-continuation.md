@@ -63,7 +63,8 @@ lists the rows that stayed unexecuted.
   continuation fails, as does one whose catalog can't be read or whose
   correction changes nothing.
 - History-derived model/agent/variant defaults preserve the stored fast-mode
-  preference; missing history selection falls back to stored defaults.
+  preference; missing history selection falls back to stored defaults, and a
+  history model the cached catalog doesn't offer gives way to the stored one.
 - Pi's history can record the native thinking level `off` for a model without
   a thinking selector. Restoring that default must still allow an ordinary
   prompt when native model discovery identifies it as non-reasoning, even when
