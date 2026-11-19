@@ -542,75 +542,89 @@ class const _PageBody({
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: SingleChildScrollView(
+          // A sliver viewport, like the chat's, so the overscroll stretch holds
+          // when the content lays out again mid-scroll, as a field does when it
+          // slides under a resting trackpad cursor. A SingleChildScrollView
+          // snaps its overscroll back to the edge on every layout, which
+          // jitters while the fingers keep pushing.
+          child: CustomScrollView(
             controller: scroll,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.all(PregoSpacing.xl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(page.title, style: prego.textTheme.textXl.medium.copyWith(color: prego.colors.textPrimary)),
-                if (intro != null) ...[const SizedBox(height: PregoSpacing.md), QuestionPageMarkdown(data: intro)],
-                for (final section in page.sections) ...[
-                  const SizedBox(height: PregoSpacing.x3l),
-                  if (section.heading case final heading?) ...[
-                    Text(heading, style: prego.textTheme.textLg.bold.copyWith(color: prego.colors.textPrimary)),
-                    const SizedBox(height: PregoSpacing.md),
-                  ],
-                  if (section.body case final body?) ...[
-                    QuestionPageMarkdown(data: body),
-                    const SizedBox(height: PregoSpacing.md),
-                  ],
-                  for (final image in section.images) ...[
-                    QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
-                    const SizedBox(height: PregoSpacing.md),
-                  ],
-                  for (final question in section.questions) ...[
-                    const SizedBox(height: PregoSpacing.lg),
-                    QuestionPageQuestion(
-                      key: questionKeys[question.id] ??= GlobalKey(debugLabel: "question-page-${question.id}"),
-                      question: question,
-                      answer: draft.answers[question.id],
-                      enabled: enabled,
-                      issue: switch ((flagged.contains(question.id), draft.answers[question.id]?.value)) {
-                        (false, _) => null,
-                        (true, null) => QuestionPageIssue.needsAnswer,
-                        (true, _) => QuestionPageIssue.refused,
-                      },
-                      answerController: answerField(question.id),
-                      noteController: noteField(question.id),
-                      showsNote: !readOnly || draft.answers[question.id]?.note != null,
-                    ),
-                  ],
-                ],
-                // A read-only page shows the closing note only when one was
-                // written; a submitting page keeps it so nothing moves. It
-                // folds away when the page settles while open.
-                QuestionPageFold(
-                  shown: !readOnly || draft.note != null,
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.all(PregoSpacing.xl),
+                sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const SizedBox(height: PregoSpacing.x4l),
-                      Text(
-                        loc.questionPageClosingNoteTitle,
-                        style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-                      ),
-                      const SizedBox(height: PregoSpacing.md),
-                      QuestionPageTextField(
-                        key: const Key("question-page-closing-note"),
-                        controller: closingNote,
-                        hint: loc.questionPageClosingNoteHint,
-                        enabled: enabled,
-                        isFlagged: false,
-                        minLines: 2,
-                        onChanged: (note) => cubit.setNote(note: note),
+                      Text(page.title, style: prego.textTheme.textXl.medium.copyWith(color: prego.colors.textPrimary)),
+                      if (intro != null) ...[
+                        const SizedBox(height: PregoSpacing.md),
+                        QuestionPageMarkdown(data: intro),
+                      ],
+                      for (final section in page.sections) ...[
+                        const SizedBox(height: PregoSpacing.x3l),
+                        if (section.heading case final heading?) ...[
+                          Text(heading, style: prego.textTheme.textLg.bold.copyWith(color: prego.colors.textPrimary)),
+                          const SizedBox(height: PregoSpacing.md),
+                        ],
+                        if (section.body case final body?) ...[
+                          QuestionPageMarkdown(data: body),
+                          const SizedBox(height: PregoSpacing.md),
+                        ],
+                        for (final image in section.images) ...[
+                          QuestionPageImage(image: image, maxHeight: questionPageImageMaxHeight),
+                          const SizedBox(height: PregoSpacing.md),
+                        ],
+                        for (final question in section.questions) ...[
+                          const SizedBox(height: PregoSpacing.lg),
+                          QuestionPageQuestion(
+                            key: questionKeys[question.id] ??= GlobalKey(debugLabel: "question-page-${question.id}"),
+                            question: question,
+                            answer: draft.answers[question.id],
+                            enabled: enabled,
+                            issue: switch ((flagged.contains(question.id), draft.answers[question.id]?.value)) {
+                              (false, _) => null,
+                              (true, null) => QuestionPageIssue.needsAnswer,
+                              (true, _) => QuestionPageIssue.refused,
+                            },
+                            answerController: answerField(question.id),
+                            noteController: noteField(question.id),
+                            showsNote: !readOnly || draft.answers[question.id]?.note != null,
+                          ),
+                        ],
+                      ],
+                      // A read-only page shows the closing note only when one was
+                      // written; a submitting page keeps it so nothing moves. It
+                      // folds away when the page settles while open.
+                      QuestionPageFold(
+                        shown: !readOnly || draft.note != null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: PregoSpacing.x4l),
+                            Text(
+                              loc.questionPageClosingNoteTitle,
+                              style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+                            ),
+                            const SizedBox(height: PregoSpacing.md),
+                            QuestionPageTextField(
+                              key: const Key("question-page-closing-note"),
+                              controller: closingNote,
+                              hint: loc.questionPageClosingNoteHint,
+                              enabled: enabled,
+                              isFlagged: false,
+                              minLines: 2,
+                              onChanged: (note) => cubit.setNote(note: note),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         _Bar(page: page, draft: draft, state: state, bottomInset: bottomInset),
