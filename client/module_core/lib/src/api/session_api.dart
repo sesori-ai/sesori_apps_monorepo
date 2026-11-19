@@ -692,6 +692,20 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     timeout: const Duration(seconds: 30),
   );
 
+  Future<ApiResponse<PageLookupResponse>> lookupPage({required PageLookupRequest request}) => _client.postWithTimeout(
+    "/page",
+    fromJson: PageLookupResponse.fromJson,
+    body: request,
+    timeout: const Duration(seconds: 30),
+  );
+
+  Future<ApiResponse<PageSubmitResult>> submitPage({required SubmitPageRequest request}) => _client.postWithTimeout(
+    "/page/submit",
+    fromJson: PageSubmitResult.fromJson,
+    body: request,
+    timeout: const Duration(seconds: 30),
+  );
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _client.post(
       "/session/permissions",

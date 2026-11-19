@@ -66,7 +66,7 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
 - The desktop sends `computer_switched`, `computer_managed`, `session_pin_changed`, `side_question_asked`,
   `harness_install_finished`, `transcript_prompts_opened`, `voice_transcription_completed`, `session_message_edited`,
-  `session_sent_to_session`, `session_forked` and `scheduled_task_saved` to the auth server with the same pinned parameters as the
+  `session_sent_to_session`, `session_forked`, `scheduled_task_saved` and `question_page_finished` to the auth server with the same pinned parameters as the
   phone. It never sends the desktop-link or CEO-call events, which only the phone shows.
 - A side question reports `side_question_asked` once per ask, when the bridge's result arrives, even if the side chat
   has closed meanwhile. It carries the session's pinned `harness` and an `outcome`: `answered` when the bridge stored
@@ -90,6 +90,12 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   missing-branch refusal followed by "Create a new worktree" reports twice, once per request. It never carries the
   message, the sessions, or a count. Reporting reads it from the raw export: adoption is read as forks per harness and
   the share of each outcome.
+- An agent's question page reports `question_page_finished` once per outcome the bridge confirms: `outcome=answered`
+  when it accepts a Submit, and `outcome=dismissed` when it confirms a dismiss. It carries `question_count` (`0`, `1`,
+  `2_5` or `6_plus`) and `has_images` (`true` when any section, question or option carried an image). A Submit refused
+  for unanswered required questions, one the bridge finds already settled or invalid, a failed request, and a page
+  settled on another device report nothing. It never carries the page's title, text, images, answers, notes or ids.
+  Reporting reads it from the raw export: adoption is read as finished pages and the share answered versus dismissed.
 - Sending a session into another reports `session_sent_to_session` once per send that reaches an outcome, even if the
   app moved to another computer meanwhile, with the source session's pinned `harness` and an `outcome`: `sent` when the
   target accepted the handoff, `refused_busy` when the source was running or waiting for an answer, `refused_other` for
@@ -215,6 +221,8 @@ account against a real property.
   beyond `harness` and `outcome`.
 - `session_message_edited` fires for an edit the app never sent, or carries anything beyond `harness` and `outcome`.
 - `session_forked` fires for a fork the app never requested, or carries anything beyond `harness` and `outcome`.
+- `question_page_finished` fires for a Submit or dismiss the bridge didn't confirm, fires twice for one page on one
+  surface, or carries anything beyond `outcome`, `question_count` and `has_images`.
 - `session_sent_to_session` fires for a send the app never made, fires twice for one send, reports the target's harness,
   or carries anything beyond `harness` and `outcome`.
 - `scheduled_task_saved` fires for a refused or failed save, or carries anything beyond its pinned parameters.

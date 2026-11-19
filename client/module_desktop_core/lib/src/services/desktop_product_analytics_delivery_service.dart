@@ -154,6 +154,7 @@ class DesktopProductAnalyticsDeliveryService({
     SessionMessageEditedEvent() ||
     SessionSentToSessionEvent() ||
     SessionForkedEvent() ||
-    ScheduledTaskSavedEvent() => event.parameters,
+    ScheduledTaskSavedEvent() ||
+    QuestionPageFinishedEvent() => event.parameters,
   };
 }

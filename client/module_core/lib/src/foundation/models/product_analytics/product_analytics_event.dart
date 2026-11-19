@@ -339,6 +339,27 @@ enum AnalyticsScheduledTaskMissedRunPolicy({required final String wireValue}) {
   waitForNext(wireValue: "wait_for_next"),
 }
 
+/// How the user settled an agent's question page.
+enum AnalyticsQuestionPageOutcome({required final String wireValue}) {
+  answered(wireValue: "answered"),
+  dismissed(wireValue: "dismissed"),
+}
+
+/// How many questions an agent's page asked.
+enum AnalyticsQuestionCountBucket({required final String wireValue}) {
+  none(wireValue: "0"),
+  one(wireValue: "1"),
+  twoToFive(wireValue: "2_5"),
+  sixPlus(wireValue: "6_plus");
+
+  static AnalyticsQuestionCountBucket of({required int count}) => switch (count) {
+    <= 0 => none,
+    1 => one,
+    <= 5 => twoToFive,
+    _ => sixPlus,
+  };
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -447,6 +468,11 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsSessionSendOutcome outcome,
   }) = SessionSentToSessionEvent;
+  const factory questionPageFinished({
+    required AnalyticsQuestionPageOutcome outcome,
+    required AnalyticsQuestionCountBucket questionCount,
+    required bool hasImages,
+  }) = QuestionPageFinishedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -952,6 +978,45 @@ final class const SessionSentToSessionEvent({
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge confirmed the user answered or dismissed an agent's question
+/// page. The page's title, text, images, answers and ids stay off the wire.
+final class const QuestionPageFinishedEvent({
+  required final AnalyticsQuestionPageOutcome outcome,
+  required final AnalyticsQuestionCountBucket questionCount,
+
+  /// Whether any section, question or option carried an image.
+  required final bool hasImages,
+}) extends ProductAnalyticsEvent {
+  factory of({required AnalyticsQuestionPageOutcome outcome, required PendingPage page}) {
+    final questions = [for (final section in page.sections) ...section.questions];
+    return QuestionPageFinishedEvent(
+      outcome: outcome,
+      questionCount: AnalyticsQuestionCountBucket.of(count: questions.length),
+      hasImages:
+          page.sections.any((section) => section.images.isNotEmpty) ||
+          questions.any(
+            (question) =>
+                question.images.isNotEmpty ||
+                switch (question.kind) {
+                  PageSingleChoice(:final options) ||
+                  PageMultipleChoice(:final options) => options.any((option) => option.image != null),
+                  PageTextInput() || PageQuestionKindUnknown() => false,
+                },
+          ),
+    );
+  }
+
+  @override
+  String get wireName => "question_page_finished";
+
+  @override
+  Map<String, String> get parameters => {
+    "outcome": outcome.wireValue,
+    "question_count": questionCount.wireValue,
+    "has_images": hasImages.toString(),
+  };
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

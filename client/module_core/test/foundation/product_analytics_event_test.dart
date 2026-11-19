@@ -388,6 +388,30 @@ void main() {
           "session_forked",
           {"harness": "codex", "outcome": wireValue},
         ),
+      for (final (bucket, wireValue) in [
+        (AnalyticsQuestionCountBucket.none, "0"),
+        (AnalyticsQuestionCountBucket.one, "1"),
+        (AnalyticsQuestionCountBucket.twoToFive, "2_5"),
+        (AnalyticsQuestionCountBucket.sixPlus, "6_plus"),
+      ])
+        (
+          ProductAnalyticsEvent.questionPageFinished(
+            outcome: AnalyticsQuestionPageOutcome.answered,
+            questionCount: bucket,
+            hasImages: false,
+          ),
+          "question_page_finished",
+          {"outcome": "answered", "question_count": wireValue, "has_images": "false"},
+        ),
+      const (
+        ProductAnalyticsEvent.questionPageFinished(
+          outcome: AnalyticsQuestionPageOutcome.dismissed,
+          questionCount: AnalyticsQuestionCountBucket.one,
+          hasImages: true,
+        ),
+        "question_page_finished",
+        {"outcome": "dismissed", "question_count": "1", "has_images": "true"},
+      ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {
