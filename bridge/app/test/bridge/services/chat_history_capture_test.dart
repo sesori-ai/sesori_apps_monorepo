@@ -2199,15 +2199,46 @@ void main() {
 
       // Oh My Pi takes a notice sent while a turn runs in after the tool call
       // it was waiting on, so the replay holds it later than the bridge's row.
-      test("matches a page answer notice the harness took in later", () async {
+      test("matches a notice the harness took in later", () async {
+        for (final pageRequestId in ["sesori-page-1", null]) {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "ses_a-m1-user", text: "Say ALPHA", createdAt: null, promptId: null),
+                _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
+                _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
+                _notice(id: "ses_a-m4-user", createdAt: null, pageRequestId: pageRequestId),
+                _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+              ],
+            ),
+          );
+          await _captureMessages(
+            history: history,
+            messages: [
+              _messageWithText(id: "prm_a-user", text: "Say ALPHA", createdAt: 100, promptId: "prm_a"),
+              _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
+              _notice(id: "prm_n-user", createdAt: 300, pageRequestId: pageRequestId),
+              _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
+              _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+            ],
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["ses_a-m1-user", "ses_a-m2-assistant", "ses_a-m3-assistant", "ses_a-m4-user", "ses_a-m5-assistant"],
+            reason: "page $pageRequestId",
+          );
+        }
+      });
+
+      test("keeps an equal notice sent at another time", () async {
         final history = createTestChatHistory(
           sessionRepository: _FakeSessionRepository(
             transcript: [
               _messageWithText(id: "ses_a-m1-user", text: "Say ALPHA", createdAt: null, promptId: null),
-              _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
-              _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
-              _notice(id: "ses_a-m4-user", createdAt: null, pageRequestId: "sesori-page-1"),
-              _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+              _notice(id: "ses_a-m2-user", createdAt: 200, pageRequestId: null),
             ],
           ),
         );
@@ -2215,10 +2246,7 @@ void main() {
           history: history,
           messages: [
             _messageWithText(id: "prm_a-user", text: "Say ALPHA", createdAt: 100, promptId: "prm_a"),
-            _assistantMessageWithText(id: "ses_a-m2-assistant", text: "Waiting", reasoning: null, createdAt: null),
-            _notice(id: "prm_n-user", createdAt: 300, pageRequestId: "sesori-page-1"),
-            _assistantMessageWithText(id: "ses_a-m3-assistant", text: "Done", reasoning: null, createdAt: null),
-            _assistantMessageWithText(id: "ses_a-m5-assistant", text: "Noted.", reasoning: null, createdAt: null),
+            _notice(id: "prm_n-user", createdAt: 300, pageRequestId: null),
           ],
         );
 
@@ -2226,7 +2254,7 @@ void main() {
 
         expect(
           (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
-          const ["ses_a-m1-user", "ses_a-m2-assistant", "ses_a-m3-assistant", "ses_a-m4-user", "ses_a-m5-assistant"],
+          containsAll(const ["ses_a-m2-user", "prm_n-user"]),
         );
       });
 
