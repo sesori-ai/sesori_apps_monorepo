@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Generate polished, user-facing release notes in Markdown for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) and keeps the "New Contributors" section verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Writes the notes to a Markdown file in /tmp and returns a file reference — never writes into the repository and never edits the live GitHub release.
+description: Generate polished, user-facing release notes in Markdown for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) and keeps the "New Contributors" section verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Replies with the notes in chat as one fenced Markdown code block, ready to paste — never writes them into the repository and never edits the live GitHub release.
 metadata:
   audience: maintainers
   workflow: github
@@ -10,7 +10,7 @@ metadata:
 
 Generates curated, user-facing release notes in Markdown for a given release version. The output mirrors the hand-edited style the maintainer prefers: an optional **launch announcement** section, a short **Highlights** block, then per-target **App** / **Bridge** sections (subdivided into New / Improved / Fixed / Other), then the **New Contributors** section (verbatim) when the source has one. The **All PRs merged** list is not part of the output; GitHub's own release page and the Full Changelog link cover it.
 
-Write the notes to `/tmp/sesori_release_notes_<version>.md` and reply with a clickable file reference plus the short editorial summary. Do not paste the whole notes into the reply, and never write the file into the repository. The maintainer opens the file and manually pastes the result into the GitHub release once happy. **Never edit, publish, or otherwise mutate the live GitHub release.**
+Give the finished notes in the chat reply as one fenced Markdown code block (```` ```markdown ````), followed by a short editorial summary. Don't hand them over as a file, and never write them into the repository. The maintainer copies the block and pastes it into the GitHub release once happy. A scratch file in `/tmp` while drafting is fine, but the reply must contain the full notes. **Never edit, publish, or otherwise mutate the live GitHub release.**
 
 ## Inputs
 
@@ -59,7 +59,7 @@ Apply all rules in the **Post-Processing Rules** section below to the App and Br
 
 ### Step A4: Write the notes
 
-Write the notes to `/tmp/sesori_release_notes_<version>.md` using the **Output Format** below. Copy the **New Contributors** section verbatim from the source.
+Write the notes using the **Output Format** below and reply with them as a fenced Markdown code block. Copy the **New Contributors** section verbatim from the source.
 
 ---
 
@@ -142,7 +142,7 @@ Apply these to produce the launch announcement, Highlights, and App and Bridge n
 
 ## Output Format
 
-Write the notes to `/tmp/sesori_release_notes_<version>.md` with this structure:
+Reply with the notes in one fenced Markdown code block with this structure:
 
 ```markdown
 # <version> (build <N if known>)
@@ -210,11 +210,11 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs/New-Contributors. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the same raw sections, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
 3. Apply the **Post-Processing Rules** (merge clusters into final outcomes, drop noise, collapse fixes to unreleased code, omit disabled work, reframe perf/UX, order by impact, write any launch announcement, build short Highlights, check facts at the tag).
 4. For unclear-benefit or unclear-shipping PRs, inspect the diff (`gh pr diff <n>`) before asking the user. Do not ask about clearly same-release repairs or availability decisions the user already supplied; apply the defaults above.
-5. Write the notes to `/tmp/sesori_release_notes_<version>.md`, then reply with the file reference and a short summary of editorial decisions made (what was merged, dropped, flagged).
+5. Reply with the notes as one fenced Markdown code block, then a short summary of editorial decisions made (what was merged, dropped, flagged).
 
 ## Important Notes
 
-- The notes go to a file in `/tmp`, never into the repository, and this skill never edits or publishes the GitHub release.
+- The notes go in the chat reply as a fenced Markdown code block, never into a handed-over file or the repository, and this skill never edits or publishes the GitHub release.
 - Default behavior is **always Mode A** (start from existing GitHub release notes). Only switch to Mode B on an explicit instruction to ignore the existing notes.
 - The output has no **All PRs merged** section. The **New Contributors** section is never trimmed or curated.
 - Confirm the resolved previous tag in Mode B. Surface an omission candidate only when shipping history remains ambiguous after inspection; collapse clear same-release repair clusters automatically.
