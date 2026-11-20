@@ -78,23 +78,27 @@ RecognizedFilePath? recognizeFilePath({required String raw}) {
 /// Windows path semantics for a path on a drive, POSIX for anything else.
 p.Context _pathContextFor({required String path}) => _windowsDrive.hasMatch(path) ? p.windows : p.posix;
 
-/// Whether [path] is a URL written without a scheme. Its first segment then
-/// looks like a host (`i.redd.it`, `github.com`) rather than a directory, so
-/// resolving it against the session directory would invent a missing file.
-/// A leading dot is a hidden directory (`.github`), `./` or `../` is an
-/// explicit relative path, and a dotted name whose last label is not a
-/// letter-only suffix (`v1.2`) stays a directory.
+/// A lowercase dotted name, such as `i.redd.it`, with its last label captured.
+final _hostLike = RegExp(r"^(?:[a-z0-9-]+\.)+([a-z]+)$");
+
+// ponytail: a short list of common web TLDs, so dotted project folders such as
+// `Runner.xcodeproj`, `en.lproj` or `MyApp.app` stay paths. It leaves out TLDs
+// that double as folder or file extensions (`app`, `md`, `py`, `rs`, `swift`).
+// A host on an unlisted TLD still reads as a path; extend the list if one shows
+// up in practice.
+final _webTopLevelDomains =
+    "ai au be ca cn co com de dev edu eu fr gg gov in info io it jp ly me net nl org ru sh so to tv uk us xyz"
+        .split(" ")
+        .toSet();
+
+/// Whether [path] is a URL written without a scheme: its first segment is a
+/// host (`i.redd.it`, `github.com`) rather than a directory, so resolving it
+/// against the session directory would invent a missing file. An absolute
+/// path, `./`, `../` and a hidden directory (`.github`) never match, and
+/// neither does a folder like `v1.2` whose last label is not a web TLD.
 bool _isSchemelessUrl({required String path}) {
-  if (path.startsWith("/") ||
-      path.startsWith("./") ||
-      path.startsWith("../") ||
-      path.startsWith(r".\") ||
-      path.startsWith(r"..\") ||
-      _windowsDrive.hasMatch(path)) {
-    return false;
-  }
-  final head = path.split(_separator).first;
-  return RegExp(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$").hasMatch(head);
+  final host = _hostLike.firstMatch(path.split(_separator).first)?.group(1);
+  return host != null && _webTopLevelDomains.contains(host);
 }
 
 /// Whether [raw] reads as a reference to a file, before it is resolved

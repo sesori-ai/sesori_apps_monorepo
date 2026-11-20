@@ -55,6 +55,22 @@ void main() {
       );
     });
 
+    test("keeps a dotted project directory and a host that is not a known web host", () {
+      for (final raw in [
+        "Runner.xcodeproj/project.pbxproj",
+        "Runner.xcworkspace/contents.xcworkspacedata",
+        "en.lproj/Localizable.strings",
+        "Assets.xcassets/AppIcon.appiconset/Contents.json",
+        "MyApp.app/Contents/Info.plist",
+        "Foo.framework/Headers/Foo.h",
+        "my.app/Contents/Info.plist",
+        "GitHub.com/acme/README.md",
+        "example.zz/a/b.md",
+      ]) {
+        expect(_parse(raw), FileReference(absolutePath: "$_directory/$raw", line: null), reason: raw);
+      }
+    });
+
     test("rejects text that is not a file path", () {
       for (final raw in [
         "foo()",
@@ -67,9 +83,11 @@ void main() {
         "src/**/*.dart",
         "dart run tool/build.dart",
         "~/notes.md",
+        "file://host/a/b.txt",
         "i.redd.it/e0b0b0b0b0b01.jpg",
         "i.redd.it/e0b0b0b0b0b01.jpg:3",
         "github.com/acme/widgets/README.md",
+        "huggingface.co/acme/model/config.json",
         "![](https://i.redd.it/e0b0b0b0b0b01.jpg)",
         "",
       ]) {
