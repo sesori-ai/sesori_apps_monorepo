@@ -13,6 +13,7 @@ import "package:theme_prego/module_prego.dart";
 import "core/di/injection.dart";
 import "core/routing/desktop_router.dart";
 import "core/widgets/desktop_escape_dismissal.dart";
+import "core/widgets/desktop_sidebar_expansion.dart";
 import "core/widgets/desktop_text_size_scope.dart";
 import "core/widgets/desktop_window_brightness.dart";
 import "core/widgets/desktop_window_drag_area.dart";
@@ -165,7 +166,7 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
         builder: (context, child) {
           scheduleDesktopRouterReady();
           final windowHost = getIt<WindowHost>();
-          final app = _DesktopRootEffects(
+          final effects = _DesktopRootEffects(
             navigatorKey: desktopRootNavigatorKey,
             // Dependencies still on the SDK's Material and Cupertino libraries
             // (such as the markdown renderer) read those themes, so they see
@@ -176,6 +177,11 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               child: CupertinoUiCompatibilityBridge(child: child ?? const SizedBox.shrink()),
             ),
           );
+          // macOS only: a route over the whole window, such as the image viewer,
+          // runs under the traffic lights, which no safe area reports.
+          final app = defaultTargetPlatform == TargetPlatform.macOS
+              ? TopBarLeadingClearance(wrap: DesktopSidebarRestoreInset.clearTrafficLights, child: effects)
+              : effects;
           return DesktopTextSizeScope(
             child: DesktopWindowBrightness(
               windowHost: windowHost,

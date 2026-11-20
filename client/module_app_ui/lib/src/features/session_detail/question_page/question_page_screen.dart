@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "../../../widgets/top_bar_leading_clearance.dart";
 import "../session_detail_presentation_scope.dart";
 import "question_page_image.dart";
 import "question_page_numbers.dart";
@@ -138,9 +139,13 @@ class const _QuestionPageFrame({
                     position: slide,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
-                      // The panel sits below the status bar, so its header
-                      // needs no room for it.
-                      child: MediaQuery.removePadding(context: context, removeTop: true, child: child),
+                      // The panel sits below the status bar and a desktop
+                      // window's controls, so its header needs no room for them.
+                      child: MediaQuery.removePadding(
+                        context: context,
+                        removeTop: true,
+                        child: TopBarLeadingClearance.remove(child: child),
+                      ),
                     ),
                   ),
                 ),
@@ -406,90 +411,95 @@ class const _Header({
       constraints: BoxConstraints(minHeight: padding.top + _headerHeight),
       padding: EdgeInsetsDirectional.only(top: padding.top, start: PregoSpacing.xs, end: PregoSpacing.sm),
       alignment: Alignment.center,
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key("question-page-close"),
-            tooltip: loc.questionPageClose,
-            icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
-            // Like the back button on the app's other screens. Set here because
-            // the phone theme leaves icon buttons Material's colour.
-            style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
-            onPressed: onClose,
-          ),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // The title fades in once the page has loaded. Its line is
-                // kept while no title is known, so the source line never moves.
-                AnimatedSwitcher(
-                  duration: duration,
-                  layoutBuilder: (current, previous) =>
-                      Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
-                  child: switch (title) {
-                    final title? => Text(
-                      title,
-                      key: ValueKey(title),
+      // On a desktop the shell may draw over the top-start corner: the window's
+      // controls, or a hidden sidebar's restore button.
+      child: TopBarLeadingClearance.clear(
+        context: context,
+        child: Row(
+          children: [
+            IconButton(
+              key: const Key("question-page-close"),
+              tooltip: loc.questionPageClose,
+              icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
+              // Like the back button on the app's other screens. Set here because
+              // the phone theme leaves icon buttons Material's colour.
+              style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
+              onPressed: onClose,
+            ),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // The title fades in once the page has loaded. Its line is
+                  // kept while no title is known, so the source line never moves.
+                  AnimatedSwitcher(
+                    duration: duration,
+                    layoutBuilder: (current, previous) =>
+                        Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
+                    child: switch (title) {
+                      final title? => Text(
+                        title,
+                        key: ValueKey(title),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: titleStyle,
+                      ),
+                      null => Text("", style: titleStyle),
+                    },
+                  ),
+                  if (source case final source?)
+                    Text(
+                      loc.questionPageSource(source),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: titleStyle,
+                      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
                     ),
-                    null => Text("", style: titleStyle),
-                  },
-                ),
-                if (source case final source?)
-                  Text(
-                    loc.questionPageSource(source),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // The menu keeps its room while hidden, so the title and source keep
-          // their cut as the page settles or goes missing.
-          AnimatedOpacity(
-            opacity: showsMenu ? 1 : 0,
-            duration: duration,
-            child: IgnorePointer(
-              ignoring: !showsMenu,
-              child: ExcludeFocus(
-                excluding: !showsMenu,
-                child: ExcludeSemantics(
+            // The menu keeps its room while hidden, so the title and source keep
+            // their cut as the page settles or goes missing.
+            AnimatedOpacity(
+              opacity: showsMenu ? 1 : 0,
+              duration: duration,
+              child: IgnorePointer(
+                ignoring: !showsMenu,
+                child: ExcludeFocus(
                   excluding: !showsMenu,
-                  child: PregoAnchorMenu(
-                    key: const Key("question-page-menu"),
-                    flat: true,
-                    placement: PregoMenuPlacement.belowRightAligned,
-                    entriesBuilder: () => [
-                      PregoMenuItem(
-                        key: const Key("question-page-dismiss"),
-                        title: loc.questionPageDismiss,
-                        subtitle: null,
-                        isSelected: false,
-                        isEnabled: onDismiss != null,
-                        leadingIcon: TablerRegular.circle_x,
-                        shortcutLabel: null,
-                        onTap: () => onDismiss?.call(),
+                  child: ExcludeSemantics(
+                    excluding: !showsMenu,
+                    child: PregoAnchorMenu(
+                      key: const Key("question-page-menu"),
+                      flat: true,
+                      placement: PregoMenuPlacement.belowRightAligned,
+                      entriesBuilder: () => [
+                        PregoMenuItem(
+                          key: const Key("question-page-dismiss"),
+                          title: loc.questionPageDismiss,
+                          subtitle: null,
+                          isSelected: false,
+                          isEnabled: onDismiss != null,
+                          leadingIcon: TablerRegular.circle_x,
+                          shortcutLabel: null,
+                          onTap: () => onDismiss?.call(),
+                        ),
+                      ],
+                      triggerBuilder: (context, openMenu) => PregoButtonsSolid.iconOnly(
+                        leadingIcon: TablerRegular.dots,
+                        semanticLabel: loc.questionPageActions,
+                        showsTooltip: true,
+                        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                        size: PregoButtonsSolidSize.sm,
+                        onPressed: openMenu,
                       ),
-                    ],
-                    triggerBuilder: (context, openMenu) => PregoButtonsSolid.iconOnly(
-                      leadingIcon: TablerRegular.dots,
-                      semanticLabel: loc.questionPageActions,
-                      showsTooltip: true,
-                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                      size: PregoButtonsSolidSize.sm,
-                      onPressed: openMenu,
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
