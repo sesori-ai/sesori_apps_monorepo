@@ -42,7 +42,10 @@ default app; otherwise it shows a read-only preview.
   when it reads as a path: it contains `/` or `\`, has an
   extension with a letter, and may end in `:line` or `:line:col`. A path with
   whitespace, `~`, quotes, backticks, `*`, `?`, `<`, `>`, or `|` is not
-  tappable. Other inline code stays plain. A local `file://` URI (no host or
+  tappable, nor is one containing `://` or starting with a lowercase web host
+  such as `i.redd.it/a.jpg` or `github.com/acme/README.md`; a dotted project
+  folder such as `Runner.xcodeproj/…` or `en.lproj/…` stays tappable. Other
+  inline code stays plain. A local `file://` URI (no host or
   `localhost`, percent-escapes decoded) or any other non-web link href is
   treated the same way; web and `mailto` links keep opening in the browser.
 - Every chat link is one inline unit in the brand link colour, with no
@@ -130,8 +133,9 @@ default app; otherwise it shows a read-only preview.
 - A PDF preview that stays blank, stays loading, or crashes the app instead
   of showing its pages or "Couldn’t load this file".
 - A `500` without a bridge log line naming the path.
-- Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web
-  link inside inline code stops opening in the browser.
+- Ordinary inline code such as `foo()` or `v1.2` becomes tappable, a URL
+  written as code without a scheme opens "File not found", or a web link inside
+  inline code stops opening in the browser.
 - A link shows the wrong icon or label, the text cursor on hover, or copying it
   yields the short label instead of the full URL or path.
 - The transcript jumps or scrolls when a preview opens or closes.

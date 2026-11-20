@@ -43,6 +43,34 @@ void main() {
       expect(_parse("  src/app.tsx  "), const FileReference(absolutePath: "/work/repo/src/app.tsx", line: null));
     });
 
+    test("keeps a hidden directory, a version directory, and an explicit relative path", () {
+      expect(
+        _parse(".github/workflows/ci.yml"),
+        const FileReference(absolutePath: "/work/repo/.github/workflows/ci.yml", line: null),
+      );
+      expect(_parse("v1.2/notes.md"), const FileReference(absolutePath: "/work/repo/v1.2/notes.md", line: null));
+      expect(
+        _parse("./i.redd.it/a.jpg"),
+        const FileReference(absolutePath: "/work/repo/i.redd.it/a.jpg", line: null),
+      );
+    });
+
+    test("keeps a dotted project directory and a host that is not a known web host", () {
+      for (final raw in [
+        "Runner.xcodeproj/project.pbxproj",
+        "Runner.xcworkspace/contents.xcworkspacedata",
+        "en.lproj/Localizable.strings",
+        "Assets.xcassets/AppIcon.appiconset/Contents.json",
+        "MyApp.app/Contents/Info.plist",
+        "Foo.framework/Headers/Foo.h",
+        "my.app/Contents/Info.plist",
+        "GitHub.com/acme/README.md",
+        "example.zz/a/b.md",
+      ]) {
+        expect(_parse(raw), FileReference(absolutePath: "$_directory/$raw", line: null), reason: raw);
+      }
+    });
+
     test("rejects text that is not a file path", () {
       for (final raw in [
         "foo()",
@@ -56,6 +84,11 @@ void main() {
         "dart run tool/build.dart",
         "~/notes.md",
         "file://host/a/b.txt",
+        "i.redd.it/e0b0b0b0b0b01.jpg",
+        "i.redd.it/e0b0b0b0b0b01.jpg:3",
+        "github.com/acme/widgets/README.md",
+        "huggingface.co/acme/model/config.json",
+        "![](https://i.redd.it/e0b0b0b0b0b01.jpg)",
         "",
       ]) {
         expect(_parse(raw), isNull, reason: raw);

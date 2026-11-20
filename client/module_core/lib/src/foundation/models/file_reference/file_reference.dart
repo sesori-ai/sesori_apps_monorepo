@@ -49,7 +49,8 @@ String recognizedFileName({required String path}) => path.split(_separator).last
 /// Recognises [raw] as a path to a file: a local `file://` URI, an absolute
 /// POSIX or Windows path, or a relative path, each containing a separator and
 /// ending in a file extension, with an optional `:line` or `:line:col` suffix.
-/// Returns `null` for anything else, including URLs with any other scheme.
+/// Returns `null` for anything else, including a URL (`https://…` or a
+/// schemeless host such as `i.redd.it/a.jpg`).
 RecognizedFilePath? recognizeFilePath({required String raw}) {
   var text = raw.trim();
   final isUri = text.toLowerCase().startsWith("file://");
@@ -59,7 +60,7 @@ RecognizedFilePath? recognizeFilePath({required String raw}) {
     text = uri.path;
     // `file:///C:/a.cs` carries a Windows drive after the leading slash.
     if (text.startsWith("/") && _windowsDrive.hasMatch(text.substring(1))) text = text.substring(1);
-  } else if (_scheme.hasMatch(text) && !_windowsDrive.hasMatch(text)) {
+  } else if (text.contains("://") || (_scheme.hasMatch(text) && !_windowsDrive.hasMatch(text))) {
     return null;
   }
   final match = _location.firstMatch(text);
@@ -68,6 +69,7 @@ RecognizedFilePath? recognizeFilePath({required String raw}) {
   if (encoded == null || !encoded.contains(_separator) || _excluded.hasMatch(encoded)) return null;
   final path = isUri ? Uri.decodeComponent(encoded) : encoded;
   if (!_extension.hasMatch(recognizedFileName(path: path))) return null;
+  if (_isSchemelessUrl(path: path)) return null;
   final lineText = match.group(2);
   final line = lineText == null ? null : int.tryParse(lineText);
   return (path: path, line: line == null || line < 1 ? null : line);
@@ -75,6 +77,29 @@ RecognizedFilePath? recognizeFilePath({required String raw}) {
 
 /// Windows path semantics for a path on a drive, POSIX for anything else.
 p.Context _pathContextFor({required String path}) => _windowsDrive.hasMatch(path) ? p.windows : p.posix;
+
+/// A lowercase dotted name, such as `i.redd.it`, with its last label captured.
+final _hostLike = RegExp(r"^(?:[a-z0-9-]+\.)+([a-z]+)$");
+
+// ponytail: a short list of common web TLDs, so dotted project folders such as
+// `Runner.xcodeproj`, `en.lproj` or `MyApp.app` stay paths. It leaves out TLDs
+// that double as folder or file extensions (`app`, `md`, `py`, `rs`, `swift`).
+// A host on an unlisted TLD still reads as a path; extend the list if one shows
+// up in practice.
+final _webTopLevelDomains =
+    "ai au be ca cn co com de dev edu eu fr gg gov in info io it jp ly me net nl org ru sh so to tv uk us xyz"
+        .split(" ")
+        .toSet();
+
+/// Whether [path] is a URL written without a scheme: its first segment is a
+/// host (`i.redd.it`, `github.com`) rather than a directory, so resolving it
+/// against the session directory would invent a missing file. An absolute
+/// path, `./`, `../` and a hidden directory (`.github`) never match, and
+/// neither does a folder like `v1.2` whose last label is not a web TLD.
+bool _isSchemelessUrl({required String path}) {
+  final host = _hostLike.firstMatch(path.split(_separator).first)?.group(1);
+  return host != null && _webTopLevelDomains.contains(host);
+}
 
 /// Whether [raw] reads as a reference to a file, before it is resolved
 /// against a session's directory.
