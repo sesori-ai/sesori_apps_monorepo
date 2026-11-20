@@ -137,7 +137,7 @@ jobs:
         env:
           CHANNEL: ${{ matrix.channel }}
           RELEASED_CHANNEL: ${{ inputs.released_channel }}
-        # Only the released channel refuses an older build; scheduled and manual refreshes release none.
+        # Only a stable release refuses an older build; scheduled and manual refreshes release none.
         run: |
           python .github/scripts/publish_linux_repository.py publish --channel "$CHANNEL" \
             --root build/linux-repository-publication ${RELEASED_CHANNEL:+--released-channel "$RELEASED_CHANNEL"}

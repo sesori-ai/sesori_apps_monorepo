@@ -89,23 +89,24 @@ class RepositoryPublicationTest(unittest.TestCase):
         self.assertNotIn("apt/dists/internal/InRelease", self.remote)
 
     def test_old_failed_run_cannot_downgrade_either_partially_published_architecture(self):
+        self.fixture(channel=STABLE)
         for advanced in ("aarch64", "x86_64"):
             with self.subTest(advanced=advanced):
                 self.remote.clear()
                 self.writes.clear()
                 for arch in ("aarch64", "x86_64"):
                     revision = 43 if arch == advanced else 42
-                    self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = (
+                    self.remote[f"rpm/stable/{arch}/repodata/repomd.xml"] = (
                         f"<repomd><revision>9.8.7-{revision}</revision></repomd>".encode())
                 with self.assertRaisesRegex(ValueError, "downgrade"):
-                    publisher.publish(root=self.root, channel=INTERNAL, released_channel=INTERNAL)
+                    publisher.publish(root=self.root, channel=STABLE, released_channel=STABLE)
                 self.assertEqual(self.writes, [])
 
-    def test_a_channel_not_being_released_keeps_its_newer_build_without_failing(self):
-        # Stable 1.14.1 was released while internal already held a newer 1.15.0 build.
+    def test_internal_keeps_its_newer_build_without_failing_even_when_released(self):
+        # Stable 1.14.1 and hourly 1.14.x builds were released while internal already held 1.15.0.
         for arch in ("aarch64", "x86_64"):
             self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = b"<repomd><revision>9.9.0-99</revision></repomd>"
-        for released_channel in (STABLE, None):
+        for released_channel in (INTERNAL, STABLE, None):
             with self.subTest(released_channel=released_channel):
                 summary = self.base / f"summary-{released_channel}.md"
                 output = io.StringIO()
