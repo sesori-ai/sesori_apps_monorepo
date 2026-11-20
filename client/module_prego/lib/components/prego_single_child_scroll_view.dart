@@ -34,8 +34,24 @@ class const PregoSingleChildScrollView({
     slivers: [
       SliverPadding(
         padding: padding,
-        sliver: SliverToBoxAdapter(child: child),
+        sliver: SliverToBoxAdapter(child: _ViewportDepth(child: child)),
       ),
     ],
   );
+}
+
+/// Counts this view as a viewport for scroll notifications from inside it, as
+/// [Viewport] and [SingleChildScrollView] do. A [ShrinkWrappingViewport]
+/// doesn't, so a text field scrolling inside reached this view's scrollbar and
+/// overscroll stretch as their own, and a second scrollbar moved with its.
+class const _ViewportDepth({required super.child}) extends ProxyWidget {
+  @override
+  Element createElement() => _ViewportDepthElement(this);
+}
+
+class _ViewportDepthElement(_ViewportDepth super.widget)
+    extends ProxyElement
+    with NotifiableElementMixin, ViewportElementMixin {
+  @override
+  void notifyClients(_ViewportDepth oldWidget) {}
 }
