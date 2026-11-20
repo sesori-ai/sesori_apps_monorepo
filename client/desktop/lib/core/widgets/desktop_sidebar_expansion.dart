@@ -104,6 +104,13 @@ class const DesktopSidebarRestoreInset({super.key, required final Widget child})
   /// What a page's top-left corner keeps clear: the button and the name.
   static double get clearance => buttonStart + buttonSize + _nameReach;
 
+  /// Starts [child] past the traffic lights, for a route over the whole
+  /// window, which the sidebar's button and name never cover.
+  static Widget clearTrafficLights({required Widget child}) => Padding(
+    padding: EdgeInsetsDirectional.only(start: buttonStart),
+    child: child,
+  );
+
   @override
   Widget build(BuildContext context) {
     final expansion = context.dependOnInheritedWidgetOfExactType<DesktopSidebarExpansion>()?.expansion;

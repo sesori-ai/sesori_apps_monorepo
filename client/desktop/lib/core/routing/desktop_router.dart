@@ -16,6 +16,7 @@ import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/settings/desktop_settings_modal.dart";
 import "../di/injection.dart";
 import "../widgets/desktop_cockpit_shell.dart";
+import "../widgets/desktop_sidebar_expansion.dart";
 
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
@@ -98,10 +99,15 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onOpenScheduled: () => _openPage(context: context, route: const AppRoute.scheduledTasks()),
             onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
             onGoBack: () => _goBack(context: context),
-            child: Builder(
-              builder: (context) => SessionDetailRouteVisibility(
-                isVisible: ModalRoute.isCurrentOf(context) ?? false,
-                child: _withPageFade(context: context, child: child),
+            // A route over the page, such as a file preview, keeps its top bar
+            // clear of what a hidden sidebar leaves in the corner, as pages do.
+            child: TopBarLeadingClearance(
+              wrap: DesktopSidebarRestoreInset.new,
+              child: Builder(
+                builder: (context) => SessionDetailRouteVisibility(
+                  isVisible: ModalRoute.isCurrentOf(context) ?? false,
+                  child: _withPageFade(context: context, child: child),
+                ),
               ),
             ),
           ),

@@ -17,6 +17,7 @@ import "../../../platform/external_link_opener.dart";
 import "../../../utils/code_highlighter.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
+import "../../../widgets/top_bar_leading_clearance.dart";
 import "../session_detail_presentation_scope.dart";
 import "../widgets/image_attachment_viewer.dart";
 
@@ -283,43 +284,48 @@ class const _Header({
       constraints: BoxConstraints(minHeight: padding.top + _headerHeight),
       padding: EdgeInsetsDirectional.only(top: padding.top, start: PregoSpacing.xs, end: PregoSpacing.sm),
       alignment: Alignment.center,
-      child: Row(
-        children: [
-          IconButton(
-            key: const Key("file-preview-close"),
-            tooltip: context.loc.filePreviewClose,
-            icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
-            // Like the back button on the app's other screens. Set here because
-            // the phone theme leaves icon buttons Material's colour.
-            style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
-            onPressed: onClose,
-          ),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // A long name or path loses its middle, so the file name and
-                // its extension stay in view.
-                PregoEllipsisText(
-                  text: reference.fileName,
-                  ellipsis: PregoEllipsis.middle,
-                  style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-                ),
-                PregoEllipsisText(
-                  text: reference.absolutePath,
-                  ellipsis: PregoEllipsis.middle,
-                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                ),
-              ],
+      // On a desktop the shell may draw over the top-start corner: the window's
+      // controls, or a hidden sidebar's restore button.
+      child: TopBarLeadingClearance.clear(
+        context: context,
+        child: Row(
+          children: [
+            IconButton(
+              key: const Key("file-preview-close"),
+              tooltip: context.loc.filePreviewClose,
+              icon: const Icon(TablerRegular.chevron_down, size: PregoIconSize.md),
+              // Like the back button on the app's other screens. Set here because
+              // the phone theme leaves icon buttons Material's colour.
+              style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(prego.colors.textPrimary)),
+              onPressed: onClose,
             ),
-          ),
-          // The text's actions fade in with it rather than popping in.
-          AnimatedSwitcher(
-            duration: context.isReducedMotion ? Duration.zero : _contentDuration,
-            child: Row(key: ValueKey(actions.length), mainAxisSize: MainAxisSize.min, children: actions),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // A long name or path loses its middle, so the file name and
+                  // its extension stay in view.
+                  PregoEllipsisText(
+                    text: reference.fileName,
+                    ellipsis: PregoEllipsis.middle,
+                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+                  ),
+                  PregoEllipsisText(
+                    text: reference.absolutePath,
+                    ellipsis: PregoEllipsis.middle,
+                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                  ),
+                ],
+              ),
+            ),
+            // The text's actions fade in with it rather than popping in.
+            AnimatedSwitcher(
+              duration: context.isReducedMotion ? Duration.zero : _contentDuration,
+              child: Row(key: ValueKey(actions.length), mainAxisSize: MainAxisSize.min, children: actions),
+            ),
+          ],
+        ),
       ),
     );
   }

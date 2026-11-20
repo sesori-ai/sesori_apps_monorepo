@@ -135,3 +135,4 @@ export "src/widgets/session_scope.dart";
 export "src/widgets/session_sidebar/floating_sidebar_panel.dart";
 export "src/widgets/session_sidebar/session_sidebar_shell.dart";
 export "src/widgets/sse_toast_listener.dart";
+export "src/widgets/top_bar_leading_clearance.dart";

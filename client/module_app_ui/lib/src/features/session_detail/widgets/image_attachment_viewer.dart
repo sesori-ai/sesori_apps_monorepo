@@ -8,6 +8,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/top_bar_leading_clearance.dart";
 import "../session_detail_presentation_scope.dart";
 
 sealed class const MessageImageViewerImage() {
@@ -687,72 +688,77 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
         opacity: opacity,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: prego.spacing.sm),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: context.loc.sessionDetailImageClose,
-                onPressed: _dismiss,
-                icon: Icon(TablerRegular.x, color: prego.colors.textPrimary),
-              ),
-              SizedBox(width: prego.spacing.xs),
-              Expanded(
-                child: displayFilename == null
-                    ? const SizedBox.shrink()
-                    // A long name loses its middle, so its extension stays in view.
-                    : PregoEllipsisText(
-                        text: displayFilename,
-                        ellipsis: PregoEllipsis.middle,
-                        style: prego.textTheme.textSm.bold,
-                      ),
-              ),
-              if (isRunningAction)
-                Padding(
-                  padding: EdgeInsets.all(prego.spacing.md),
-                  child: SizedBox.square(
-                    dimension: prego.spacing.x2l,
-                    child: const PregoActivityIndicator(color: null),
-                  ),
-                )
-              else ...[
-                if (originalUri != null)
-                  IconButton(
-                    tooltip: context.loc.sessionDetailImageOpenOriginal,
-                    onPressed: () => unawaited(
-                      SessionDetailPresentationScope.read(context)
-                          .openExternalLink(
-                            url: originalUri,
-                            mode: UrlLaunchMode.externalApp,
-                          )
-                          .then<void>((_) {}),
-                    ),
-                    icon: Icon(TablerRegular.external_link, color: prego.colors.textPrimary),
-                  ),
-                if (actionsCubit != null) ...[
-                  IconButton(
-                    tooltip: context.loc.sessionDetailImageCopy,
-                    onPressed: () => unawaited(actionsCubit.copy()),
-                    icon: Icon(TablerRegular.copy, color: prego.colors.textPrimary),
-                  ),
-                  if (SessionDetailPresentationScope.read(context).canShareImages)
-                    Builder(
-                      builder: (buttonContext) => IconButton(
-                        tooltip: context.loc.sessionDetailImageShare,
-                        onPressed: () => unawaited(
-                          actionsCubit.share(
-                            origin: _shareOrigin(originContext: buttonContext),
-                          ),
+          // The viewer covers the whole window, so on a desktop its close
+          // button would sit under the window's own controls.
+          child: TopBarLeadingClearance.clear(
+            context: context,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: context.loc.sessionDetailImageClose,
+                  onPressed: _dismiss,
+                  icon: Icon(TablerRegular.x, color: prego.colors.textPrimary),
+                ),
+                SizedBox(width: prego.spacing.xs),
+                Expanded(
+                  child: displayFilename == null
+                      ? const SizedBox.shrink()
+                      // A long name loses its middle, so its extension stays in view.
+                      : PregoEllipsisText(
+                          text: displayFilename,
+                          ellipsis: PregoEllipsis.middle,
+                          style: prego.textTheme.textSm.bold,
                         ),
-                        icon: Icon(TablerRegular.share, color: prego.colors.textPrimary),
-                      ),
+                ),
+                if (isRunningAction)
+                  Padding(
+                    padding: EdgeInsets.all(prego.spacing.md),
+                    child: SizedBox.square(
+                      dimension: prego.spacing.x2l,
+                      child: const PregoActivityIndicator(color: null),
                     ),
-                  IconButton(
-                    tooltip: context.loc.sessionDetailImageSave,
-                    onPressed: () => unawaited(actionsCubit.save()),
-                    icon: Icon(TablerRegular.download, color: prego.colors.textPrimary),
-                  ),
+                  )
+                else ...[
+                  if (originalUri != null)
+                    IconButton(
+                      tooltip: context.loc.sessionDetailImageOpenOriginal,
+                      onPressed: () => unawaited(
+                        SessionDetailPresentationScope.read(context)
+                            .openExternalLink(
+                              url: originalUri,
+                              mode: UrlLaunchMode.externalApp,
+                            )
+                            .then<void>((_) {}),
+                      ),
+                      icon: Icon(TablerRegular.external_link, color: prego.colors.textPrimary),
+                    ),
+                  if (actionsCubit != null) ...[
+                    IconButton(
+                      tooltip: context.loc.sessionDetailImageCopy,
+                      onPressed: () => unawaited(actionsCubit.copy()),
+                      icon: Icon(TablerRegular.copy, color: prego.colors.textPrimary),
+                    ),
+                    if (SessionDetailPresentationScope.read(context).canShareImages)
+                      Builder(
+                        builder: (buttonContext) => IconButton(
+                          tooltip: context.loc.sessionDetailImageShare,
+                          onPressed: () => unawaited(
+                            actionsCubit.share(
+                              origin: _shareOrigin(originContext: buttonContext),
+                            ),
+                          ),
+                          icon: Icon(TablerRegular.share, color: prego.colors.textPrimary),
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: context.loc.sessionDetailImageSave,
+                      onPressed: () => unawaited(actionsCubit.save()),
+                      icon: Icon(TablerRegular.download, color: prego.colors.textPrimary),
+                    ),
+                  ],
                 ],
               ],
-            ],
+            ),
           ),
         ),
       ),
