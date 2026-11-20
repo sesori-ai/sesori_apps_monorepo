@@ -159,7 +159,11 @@ class const AntigravityPluginDescriptor({
   }) {
     const stderrMapper = AntigravityStderrMapper();
     return AntigravityAcpApi(
-      processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
+      processFactory: hostProcessAcpFactory(
+        processes: processes,
+        environment: environment,
+        sharedHelperArguments: const <String>{},
+      ),
       stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
       commands: HostProcessCommandExecutor(
         processes: processes,
@@ -489,7 +493,11 @@ class const AntigravityPluginDescriptor({
       pair: prepared.runtime.pair,
       profile: prepared.profile,
       launchDirectory: launchDirectory ?? Directory.current.path,
-      processFactory: hostProcessAcpFactory(processes: host.processes, environment: prepared.profile.environment),
+      processFactory: hostProcessAcpFactory(
+        processes: host.processes,
+        environment: prepared.profile.environment,
+        sharedHelperArguments: const <String>{},
+      ),
       sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     return await AcpBridgePlugin.start(plugin: plugin, host: host, connectBudget: connectBudget);

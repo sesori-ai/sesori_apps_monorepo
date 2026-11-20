@@ -34,10 +34,14 @@ class SystemProcessApi({
       : _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
 
   /// POSIX only: the processes descending from [pid] right now, read from one
-  /// `ps` snapshot. Windows signals already reach the whole tree.
-  Future<List<int>> listPosixDescendants({required int pid}) async {
+  /// `ps` snapshot. A descendant whose arguments include one of
+  /// [sharedHelperArguments] is left out together with everything below it.
+  /// Windows signals already reach the whole tree.
+  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
     const command = "ps";
-    const args = <String>["-A", "-o", "pid=,ppid="];
+    // Piped `ps` prints whole arguments on macOS, procps and BusyBox; BusyBox
+    // rejects `-ww`.
+    const args = <String>["-A", "-o", "pid=,ppid=,args="];
     final result = await _processRunner.run(
       executable: command,
       arguments: args,
@@ -49,19 +53,22 @@ class SystemProcessApi({
     }
 
     final childrenByParent = <int, List<int>>{};
+    final sharedHelpers = <int>{};
     for (final line in const LineSplitter().convert(result.stdout.toString())) {
       final fields = line.trim().split(RegExp(r"\s+"));
-      if (fields.length != 2) continue;
+      if (fields.length < 2) continue;
       final child = int.tryParse(fields[0]);
       final parent = int.tryParse(fields[1]);
       if (child == null || parent == null || child == parent) continue;
       (childrenByParent[parent] ??= <int>[]).add(child);
+      if (fields.skip(2).any(sharedHelperArguments.contains)) sharedHelpers.add(child);
     }
 
     final descendants = <int>[];
     final pending = <int>[pid];
     while (pending.isNotEmpty) {
       for (final child in childrenByParent[pending.removeLast()] ?? const <int>[]) {
+        if (sharedHelpers.contains(child)) continue;
         descendants.add(child);
         pending.add(child);
       }

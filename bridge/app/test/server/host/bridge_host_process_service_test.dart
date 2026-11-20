@@ -36,7 +36,7 @@ void main() {
     Future<SpawnedProcess> spawnAgent({
       bool isWindows = false,
       String executable = '/usr/local/bin/agent',
-      ProcessLifetime lifetime = ProcessLifetime.endsWithBridge,
+      ProcessLifetime lifetime = const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
     }) {
       return service(isWindows: isWindows).spawn(
         includeParentEnvironment: true,
@@ -71,7 +71,7 @@ void main() {
         workingDirectory: null,
         runInShell: false,
         includeParentEnvironment: false,
-        lifetime: ProcessLifetime.endsWithBridge,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
       );
       expect(starter.includeParentEnvironment, isFalse);
       expect(starter.environment, {'PATH': '/runtime'});
@@ -80,7 +80,10 @@ void main() {
     test('spawn starts a Windows runtime that ends with the bridge inside the job object', () async {
       processRepository.jobProcess = _FakeProcess(pidValue: 7001);
 
-      final spawned = await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
+      final spawned = await spawnAgent(
+        isWindows: true,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
+      );
 
       expect(spawned.pid, 7001);
       expect(processRepository.jobStarts, [
@@ -101,7 +104,10 @@ void main() {
       processRepository.jobStartError = const OSError('CreateProcess', 2);
       starter.process = _FakeProcess(pidValue: 7001);
 
-      final spawned = await spawnAgent(isWindows: true, lifetime: ProcessLifetime.endsWithBridge);
+      final spawned = await spawnAgent(
+        isWindows: true,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
+      );
 
       expect(spawned.pid, 7001);
       expect(starter.executable, '/usr/local/bin/agent');
@@ -111,7 +117,7 @@ void main() {
     test('spawn leaves a Windows process that may outlive the bridge out of the job object', () async {
       starter.process = _FakeProcess(pidValue: 7001);
 
-      await spawnAgent(isWindows: true, lifetime: ProcessLifetime.mayOutliveBridge);
+      await spawnAgent(isWindows: true, lifetime: const ProcessLifetime.mayOutliveBridge());
 
       expect(processRepository.jobStarts, isEmpty);
       expect(processRepository.boundPids, isEmpty);
@@ -120,7 +126,7 @@ void main() {
     test('spawn binds nothing on POSIX, where ownership records stop runtimes', () async {
       starter.process = _FakeProcess(pidValue: 7001);
 
-      await spawnAgent(lifetime: ProcessLifetime.endsWithBridge);
+      await spawnAgent(lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}));
 
       expect(processRepository.jobStarts, isEmpty);
       expect(processRepository.boundPids, isEmpty);
@@ -370,7 +376,7 @@ void main() {
         environment: null,
         workingDirectory: null,
         runInShell: false,
-        lifetime: ProcessLifetime.endsWithBridge,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{'__shared_helper'}),
       );
 
       final graceful = await host.signalGraceful(pid: 7001);
@@ -380,6 +386,14 @@ void main() {
       expect(
         processRepository.signalRequests,
         equals(<String>['graceful:7001', 'graceful:7002', 'graceful:7003', 'force:7001', 'force:7002', 'force:7003']),
+      );
+      // The listing leaves out the shared helpers the spawn declared.
+      expect(
+        processRepository.descendantQueries,
+        equals(<Set<String>>[
+          <String>{'__shared_helper'},
+          <String>{'__shared_helper'},
+        ]),
       );
 
       // Once the child exits its pid may be reused, so only that pid is signalled.
@@ -403,7 +417,7 @@ void main() {
         environment: null,
         workingDirectory: null,
         runInShell: false,
-        lifetime: ProcessLifetime.mayOutliveBridge,
+        lifetime: const ProcessLifetime.mayOutliveBridge(),
       );
 
       await host.signalForce(pid: 7001);
@@ -423,7 +437,7 @@ void main() {
         environment: null,
         workingDirectory: null,
         runInShell: false,
-        lifetime: ProcessLifetime.endsWithBridge,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
       );
 
       await host.signalGraceful(pid: 7001);
@@ -471,7 +485,7 @@ void main() {
           environment: null,
           workingDirectory: null,
           runInShell: false,
-          lifetime: ProcessLifetime.endsWithBridge,
+          lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
         );
 
         final stdoutFuture = spawned.stdout.transform(utf8.decoder).join();
@@ -513,7 +527,7 @@ void main() {
           environment: null,
           workingDirectory: null,
           runInShell: false,
-          lifetime: ProcessLifetime.endsWithBridge,
+          lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
         );
         unawaited(spawned.stderr.drain<void>());
         final grandchildPid = int.parse((await spawned.stdout.transform(utf8.decoder).first).trim());
@@ -640,6 +654,7 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final List<String> signalRequests = <String>[];
   final Map<int, List<int>> descendants = <int, List<int>>{};
   Object? descendantsError;
+  final List<Set<String>> descendantQueries = <Set<String>>[];
   final List<int> boundPids = <int>[];
   final List<
     ({
@@ -696,7 +711,8 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   }
 
   @override
-  Future<List<int>> listPosixDescendants({required int pid}) async {
+  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
+    descendantQueries.add(sharedHelperArguments);
     final error = descendantsError;
     if (error != null) {
       throw error;

@@ -278,7 +278,11 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
     final binary = _explicitBin(config: host.config) ?? host.provisionedRuntimePath ?? DeepSeekBinary.defaultBinary;
     final cwd = io.Directory.current.path;
-    final processFactory = hostProcessAcpFactory(processes: host.processes, environment: host.environment);
+    final processFactory = hostProcessAcpFactory(
+      processes: host.processes,
+      environment: host.environment,
+      sharedHelperArguments: const <String>{},
+    );
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();

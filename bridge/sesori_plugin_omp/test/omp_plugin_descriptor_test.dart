@@ -286,7 +286,7 @@ void main() {
   });
 
   group("OmpPluginDescriptor lifecycle", () {
-    test("starts through AcpBridgePlugin and preserves the host environment", () async {
+    test("starts through AcpBridgePlugin with the host environment and spares the shared daemon", () async {
       final processes = _Processes(acp: true);
       final host = _Host(processes: processes);
       final plugin = await OmpPluginDescriptor.production().start(host);
@@ -297,7 +297,16 @@ void main() {
       expect(processes.environments.single, const {
         "OMP_PROFILE": "work",
         "PI_CODING_AGENT_DIR": "/profile",
+        "PI_INTENT_TRACING": "1",
       });
+      expect(
+        processes.lifetimes.single,
+        isA<ProcessEndsWithBridge>().having(
+          (lifetime) => lifetime.sharedHelperArguments,
+          "sharedHelperArguments",
+          OmpBinary.sharedHelperArguments,
+        ),
+      );
       await plugin.shutdown(budget: null);
       expect(processes.gracefulSignals, [1]);
     });
@@ -498,6 +507,7 @@ class _Processes({
   final List<String> executables = [];
   final List<List<String>> arguments = [];
   final List<Map<String, String>?> environments = [];
+  final List<ProcessLifetime> lifetimes = [];
   final List<int> gracefulSignals = [];
   int _index = 0;
   _AcpProcess? _acpProcess;
@@ -515,6 +525,7 @@ class _Processes({
     executables.add(executable);
     this.arguments.add(arguments);
     environments.add(environment);
+    lifetimes.add(lifetime);
     if (spawnError case final error?) throw error;
     if (acp) {
       final process = _AcpProcess(onInitialize: onInitialize);

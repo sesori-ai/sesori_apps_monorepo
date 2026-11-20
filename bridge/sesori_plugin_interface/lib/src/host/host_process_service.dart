@@ -10,25 +10,35 @@ enum ProcessSpawnOutcome() {
 
 /// Whether a process spawned through [HostProcessService.spawn] may outlive
 /// the bridge.
-enum ProcessLifetime() {
-  /// The process should end with the bridge. On Windows the host starts it
-  /// inside a kill-on-close job object, so it and its descendants end with
-  /// the bridge, crash included, unless a descendant explicitly breaks away
-  /// with `CREATE_BREAKAWAY_FROM_JOB`. If that start fails, the host logs it,
-  /// starts the process normally and binds it right after; anything the
-  /// process started before the bind, and the process itself when the bind
-  /// fails too, stays outside the job. Other hosts bind nothing and keep their
-  /// existing stop and stale cleanup, without crash-time binding, but
-  /// signalling a running process spawned this way also signals the
-  /// descendants it has at that moment, including detached ones. When that
-  /// snapshot fails, only the process itself is signalled.
-  endsWithBridge,
+sealed class const ProcessLifetime() {
+  const factory endsWithBridge({required Set<String> sharedHelperArguments}) = ProcessEndsWithBridge;
 
-  /// The process, or something it starts, may keep running after the bridge
-  /// exits. Short commands use this: `opencode service start` detaches a
-  /// shared service that must survive the bridge.
-  mayOutliveBridge,
+  const factory mayOutliveBridge() = ProcessMayOutliveBridge;
 }
+
+/// The process should end with the bridge. On Windows the host starts it
+/// inside a kill-on-close job object, so it and its descendants end with the
+/// bridge, crash included, unless a descendant explicitly breaks away with
+/// `CREATE_BREAKAWAY_FROM_JOB`. If that start fails, the host logs it, starts
+/// the process normally and binds it right after; anything the process started
+/// before the bind, and the process itself when the bind fails too, stays
+/// outside the job. Other hosts bind nothing and keep their existing stop and
+/// stale cleanup, without crash-time binding, but signalling a running process
+/// spawned this way also signals the descendants it has at that moment,
+/// including detached ones. When that snapshot fails, only the process itself
+/// is signalled.
+///
+/// [sharedHelperArguments] are command-line arguments that mark a descendant
+/// as a helper the process shares with others the bridge does not own, such
+/// as a harness's per-user daemon. A POSIX signal skips a descendant whose
+/// arguments include one of them, and everything below it: the helper manages
+/// its own lifetime. Windows signals still reach the whole tree.
+final class const ProcessEndsWithBridge({required final Set<String> sharedHelperArguments}) extends ProcessLifetime;
+
+/// The process, or something it starts, may keep running after the bridge
+/// exits. Short commands use this: `opencode service start` detaches a shared
+/// service that must survive the bridge.
+final class const ProcessMayOutliveBridge() extends ProcessLifetime;
 
 /// Process management offered by the bridge to plugins.
 ///

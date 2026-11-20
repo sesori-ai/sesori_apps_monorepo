@@ -294,7 +294,14 @@ void main() {
     test("listPosixDescendants returns every process below the pid, detached ones included", () async {
       // 10 -> 11 -> 13, 10 -> 12; 20 is a sibling tree; 1 is init.
       final runner = RecordingProcessRunner(
-        stdout: "    1     0\n   10     1\n   11    10\n   12    10\n   13    11\n   20     1\n   21    20\n",
+        stdout:
+            "    1     0 /sbin/launchd\n"
+            "   10     1 /usr/local/bin/agent acp\n"
+            "   11    10 /bin/sh -c npm run dev\n"
+            "   12    10 /usr/local/bin/agent __worker\n"
+            "   13    11 node server.js\n"
+            "   20     1 /bin/zsh\n"
+            "   21    20 /usr/local/bin/agent\n",
       );
       final api = SystemProcessApi(
         processRunner: runner,
@@ -302,11 +309,34 @@ void main() {
         isWindows: false,
       );
 
-      final descendants = await api.listPosixDescendants(pid: 10);
+      final descendants = await api.listPosixDescendants(pid: 10, sharedHelperArguments: const <String>{});
 
       expect(descendants, unorderedEquals(<int>[11, 12, 13]));
       expect(runner.calls.single.executable, equals("ps"));
-      expect(runner.calls.single.arguments, equals(<String>["-A", "-o", "pid=,ppid="]));
+      expect(runner.calls.single.arguments, equals(<String>["-A", "-o", "pid=,ppid=,args="]));
+    });
+
+    test("listPosixDescendants leaves out a shared helper and everything below it", () async {
+      // 10 -> 11 (tool command) -> 12; 10 -> 13 (shared daemon) -> 14 (its service).
+      final runner = RecordingProcessRunner(
+        stdout:
+            "   10     1 /opt/omp acp\n"
+            "   11    10 /bin/bash -c sleep 30\n"
+            "   12    11 sleep 30\n"
+            "   13    10 /opt/omp __omp_worker_daemon\n"
+            "   14    13 /opt/omp __omp_worker_shell_process --source /tmp/s\n"
+            "   15    10 /opt/omp __omp_worker_daemon_extra\n",
+      );
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+      );
+
+      final descendants = await api.listPosixDescendants(pid: 10, sharedHelperArguments: const {"__omp_worker_daemon"});
+
+      // Markers match whole arguments, so 15 is still signalled.
+      expect(descendants, unorderedEquals(<int>[11, 12, 15]));
     });
 
     test("listPosixDescendants throws when ps fails", () async {
@@ -317,7 +347,10 @@ void main() {
         isWindows: false,
       );
 
-      await expectLater(api.listPosixDescendants(pid: 10), throwsA(isA<ProcessException>()));
+      await expectLater(
+        api.listPosixDescendants(pid: 10, sharedHelperArguments: const <String>{}),
+        throwsA(isA<ProcessException>()),
+      );
     });
   });
 }

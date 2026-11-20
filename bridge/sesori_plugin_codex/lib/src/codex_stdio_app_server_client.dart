@@ -45,7 +45,7 @@ class CodexStdioAppServerClient({
       environment: _environment,
       workingDirectory: null,
       runInShell: io.Platform.isWindows,
-      lifetime: ProcessLifetime.endsWithBridge,
+      lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
     );
     await _transport.attach(
       token: token,

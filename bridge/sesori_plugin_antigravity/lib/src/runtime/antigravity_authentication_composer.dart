@@ -41,7 +41,11 @@ class const AntigravityAuthenticationComposer() {
     const launchSpecBuilder = AntigravityLaunchSpecBuilder();
     const stderrMapper = AntigravityStderrMapper();
     final acpApi = AntigravityAcpApi(
-      processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
+      processFactory: hostProcessAcpFactory(
+        processes: processes,
+        environment: environment,
+        sharedHelperArguments: const <String>{},
+      ),
       stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
       commands: HostProcessCommandExecutor(
         processes: processes,

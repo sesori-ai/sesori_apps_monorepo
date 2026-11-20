@@ -33,7 +33,7 @@ class StrictFakeProcessRepository() implements ProcessRepository {
   }
 
   @override
-  Future<List<int>> listPosixDescendants({required int pid}) {
+  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) {
     throw UnimplementedError();
   }
 

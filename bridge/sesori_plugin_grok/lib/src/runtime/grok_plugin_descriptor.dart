@@ -300,6 +300,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
       processFactory: hostProcessAcpFactory(
         processes: host.processes,
         environment: host.environment,
+        sharedHelperArguments: const <String>{},
       ),
       clock: host.clock,
       sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,

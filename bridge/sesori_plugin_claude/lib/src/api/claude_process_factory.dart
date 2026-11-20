@@ -54,7 +54,7 @@ final class HostClaudeProcessFactory({
       workingDirectory: launch.workingDirectory,
       runInShell: false,
       includeParentEnvironment: true,
-      lifetime: ProcessLifetime.endsWithBridge,
+      lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
     );
     return _HostClaudeProcessHandle(process: process, processes: _processes);
   }
@@ -92,7 +92,7 @@ final class HostClaudeProcessFactory({
       environment: {..._environment, ...launch.environment},
       workingDirectory: launch.workingDirectory,
       runInShell: io.Platform.isWindows,
-      lifetime: ProcessLifetime.endsWithBridge,
+      lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
     );
     return _HostClaudeProcessHandle(process: process, processes: _processes);
   }

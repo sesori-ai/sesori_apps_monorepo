@@ -86,7 +86,7 @@ class HostProcessCommandExecutor({
       // `opencode service start` detaches a shared service that must outlive
       // this command and the bridge; binding would hand it the bridge's
       // lifetime. Every command here also ends by itself or by its timeout.
-      lifetime: ProcessLifetime.mayOutliveBridge,
+      lifetime: const ProcessLifetime.mayOutliveBridge(),
     );
     final SpawnedProcess process;
     try {

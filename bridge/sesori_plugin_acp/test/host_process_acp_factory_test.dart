@@ -41,6 +41,7 @@ void main() {
       final factory = hostProcessAcpFactory(
         processes: processes,
         environment: const {"AMBIENT": "excluded", "OVERRIDE": "host"},
+        sharedHelperArguments: const <String>{},
       );
       await factory(
         AcpLaunchSpec(

@@ -436,6 +436,7 @@ class const CursorPluginDescriptor({
     final processFactory = hostProcessAcpFactory(
       processes: host.processes,
       environment: host.environment,
+      sharedHelperArguments: const <String>{},
     );
     final sessionCleanupService = CursorSessionCleanupService(
       repository: CursorSessionStorageRepository(

@@ -185,7 +185,7 @@ class _FakeHostProcessService({
     required ProcessLifetime lifetime,
   }) async {
     expect(includeParentEnvironment, isTrue);
-    expect(lifetime, ProcessLifetime.mayOutliveBridge);
+    expect(lifetime, isA<ProcessMayOutliveBridge>());
     final gate = spawnGate;
     if (gate != null) await gate;
     return process;

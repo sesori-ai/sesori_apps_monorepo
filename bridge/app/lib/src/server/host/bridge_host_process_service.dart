@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         HostProcessService,
         Log,
+        ProcessEndsWithBridge,
         ProcessIdentity,
         ProcessLifetime,
         ProcessUser,
@@ -34,11 +35,12 @@ class BridgeHostProcessService({
   required final bool _isWindows,
 }) implements HostProcessService {
   /// POSIX children spawned with [ProcessLifetime.endsWithBridge] that are
-  /// still running. Signalling one also signals its descendants, which a
-  /// harness can leave behind when it exits: tool commands and helpers such as
-  /// Oh My Pi's detached service broker. Windows needs no record because its
-  /// signals already end the whole tree.
-  final Set<int> _treeOwnerPids = <int>{};
+  /// still running, each with its shared-helper arguments. Signalling one
+  /// also signals its descendants, which a harness can leave behind when it
+  /// exits (tool commands, detached helpers), except the shared helpers and
+  /// what runs below them. Windows needs no record because its signals already
+  /// end the whole tree.
+  final Map<int, Set<String>> _treeOwners = <int, Set<String>>{};
 
   @override
   Future<SpawnedProcess> spawn({
@@ -50,7 +52,7 @@ class BridgeHostProcessService({
     required bool includeParentEnvironment,
     required ProcessLifetime lifetime,
   }) async {
-    final process = _isWindows && lifetime == ProcessLifetime.endsWithBridge
+    final process = _isWindows && lifetime is ProcessEndsWithBridge
         ? await _startEndingWithBridge(
             executable: executable,
             arguments: arguments,
@@ -67,10 +69,10 @@ class BridgeHostProcessService({
             runInShell: runInShell,
             includeParentEnvironment: includeParentEnvironment,
           );
-    if (!_isWindows && lifetime == ProcessLifetime.endsWithBridge) {
+    if (lifetime case ProcessEndsWithBridge(:final sharedHelperArguments) when !_isWindows) {
       final pid = process.pid;
-      _treeOwnerPids.add(pid);
-      unawaited(process.exitCode.whenComplete(() => _treeOwnerPids.remove(pid)));
+      _treeOwners[pid] = sharedHelperArguments;
+      unawaited(process.exitCode.whenComplete(() => _treeOwners.remove(pid)));
     }
 
     final spawnIdentity = ProcessIdentity(
@@ -156,7 +158,10 @@ class BridgeHostProcessService({
     required int pid,
     required Future<SignalResult> Function({required int pid}) send,
   }) async {
-    final descendants = _treeOwnerPids.contains(pid) ? await _descendantsOf(pid: pid) : const <int>[];
+    final sharedHelperArguments = _treeOwners[pid];
+    final descendants = sharedHelperArguments == null
+        ? const <int>[]
+        : await _descendantsOf(pid: pid, sharedHelperArguments: sharedHelperArguments);
     final result = await send(pid: pid);
     for (final descendant in descendants) {
       await send(pid: descendant);
@@ -164,9 +169,9 @@ class BridgeHostProcessService({
     return result;
   }
 
-  Future<List<int>> _descendantsOf({required int pid}) async {
+  Future<List<int>> _descendantsOf({required int pid, required Set<String> sharedHelperArguments}) async {
     try {
-      return await _processRepository.listPosixDescendants(pid: pid);
+      return await _processRepository.listPosixDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
     } on Object catch (error, stackTrace) {
       Log.w("Could not list the descendants of pid $pid; signalling only the process itself", error, stackTrace);
       return const <int>[];
