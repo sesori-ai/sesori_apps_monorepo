@@ -40,4 +40,38 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+  testWidgets(
+    "a text field scrolling inside reaches the view as a nested scroll, so only its own scrollbar shows",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      final fieldScroll = ScrollController();
+      addTearDown(fieldScroll.dispose);
+      final text = TextEditingController(text: List.filled(20, "line").join("\n"));
+      addTearDown(text.dispose);
+      final depths = <int>[];
+      await tester.pumpWidget(
+        _frame(
+          view: NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              depths.add(notification.depth);
+              return false;
+            },
+            child: Material(
+              child: PregoSingleChildScrollView(
+                controller: null,
+                child: TextField(controller: text, scrollController: fieldScroll, maxLines: 3),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      fieldScroll.jumpTo(40);
+      await tester.pump();
+
+      expect(depths, isNotEmpty);
+      // A view's scrollbar and overscroll stretch answer only depth 0.
+      expect(depths, everyElement(1));
+    },
+  );
 }
