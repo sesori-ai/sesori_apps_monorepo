@@ -25,7 +25,7 @@ Other surfaces and their files (Phase 0 discovers them generically, so treat thi
 | Surface | Files |
 |---|---|
 | Flutter/Dart SDK | `.tool-versions`, `environment:` in every in-scope pubspec |
-| SwiftPM | `client/app/ios` and `client/desktop/macos`: project + workspace `Package.resolved` |
+| SwiftPM | `client/app/ios` and `client/desktop/macos`: project + workspace `Package.resolved`; direct `XCRemoteSwiftPackageReference` pins in `Runner.xcodeproj/project.pbxproj` (macOS pins Firebase and Sparkle with `exactVersion`) |
 | Fastlane | `client/app/{ios,android}/Gemfile{,.lock}` |
 | Android toolchain | `client/app/android/settings.gradle.kts` plugin `version` entries, `gradle/wrapper/gradle-wrapper.properties` |
 | GitHub Actions | `.github/workflows/*.yml`, `.github/actions/*/action.yml`, `.github/actionlint.yaml` |
@@ -90,7 +90,7 @@ find . -name pubspec.lock -not -path './.worktrees/*' -not -path './shared/no_sl
 Use `--show-all`: after lockfile regeneration the default output hides already-resolved latest versions even when their declared minimums can still be raised. For every major bump, read the changelog (pub.dev/packages/{pkg}/changelog) and fix breaking changes in the same run.
 </step>
 
-<step name="2.2">Bump constraints in this order: `shared/sesori_shared`, then the bridge members, then the client members (each in dependency order). Raise each direct and dev dependency's minimum to the latest resolvable version (`drift: ^2.30.1` → `^2.31.0`). Skip `any`, `path:` and `git:` references, and never edit `shared/no_slop_linter`.
+<step name="2.2">Bump constraints in this order: `shared/sesori_shared`, then the bridge members, then the client members (each in dependency order). Raise each direct and dev dependency's minimum to the latest resolvable version (`drift: ^2.30.1` → `^2.31.0`). Skip `any`, `path:` and `git:` references, and never edit `shared/no_slop_linter`. Recheck every `dependency_overrides` entry, especially `git:` forks: drop it once upstream ships the fix (a stale fork can sit below the version its parent package requires).
 </step>
 
 <step name="2.3">Resolve:
@@ -135,6 +135,8 @@ for wp in "bridge host" "client host" "client android" "client ios"; do set -- $
 (cd client/app && flutter build ios --config-only --release --no-codesign)
 (cd client/desktop && flutter build macos --config-only --release)
 ```
+
+Then raise the direct package references the Runner projects declare themselves (`grep -n -A5 XCRemoteSwiftPackageReference client/*/*/Runner.xcodeproj/project.pbxproj`). They use `exactVersion`, so no resolve ever moves them: edit `version =` to the latest release (`gh api repos/<owner>/<repo>/releases/latest --jq .tag_name`), read the release notes of a major for minimum-OS and API changes, and build the shell once (`flutter build macos --debug`). Verified 2026-11-20: desktop macOS still pinned Firebase 12.19.3 while iOS resolved 13.2.0.
 </step>
 
 <step name="3.2">Re-resolve the workspace copies. Delete each lockfile first, and use a scratch clone cache, because the shared cache can hold stale tag data:
