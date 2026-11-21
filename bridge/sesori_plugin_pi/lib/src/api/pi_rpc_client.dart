@@ -20,6 +20,16 @@ final class const PiRpcCommandFailureException({required final PiRpcCommand comm
   String toString() => "PiRpcCommandFailureException(command: ${command.wireValue})";
 }
 
+/// Pi rejected a command because no provider is logged in.
+///
+/// [error] keeps Pi's full text, which goes on to its login help, for local
+/// diagnosis.
+final class const PiRpcMissingLoginException({required final PiRpcCommand command, required final String error})
+    extends PiRpcException {
+  @override
+  String toString() => "PiRpcMissingLoginException(command: ${command.wireValue})";
+}
+
 /// A command could not be written to Pi's stdin.
 final class const PiRpcWriteException({required final PiRpcCommand command, required final Object cause})
     extends PiRpcException {
@@ -102,6 +112,10 @@ class PiRpcClient({
 }) {
   static const String noModelsDiagnosticPrefix =
       "No models available. Use /login to log into a provider via OAuth or API key. See:";
+
+  /// The first line of Pi's command failure when no provider is logged in
+  /// (`formatNoApiKeyFoundMessage` for its placeholder `unknown` provider).
+  static const String noApiKeyForSelectedModelDiagnostic = "No API key found for the selected model.";
 
   /// How many parsed frames are held while no router has attached yet.
   ///
@@ -388,10 +402,17 @@ class PiRpcClient({
         completer.completer.complete(frame);
       case PiFailureResponseFrame(:final error):
         completer.completer.completeError(
-          PiRpcCommandFailureException(command: completer.command, error: error ?? "the command failed"),
+          _commandFailure(command: completer.command, error: error ?? "the command failed"),
           StackTrace.current,
         );
     }
+  }
+
+  PiRpcException _commandFailure({required PiRpcCommand command, required String error}) {
+    if (error.split("\n").first == noApiKeyForSelectedModelDiagnostic) {
+      return PiRpcMissingLoginException(command: command, error: error);
+    }
+    return PiRpcCommandFailureException(command: command, error: error);
   }
 
   void _deliver(PiRpcFrame frame) {

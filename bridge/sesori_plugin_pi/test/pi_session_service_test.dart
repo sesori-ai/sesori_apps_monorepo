@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:pi_plugin/pi_plugin.dart";
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
+import "package:pi_plugin/src/pi_identity.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_quota_interruption_mapper.dart";
@@ -2282,7 +2283,8 @@ void main() {
     addTearDown(fixture.dispose);
     final service = fixture.service();
     final events = <BridgeSseEvent>[];
-    service.events.listen(events.add);
+    final errors = <Object>[];
+    service.events.listen(events.add, onError: errors.add);
 
     await service.sendPrompt(
       sessionId: "session",
@@ -2304,6 +2306,82 @@ void main() {
     expect(toast.message, contains("/login"));
     expect(toast.message, isNot(contains("/private")));
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
+    expect(errors, [
+      isA<PluginAuthenticationRequiredException>()
+          .having((error) => error.recovery, "recovery", PluginAuthenticationRecovery.login)
+          .having((error) => error.actionHint, "actionHint", PiLoginGuidance.actionHint),
+    ]);
+  });
+
+  test("logged-out prompt failure reports a missing login", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    final errors = <Object>[];
+    service.events.listen(events.add, onError: errors.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-logged-out",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitFailure(
+      id: prompt.requestId,
+      command: "prompt",
+      error:
+          "No API key found for the selected model.\n\n"
+          "Use /login to log into a provider via OAuth or API key. See:\n"
+          "  /private/pi/docs/providers.md\n"
+          "  /private/pi/docs/models.md",
+    );
+    await _waitForEvent<BridgeSseTuiToastShow>(events: events);
+    await _waitForIdle(service: service, sessionId: "session");
+
+    final toast = events.whereType<BridgeSseTuiToastShow>().single;
+    expect(toast.message, "Pi has no model available. Run Pi locally and use /login, then try again.");
+    expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
+    expect(errors, [
+      isA<PluginAuthenticationRequiredException>()
+          .having((error) => error.recovery, "recovery", PluginAuthenticationRecovery.login)
+          .having((error) => error.actionHint, "actionHint", PiLoginGuidance.actionHint)
+          .having((error) => error.cause, "cause", isA<PiSessionAuthenticationException>()),
+    ]);
+  });
+
+  test("a provider's own prompt failure stays a turn failure", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    final errors = <Object>[];
+    service.events.listen(events.add, onError: errors.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-provider-failure",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "prompt")],
+      userVisibleText: "prompt",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitFailure(id: prompt.requestId, command: "prompt", error: "Provider request failed");
+    await _waitForEvent<BridgeSseSessionError>(events: events);
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(events.whereType<BridgeSseTuiToastShow>(), isEmpty);
+    expect(errors, isEmpty);
   });
 
   test("command exit before response or dialog fails acceptance", () async {

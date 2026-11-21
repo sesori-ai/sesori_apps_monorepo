@@ -700,7 +700,8 @@ final class PiSessionService({
       if (!_ownsTurn(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       final presented = _processes.presentTurnFailure(sessionId: sessionId, error: error);
       Log.w("[pi] admitted turn failed for session id=$sessionId", presented.cause, stack);
-      if (presented.message?.contains("/login") ?? false) {
+      final authenticationRequired = presented is PluginAuthenticationRequiredException;
+      if (authenticationRequired) {
         _emit(
           BridgeSseTuiToastShow(
             sessionID: sessionId,
@@ -723,6 +724,9 @@ final class PiSessionService({
         final reported = turn is _PiCompactionTurn && turn.accepted;
         _finish(sessionId: sessionId, state: state, turn: turn, failed: !reported, failure: reported ? null : error);
       }
+      // After the turn's own failure, so the session shows it before the
+      // bridge marks Pi as needing a login.
+      if (authenticationRequired && !_events.isClosed) _events.addError(presented, stack);
     }
   }
 

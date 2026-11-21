@@ -1797,6 +1797,12 @@ provider has no `auth.json` entry and a working install. `pi auth check` is
 unusable here because it requires an explicit `--provider` or `--model` and Pi
 exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
 install with no credentials; not re-probed on the supported range (minimum 0.99.0).
+A logged-out RPC process still starts, on a placeholder `unknown` model, and
+rejects a prompt with "No API key found for the selected model." (seen on
+1.5.2 and 1.6.0). The plugin matches that first line exactly. The turn fails
+with the login toast, and then the plugin reports authentication required with
+the same `/login` action as setup detection, as Claude does for a login that
+fails at turn time.
 
 ¹² OpenCode (1.18.25, probed 2026-09-05) has no logged-out state to report.
 `opencode models` lists the bundled free `opencode/…` models identically with

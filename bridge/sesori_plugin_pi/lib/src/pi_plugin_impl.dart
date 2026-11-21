@@ -33,7 +33,7 @@ final class PiPlugin._({
   required final String _launchDirectory,
 }) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
   this {
-    _subscriptions.add(_sessionService.events.listen(_eventBuffer.add));
+    _subscriptions.add(_sessionService.events.listen(_eventBuffer.add, onError: _eventBuffer.addError));
     _subscriptions.add(_extensionUiService.events.listen(_handleExtensionEvent));
   }
 

@@ -86,6 +86,32 @@ void main() {
       );
     });
 
+    test("a logged-out turn reaches the bridge as authentication required", () async {
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path);
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        sessionId: "session",
+        promptId: "prompt",
+        parts: const [PluginPromptPart.text(text: "continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      final failure = Completer<Object>();
+      final subscription = harness.plugin.events.listen((_) {}, onError: failure.complete);
+      addTearDown(subscription.cancel);
+      process.emitFailure(
+        id: prompt.requestId,
+        command: "prompt",
+        error: "No API key found for the selected model.\n\nUse /login to log into a provider via OAuth or API key.",
+      );
+
+      expect(await failure.future, isA<PluginAuthenticationRequiredException>());
+    });
+
     test("buffers created before busy when the first turn starts", () async {
       await harness.plugin.createSession(
         fastMode: false,

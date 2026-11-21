@@ -17,6 +17,7 @@ import "../api/pi_rpc_startup_extension.dart";
 import "../api/pi_session_storage_api.dart";
 import "../models/pi_rpc_command.dart";
 import "../models/pi_thinking_level.dart";
+import "../pi_identity.dart";
 import "../trackers/pi_message_identity_tracker.dart";
 import "mappers/pi_history_mapper.dart";
 import "mappers/pi_persisted_user_text_codec.dart";
@@ -631,21 +632,27 @@ final class PiSessionProcessRepository({
     final resident = _residents[sessionId];
     final authUnavailable =
         error is PiSessionAuthenticationException ||
+        error is PiRpcMissingLoginException ||
         (resident?.client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix) ?? false);
+    if (authUnavailable) {
+      return PluginAuthenticationRequiredException(
+        operation: "run Pi session turn",
+        actionHint: PiLoginGuidance.actionHint,
+        recovery: PluginAuthenticationRecovery.login,
+        message: "Pi has no model available. Run Pi locally and use /login, then try again.",
+        cause: PiSessionAuthenticationException(innerError: error),
+      );
+    }
     return PluginOperationException(
       operation: "run Pi session turn",
-      message: authUnavailable
-          ? "Pi has no model available. Run Pi locally and use /login, then try again."
-          : "Pi could not run this turn.",
-      cause: authUnavailable
-          ? PiSessionAuthenticationException(innerError: error)
-          : switch (error) {
-              PiRpcCommandFailureException(:final command, :final error) => PiSessionCommandDiagnostic(
-                command: command,
-                detail: error,
-              ),
-              _ => error,
-            },
+      message: "Pi could not run this turn.",
+      cause: switch (error) {
+        PiRpcCommandFailureException(:final command, :final error) => PiSessionCommandDiagnostic(
+          command: command,
+          detail: error,
+        ),
+        _ => error,
+      },
     );
   }
 
