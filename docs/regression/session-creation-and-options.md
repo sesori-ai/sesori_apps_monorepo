@@ -627,6 +627,10 @@ variant, and worktree mode, and creating the session with its first input.
   same scoped authentication-required state rather than an empty successful snapshot or
   a global runtime failure. Its bounded action directs the user to Pi's local `/login`;
   provider diagnostics and local paths never enter that guidance.
+- A Pi turn rejected with Pi's logged-out text ("No API key found for the selected
+  model.") fails with the login toast, and Pi then reports authentication required with the
+  same `/login` action. Any other prompt rejection stays an ordinary turn failure. Failure
+  signal: a logged-out turn shows only "Pi could not run this turn." and setup stays ready.
 - Pi startup extension dialogs use the existing RPC question/reply path before
   native RPC begins reading stdin and before initial session history completes.
   Catalog probes cancel those dialogs without

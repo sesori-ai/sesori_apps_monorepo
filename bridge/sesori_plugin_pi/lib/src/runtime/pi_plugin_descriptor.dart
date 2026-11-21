@@ -294,7 +294,7 @@ final class const PiPluginDescriptor({
         result.stderr.contains(PiRpcClient.noModelsDiagnosticPrefix);
     if (listedNoModels) {
       return PluginSetupAuthenticationRequired.versioned(
-        actionHint: "Run `pi` on this machine and use /login to add a provider, then retry setup detection.",
+        actionHint: PiLoginGuidance.actionHint,
         runtimeVersion: runtimeVersion,
       );
     }
