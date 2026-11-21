@@ -604,13 +604,13 @@ Antigravity can explicitly download Google's proprietary official runtime pair d
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
 archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
-package `1.5.0`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+package `1.5.2`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
-A 2026-11-16 macOS arm64 run of package `1.5.0` passed the production managed installation (including its
+A 2026-11-21 macOS arm64 run of package `1.5.2` passed the production managed installation (including its
 initialize-only validation), a separate network-denied initialize-only validation and a network-denied `--version`;
-other native targets and authenticated behavior have not been run on `1.5.0`.
+other native targets and authenticated behavior have not been run on `1.5.2`.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
@@ -742,7 +742,7 @@ cannot be waiting on the user; this covers requests abandoned silently.
 | Hermes | 🚫 `0.23.1` sends no withdrawal. Verified live (2026-11-12): after `session/cancel` it fails the real tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. When its own approval timeout fires (`approvals.timeout`, default 300 s) or another Hermes viewer answers, it only fails the tool call, whose id differs from the permission's synthetic `perm-check-N` id, and the turn goes on. That card stays until the turn ends, which retires it through the shared ACP turn-end rule, or until Stop, delete, archive or disposal; an answer before then is dropped. |
 | Grok | 🚫 `1.0.77` sends no `$/cancel_request`. Verified live (2026-11-12): `session/cancel` sends its own `interaction_resolved` for the tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. Its 600 s client-permission backstop did not fire on Sesori's `--no-leader stdio` launch in 660 s. |
 | Cursor | 🚫 `2026.11.11-b912975` has no request withdrawal or permission timeout. Source only, not run live: its ACP client (and the `2026.11.13-eacade1`, `2026.11.17-f532c45` and `2026.11.19-f005e9d` bundles) has no `$/cancel_request`, and a cancelled prompt leaves the request open. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
-| Antigravity | 🚫 `1.4.5` has no request withdrawal or permission timeout (not rechecked on `1.5.0`). Source only, not run live: a cancelled turn drops its pending request without a message. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
+| Antigravity | 🚫 `1.5.2` has no request withdrawal or permission timeout. Source only, not run live: a cancelled turn drops its pending request without a message (`1.5.2` source says ACP withdraws a request only by cancelling the turn). Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
 
 ## Stop on archive
 
@@ -850,10 +850,10 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
-Antigravity uses the official `1.5.0` pair and a plugin-owned Zed compatibility
+Antigravity uses the official `1.5.2` pair and a plugin-owned Zed compatibility
 identity (`clientInfo.name: zed`, title `Sesori Bridge (Zed compatibility)`) for
 live, replay, personal-login and validation processes. Google's packaged model
-selection filters non-Gemini models in `1.2.1`; `1.3.0` through `1.5.0` retain them only for
+selection filters non-Gemini models in `1.2.1`; `1.3.0` through `1.5.2` retain them only for
 recognized client identities. Every account-advertised Gemini, Claude or GPT
 model is mapped under the existing Antigravity OAuth provider and dispatched
 with its exact native ID. Synthetic mixed-provider catalogs and initialize
@@ -1295,7 +1295,7 @@ plugin's answer is authoritative.
 | OMP | ✅ `/compact`, handled natively on 18.20.2. A compaction with real history was not exercised; an empty session answers "Nothing to compact". |
 | Grok | ✅ `/compact`, verified on an idle session on 1.0.30. |
 | DeepSeek | ✅ `compact` from `deepseek/catalog` on 0.2.2. A compaction with real history was not exercised; an empty session answers "No compactable history yet." |
-| Antigravity | 🚫 1.5.0 advertises only `logout`, `plan` and `usage` (packaged source, unchanged from 1.4.5), so the request answers unsupported and sends nothing (a typed `/compact` reaches the model as plain text). A signed-in account was not probed. |
+| Antigravity | 🚫 1.5.2 advertises only `logout`, `plan` and `usage` (packaged source, unchanged since 1.4.5), so the request answers unsupported and sends nothing (a typed `/compact` reaches the model as plain text). A signed-in account was not probed. |
 
 The ACP plugins (Copilot, Cursor, Hermes, OMP, Grok, DeepSeek, Antigravity)
 send the command only when the session's command list advertises it, and
@@ -1374,7 +1374,7 @@ The other harnesses advertise nothing a picker owns (checked 2026-11-15):
   `/copy-request-id` plus user commands and skills (read from source, no live
   capture).
 - DeepSeek 0.2.2: read from the installed command registry, no live capture.
-- Antigravity 1.5.0: from packaged source (same command list as 1.4.5), no live capture.
+- Antigravity 1.5.2: from packaged source (same command list as 1.4.5), no live capture.
 
 ## Pi extension startup dialogs
 
@@ -1781,7 +1781,7 @@ history, descendant busy state, or scoped stop from call order, prompt text, or
 replay's contradictory status. Standard turn-wide `session/cancel` remains
 available, but it cannot implement any sub-agent-specific stop row above. This
 is a limitation of the ACP projection Sesori drives, not a claim that native
-Antigravity lacks delegation. Not re-probed on the current `1.5.0` pair; the
+Antigravity lacks delegation. Not re-probed on the current `1.5.2` pair; the
 plugin still maps no sub-agent data. Details:
 [completed probe record](../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).
 

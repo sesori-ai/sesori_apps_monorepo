@@ -120,7 +120,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Inspect model selection's client-identity gates too: the official 1.3.0–1.4.5 packages
   keep non-Gemini models only for recognized Zed/JetBrains/Android Studio/Xcode identities
   (1.4.5 adds JetBrains Air; 1.5.0 adds Android Performance Analyzer and T3 Code and
-  matches Zed only as the exact name `zed`). Antigravity CLI 1.5.1+ also ships its own `agy acp`, which
+  matches Zed only as the exact name `zed`; 1.5.2 is unchanged). Antigravity CLI 1.5.1+ also ships its own `agy acp`, which
   offers every account model to every ACP client; the registry package does not.
   Account entitlement alone does not prove what ACP advertises. Any explicitly
   approved compatibility identity stays inside the Antigravity plugin and must
@@ -130,9 +130,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Quick diffs:** `strings` on the macOS server binary exposes readable embedded
   Python source (`client_info.py`, `model_selection.py`, `settings.py`,
   `telemetry.py`), so diffing it between versions is a cheap audit of the identity
-  gate, settings and telemetry. The registry's `.protocol-matrix/latest.json` is
+  gate, settings and telemetry. Each embedded module's source starts at a line containing
+  `acp_server/<module>.py"""`; splitting both `strings` dumps on that marker gives a
+  per-module diff (most churn is in `server.py`). Marshalled-bytecode noise differs only
+  in trailing bytes. The registry's `.protocol-matrix/latest.json` is
   independent third-party initialize evidence (Linux x64).
-- **Telemetry:** 1.5.0 sends telemetry only for business (Gemini Enterprise)
+- **Telemetry:** 1.5.0 and 1.5.2 (`telemetry.py` and `settings.py` unchanged) send telemetry only for business (Gemini Enterprise)
   OAuth with a project; Sesori allows only `oauth-personal`, and the parsed
   `telemetry.*` settings block is unused. Recheck both on each bump.
 
