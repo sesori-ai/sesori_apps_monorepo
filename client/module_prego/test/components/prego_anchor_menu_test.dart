@@ -48,6 +48,14 @@ List<PregoMenuEntry> _agentEntries(List<String> names, {void Function(String nam
     ),
 ];
 
+/// Where an open glass menu should sit across a wide trigger: centred on it, or
+/// pushed in from the screen edge it would cross, onto the 12 pt screen padding.
+enum _GlassAlign() {
+  leftMargin,
+  centred,
+  rightMargin,
+}
+
 /// The scroll position of the open glass popup.
 ScrollPosition _popupScroll(WidgetTester tester) => tester.state<ScrollableState>(find.byType(Scrollable)).position;
 
@@ -425,8 +433,23 @@ void main() {
 
   group("Apple (glass) path", () {
     testWidgets("nested overlays anchor glass locally and custom entries still dismiss", (tester) async {
-      Offset? baselineDelta;
-      for (final inset in [Offset.zero, const Offset(120, 80)]) {
+      // The default 800x600 test screen, the 12 pt menuScreenPadding default,
+      // and an explicit menuWidth. Since liquid_glass_widgets 1.18, GlassMenu
+      // centres its menu over a wide trigger (the "Open" button is) and clamps
+      // it to the screen padding; a trigger near the bottom flips the menu up.
+      const screenWidth = 800.0;
+      const margin = 12.0;
+      const menuWidth = 240.0;
+      // Each inset moves the nested Overlay, and so the trigger at (40, 60) in
+      // it, on screen. The menu must follow the trigger's on-screen position.
+      final cases = <({Offset inset, _GlassAlign align, bool flipsUp})>[
+        (inset: Offset.zero, align: _GlassAlign.leftMargin, flipsUp: false),
+        (inset: const Offset(120, 80), align: _GlassAlign.centred, flipsUp: false),
+        (inset: const Offset(600, 80), align: _GlassAlign.rightMargin, flipsUp: false),
+        (inset: const Offset(120, 440), align: _GlassAlign.centred, flipsUp: true),
+      ];
+      for (final (:inset, :align, :flipsUp) in cases) {
+        final reason = "inset $inset: ${align.name}${flipsUp ? ", flipped up" : ""}";
         await tester.pumpWidget(
           MaterialApp(
             key: ValueKey(inset),
@@ -443,6 +466,7 @@ void main() {
                             left: 40,
                             top: 60,
                             child: PregoAnchorMenu(
+                              menuWidth: menuWidth,
                               menuMaxHeight: 120,
                               entriesBuilder: () => [
                                 PregoMenuCustom(
@@ -469,16 +493,36 @@ void main() {
             ),
           ),
         );
-        final triggerOrigin = tester.getTopLeft(find.byType(ElevatedButton));
+        final trigger = tester.getRect(find.byType(ElevatedButton));
         final menu = tester.widget<GlassMenu>(find.byType(GlassMenu));
         expect(menu.glowOnTapOnly, isTrue);
         await tester.tap(find.text("Open"));
         await tester.pumpAndSettle();
 
-        final delta = tester.getTopLeft(find.byType(SingleChildScrollView)) - triggerOrigin;
-        baselineDelta ??= delta;
-        expect(delta.dx, closeTo(baselineDelta.dx, 0.01));
-        expect(delta.dy, closeTo(baselineDelta.dy, 0.01));
+        // The scroll view sits centred in the menu, so its centre is the menu's.
+        final rows = tester.getRect(find.byType(SingleChildScrollView));
+        final menuLeft = rows.center.dx - menuWidth / 2;
+        final menuRight = rows.center.dx + menuWidth / 2;
+        expect(menuLeft, greaterThanOrEqualTo(margin - 0.01), reason: reason);
+        expect(menuRight, lessThanOrEqualTo(screenWidth - margin + 0.01), reason: reason);
+        switch (align) {
+          case _GlassAlign.leftMargin:
+            expect(menuLeft, closeTo(margin, 0.01), reason: reason);
+            expect(rows.center.dx, greaterThan(trigger.center.dx), reason: reason);
+          case _GlassAlign.centred:
+            expect(rows.center.dx, closeTo(trigger.center.dx, 0.01), reason: reason);
+          case _GlassAlign.rightMargin:
+            expect(menuRight, closeTo(screenWidth - margin, 0.01), reason: reason);
+            expect(rows.center.dx, lessThan(trigger.center.dx), reason: reason);
+        }
+        if (flipsUp) {
+          // Too close to the bottom to open downward: it grows up from the
+          // trigger's bottom edge instead.
+          expect(rows.bottom, closeTo(trigger.bottom, 0.01), reason: reason);
+          expect(rows.top, lessThan(trigger.top), reason: reason);
+        } else {
+          expect(rows.top, closeTo(trigger.top, 0.01), reason: reason);
+        }
         expect(_popupScroll(tester).maxScrollExtent, greaterThan(0));
 
         await tester.tap(find.text("Close custom"));

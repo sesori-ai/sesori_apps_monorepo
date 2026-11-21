@@ -116,6 +116,8 @@ for d in shared bridge client; do (cd $d && make analyze && make test && make co
 
 If a generator is added to a skipped package, update `CODEGEN_MODULES` in that Makefile.
 
+To compare `liquid_glass_widgets` versions on screen, render under the app's own glass setup: `LiquidGlassWidgets.wrap` with the adaptive scope capped at `standard`, as in `client/app/lib/main.dart`. A bare harness without it falls back to `premium`, which the app never renders. Take settled shots with `timeDilation = 1`. Verified 2026-11-20: a corner artifact seen in 1.19.0 harness shots came from the premium path only.
+
 CI seeds the `sqlite3` and `pdfium_dart` (pdfrx) build-hook downloads with `.github/actions/prefetch-sqlite3-native/prefetch.py`, which parses those packages' sources and pins archive hashes. `make test` doesn't run it. When either package's resolved version changes, run all four plans, and fix the script (or `PDFIUM_PINS`) in the same PR if one fails:
 
 ```bash
