@@ -91,7 +91,7 @@ jobs:
           key: swiftpm-github-artifacts-ios-${{ hashFiles('client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'client/pubspec.lock') }}
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@4e97ecde5048e1e0816923020652678063ffbf65 # v1.339.0
+        uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
         with:
           ruby-version: '4.0'
           bundler-cache: true
@@ -141,7 +141,7 @@ jobs:
       - name: Get certificates repo token
         id: match-token
         # Pinned: this step holds the certificates App private key.
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.MATCH_APP_CLIENT_ID }}
           private-key: ${{ secrets.MATCH_APP_PRIVATE_KEY }}
