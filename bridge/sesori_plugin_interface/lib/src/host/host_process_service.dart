@@ -30,9 +30,12 @@ sealed class const ProcessLifetime() {
 ///
 /// [sharedHelperArguments] are command-line arguments that mark a descendant
 /// as a helper the process shares with others the bridge does not own, such
-/// as a harness's per-user daemon. A POSIX signal skips a descendant whose
+/// as a harness's per-user daemon. A signal skips a descendant whose
 /// arguments include one of them, and everything below it: the helper manages
-/// its own lifetime. Windows signals still reach the whole tree.
+/// its own lifetime. On Windows a process that declares any starts outside the
+/// job object, so neither it nor its descendants end when the bridge crashes,
+/// and a signal force-kills it and each descendant one by one instead of
+/// through `taskkill /T`.
 final class const ProcessEndsWithBridge({required final Set<String> sharedHelperArguments}) extends ProcessLifetime;
 
 /// The process, or something it starts, may keep running after the bridge
@@ -73,10 +76,10 @@ abstract class HostProcessService() {
 
   /// Sends the platform's graceful-stop signal to [pid] (SIGTERM on POSIX;
   /// Windows has no graceful signal and delivers a kill instead — the
-  /// returned [SignalResult] records what was actually sent). Windows signals
-  /// the whole tree; POSIX signals the tree of a running child spawned with
-  /// [ProcessLifetime.endsWithBridge] and only [pid] otherwise. The result
-  /// describes [pid].
+  /// returned [SignalResult] records what was actually sent). A running child
+  /// spawned with [ProcessLifetime.endsWithBridge] is signalled with its
+  /// descendants except its shared helpers. Otherwise Windows signals the
+  /// whole tree and POSIX only [pid]. The result describes [pid].
   Future<SignalResult> signalGraceful({required int pid});
 
   /// Forcibly kills [pid] (SIGKILL or platform equivalent), reaching the same

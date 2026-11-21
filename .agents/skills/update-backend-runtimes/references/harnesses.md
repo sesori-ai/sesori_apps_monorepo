@@ -469,8 +469,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   in 18.x, its per-project broker (`__omp_worker_daemon_broker`) and the
   machine-wide tiny ONNX and mnemopi workers (`__omp_worker_tiny_inference`,
   `__omp_worker_mnemopi_embed_server`; 19.0.0 runs them under the daemon)
-  detached. The bridge's POSIX tree signal skips them by those arguments
-  (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
+  detached. The bridge's stop skips them by those arguments on POSIX and
+  Windows (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
   detached spawns (`spawnDetached`, `detached: true`) that ACP mode reaches,
   and confirm each helper's argument and idle exit (19.0.0 daemon: 3 s after
   nothing is connected and no persistent unit runs). Live probe: let Sesori's
@@ -552,7 +552,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   identity with `xai-org/grok-build` source when source evidence is available
   (as of 2026-11-12 that repository stops at 1.0.45). Binaries are at
   `https://x.ai/cli/grok-<ver>-<os>-<arch>` (`.zst` and `.gz` variants) with no
-  published checksums or signatures; release notes are at
+  published checksums or signatures; the installer's tokens are `macos`/`linux`/
+  `windows` and `aarch64`/`x86_64` (so `grok-<ver>-macos-aarch64.gz`, not
+  `darwin-arm64`); release notes are at
   `https://x.ai/cli/changelogs/<ver>.external.md` (or `.json`). Release notes
   omit ACP-visible changes, so diff strings and field counts of the candidate
   binary against the previous target's.

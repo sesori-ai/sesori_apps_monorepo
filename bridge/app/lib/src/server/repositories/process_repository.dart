@@ -48,10 +48,14 @@ class ProcessRepository({
     return _toMatch(identity: identity);
   }
 
-  /// POSIX only: the processes descending from [pid] right now, without a
-  /// shared helper marked by [sharedHelperArguments] or anything below it.
-  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) =>
-      _api.listPosixDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
+  /// The processes descending from [pid] right now, without a shared helper
+  /// marked by [sharedHelperArguments] or anything below it.
+  Future<List<int>> listDescendants({required int pid, required Set<String> sharedHelperArguments}) =>
+      _api.listDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
+
+  /// Windows only: force-kills [pid] without its descendants.
+  Future<SignalResult> killWindowsProcess({required int pid, required ShutdownSignal requestedSignal}) =>
+      _api.killWindowsProcess(pid: pid, requestedSignal: requestedSignal);
 
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     return _api.sendGracefulSignal(pid: pid);
