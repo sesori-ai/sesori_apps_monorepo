@@ -24,7 +24,7 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isFalse);
       expect(descriptor.replaysHistoryDuringTurn, isFalse);
       expect(GrokPluginDescriptor.minVersion, "1.0.5");
-      expect(GrokPluginDescriptor.targetVersion, "1.0.89");
+      expect(GrokPluginDescriptor.targetVersion, "1.0.92");
       expect(descriptor.options.single.name, GrokPluginDescriptor.binOption);
       expect(
         descriptor.managementCapabilities(config: config),
