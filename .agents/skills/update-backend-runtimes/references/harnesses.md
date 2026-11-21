@@ -548,7 +548,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   identity with `xai-org/grok-build` source when source evidence is available
   (as of 2026-11-12 that repository stops at 1.0.45). Binaries are at
   `https://x.ai/cli/grok-<ver>-<os>-<arch>` (`.zst` and `.gz` variants) with no
-  published checksums or signatures; release notes are at
+  published checksums or signatures; the installer's tokens are `macos`/`linux`/
+  `windows` and `aarch64`/`x86_64` (so `grok-<ver>-macos-aarch64.gz`, not
+  `darwin-arm64`); release notes are at
   `https://x.ai/cli/changelogs/<ver>.external.md` (or `.json`). Release notes
   omit ACP-visible changes, so diff strings and field counts of the candidate
   binary against the previous target's.
