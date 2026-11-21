@@ -244,7 +244,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, and 19.0.0 did in a 2026-11-19 initialize probe) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. From 18.20.1 a prompt that starts a background job (or, per the source, live sub-agents) stays open until the job ends plus a short follow-up turn, with no updates in between. Steering then answers `promptRequired`, so the follow-up returns to Queued and is sent after the job ends. Stop ends the prompt at once but not the job, whose result OMP keeps for the next prompt; that prompt stays open until the old job finishes. A history read in that window falls back to the bridge's stored history. Verified live on 18.21.0, 2026-11-16. Before 18.20.1 OMP ends the prompt and starts a turn of its own when the job finishes; it refuses steering and rejects `session/prompt` with `-32003`, and the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, and 19.0.1 did in a 2026-11-20 initialize probe) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. From 18.20.1 a prompt that starts a background job (or, per the source, live sub-agents) stays open until the job ends plus a short follow-up turn, with no updates in between. Steering then answers `promptRequired`, so the follow-up returns to Queued and is sent after the job ends. Stop ends the prompt at once but not the job, whose result OMP keeps for the next prompt; that prompt stays open until the old job finishes. A history read in that window falls back to the bridge's stored history. Verified live on 18.21.0, 2026-11-16. Before 18.20.1 OMP ends the prompt and starts a turn of its own when the job finishes; it refuses steering and rejects `session/prompt` with `-32003`, and the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -1080,7 +1080,7 @@ harness that raises the exception.
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `19.0.0`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `19.0.1`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification
@@ -1538,7 +1538,7 @@ prompt does to a target that is running, from each plugin's
 | Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 | Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 
-¹ OMP's `busyPromptHandling` is static. The bundled OMP 19.0.0 advertises
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 19.0.1 advertises
 `_session/steering`. An older OMP on PATH without it stops the running turn,
 and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
