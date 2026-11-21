@@ -385,7 +385,7 @@ void main() {
       expect(graceful.pid, 7001);
       expect(
         processRepository.signalRequests,
-        equals(<String>['graceful:7001', 'graceful:7002', 'graceful:7003', 'force:7001', 'force:7002', 'force:7003']),
+        equals(<String>['graceful:7002', 'graceful:7003', 'graceful:7001', 'force:7002', 'force:7003', 'force:7001']),
       );
       // The listing leaves out the shared helpers the spawn declared.
       expect(
@@ -403,6 +403,61 @@ void main() {
       processRepository.signalRequests.clear();
       await host.signalForce(pid: 7001);
       expect(processRepository.signalRequests, equals(<String>['force:7001']));
+    });
+
+    test('a Windows child sharing helpers starts outside the job and is stopped process by process', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.descendants[7001] = <int>[7002, 7003];
+      processRepository.killErrors[7002] = const ProcessException('taskkill', <String>[], 'Access denied', 1);
+      final host = service(isWindows: true);
+      await host.spawn(
+        includeParentEnvironment: true,
+        executable: 'omp.exe',
+        arguments: const ['acp'],
+        environment: null,
+        workingDirectory: null,
+        runInShell: false,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{'__shared_helper'}),
+      );
+
+      expect(processRepository.jobStarts, isEmpty);
+      expect(processRepository.boundPids, isEmpty);
+      expect(starter.executable, 'omp.exe');
+
+      final graceful = await host.signalGraceful(pid: 7001);
+
+      // No `taskkill /T`: each process is killed on its own, one failure does
+      // not stop the rest, and the root goes last so its exit means the rest
+      // is already killed.
+      expect(graceful.pid, 7001);
+      expect(graceful.requestedSignal, ShutdownSignal.graceful);
+      expect(processRepository.signalRequests, equals(<String>['kill:7002', 'kill:7003', 'kill:7001']));
+      expect(
+        processRepository.descendantQueries,
+        equals(<Set<String>>[
+          <String>{'__shared_helper'},
+        ]),
+      );
+    });
+
+    test('a Windows child in the job keeps the whole-tree signal', () async {
+      processRepository.jobProcess = _FakeProcess(pidValue: 7001);
+      processRepository.forceResult = _signalResult(pid: 7001, signal: ShutdownSignal.force);
+      final host = service(isWindows: true);
+      await host.spawn(
+        includeParentEnvironment: true,
+        executable: 'agent.exe',
+        arguments: const ['acp'],
+        environment: null,
+        workingDirectory: null,
+        runInShell: false,
+        lifetime: const ProcessLifetime.endsWithBridge(sharedHelperArguments: <String>{}),
+      );
+
+      await host.signalForce(pid: 7001);
+
+      expect(processRepository.signalRequests, equals(<String>['force:7001']));
+      expect(processRepository.descendantQueries, isEmpty);
     });
 
     test('signals leave the descendants of a child that may outlive the bridge running', () async {
@@ -654,6 +709,7 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   final List<String> signalRequests = <String>[];
   final Map<int, List<int>> descendants = <int, List<int>>{};
   Object? descendantsError;
+  final Map<int, Object> killErrors = <int, Object>{};
   final List<Set<String>> descendantQueries = <Set<String>>[];
   final List<int> boundPids = <int>[];
   final List<
@@ -711,7 +767,7 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   }
 
   @override
-  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
+  Future<List<int>> listDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
     descendantQueries.add(sharedHelperArguments);
     final error = descendantsError;
     if (error != null) {
@@ -730,5 +786,15 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
     return forceResult ?? fail('no force signal result configured');
+  }
+
+  @override
+  Future<SignalResult> killWindowsProcess({required int pid, required ShutdownSignal requestedSignal}) async {
+    signalRequests.add('kill:$pid');
+    final error = killErrors[pid];
+    if (error != null) {
+      throw error;
+    }
+    return _signalResult(pid: pid, signal: requestedSignal);
   }
 }

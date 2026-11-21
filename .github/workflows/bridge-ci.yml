@@ -146,7 +146,8 @@ jobs:
         if: matrix.task == 'shared'
         run: tool/dart_format.sh --check shared tool
 
-  # Kill-on-close of the backend runtime job object exists only on Windows.
+  # Kill-on-close of the backend runtime job object, and the stop that spares
+  # shared helpers outside it, exist only on Windows.
   windows-job-object:
     needs: toolchain
     runs-on: windows-latest
@@ -175,6 +176,10 @@ jobs:
 
       - name: Test that runtimes start inside the job and end with the bridge
         run: dart test test/server/api/windows_job_object_api_test.dart
+        working-directory: bridge/app
+
+      - name: Test that stopping a runtime spares the helpers it shares
+        run: dart test test/server/host/bridge_host_process_service_windows_test.dart
         working-directory: bridge/app
 
   codegen-freshness:

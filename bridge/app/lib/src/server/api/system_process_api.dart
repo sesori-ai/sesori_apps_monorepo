@@ -26,42 +26,29 @@ class SystemProcessApi({
   }
 
   Future<SignalResult> sendGracefulSignal({required int pid}) => _isWindows
-      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .graceful, force: false)
+      ? _sendWindowsSignal(pid: pid, requestedSignal: .graceful, force: false, includeTree: true)
       : _sendSignal(pid: pid, requestedSignal: .graceful, deliveredSignal: .sigterm);
 
   Future<SignalResult> sendForceSignal({required int pid}) => _isWindows
-      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .force, force: true)
+      ? _sendWindowsSignal(pid: pid, requestedSignal: .force, force: true, includeTree: true)
       : _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
 
-  /// POSIX only: the processes descending from [pid] right now, read from one
-  /// `ps` snapshot. A descendant whose arguments include one of
-  /// [sharedHelperArguments] is left out together with everything below it.
-  /// Windows signals already reach the whole tree.
-  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
-    const command = "ps";
-    // Piped `ps` prints whole arguments on macOS, procps and BusyBox; BusyBox
-    // rejects `-ww`.
-    const args = <String>["-A", "-o", "pid=,ppid=,args="];
-    final result = await _processRunner.run(
-      executable: command,
-      arguments: args,
-      environment: {"LC_ALL": "C"},
-      workingDirectory: null,
-    );
-    if (result.exitCode != 0) {
-      throw ProcessException(command, args, result.stderr.toString(), result.exitCode);
-    }
+  /// Windows only: force-kills [pid] alone (`taskkill /PID <pid> /F`, no `/T`).
+  Future<SignalResult> killWindowsProcess({required int pid, required ShutdownSignal requestedSignal}) =>
+      _sendWindowsSignal(pid: pid, requestedSignal: requestedSignal, force: true, includeTree: false);
 
+  /// The processes descending from [pid] right now, read from one snapshot of
+  /// the process table (`ps` on POSIX, CIM `Win32_Process` on Windows). A
+  /// descendant whose arguments include one of [sharedHelperArguments] is left
+  /// out together with everything below it.
+  Future<List<int>> listDescendants({required int pid, required Set<String> sharedHelperArguments}) async {
+    final processes = _isWindows ? await _listWindowsProcesses() : await _listPosixProcesses();
     final childrenByParent = <int, List<int>>{};
     final sharedHelpers = <int>{};
-    for (final line in const LineSplitter().convert(result.stdout.toString())) {
-      final fields = line.trim().split(RegExp(r"\s+"));
-      if (fields.length < 2) continue;
-      final child = int.tryParse(fields[0]);
-      final parent = int.tryParse(fields[1]);
-      if (child == null || parent == null || child == parent) continue;
-      (childrenByParent[parent] ??= <int>[]).add(child);
-      if (fields.skip(2).any(sharedHelperArguments.contains)) sharedHelpers.add(child);
+    for (final process in processes) {
+      if (process.pid == process.parent) continue;
+      (childrenByParent[process.parent] ??= <int>[]).add(process.pid);
+      if (process.arguments.any(sharedHelperArguments.contains)) sharedHelpers.add(process.pid);
     }
 
     final descendants = <int>[];
@@ -76,10 +63,77 @@ class SystemProcessApi({
     return descendants;
   }
 
-  Future<SignalResult> _sendWindowsTreeSignal({
+  Future<List<_ProcessTableRow>> _listPosixProcesses() async {
+    const command = "ps";
+    // Piped `ps` prints whole arguments on macOS, procps and BusyBox; BusyBox
+    // rejects `-ww`.
+    const args = <String>["-A", "-o", "pid=,ppid=,args="];
+    final result = await _processRunner.run(
+      executable: command,
+      arguments: args,
+      environment: {"LC_ALL": "C"},
+      workingDirectory: null,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(command, args, result.stderr.toString(), result.exitCode);
+    }
+
+    final processes = <_ProcessTableRow>[];
+    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+      final fields = line.trim().split(RegExp(r"\s+"));
+      if (fields.length < 2) continue;
+      final child = int.tryParse(fields[0]);
+      final parent = int.tryParse(fields[1]);
+      if (child == null || parent == null) continue;
+      processes.add((pid: child, parent: parent, arguments: fields.skip(2).toList()));
+    }
+    return processes;
+  }
+
+  /// Windows keeps a dead parent's id in `ParentProcessId`, and the id can be
+  /// reused, so a process only counts as a child when it started after its
+  /// parent.
+  Future<List<_ProcessTableRow>> _listWindowsProcesses() async {
+    const command = "powershell.exe";
+    const args = <String>[
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      _windowsProcessTableScript,
+    ];
+    final result = await _processRunner.run(
+      executable: command,
+      arguments: args,
+      environment: null,
+      workingDirectory: null,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(command, args, result.stderr.toString(), result.exitCode);
+    }
+
+    final rows = <({int pid, int parent, int? created, String commandLine})>[];
+    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+      final fields = CsvParser.parseLine(line: line.trim());
+      if (fields.length < 4) continue;
+      final child = int.tryParse(fields[0]);
+      final parent = int.tryParse(fields[1]);
+      if (child == null || parent == null) continue;
+      rows.add((pid: child, parent: parent, created: int.tryParse(fields[2]), commandLine: fields[3]));
+    }
+    final createdByPid = {for (final row in rows) row.pid: row.created};
+    return [
+      for (final row in rows)
+        if ((row.created, createdByPid[row.parent]) case (final int created, final int parentCreated)
+            when created >= parentCreated)
+          (pid: row.pid, parent: row.parent, arguments: row.commandLine.trim().split(RegExp(r"\s+"))),
+    ];
+  }
+
+  Future<SignalResult> _sendWindowsSignal({
     required int pid,
     required ShutdownSignal requestedSignal,
     required bool force,
+    required bool includeTree,
   }) async {
     final attemptedAt = _clock.now();
     // SignalResult has POSIX-shaped vocabulary. `sigterm` represents the
@@ -112,7 +166,7 @@ class SystemProcessApi({
       // A non-zero taskkill result below remains a diagnostic failure.
       Log.w("Could not inspect Windows process $pid before signalling; attempting taskkill", error, stackTrace);
     }
-    final arguments = <String>["/PID", "$pid", "/T", if (force) "/F"];
+    final arguments = <String>["/PID", "$pid", if (includeTree) "/T", if (force) "/F"];
     final result = await _processRunner.run(
       executable: "taskkill",
       arguments: arguments,
@@ -318,3 +372,11 @@ class SystemProcessApi({
     return trimmed.substring(0, spaceIndex);
   }
 }
+
+const _windowsProcessTableScript =
+    "Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, "
+    r"@{n='CreationTime';e={if ($_.CreationDate) { $_.CreationDate.ToFileTimeUtc() }}}, CommandLine "
+    "| ConvertTo-Csv -NoTypeInformation";
+
+/// One process from a process-table snapshot.
+typedef _ProcessTableRow = ({int pid, int parent, List<String> arguments});
