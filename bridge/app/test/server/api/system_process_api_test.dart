@@ -200,6 +200,51 @@ void main() {
       expect((await api.sendForceSignal(pid: -1)).wasRequested, isFalse);
       expect(runner.calls, isEmpty);
     });
+
+    test("listDescendants walks the CIM process table and leaves out shared helpers", () async {
+      // 10 -> 11 (tool command) -> 12; 10 -> 13 (shared daemon) -> 14 (its service);
+      // 15 names 10 as its parent but is older, so that id was reused.
+      final runner = RecordingProcessRunner(
+        stdout:
+            '"ProcessId","ParentProcessId","CreationTime","CommandLine"\r\n'
+            '"0","0","",""\r\n'
+            '"10","4","100","""C:\\Program Files\\omp\\omp.exe"" acp"\r\n'
+            '"11","10","110","cmd.exe /c ping -n 30 127.0.0.1"\r\n'
+            '"12","11","111","ping -n 30 127.0.0.1"\r\n'
+            '"13","10","120","""C:\\Program Files\\omp\\omp.exe"" __omp_worker_daemon"\r\n'
+            '"14","13","130","""C:\\Program Files\\omp\\omp.exe"" __omp_worker_shell_process"\r\n'
+            '"15","10","50","C:\\Windows\\explorer.exe"\r\n'
+            '"16","15","60","notepad.exe"\r\n',
+      );
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+      );
+
+      final descendants = await api.listDescendants(pid: 10, sharedHelperArguments: const {"__omp_worker_daemon"});
+
+      expect(descendants, unorderedEquals(<int>[11, 12]));
+      expect(runner.calls.single.executable, equals("powershell.exe"));
+      expect(runner.calls.single.arguments.last, contains("Win32_Process"));
+    });
+
+    test("killWindowsProcess force-kills only the process itself", () async {
+      final runner = RecordingProcessRunner(stdout: windowsProcessRow);
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+      );
+
+      final result = await api.killWindowsProcess(pid: 321, requestedSignal: ShutdownSignal.graceful);
+
+      expect(runner.calls.last.executable, "taskkill");
+      expect(runner.calls.last.arguments, ["/PID", "321", "/F"]);
+      expect(result.requestedSignal, ShutdownSignal.graceful);
+      expect(result.deliveredSignal, ProcessSignal.sigkill);
+      expect(result.wasRequested, isTrue);
+    });
   });
 
   group("SystemProcessApi (POSIX)", () {
@@ -291,7 +336,7 @@ void main() {
       expect(runner.calls, isEmpty);
     });
 
-    test("listPosixDescendants returns every process below the pid, detached ones included", () async {
+    test("listDescendants returns every process below the pid, detached ones included", () async {
       // 10 -> 11 -> 13, 10 -> 12; 20 is a sibling tree; 1 is init.
       final runner = RecordingProcessRunner(
         stdout:
@@ -309,14 +354,14 @@ void main() {
         isWindows: false,
       );
 
-      final descendants = await api.listPosixDescendants(pid: 10, sharedHelperArguments: const <String>{});
+      final descendants = await api.listDescendants(pid: 10, sharedHelperArguments: const <String>{});
 
       expect(descendants, unorderedEquals(<int>[11, 12, 13]));
       expect(runner.calls.single.executable, equals("ps"));
       expect(runner.calls.single.arguments, equals(<String>["-A", "-o", "pid=,ppid=,args="]));
     });
 
-    test("listPosixDescendants leaves out a shared helper and everything below it", () async {
+    test("listDescendants leaves out a shared helper and everything below it", () async {
       // 10 -> 11 (tool command) -> 12; 10 -> 13 (shared daemon) -> 14 (its service).
       final runner = RecordingProcessRunner(
         stdout:
@@ -333,13 +378,13 @@ void main() {
         isWindows: false,
       );
 
-      final descendants = await api.listPosixDescendants(pid: 10, sharedHelperArguments: const {"__omp_worker_daemon"});
+      final descendants = await api.listDescendants(pid: 10, sharedHelperArguments: const {"__omp_worker_daemon"});
 
       // Markers match whole arguments, so 15 is still signalled.
       expect(descendants, unorderedEquals(<int>[11, 12, 15]));
     });
 
-    test("listPosixDescendants throws when ps fails", () async {
+    test("listDescendants throws when ps fails", () async {
       final runner = RecordingProcessRunner(exitCode: 1, stderr: "ps: unknown option");
       final api = SystemProcessApi(
         processRunner: runner,
@@ -348,7 +393,7 @@ void main() {
       );
 
       await expectLater(
-        api.listPosixDescendants(pid: 10, sharedHelperArguments: const <String>{}),
+        api.listDescendants(pid: 10, sharedHelperArguments: const <String>{}),
         throwsA(isA<ProcessException>()),
       );
     });

@@ -10,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ProcessLifetime,
         ProcessUser,
         ServerClock,
+        ShutdownSignal,
         SignalResult,
         SpawnedProcess;
 
@@ -34,12 +35,13 @@ class BridgeHostProcessService({
   required final ProcessUser? _currentUser,
   required final bool _isWindows,
 }) implements HostProcessService {
-  /// POSIX children spawned with [ProcessLifetime.endsWithBridge] that are
-  /// still running, each with its shared-helper arguments. Signalling one
-  /// also signals its descendants, which a harness can leave behind when it
-  /// exits (tool commands, detached helpers), except the shared helpers and
-  /// what runs below them. Windows needs no record because its signals already
-  /// end the whole tree.
+  /// Running children spawned with [ProcessLifetime.endsWithBridge] that the
+  /// bridge stops as a tree itself, each with its shared-helper arguments:
+  /// every such child on POSIX, and on Windows those that declare shared
+  /// helpers. Signalling one also signals its descendants, which a harness can
+  /// leave behind when it exits (tool commands, detached helpers), except the
+  /// shared helpers and what runs below them. Other Windows children are in
+  /// the job object and their signals end the whole tree.
   final Map<int, Set<String>> _treeOwners = <int, Set<String>>{};
 
   @override
@@ -52,7 +54,10 @@ class BridgeHostProcessService({
     required bool includeParentEnvironment,
     required ProcessLifetime lifetime,
   }) async {
-    final process = _isWindows && lifetime is ProcessEndsWithBridge
+    // A Windows child that shares helpers stays out of the job object, which
+    // would otherwise end those helpers with the bridge.
+    final startInJob = _isWindows && lifetime is ProcessEndsWithBridge && lifetime.sharedHelperArguments.isEmpty;
+    final process = startInJob
         ? await _startEndingWithBridge(
             executable: executable,
             arguments: arguments,
@@ -69,7 +74,7 @@ class BridgeHostProcessService({
             runInShell: runInShell,
             includeParentEnvironment: includeParentEnvironment,
           );
-    if (lifetime case ProcessEndsWithBridge(:final sharedHelperArguments) when !_isWindows) {
+    if (lifetime case ProcessEndsWithBridge(:final sharedHelperArguments) when !startInJob) {
       final pid = process.pid;
       _treeOwners[pid] = sharedHelperArguments;
       unawaited(process.exitCode.whenComplete(() => _treeOwners.remove(pid)));
@@ -143,12 +148,12 @@ class BridgeHostProcessService({
 
   @override
   Future<SignalResult> signalGraceful({required int pid}) {
-    return _signalWithDescendants(pid: pid, send: _processRepository.sendGracefulSignal);
+    return _signalWithDescendants(pid: pid, requestedSignal: .graceful, send: _processRepository.sendGracefulSignal);
   }
 
   @override
   Future<SignalResult> signalForce({required int pid}) {
-    return _signalWithDescendants(pid: pid, send: _processRepository.sendForceSignal);
+    return _signalWithDescendants(pid: pid, requestedSignal: .force, send: _processRepository.sendForceSignal);
   }
 
   /// Signals [pid], then the descendants it had just before, so a harness
@@ -156,22 +161,30 @@ class BridgeHostProcessService({
   /// root exits its orphans are reparented and no longer traceable to it.
   Future<SignalResult> _signalWithDescendants({
     required int pid,
+    required ShutdownSignal requestedSignal,
     required Future<SignalResult> Function({required int pid}) send,
   }) async {
     final sharedHelperArguments = _treeOwners[pid];
-    final descendants = sharedHelperArguments == null
-        ? const <int>[]
-        : await _descendantsOf(pid: pid, sharedHelperArguments: sharedHelperArguments);
-    final result = await send(pid: pid);
+    if (sharedHelperArguments == null) return await send(pid: pid);
+    final descendants = await _descendantsOf(pid: pid, sharedHelperArguments: sharedHelperArguments);
+    // `taskkill /T` would also end the shared helpers, so Windows kills each
+    // process on its own.
+    Future<SignalResult> signalOne({required int pid}) =>
+        _isWindows ? _processRepository.killWindowsProcess(pid: pid, requestedSignal: requestedSignal) : send(pid: pid);
+    final result = await signalOne(pid: pid);
     for (final descendant in descendants) {
-      await send(pid: descendant);
+      try {
+        await signalOne(pid: descendant);
+      } on Object catch (error, stackTrace) {
+        Log.w("Could not signal pid $descendant, a descendant of pid $pid", error, stackTrace);
+      }
     }
     return result;
   }
 
   Future<List<int>> _descendantsOf({required int pid, required Set<String> sharedHelperArguments}) async {
     try {
-      return await _processRepository.listPosixDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
+      return await _processRepository.listDescendants(pid: pid, sharedHelperArguments: sharedHelperArguments);
     } on Object catch (error, stackTrace) {
       Log.w("Could not list the descendants of pid $pid; signalling only the process itself", error, stackTrace);
       return const <int>[];

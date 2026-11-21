@@ -444,9 +444,12 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   detached ones included, so tool commands and helpers it started end with it. Oh My
   Pi's shared helper (the per-user `__omp_worker_daemon` from 19.0.0, the per-project
   `__omp_worker_daemon_broker` and the tiny and mnemopi shared workers before) is
-  spared with everything under it, whichever
-  `omp` spawned it: it serves terminal sessions too, keeps named `bash` services
-  running until `omp ps stop`, and exits on its own once idle. Short commands keep
+  spared with everything under it, whichever `omp` spawned it: it serves terminal
+  sessions too, keeps named `bash` services running until `omp ps stop`, and exits on
+  its own once idle. On Windows `omp` starts outside the job object and its stop
+  force-kills each non-helper process from a `Win32_Process` snapshot instead of
+  `taskkill /T`; the `windows-job-object` job in Bridge CI proves the tool command
+  ends and the helper survives. Short commands keep
   root-only signals, so the detached OpenCode 2 service survives. Failure signals:
   after a bridge SIGTERM mid-turn, `ps` still shows a tool command reparented to
   init, or a terminal `omp` session loses its daemon or services.

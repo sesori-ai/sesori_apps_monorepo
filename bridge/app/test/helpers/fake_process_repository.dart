@@ -33,7 +33,12 @@ class StrictFakeProcessRepository() implements ProcessRepository {
   }
 
   @override
-  Future<List<int>> listPosixDescendants({required int pid, required Set<String> sharedHelperArguments}) {
+  Future<List<int>> listDescendants({required int pid, required Set<String> sharedHelperArguments}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<SignalResult> killWindowsProcess({required int pid, required ShutdownSignal requestedSignal}) {
     throw UnimplementedError();
   }
 
