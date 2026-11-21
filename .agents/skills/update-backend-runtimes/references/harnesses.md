@@ -294,6 +294,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Audit:** stream-json/control envelopes, tool and subagent lifecycle, replay,
   permissions, questions, models and settings. This plugin drives the CLI seam,
   not an arbitrary new SDK feature. Use approved live probes for adopted changes.
+  A quick offline seam diff: run `strings` on the old and new native binaries,
+  confirm every string literal in the plugin's `lib/` found in the old one is
+  still in the new one, and diff the `subtype:<fn>("<name>")` literal sets for
+  new or removed control requests and system messages.
   The `side_question` control request is undocumented, so every refresh runs a
   live side-question probe (mid-turn, and after a cold `--resume`). It checks
   that the session `.jsonl` gains no question or answer record (a cold resume
