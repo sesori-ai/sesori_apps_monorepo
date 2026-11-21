@@ -11,11 +11,11 @@ final class const AntigravityReleaseArtifact({
 
 /// Public facts pinned from Google's official ACP registry release.
 abstract final class AntigravityRelease() {
-  static const String registryCommit = "655791de14720cb08eaa9753f39ec0095f04fa2c";
-  static const String registryPackageVersion = "1.5.0";
+  static const String registryCommit = "e29b5bf3bfd8756db5d901690b43dc31e926ccd5";
+  static const String registryPackageVersion = "1.5.2";
   static const int protocolVersion = 1;
   static const String serverBuildLabelPrefix = "agy_acp_server_";
-  static const String agentVersion = "1.5.0";
+  static const String agentVersion = "1.5.2";
 
   static const String personalOauthMethodId = "oauth-personal";
   static const Set<String> advertisedAuthenticationMethodIds = {
@@ -38,67 +38,67 @@ abstract final class AntigravityRelease() {
       PlatformArch.x64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/macos/"
-            "agy-acp-server-1.5.0-darwin-x86_64.zip",
-        archiveSha256: "86a94e33b25d4a38ff30526ad844546860aa9ed98698498d9e87d30eb794426e",
-        archiveBytes: 106461356,
-        serverBytes: 184151792,
-        harnessBytes: 134730544,
+            "agy-acp-server-1.5.2-darwin-x86_64.zip",
+        archiveSha256: "92addb5580577b5356d35484d72d1a113d9c5312ad766bcb304983aa8e3fbb06",
+        archiveBytes: 106351992,
+        serverBytes: 184312784,
+        harnessBytes: 134350320,
       ),
       PlatformArch.arm64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/macos/"
-            "agy-acp-server-1.5.0-darwin-arm64.zip",
-        archiveSha256: "c82ecb4ef476bfc35cbe5b2745cdddef873b99c9f5bd7fd11e5ca1fc1667a3fc",
-        archiveBytes: 100401185,
-        serverBytes: 179756208,
-        harnessBytes: 129572384,
+            "agy-acp-server-1.5.2-darwin-arm64.zip",
+        archiveSha256: "123a16d5c40a8ac99e20f01a62b68dd860fd96b1c528dfb8eaa37ca8733d4845",
+        archiveBytes: 100309778,
+        serverBytes: 179921328,
+        harnessBytes: 129208672,
       ),
     },
     PlatformOs.linux: {
       PlatformArch.x64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/linux/"
-            "agy-acp-server-1.5.0-linux-x86_64.zip",
-        archiveSha256: "36f373e8948edf1727b39c7d62b5722d6a4474bdfd72b04ad3d6def571808c9f",
-        archiveBytes: 274069093,
-        serverBytes: 714224576,
-        harnessBytes: 139570072,
+            "agy-acp-server-1.5.2-linux-x86_64.zip",
+        archiveSha256: "99dd8612450805011619d7b8447ce374c289e00549d8557f36790e1dd6256852",
+        archiveBytes: 273964075,
+        serverBytes: 714384320,
+        harnessBytes: 139194456,
       ),
       PlatformArch.arm64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/linux/"
-            "agy-acp-server-1.5.0-linux-arm64.zip",
-        archiveSha256: "1e184f439477b54138e94440056b26a78c0a8075a8fd2ffda637ec31267c6459",
-        archiveBytes: 264366319,
-        serverBytes: 721489411,
-        harnessBytes: 132951888,
+            "agy-acp-server-1.5.2-linux-arm64.zip",
+        archiveSha256: "e729e05ef54ef0763e48900032466b47fa7c9939cde257f93ba49410ab577acb",
+        archiveBytes: 264270419,
+        serverBytes: 721649155,
+        harnessBytes: 132598576,
       ),
     },
     PlatformOs.windows: {
       PlatformArch.x64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/windows/"
-            "agy-acp-server-1.5.0-windows-x86_64.zip",
-        archiveSha256: "6163f6b59b381bae419652dbae167bc8cda0ef29d665c0ba8af3d8c7fddd8867",
-        archiveBytes: 105513364,
-        serverBytes: 58314376,
-        harnessBytes: 155782808,
+            "agy-acp-server-1.5.2-windows-x86_64.zip",
+        archiveSha256: "5cbadd4f4df698572473d8890fc26ec2dc1724501f06e3a963941daec2bd21d6",
+        archiveBytes: 105407645,
+        serverBytes: 58368800,
+        harnessBytes: 155357336,
       ),
       PlatformArch.arm64: AntigravityReleaseArtifact(
         archiveUrl:
             "https://dl.google.com/agy-extensions/releases/windows/"
-            "agy-acp-server-1.5.0-windows-arm64.zip",
-        archiveSha256: "340092b8af6dafc71eb15f4a8ec54b4d1f0bce16d1fa4d163b562c50b905f8f4",
-        archiveBytes: 108145235,
-        serverBytes: 65077040,
-        harnessBytes: 147104920,
+            "agy-acp-server-1.5.2-windows-arm64.zip",
+        archiveSha256: "8a4b2ea8df2ffefae33309348752e9119d21a6d36090c0eb48631c2e8f5781ab",
+        archiveBytes: 108049351,
+        serverBytes: 65130848,
+        harnessBytes: 146707096,
       ),
     },
   };
 
   // The extracted macOS ARM64 siblings are also independently hashed.
-  static const String macosArm64ServerSha256 = "bbb138a7ff32982e231af325e3176b252174f4c59e4fee7159c0e364ad5f9613";
-  static const String macosArm64HarnessSha256 = "4eddc5c77a0bb275372fb548a9011a1acc70828a4a72412f2da0733c90db30fe";
+  static const String macosArm64ServerSha256 = "4cea3c96875a4bb66a1c136d972b5cfdc5f7c91579ff7b9cbfc158a4358270bc";
+  static const String macosArm64HarnessSha256 = "31ec5f444b8c849ddb14da1c0893a87dddab60f1d5e282b79db36dc41b2521ab";
 
   static AntigravityReleaseArtifact artifactFor({required PlatformTarget target}) =>
       artifacts[target.os]?[target.arch] ??

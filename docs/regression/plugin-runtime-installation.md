@@ -206,12 +206,12 @@ home directory: managed runtimes install under `~/.local/share/sesori/`
   installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses registry package version `1.5.0` for its version directory and separately
-  validates the exact ACP runtime identity `1.5.0`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.5.2` for its version directory and separately
+  validates the exact ACP runtime identity `1.5.2`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
-  authenticates nor creates a session. All six `1.5.0` archive hashes, layouts and permissions are independently
-  verified. A 2026-11-16 macOS arm64 run of the complete managed pipeline (hardened extraction, initialize-only
-  validation, `ProvisionReady` and the digest sentinel) passed for `1.5.0`; other native targets and authenticated
+  authenticates nor creates a session. All six `1.5.2` archive hashes, layouts and permissions are independently
+  verified. A 2026-11-21 macOS arm64 run of the complete managed pipeline (hardened extraction, initialize-only
+  validation, `ProvisionReady` and the digest sentinel) passed for `1.5.2`; other native targets and authenticated
   behavior remain unverified. Earlier `1.2.1` and `1.3.0` native observations do not verify this pin.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
