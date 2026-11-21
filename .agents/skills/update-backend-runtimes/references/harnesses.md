@@ -428,12 +428,19 @@ concrete problem can justify a documented temporary hold with a resolution path.
   until `18.20.1` (the fix landed there, not in `18.20.0` as the changelog says)
   the raw list holds a new empty, untitled replacement session (upstream
   #19068). `session/new` alone still writes an empty untitled session file
-  (`19.0.0`), so the plugin's listing filter stays. Without credentials that
-  file is not listed (`18.22.2` and `19.0.0`, same or fresh process, with or
-  without `cwd`); the `_meta.messageCount` 0 entry needs the configured fixture.
+  (`19.1.0`), so the plugin's listing filter stays. Launch these probes as the
+  live plugin does, without `--session-dir`: ACP `session/list` and
+  `session/load` read only the default session directory under
+  `PI_CODING_AGENT_DIR`, so with the flag nothing is ever listed. Launched that
+  way, `session/list` returns the new file with `_meta.messageCount` 0 and no
+  title without credentials (`19.0.1` and `19.1.0`, same or fresh process).
   Confirm both shapes on each bump.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in the `19.0.0` source), `session/load` and `session/resume` fail
+  It needs no credentials: after `session/new`, append a `model_change` entry
+  naming a removed model (`google-gemini-cli/gemini-2.5-pro`; that provider was
+  removed in `19.1.0`) and a user `message` entry to the session's JSONL file,
+  then call `session/load` and `session/resume` from a fresh process.
+  From `18.6.3` (still in the `19.1.0` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this
@@ -462,7 +469,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   (`12c017d1`) and `<name>_other` only in 18.18.3–18.19.0. `qN`/`qN__other`
   names come from an extension's `ui.askDialog`; from 19.0.0 the `ask` tool
   also rebuilds a model's legacy `questions` list as a form named by each
-  question's `id` or `qN` (no "other" field). Do not interpret OMP's naming in the generic
+  question's `id` or `qN` (no "other" field). 19.1.0's "RPC hosts must handle
+  the `ask` tool as one complete HTML-form request" note is about RPC mode only;
+  ACP already rendered the whole form through `formDialog`, and the ACP bridge
+  and `html-form` parser did not change. Do not interpret OMP's naming in the generic
   mapper or add a second wire answer shape. Live
   `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
   scratch/catalog/cleanup form elicitation disabled. See
@@ -485,7 +495,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   back to `<tool>: <subject>`. `OmpBinary.launchSpec` sets `PI_INTENT_TRACING=1`,
   which outranks every settings file (17.2.13 and 18.x read the same variable).
   Live on 19.0.0: a read is titled `read: notes.txt` without it and by its intent
-  with it. Re-check the variable name and precedence on each bump.
+  with it. From 19.1.0 the title is only the label before the intent's first
+  `: ` (`toolIntentLabel`). Re-check the variable name and precedence on each bump.
 - **Shared helper:** OMP spawns its daemon (`__omp_worker_daemon`, 19.0.0) or,
   in 18.x, its per-project broker (`__omp_worker_daemon_broker`) and the
   machine-wide tiny ONNX and mnemopi workers (`__omp_worker_tiny_inference`,
@@ -500,6 +511,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   helper and both services remain; `omp ps stop <name>` then lets the helper
   exit. A model that always sends `timeout` needs `ready` (for example
   `ready.log`) on a named call, or OMP rejects it.
+  From 19.1.0 the daemon can also host MCP servers (`mcp.shared`); ACP sessions
+  run with `enableMCP: false` and keep client-declared servers in the `omp acp`
+  process. Re-check that on each bump: point `session/new` `mcpServers` at a
+  loopback HTTP fixture and see which process connects (`lsof`). OMP first sends
+  `server/discover`; Sesori's `-32601` answer selects the handshake era.
 
 ## DeepSeek
 
