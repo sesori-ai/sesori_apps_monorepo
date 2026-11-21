@@ -10,7 +10,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.99.0");
 
   /// The latest stable Pi release targeted by this plugin.
-  static const String targetVersion = "1.5.2";
+  static const String targetVersion = "1.6.0";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
@@ -20,7 +20,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-darwin-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "56b5e194d485ced555667b8ba3276157a8272e9ecde9e001e428af80985bdd9b",
+        sha256: "6429287b7ae98d726ec577815d14fd680e7c587e89ecc5153b4a145dc4adba33",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -28,7 +28,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-darwin-x64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "f997a088613514ac97d913aeea7642094d84fe6d46854ff7e64e2c12e536dc50",
+        sha256: "5b69cd87c3b00e74cce2d1499df3b7a1ec73632f11abf64696d110f0f4dc4192",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -38,7 +38,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "42805cd5615952fcbbfc9c56b04f8feb84395134952e169a6cdc8d7676975666",
+        sha256: "5404547b9739be596d50ae7142c52535899e8e7dd37a7bace9be593e0355b468",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -46,7 +46,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "811c6f2c9e7aaee252b5404252e556fb713aa209c1f7f924226aa77d4ef70cb5",
+        sha256: "ef77dbe4379b3bdeb425a1e1b862fa3c915c255000dfe4965c98eee96a5765d1",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -56,7 +56,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-windows-arm64.zip",
         format: ArchiveFormat.zip,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "e83404bc5a6003ac950683edd9b6cf499dac91ec890d8439a8c32528de534a77",
+        sha256: "56433d392e1baecf9f1692785a3bf171c125b415a29dd36097d02baca98bc9eb",
         archiveBinaryName: "pi.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -64,7 +64,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
         assetName: "pi-windows-x64.zip",
         format: ArchiveFormat.zip,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "e6adb8cb8c84eca14391ad24b363de9d2be98a89ca3ba3fdee1fa4de32b7f2e8",
+        sha256: "f5defb6c403ee698f5b3f8886db473e55b78aac670a8ce03620a47f5f0aec57c",
         archiveBinaryName: "pi.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
