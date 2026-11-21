@@ -157,10 +157,12 @@ enum SesoriMcpTool({
         "session with the user's answers, or that they closed the page, so don't wait or poll for it, and don't "
         "ask the same thing in chat too. A page has sections, each with an optional heading, a Markdown body, "
         "images and questions. Question kinds: single (pick one option), multiple (pick any options) or text "
-        "(free text). Every question also gets a note field. Images are absolute paths to png, jpg, gif or webp "
-        "files, copied when sent. Limits: title 200 characters, 20 images (20 MiB each, 50 MiB in all), 50 "
-        "questions, 12 options per question. Question ids are unique in the page and option ids in their "
-        "question.",
+        "(free text). Sesori gives every question its own note field and ends every page with a free-text "
+        '"Anything else?" field, so do not add your own catch-all question such as "Anything else?" or '
+        '"Other comments". '
+        "Images are absolute paths to png, jpg, gif or webp files, copied when sent. Limits: title 200 "
+        "characters, 20 images (20 MiB each, 50 MiB in all), 50 questions, 12 options per question. "
+        "Question ids are unique in the page and option ids in their question.",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -345,7 +347,11 @@ const Map<String, Object?> _pageSectionSchema = {
     "heading": {"type": "string"},
     "body": {"type": "string", "description": "Markdown."},
     "images": _pageImagesSchema,
-    "questions": {"type": "array", "items": _pageQuestionSchema},
+    "questions": {
+      "type": "array",
+      "items": _pageQuestionSchema,
+      "description": 'No catch-all "Anything else?" question: the page already ends with one.',
+    },
   },
   "additionalProperties": false,
 };

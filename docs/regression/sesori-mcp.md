@@ -87,6 +87,9 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
 - `send_page` does not block. It returns at once with "Sent “Title” to the user. Sesori will message this session
   with their answer.", and the answer arrives later as a notice. There is no cap on pages per session and pages do not
   queue: several can wait at once, and each is answered on its own.
+- `send_page`'s description and its `sections[].questions` field tell the agent that every question has its own note
+  field and every page ends with a free-text "Anything else?" field, so it adds no catch-all question of its own. An
+  agent-written "Anything else?" question would show a second box and count toward the unanswered questions.
 - `send_page` parses strictly: an unknown key at any level is refused naming it (`sections[].questions[].colour is
   not an argument`), and other errors name the indexed field (`sections[0].questions[1].options[2].label is required.`).
   A single or multiple question needs options and a text question takes none. Caps: a 200-character title, 50
