@@ -31,7 +31,7 @@ dependencies:
   material_ui: ^1.11.1
   cupertino_ui: ^1.1.7
 
-  liquid_glass_widgets: 1.17.4
+  liquid_glass_widgets: 1.17.5
   http: ^1.6.0
   rxdart: ^0.28.0
   flutter_bloc: ^9.1.1
@@ -66,13 +66,13 @@ dependencies:
   firebase_messaging: ^17.1.0
   firebase_remote_config: ^7.1.0
   singular_flutter_sdk: ^1.9.1
-  flutter_local_notifications: ^23.0.2
+  flutter_local_notifications: ^23.0.3
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.8
   image_picker: ^1.2.4
   file_selector: ^1.1.0
   flutter_keyboard_visibility: ^7.0.1
-  flutter_web_auth_2: 5.1.0
+  flutter_web_auth_2: 6.0.0
 
 dev_dependencies:
   cryptography: ^2.9.0
@@ -80,7 +80,7 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  flutter_svg: ^2.4.0
+  flutter_svg: ^2.5.0
   injectable_generator: ^3.1.3
   bloc_test: ^10.0.0
   build_runner: ^2.16.1
