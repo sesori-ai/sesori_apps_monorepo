@@ -354,6 +354,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Check `get_commands` `sourceInfo.path` for bundled extensions: since 0.99.0
   they report `builtin:<name>` (`src/extensions/index.ts`), not `<inline:name>`,
   and the catalog's excluded-source set must match the current form.
+  Re-check the no-model copy Sesori matches (`auth-guidance.ts`, the
+  `--list-models` output and the non-interactive no-model exit in `main.ts`).
+  A logged-out RPC process does not exit: it starts on a placeholder
+  `unknown/unknown` model (verified 1.5.2 and 1.6.0), and from 1.6.0 also writes
+  the startup diagnostics, including `Warning: No models available…`, to stderr.
+  From 1.6.0 RPC subscribes before `bindExtensions`, so events emitted by
+  `session_start` handlers (such as `entry_appended`) reach the client at
+  startup; the stdin reader still attaches only after that.
 - **Lifecycle:** preserve delta-only updates and `message_end` authority.
   `agent_end` is a low-level boundary that can precede retries or queued work;
   inspect `agent_settled` for user-visible completion, and distinguish per-turn/
@@ -373,6 +381,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
   events; reject malformed/mismatched responses. Close stdin, wait at most two
   seconds, then terminate the process tree before cleanup. No inherited secrets
   or normal profile; this probe policy must not replace production user settings.
+  The plugin's Dart package name is `pi_plugin`, not its directory name. A
+  probe-owned `HostProcessService` that wraps children (for example in
+  `sandbox-exec`) must resolve bare names against its allowlisted `PATH` and
+  throw `ProcessException` when absent; otherwise the installer's PATH
+  authority sees a runtime and refuses with "The global Pi runtime now takes
+  precedence".
 
 ## Oh My Pi (OMP)
 
