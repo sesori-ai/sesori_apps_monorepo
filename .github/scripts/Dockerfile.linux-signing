@@ -1,4 +1,4 @@
 # Shared native Fedora 44 pin for CLI/desktop signing, RPM packaging and install fixtures.
-FROM registry.fedoraproject.org/fedora@sha256:98b558564d3510363f0f706a44b1ee9de461b030373d741c5729ae3f24d8cb26
+FROM registry.fedoraproject.org/fedora@sha256:fda16b8254a181b9f010930f16f0b33c8dc7cb680a8f6c934bc9da5b3c3a5fed
 RUN dnf install -y python3 gnupg2 rpm-sign rpm-build && dnf clean all
 WORKDIR /workspace

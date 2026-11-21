@@ -157,7 +157,7 @@ jobs:
         env:
           # Same digests as the producer's install fixtures; the tooling test keeps them in step.
           DEBIAN_IMAGE: docker.io/library/debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
-          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:98b558564d3510363f0f706a44b1ee9de461b030373d741c5729ae3f24d8cb26
+          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:fda16b8254a181b9f010930f16f0b33c8dc7cb680a8f6c934bc9da5b3c3a5fed
         run: |
           set -euo pipefail
           for row in "debian-13|deb|$DEBIAN_IMAGE" "fedora-44|rpm|$FEDORA_IMAGE"; do
