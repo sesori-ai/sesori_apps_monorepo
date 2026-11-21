@@ -156,9 +156,9 @@ class BridgeHostProcessService({
     return _signalWithDescendants(pid: pid, requestedSignal: .force, send: _processRepository.sendForceSignal);
   }
 
-  /// Signals [pid], then the descendants it had just before, so a harness
-  /// tree cannot outlive its root. The snapshot comes first because once the
-  /// root exits its orphans are reparented and no longer traceable to it.
+  /// Signals the descendants [pid] has right now, then [pid] itself, so a
+  /// harness tree cannot outlive its root. Callers wait only for the root to
+  /// exit, so it goes last: by then the rest is already signalled.
   Future<SignalResult> _signalWithDescendants({
     required int pid,
     required ShutdownSignal requestedSignal,
@@ -171,7 +171,6 @@ class BridgeHostProcessService({
     // process on its own.
     Future<SignalResult> signalOne({required int pid}) =>
         _isWindows ? _processRepository.killWindowsProcess(pid: pid, requestedSignal: requestedSignal) : send(pid: pid);
-    final result = await signalOne(pid: pid);
     for (final descendant in descendants) {
       try {
         await signalOne(pid: descendant);
@@ -179,7 +178,7 @@ class BridgeHostProcessService({
         Log.w("Could not signal pid $descendant, a descendant of pid $pid", error, stackTrace);
       }
     }
-    return result;
+    return await signalOne(pid: pid);
   }
 
   Future<List<int>> _descendantsOf({required int pid, required Set<String> sharedHelperArguments}) async {

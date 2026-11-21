@@ -385,7 +385,7 @@ void main() {
       expect(graceful.pid, 7001);
       expect(
         processRepository.signalRequests,
-        equals(<String>['graceful:7001', 'graceful:7002', 'graceful:7003', 'force:7001', 'force:7002', 'force:7003']),
+        equals(<String>['graceful:7002', 'graceful:7003', 'graceful:7001', 'force:7002', 'force:7003', 'force:7001']),
       );
       // The listing leaves out the shared helpers the spawn declared.
       expect(
@@ -426,11 +426,12 @@ void main() {
 
       final graceful = await host.signalGraceful(pid: 7001);
 
-      // No `taskkill /T`: each process is killed on its own, and one failure
-      // does not stop the rest.
+      // No `taskkill /T`: each process is killed on its own, one failure does
+      // not stop the rest, and the root goes last so its exit means the rest
+      // is already killed.
       expect(graceful.pid, 7001);
       expect(graceful.requestedSignal, ShutdownSignal.graceful);
-      expect(processRepository.signalRequests, equals(<String>['kill:7001', 'kill:7002', 'kill:7003']));
+      expect(processRepository.signalRequests, equals(<String>['kill:7002', 'kill:7003', 'kill:7001']));
       expect(
         processRepository.descendantQueries,
         equals(<Set<String>>[
