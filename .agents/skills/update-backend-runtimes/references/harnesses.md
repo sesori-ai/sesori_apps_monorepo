@@ -176,7 +176,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
   `<stateDirectory>/codex/<version>/bin/codex[.exe]`, complete helpers/resources,
-  and `.sesori-runtime-sha256` containing the bare candidate digest.
+  and `.sesori-runtime-sha256` containing the bare candidate digest. The
+  installer checks the `PATH` of the process running it, not the environment
+  passed to the child, so a host `codex` on `PATH` blocks the managed install.
+  Start the probe with a system-only `PATH` and an absolute Dart path (the asdf
+  shim fails under it).
 - **Probe both current-host transports:** isolated HOME/`CODEX_HOME` (create the
   directory first; Codex exits when `CODEX_HOME` does not exist), exact
   version, 10-second response deadlines and bounded process-tree cleanup. Follow
