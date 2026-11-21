@@ -6,7 +6,7 @@ resolution: workspace
 
 environment:
   sdk: ^3.14.0
-  flutter: ">=3.50.0 <3.51.0"
+  flutter: ">=3.50.1 <3.51.0"
 
 dependencies:
   clock: ^1.1.3
@@ -16,17 +16,17 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_markdown_plus: ^1.0.12
-  flutter_svg: ^2.4.0
+  flutter_svg: ^2.5.0
   flutter_timezone: ^5.1.1
   go_router: ^18.1.4
   intl: any
-  liquid_glass_widgets: 1.17.4
+  liquid_glass_widgets: 1.17.5
   markdown: ^7.3.1
   material_ui: ^1.11.1
-  pasteboard: ^0.6.1
+  pasteboard: ^0.6.2
   path: any
   path_provider: ^2.1.6
-  pdfrx: ^2.13.0
+  pdfrx: ^3.1.0
   re_highlight: ^0.0.3
   record: ^7.2.0
   rxdart: ^0.28.0
