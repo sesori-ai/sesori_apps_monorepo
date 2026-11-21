@@ -1176,10 +1176,10 @@ packages:
     dependency: transitive
     description:
       name: liquid_glass_widgets
-      sha256: "40c3f19a89b40166641cf205ff9ee883f45c0a54c1a0652e00bda8b07f82281c"
+      sha256: ec477e8724e9e74576dbfec1fd083591acb618e64c87d4f826ccfa4d44e07c11
       url: "https://pub.dev"
     source: hosted
-    version: "1.17.5"
+    version: "1.19.0"
   listen:
     dependency: transitive
     description:

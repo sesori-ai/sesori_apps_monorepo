@@ -29,7 +29,7 @@ dependencies:
   go_router: ^18.1.4
   http: ^1.6.0
   injectable: ^3.0.0
-  liquid_glass_widgets: 1.17.5
+  liquid_glass_widgets: 1.19.0
   material_ui: ^1.11.1
   nativeapi: ^0.6.1
   package_info_plus: ^10.2.2
