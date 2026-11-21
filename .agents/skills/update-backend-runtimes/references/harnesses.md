@@ -465,8 +465,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   in 18.x, its per-project broker (`__omp_worker_daemon_broker`) and the
   machine-wide tiny ONNX and mnemopi workers (`__omp_worker_tiny_inference`,
   `__omp_worker_mnemopi_embed_server`; 19.0.0 runs them under the daemon)
-  detached. The bridge's POSIX tree signal skips them by those arguments
-  (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
+  detached. The bridge's stop skips them by those arguments on POSIX and
+  Windows (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
   detached spawns (`spawnDetached`, `detached: true`) that ACP mode reaches,
   and confirm each helper's argument and idle exit (19.0.0 daemon: 3 s after
   nothing is connected and no persistent unit runs). Live probe: let Sesori's
