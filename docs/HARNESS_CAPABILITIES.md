@@ -25,7 +25,7 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
 | Claude Code | User-role frames, transcript records and `queued_command` attachments with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records and peers queued mid-turn. |
 | Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, `queued_command` attachments in `task-notification` mode, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load, including one queued mid-turn. |
-| OpenCode (task notifications) | 2.3.0: a synthetic parent message with `metadata.source: subagent`, delivered through the inbox, whose text wraps the child's answer in a `<subagent …>` envelope (probed live 2026-11-16) | ✅ Renders as an Automation row holding one finished sub-agent step live and after history load. |
+| OpenCode (task notifications) | 2.3.0: a synthetic parent message with `metadata.source: subagent`, delivered through the inbox, whose text wraps the child's answer in a `<subagent …>` envelope (probed live 2026-11-16); 2.4.0 renames the envelope `<background-result kind="subagent" …>` with the same metadata (source, 2026-11-23) | ✅ Renders as an Automation row holding one finished sub-agent step live and after history load. |
 | Codex (task notifications) | None | Not applicable: no background-task completion arrives as a user turn. |
 
 Claude attribution uses host provenance, not plugin names or text matching. It
@@ -565,7 +565,7 @@ sub-agents finish.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.3.2.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.4.1.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |

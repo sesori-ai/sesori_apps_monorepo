@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.3.2 (c0ad18b402eb2827fc1ee71c171b1177b3fc02d1)
+// Source: anomalyco/opencode@v2.4.1 (6f0514052a3c859894ad01bb14cc14dda1e44b96)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -8,6 +8,7 @@ import 'model_capabilities.g.dart';
 import 'model_compatibility.g.dart';
 import 'model_cost.g.dart';
 import 'model_settings.g.dart';
+import 'model_speed.g.dart';
 import 'model_variant.g.dart';
 
 @immutable
@@ -27,6 +28,7 @@ class ModelInfo {
     required this.body,
     required this.capabilities,
     required this.variants,
+    required this.experimental,
     required this.time,
     required this.cost,
     required this.status,
@@ -50,6 +52,7 @@ class ModelInfo {
       body: json["body"] as Map<String, dynamic>?,
       capabilities: ModelCapabilities.fromJson(json["capabilities"] as Map<String, dynamic>),
       variants: (json["variants"] as List<dynamic>).map((e) => ModelVariant.fromJson(e as Map<String, dynamic>)).toList(),
+      experimental: json["experimental"] == null ? null : ModelInfoExperimental.fromJson(json["experimental"] as Map<String, dynamic>),
       time: ModelInfoTime.fromJson(json["time"] as Map<String, dynamic>),
       cost: (json["cost"] as List<dynamic>).map((e) => ModelCost.fromJson(e as Map<String, dynamic>)).toList(),
       status: ModelInfoStatus.fromJson(json["status"] as String),
@@ -74,6 +77,7 @@ class ModelInfo {
       "body": ?body,
       "capabilities": capabilities.toJson(),
       "variants": variants.map((e) => e.toJson()).toList(),
+      "experimental": ?experimental?.toJson(),
       "time": time.toJson(),
       "cost": cost.map((e) => e.toJson()).toList(),
       "status": status.toJson(),
@@ -99,6 +103,7 @@ class ModelInfo {
     Map<String, dynamic>? body,
     ModelCapabilities? capabilities,
     List<ModelVariant>? variants,
+    ModelInfoExperimental? experimental,
     ModelInfoTime? time,
     List<ModelCost>? cost,
     ModelInfoStatus? status,
@@ -120,6 +125,7 @@ class ModelInfo {
       body: body ?? this.body,
       capabilities: capabilities ?? this.capabilities,
       variants: variants ?? this.variants,
+      experimental: experimental ?? this.experimental,
       time: time ?? this.time,
       cost: cost ?? this.cost,
       status: status ?? this.status,
@@ -146,6 +152,7 @@ class ModelInfo {
           const DeepCollectionEquality().equals(other.body, body) &&
           other.capabilities == capabilities &&
           const DeepCollectionEquality().equals(other.variants, variants) &&
+          other.experimental == experimental &&
           other.time == time &&
           const DeepCollectionEquality().equals(other.cost, cost) &&
           other.status == status &&
@@ -153,7 +160,7 @@ class ModelInfo {
           other.limit == limit);
 
   @override
-  int get hashCode => Object.hash(id, modelID, providerID, canonical, type, family, name, compatibility, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body), capabilities, const DeepCollectionEquality().hash(variants), time, const DeepCollectionEquality().hash(cost), status, enabled, limit);
+  int get hashCode => Object.hash(id, modelID, providerID, canonical, type, family, name, compatibility, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body), capabilities, const DeepCollectionEquality().hash(variants), experimental, time, const DeepCollectionEquality().hash(cost), status, enabled, limit);
 
   final String id;
   final String modelID;
@@ -169,11 +176,52 @@ class ModelInfo {
   final Map<String, dynamic>? body;
   final ModelCapabilities capabilities;
   final List<ModelVariant> variants;
+  final ModelInfoExperimental? experimental;
   final ModelInfoTime time;
   final List<ModelCost> cost;
   final ModelInfoStatus status;
   final bool enabled;
   final ModelInfoLimit limit;
+}
+
+@immutable
+class ModelInfoExperimental {
+  const ModelInfoExperimental({
+    required this.speed,
+  });
+
+  factory ModelInfoExperimental.fromJson(Map<String, dynamic> json) {
+    return ModelInfoExperimental(
+      speed: json["speed"] == null ? null : ModelSpeed.fromJson(json["speed"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "speed": ?speed?.toJson(),
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  ModelInfoExperimental copyWith({
+    ModelSpeed? speed,
+  }) {
+    return ModelInfoExperimental(
+      speed: speed ?? this.speed,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelInfoExperimental &&
+          other.speed == speed);
+
+  @override
+  int get hashCode => speed.hashCode;
+
+  final ModelSpeed? speed;
 }
 
 @immutable

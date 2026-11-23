@@ -226,7 +226,8 @@ void main() {
     };
 
     String envelope({required String state, required String body}) =>
-        '<subagent sessionID="ses_child" state="$state" description="probe child">\n$body\n</subagent>';
+        '<background-result kind="subagent" sessionID="ses_child" state="$state" description="probe child">\n'
+        '$body\n</background-result>';
 
     PluginMessagePartSubtask subtask({required Map<String, dynamic> json}) =>
         mapped(json: json).parts.single as PluginMessagePartSubtask;
@@ -289,8 +290,9 @@ void main() {
       final part = subtask(
         json: report(
           text:
-              '<subagent sessionID="ses_child" state="completed" description="say &quot;hi&quot; &gt; 2">\n'
-              "Line one\n\nLine two\n</subagent>",
+              '<background-result kind="subagent" sessionID="ses_child" state="completed" '
+              'description="say &quot;hi&quot; &gt; 2">\n'
+              "Line one\n\nLine two\n</background-result>",
           metadata: metadata(state: "completed"),
         ),
       );
@@ -300,11 +302,23 @@ void main() {
     test("reads the body when an unescaped description contains a closing quote and bracket", () {
       final part = subtask(
         json: report(
-          text: '<subagent sessionID="ses_child" state="completed" description="rename "a">b"">\nRenamed\n</subagent>',
+          text:
+              '<background-result kind="subagent" sessionID="ses_child" state="completed" description="rename "a">b"">\n'
+              "Renamed\n</background-result>",
           metadata: metadata(state: "completed"),
         ),
       );
       expect((part.taskState ?? fail("expected a task state")).output, "Renamed");
+    });
+
+    test("reads the body of a report from OpenCode before 2.4, tagged <subagent>", () {
+      final part = subtask(
+        json: report(
+          text: '<subagent sessionID="ses_child" state="completed" description="probe child">\nCHILD-DONE\n</subagent>',
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, "CHILD-DONE");
     });
 
     test("keeps the still-running list a report appends to its answer", () {

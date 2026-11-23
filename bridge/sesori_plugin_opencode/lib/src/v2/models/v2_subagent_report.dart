@@ -21,7 +21,8 @@ enum V2SubagentState() {
 /// A background sub-agent's outcome, which OpenCode 2.3+ delivers to the
 /// parent as a synthetic message tagged `metadata.source: "subagent"`. Its
 /// text wraps the child's answer in a
-/// `<subagent sessionID="…" state="…" description="…">` envelope.
+/// `<background-result kind="subagent" sessionID="…" state="…" description="…">`
+/// envelope; before 2.4.0 the tag was `<subagent sessionID="…" …>`.
 final class const V2SubagentReport({
   required final String description,
 
@@ -35,8 +36,12 @@ final class const V2SubagentReport({
   required final String body,
 }) {
   static const _source = "subagent";
-  static const _openTag = "<subagent";
-  static const _closeTag = "</subagent>";
+  static const _envelopeTags = [
+    (open: "<background-result", close: "</background-result>"),
+    // COMPATIBILITY 2026-11-23 (v1.16.0): OpenCode 2.3.x wraps reports in
+    // `<subagent …>`. Remove this entry once the v2 minimum reaches 2.4.0.
+    (open: "<subagent", close: "</subagent>"),
+  ];
 
   /// The report [message] carries, or null for any other synthetic message.
   static V2SubagentReport? fromSynthetic({required SessionMessageSynthetic message}) {
@@ -63,11 +68,14 @@ final class const V2SubagentReport({
   /// values are escaped, and when a single-line description contains `">`.
   static String? _envelopeBody({required String text}) {
     final trimmed = text.trim();
-    if (!trimmed.startsWith(_openTag) || !trimmed.endsWith(_closeTag)) return null;
+    final tags = _envelopeTags
+        .where((tags) => trimmed.startsWith(tags.open) && trimmed.endsWith(tags.close))
+        .firstOrNull;
+    if (tags == null) return null;
     final openEnd = trimmed.indexOf('">\n');
     if (openEnd < 0) return null;
     final bodyStart = openEnd + 3;
-    final bodyEnd = trimmed.length - _closeTag.length;
+    final bodyEnd = trimmed.length - tags.close.length;
     if (bodyStart > bodyEnd) return null;
     return trimmed.substring(bodyStart, bodyEnd).trim();
   }
