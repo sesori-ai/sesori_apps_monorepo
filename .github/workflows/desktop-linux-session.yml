@@ -157,7 +157,7 @@ jobs:
         env:
           # Same digests as the producer's install fixtures; the tooling test keeps them in step.
           DEBIAN_IMAGE: docker.io/library/debian@sha256:9c6e381421d0f48d1b8133e573f33c185ee16cbf505eda9c4a8a4791b25ea8a6
-          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:fda16b8254a181b9f010930f16f0b33c8dc7cb680a8f6c934bc9da5b3c3a5fed
+          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:0daf6a73fb6ad75dcd62d9a5270e58572f1aea95bb9331db7c2eedd6e47c9cb5
         run: |
           set -euo pipefail
           for row in "debian-13|deb|$DEBIAN_IMAGE" "fedora-44|rpm|$FEDORA_IMAGE"; do
@@ -173,7 +173,7 @@ jobs:
           done
       - name: Replace the portable AppImage on native Arch Linux with a Plasma 6 tray host
         env:
-          ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:d4594bb2300cba11f41c2f27923eb56f63d9988909c402f9c95517d1e362c899
+          ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:375a401bb3c6376b37f40b6dfa25067db37ec78d0b7af67ae6315f43a0184a9d
           # Arch has no official ARM64 image. Import the community Arch Linux ARM rootfs only after its
           # build-system signature verifies against this pinned primary fingerprint.
           ARCH_ARM_SIGNER: 68B3537F39A313B3E574D06777193F152BDBE6A6
