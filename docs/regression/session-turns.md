@@ -619,8 +619,9 @@ defaults and queued client sends coherent.
   message with `metadata.source: subagent`) renders as an Automation row
   holding one finished sub-agent step: agent and description, a link to the
   child session, failed when the report's state is `error`, and the
-  `<subagent>` envelope's body carried as its output, or as its error detail
-  on failure. An envelope that does not parse keeps the whole text. A report
+  envelope's body (`<background-result kind="subagent">` from 2.4.0,
+  `<subagent>` before) carried as its output, or as its error detail on
+  failure. An envelope that does not parse keeps the whole text. A report
   missing its agent or description keeps the plain Automation text row. Live
   delivery and history reload produce the same message id and part.
 - A Sesori notice prompt (the bridge's `[SESORI NOTICE]` frame) shows as a
