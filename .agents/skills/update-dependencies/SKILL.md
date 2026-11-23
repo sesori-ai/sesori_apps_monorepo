@@ -27,7 +27,7 @@ Other surfaces and their files (Phase 0 discovers them generically, so treat thi
 | Flutter/Dart SDK | `.tool-versions`, `environment:` in every in-scope pubspec |
 | SwiftPM | `client/app/ios` and `client/desktop/macos`: project + workspace `Package.resolved`; direct `XCRemoteSwiftPackageReference` pins in `Runner.xcodeproj/project.pbxproj` (macOS pins Firebase and Sparkle with `exactVersion`) |
 | Fastlane | `client/app/{ios,android}/Gemfile{,.lock}` |
-| Android toolchain | `client/app/android/settings.gradle.kts` plugin `version` entries, `gradle/wrapper/gradle-wrapper.properties` |
+| Android toolchain | `client/app/android/settings.gradle.kts` plugin `version` entries, `gradle/wrapper/gradle-wrapper.properties`, the `dependencies` block of `client/app/android/app/build.gradle.kts` (desugar_jdk_libs, AndroidX, Play review) |
 | GitHub Actions | `.github/workflows/*.yml`, `.github/actions/*/action.yml`, `.github/actionlint.yaml` |
 | Docker | `.github/scripts/Dockerfile.*`, `tool/release_scheduler/Dockerfile`, digest-pinned images in workflows |
 | Node | `tool/release_scheduler/package.json` + lockfile; `bridge/app/npm/*` are publish shims whose versions the release sets |
@@ -185,6 +185,7 @@ On a mismatch, run the same delete-and-resolve as 3.2 against the **project** co
 - Crashlytics: `https://dl.google.com/dl/android/maven2/com/google/firebase/firebase-crashlytics-gradle/maven-metadata.xml`
 - Kotlin Gradle plugin: `https://repo1.maven.org/maven2/org/jetbrains/kotlin/kotlin-gradle-plugin/maven-metadata.xml`
 - Gradle: `https://services.gradle.org/versions/all`
+- App-side Gradle deps in `client/app/android/app/build.gradle.kts`: each artifact's `maven-metadata.xml` under `https://dl.google.com/dl/android/maven2/<group path>/<artifact>/` (Google Maven) or `https://repo1.maven.org/maven2/` (Maven Central). Verified 2026-11-23: constraintlayout 2.2.2 (July 2026) had been missed because earlier runs only checked the plugins.
 </step>
 
 <step name="5.2">Pick the newest mutually compatible set, not just the newest of each:

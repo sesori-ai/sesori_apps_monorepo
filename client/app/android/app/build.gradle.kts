@@ -149,7 +149,7 @@ dependencies {
 
     // https://developer.android.com/jetpack/androidx/versions/all-channel
     implementation("androidx.core:core-splashscreen:1.2.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     implementation("androidx.activity:activity-ktx:1.13.0")
 
     // Google Play In-App Review, behind the app_review channel
