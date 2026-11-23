@@ -33,7 +33,8 @@ on 2026-11-16 (`runtime-refresh-2026-11`), Hermes on 2026-11-17 (`runtime-refres
 OpenCode, Codex, Copilot, Cursor, Claude Code, OMP, Grok and DeepSeek on 2026-11-18
 (`runtime-refresh-2026-11-18`), Cursor, Claude Code and OMP on 2026-11-19 (`runtime-refresh-2026-11-19`),
 Codex, Claude Code, Hermes, Pi, OMP and Grok on 2026-11-20 (`runtime-refresh-2026-11-20`),
-and Antigravity and OMP on 2026-11-21 (`runtime-refresh-2026-11-21`); each of those rows records its own run's evidence and probe conditions.
+Antigravity and OMP on 2026-11-21 (`runtime-refresh-2026-11-21`),
+and OpenCode, Cursor and OMP on 2026-11-23 (`runtime-refresh-2026-11-23`); each of those rows records its own run's evidence and probe conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|

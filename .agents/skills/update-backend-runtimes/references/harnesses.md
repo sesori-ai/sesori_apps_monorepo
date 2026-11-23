@@ -38,7 +38,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   it; v2 audits use `tool/opencode_v2_surface.json` instead. Keep
   minimum-surface metadata aligned only if a floor increase is approved. When the
   old and new tags have diverged (neither is an ancestor of the other), diff the
-  codeload source tarballs of the two commits.
+  codeload source tarballs of the two commits. Also grep the release for text
+  envelopes Sesori parses out of message text (the sub-agent report,
+  `packages/core/src/session/background-result.ts` and `subagent-completion.ts`):
+  2.4.0 renamed `<subagent …>` to `<background-result kind="subagent" …>` with
+  no schema change. A host npm `min-release-age` setting makes `npm pack` refuse
+  releases only days old; pass `--before=<future date>` for the independent
+  download.
 - **Regenerate models on every target update:** from
   `bridge/sesori_plugin_opencode/`, run the matching commands below with the
   selected release tag (replace the `X.Y` placeholders; use `--commit <sha>`
