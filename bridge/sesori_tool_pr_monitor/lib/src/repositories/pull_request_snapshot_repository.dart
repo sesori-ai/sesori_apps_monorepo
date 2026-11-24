@@ -290,6 +290,7 @@ class _PullRequestCommentMapper({required final String _selfLogin}) {
       author: login,
       isBot: author?.kind == GhActorKindDto.bot,
       createdAt: createdAt,
+      body: body,
       origin: switch ((isLocal, body.startsWith(sesoriReplyPrefix))) {
         (false, _) => PullRequestCommentOrigin.other,
         (true, false) => PullRequestCommentOrigin.local,

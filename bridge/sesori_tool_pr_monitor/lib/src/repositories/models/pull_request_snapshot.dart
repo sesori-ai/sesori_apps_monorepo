@@ -47,8 +47,7 @@ enum PullRequestReviewState() {
   unknown,
 }
 
-/// One poll of a pull request, normalized for the monitor's rules. It holds
-/// metadata only: comment bodies are not kept.
+/// One poll of a pull request, normalized for the monitor's rules.
 @freezed
 sealed class PullRequestSnapshot with _$PullRequestSnapshot {
   const factory({
@@ -113,6 +112,10 @@ sealed class PullRequestComment with _$PullRequestComment {
     required String author,
     required bool isBot,
     required DateTime createdAt,
+
+    /// The raw Markdown text. Only on-demand feedback shows it; reports and
+    /// stored baselines never carry it.
+    required String body,
 
     required PullRequestCommentOrigin origin,
 
