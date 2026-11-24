@@ -147,7 +147,7 @@ void main() {
     await service.runDue();
     await pumpEventQueue();
 
-    expect(await service.cancel(caller: _caller, wakeUpId: wakeUp.id), WakeUpCancelResult.cancelled);
+    expect(await service.cancel(sessionId: _caller.sessionId, wakeUpId: wakeUp.id), WakeUpCancelResult.cancelled);
     notices.gate?.complete();
     await pumpEventQueue();
 

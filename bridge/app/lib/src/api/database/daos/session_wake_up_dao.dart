@@ -23,6 +23,14 @@ class SessionWakeUpDao({required AppDatabase database})
         .get();
   }
 
+  /// The wake-ups of [sessionIds], soonest first.
+  Future<List<SessionWakeUpDto>> listForSessions({required Set<String> sessionIds}) {
+    return (select(sessionWakeUpsTable)
+          ..where((row) => row.sessionId.isIn(sessionIds))
+          ..orderBy([(row) => OrderingTerm.asc(row.nextDueAt), (row) => OrderingTerm.asc(row.id)]))
+        .get();
+  }
+
   /// The wake-ups due at or before [nowMs], soonest first.
   Future<List<SessionWakeUpDto>> listDue({required int nowMs}) {
     return (select(sessionWakeUpsTable)

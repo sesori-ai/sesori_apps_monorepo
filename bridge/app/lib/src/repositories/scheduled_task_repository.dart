@@ -11,6 +11,9 @@ import "random_hex_id.dart";
 /// A task whose time has come, with the time it fell due.
 typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
 
+/// A same-session task's next run in its session.
+typedef UpcomingTaskRun = ({String taskName, DateTime dueAt});
+
 /// What auto-compact reads of a task's newest started run and its session.
 typedef StartedRunState = ({
   String runId,
@@ -252,6 +255,21 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
         },
       ),
   };
+
+  /// The soonest next run each of [sessionIds] gets as the session an enabled
+  /// same-session task continues in.
+  Future<Map<String, UpcomingTaskRun>> upcomingRunsInSessions({required Set<String> sessionIds}) async {
+    final upcoming = <String, UpcomingTaskRun>{};
+    for (final row in await _dao.listUpcomingTasksInSessions(sessionIds: sessionIds)) {
+      if ((row.targetSessionId, row.nextDueAt) case (final sessionId?, final dueAt?)) {
+        upcoming.putIfAbsent(
+          sessionId,
+          () => (taskName: row.name, dueAt: DateTime.fromMillisecondsSinceEpoch(dueAt, isUtc: true)),
+        );
+      }
+    }
+    return upcoming;
+  }
 
   /// Whether [sessionId]'s newest run has gone without a prompt of the
   /// user's own since it started. False for a session no run went to.

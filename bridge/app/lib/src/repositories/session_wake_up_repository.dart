@@ -51,6 +51,15 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
     return [for (final row in await _dao.listForSession(sessionId: sessionId)) _fromRow(row: row)];
   }
 
+  /// The wake-ups of each of [sessionIds] that has any, soonest first.
+  Future<Map<String, List<StoredSessionWakeUp>>> forSessions({required Set<String> sessionIds}) async {
+    final bySession = <String, List<StoredSessionWakeUp>>{};
+    for (final row in await _dao.listForSessions(sessionIds: sessionIds)) {
+      bySession.putIfAbsent(row.sessionId, () => []).add(_fromRow(row: row));
+    }
+    return bySession;
+  }
+
   /// The wake-ups due at or before [now], soonest first.
   Future<List<StoredSessionWakeUp>> due({required DateTime now}) async {
     return [for (final row in await _dao.listDue(nowMs: now.millisecondsSinceEpoch)) _fromRow(row: row)];

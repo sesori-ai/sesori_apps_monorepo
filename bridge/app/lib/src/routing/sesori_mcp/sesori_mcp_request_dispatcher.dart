@@ -282,7 +282,7 @@ class SesoriMcpRequestDispatcher({
       case SesoriMcpTool.cancelWakeUp:
         final args = _parse(json: arguments, fromJson: CancelWakeUpArguments.fromJson);
         final wakeUpId = args.wakeUpId;
-        return switch (await _wakeUps.cancel(caller: caller, wakeUpId: wakeUpId)) {
+        return switch (await _wakeUps.cancel(sessionId: caller.sessionId, wakeUpId: wakeUpId)) {
           WakeUpCancelResult.cancelled => _ToolOutcome(isError: false, text: "Cancelled wake-up $wakeUpId."),
           WakeUpCancelResult.notFound => _ToolOutcome(
             isError: true,

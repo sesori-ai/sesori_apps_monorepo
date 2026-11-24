@@ -121,6 +121,7 @@ import "routing/abort_session_handler.dart";
 import "routing/ask_side_question_handler.dart";
 import "routing/cancel_catalog_import_handler.dart";
 import "routing/cancel_queued_prompt_handler.dart";
+import "routing/cancel_session_wake_up_handler.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_scheduled_task_handler.dart";
@@ -433,11 +434,18 @@ class Orchestrator({
     final sessionInterruptions = SessionInterruptionRepository(
       dao: SessionInterruptionDao(database: _database),
     );
+    final sessionMutationDispatcher = SessionMutationDispatcher(
+      sessionRepository: sessionRepository,
+      sessionOperationDispatcher: sessionOperationDispatcher,
+      interruptions: sessionInterruptions,
+    );
+    final sessionWakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database));
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
       scheduledTasks: scheduledTaskRepository,
       interruptions: sessionInterruptions,
+      wakeUps: sessionWakeUps,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
@@ -446,6 +454,7 @@ class Orchestrator({
     final scheduledTaskService = ScheduledTaskService(
       repository: scheduledTaskRepository,
       sessionRepository: sessionRepository,
+      mutations: sessionMutationDispatcher,
       calculator: scheduledTaskOccurrenceCalculator,
       clock: clock,
     );
@@ -453,11 +462,6 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
       sessionRepository: sessionRepository,
       sideChatRepository: sideChatRepository,
-    );
-    final sessionMutationDispatcher = SessionMutationDispatcher(
-      sessionRepository: sessionRepository,
-      sessionOperationDispatcher: sessionOperationDispatcher,
-      interruptions: sessionInterruptions,
     );
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
@@ -790,6 +794,7 @@ class Orchestrator({
       sessionCreation: sessionCreationService,
       prompts: sessionPromptService,
       operations: sessionOperationDispatcher,
+      mutations: sessionMutationDispatcher,
       yoloSettings: yoloSettingsService,
       sessions: sessionRepository,
       bridgeSettings: _bridgeSettingsRepository,
@@ -878,11 +883,12 @@ class Orchestrator({
       notices: sessionNoticeService,
     );
     final sessionWakeUpService = SessionWakeUpService(
-      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database)),
+      wakeUps: sessionWakeUps,
       sessions: sessionRepository,
       calculator: scheduledTaskOccurrenceCalculator,
       notices: sessionNoticeService,
       descriptions: const SessionWakeUpDescriptionBuilder(),
+      mutations: sessionMutationDispatcher,
       localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
       clock: clock,
     );
@@ -942,6 +948,7 @@ class Orchestrator({
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
         SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
         SetSessionPinnedHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
+        CancelSessionWakeUpHandler(wakeUps: sessionWakeUpService, sessionViews: sessionViews),
         MoveSessionPinHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
@@ -1120,6 +1127,7 @@ class Orchestrator({
       SessionApprovalOverrideUpdated() ||
       SessionPinnedUpdated() ||
       SessionInterruptionUpdated() ||
+      SessionArmingUpdated() ||
       SessionArchived() => await sessionViews.enrich(session: mutation.session),
     };
     return (
@@ -1129,7 +1137,8 @@ class Orchestrator({
         SessionContinuationUpdated() ||
         SessionApprovalOverrideUpdated() ||
         SessionPinnedUpdated() ||
-        SessionInterruptionUpdated() => [
+        SessionInterruptionUpdated() ||
+        SessionArmingUpdated() => [
           BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         ],
         SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
