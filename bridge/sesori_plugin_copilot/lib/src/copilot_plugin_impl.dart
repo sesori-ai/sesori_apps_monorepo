@@ -9,8 +9,9 @@ import "services/copilot_session_options_service.dart";
 
 /// GitHub Copilot CLI backend over standard ACP v1.
 ///
-/// It supports standard cancellation but does not currently forward its
-/// `ask_user` interaction over ACP, so form elicitation remains unadvertised.
+/// It supports standard cancellation. Since 1.0.115 Copilot can send its
+/// `ask_user` questions as ACP form elicitation, but Sesori has not verified
+/// that wire shape, so form elicitation remains unadvertised.
 class CopilotPlugin._({
   required super.launchSpec,
   required super.launchDirectory,

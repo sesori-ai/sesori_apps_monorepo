@@ -237,7 +237,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   between versions do not work. For the audit, diff the digest-checked
   `github-copilot-X.Y.Z-<os>-<arch>.tgz` release assets instead: they hold
   readable `cli-main.js`, `changelog.json` and `copilot-sdk/generated/*.d.ts`
-  (verified on 1.0.112 to 1.0.114).
+  (verified on 1.0.112 to 1.0.115). The ACP server itself lives in the native
+  `prebuilds/<os>-<arch>/runtime.node`, not in `cli-main.js`. From 1.0.115 its
+  ACP method names are no longer literal strings, so check the method surface
+  with the network-denied, unauthenticated probe instead: bogus-session calls
+  answer "not found" for implemented methods and `-32601` for absent ones.
 - **Probe:** production current-host install, isolated `COPILOT_HOME` and
   `COPILOT_CACHE_HOME` (the loader can run a newer package cached there unless
   auto-update is off), branded `GitHub Copilot CLI X.Y.Z.` version, then
