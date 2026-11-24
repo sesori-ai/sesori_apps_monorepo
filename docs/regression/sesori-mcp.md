@@ -150,7 +150,8 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   Labels and prompts are never logged, only ids.
 - `schedule_wakeup` takes an optional `command`, a shell command line run right before the prompt is sent. While
   Approve everything covers both the calling session and its root it is stored at once; otherwise it raises the usual permission card ("Sesori:
-  wake-up command": the command verbatim, where it runs, when, the label) and nothing is stored until Allow, which
+  wake-up command": the command verbatim, with each bidi or zero-width character shown as its `<U+XXXX>` code so it
+  cannot make the command read differently, where it runs, when, the label) and nothing is stored until Allow, which
   counts the first time from the Allow. Reject stores nothing; either answer sends the session a notice. A command
   stored under Approve everything asks again at its time once the session no longer does: Allow runs it and is
   remembered, so later times never ask; Reject cancels the wake-up and tells the session. Wake-ups without a command
@@ -275,8 +276,8 @@ task to its start and compare it with the app's view of the session. Use fixture
 - Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
 - The app does not show wake-ups or arming yet; only the notice row appears when one fires. The bridge already
   reports both and serves the cancel route.
-- A wake-up command's timeout, or a bridge shutdown, kills its shell, not processes the command started in the
-  background. A command a shutdown kills loses that time's notice. Windows `cmd.exe` quoting is not
+- A wake-up command's timeout, or a bridge shutdown, kills its shell, not the processes the command started, so a
+  foreground build it was running keeps going. A command a shutdown kills loses that time's notice. Windows `cmd.exe` quoting is not
   covered by tests.
 - `get_task` and `list_tasks` cover tasks not yet done; a finished one-off task is not listed.
 

@@ -26,9 +26,16 @@
   `agent_approval_change.dart`, under a sealed `AgentApprovalChange` whose
   `WakeUpCommandChange` family `ScheduledTaskAgentService.settle` hands to
   `SessionWakeUpService.applyCommandApproval`.
-- Known gaps from step 3: a timeout or shutdown kills the shell, not
-  processes it started in the background; a command a shutdown kills loses
-  that time's notice; Windows `cmd.exe` quoting is untested.
+- Known gaps from step 3: a timeout or shutdown kills the shell, not the
+  processes it started, so a foreground build or script it was running keeps
+  going (Codex on #2889). Step 4 runs task commands through the same runner,
+  so fix it there: kill the descendants before the shell, for example with
+  `SystemProcessApi.listDescendants` on POSIX and `taskkill /T` on Windows.
+  Also in step 4: `ScheduledCommandRepository` opens and writes its output
+  files with `dart:io` directly; move that behind a `FilesystemApi` write
+  operation, as `PromptUploadRepository` does for its folders. A command a
+  shutdown kills loses that time's notice; Windows `cmd.exe` quoting is
+  untested.
 - Step 2's `dropped` outcome keeps a one-shot whose claim never ran, so a
   delivery cut by shutdown or a lane error fires again at the next tick.
   A one-shot dropped after its claim, by a failed send, is gone.
