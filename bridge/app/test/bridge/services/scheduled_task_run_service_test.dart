@@ -16,7 +16,7 @@ import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
-import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_tool.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task_tool.dart";
 import "package:sesori_bridge/src/services/scheduled_command_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
@@ -300,7 +300,7 @@ void main() {
     test("the note names tools Sesori's server offers", () {
       final note = buildScheduledRunContext(taskName: "Morning summary", taskId: "task_1");
 
-      for (final tool in [SesoriMcpTool.updateTask, SesoriMcpTool.getTask, SesoriMcpTool.listTaskRuns]) {
+      for (final tool in [ScheduledTaskTool.updateTask, ScheduledTaskTool.getTask, ScheduledTaskTool.listTaskRuns]) {
         expect(note, contains("${tool.wireName} "));
       }
     });

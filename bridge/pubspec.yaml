@@ -12,6 +12,7 @@ workspace:
   - sesori_plugin_copilot
   - sesori_plugin_runtime
   - sesori_plugin_interface
+  - sesori_tool_interface
   - sesori_plugin_acp
   - sesori_plugin_cursor
   - sesori_plugin_omp

@@ -197,8 +197,11 @@ import "routing/run_scheduled_task_now_handler.dart";
 import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/send_to_session_handler.dart";
+import "routing/sesori_mcp/groups/pages/page_tool_group.dart";
+import "routing/sesori_mcp/groups/tasks/scheduled_task_tool_group.dart";
+import "routing/sesori_mcp/groups/tasks/scheduled_task_tool_result_formatter.dart";
+import "routing/sesori_mcp/groups/wake_ups/wake_up_tool_group.dart";
 import "routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
-import "routing/sesori_mcp/sesori_mcp_result_formatter.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_scheduled_task_enabled_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -928,10 +931,11 @@ class Orchestrator({
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
-      agent: scheduledTaskAgentService,
-      pages: agentPageService,
-      wakeUps: sessionWakeUpService,
-      formatter: const SesoriMcpResultFormatter(),
+      groups: [
+        ScheduledTaskToolGroup(agent: scheduledTaskAgentService, formatter: const ScheduledTaskToolResultFormatter()),
+        PageToolGroup(pages: agentPageService),
+        WakeUpToolGroup(wakeUps: sessionWakeUpService),
+      ],
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
     final router = RequestRouter(

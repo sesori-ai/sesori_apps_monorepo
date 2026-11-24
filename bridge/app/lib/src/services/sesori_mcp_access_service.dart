@@ -1,4 +1,5 @@
-import "../repositories/models/sesori_mcp_caller.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
+
 import "../repositories/models/sesori_mcp_grant.dart";
 import "../repositories/sesori_mcp_grant_repository.dart";
 import "../repositories/session_repository.dart";
@@ -13,13 +14,13 @@ class SesoriMcpAccessService({
 
   /// The Sesori session [token] was bound to, or null while the launch is not
   /// bound yet or its backend session has no Sesori session.
-  Future<SesoriMcpCaller?> resolve({required String token}) async {
+  Future<SesoriToolCaller?> resolve({required String token}) async {
     if (_grants.lookup(token: token) case SesoriMcpGrantBound(:final pluginId, :final backendSessionId)) {
       final stored = await _sessions.getStoredSessionByBackendId(
         pluginId: pluginId,
         backendSessionId: backendSessionId,
       );
-      return stored == null ? null : SesoriMcpCaller(sessionId: stored.id);
+      return stored == null ? null : SesoriToolCaller(sessionId: stored.id);
     }
     return null;
   }

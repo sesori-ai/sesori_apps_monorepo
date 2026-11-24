@@ -42,7 +42,7 @@ In phase 1:
 - The watched-PR list across sessions (option B, chosen by the owner): a PR
   button in the home top bar opening a grouped sheet, and a "Pull requests"
   sidebar row on desktop (step 14).
-- Sesori tools on OpenCode (step 15; mechanism pending research). Hermes
+- Sesori tools on OpenCode (step 15; client-MCP WebSocket relay). Hermes
   gets the Sesori MCP from a separate small PR outside this plan
   (`injectsSesoriTools` on, version-gated at Hermes 0.22.3, which scopes MCP
   per ACP session), so the PR monitor reaches it with no step here.
@@ -223,8 +223,9 @@ change.
 
 ### Grouped MCP server
 
-- The orchestrator constructs every group, in the order pages, wake-ups,
-  tasks, PR monitor, and hands the `List<SesoriToolGroup>` to
+- The orchestrator constructs every group, in the order tasks, pages,
+  wake-ups, PR monitor (the first three keep today's `tools/list` order
+  byte for byte), and hands the `List<SesoriToolGroup>` to
   `SesoriMcpRequestDispatcher`, which checks tool-name uniqueness at
   construction. There is no separate registry class. The orchestrator
   starts each group after the database opens, and disposes them after
@@ -626,8 +627,16 @@ count additions plus deletions, excluding generated files unless noted.
      the formatter splits per group.
    - Instructions are assembled from groups.
    - Bridge `AGENTS.md` module order, and `bridge/app/AGENTS.md` structure.
-   - No behaviour change: `tools/list` stays byte-identical apart from order.
+   - No behaviour change: `tools/list` stays byte-identical, and the
+     `initialize` instructions are reassembled from the groups' sentences.
      A golden test proves it.
+   - As built: the interface holds only what step 2 uses (`id`,
+     `instructions`, `tools`, `call`). `title` and `summary` land in step 3,
+     `start`, `dispose` and the host in step 4 (with the
+     `sesori_plugin_interface` dependency for `Log`), and `guide` in step 10.
+     `SesoriToolCaller` replaced the app's `SesoriMcpCaller`. The in-app
+     groups share the existing `models/sesori_mcp_tool_arguments.dart`, so
+     the step regenerates no Freezed output.
 3. 🌿 **Per-group toggles and leaner task text** (~700).
    - `agentToolGroups` and the CLI `config tool-group`.
    - The grant snapshots groups at mint, and `mint()` returns null with no
@@ -716,13 +725,13 @@ count additions plus deletions, excluding generated files unless noted.
       the interim menu.
     - The desktop "Pull requests" sidebar row under Scheduled.
 15. ⚙️ **Sesori tools on OpenCode** (`sesori_plugin_opencode` only).
-    **Mechanism pending research: config-at-launch vs client-MCP
-    WebSocket.** The owner suggested scoping the Sesori MCP to the OpenCode
-    process the bridge launches, through config supplied at launch (an env
-    var or flag, never an edit to the user's config file), so TUI sessions
-    never see the tools. Research is checking whether that works. The step
-    settles it when it starts. The WebSocket candidate, verified live, is
-    below (~500–800 lines plus tests, no bridge or interface change):
+    **Mechanism decided by the owner 2026-11-25:** keep OpenCode's shared
+    server (no bridge-owned server, no launch-time config) and use the
+    client-MCP WebSocket relay. Every OpenCode session that calls a Sesori
+    tool, including sessions started in OpenCode's own app, gets a token
+    bound to its `_meta` session id on first call, so the tools work for all
+    sessions with no "is this a Sesori session" detection. Verified live
+    (~500–800 lines plus tests, no bridge or interface change):
     - Version-gated at OpenCode ≥ 2.2.0. Per open project folder, the plugin
       opens a WebSocket to OpenCode's experimental
       `GET /api/experimental/client-mcp?location[directory]=…&name=sesori_bridge`.
@@ -742,8 +751,7 @@ count additions plus deletions, excluding generated files unless noted.
     - Limitations to record in `HARNESS_CAPABILITIES.md`: the endpoint is
       experimental; the server `instructions` don't reach the prompt for
       WebSocket-attached servers; OpenCode has no skill seam, so `get_guide`
-      is its only guide path (the tool descriptions point at it); TUI
-      sessions in the same folder see the tools (the reason config-at-launch is preferred if it works).
+      is its only guide path (the tool descriptions point at it).
     - Live verification on OpenCode through the test proxy, as in the
       matrix. Hermes needs nothing here: it gets the Sesori MCP from a
       separate PR (below).
@@ -927,9 +935,10 @@ asking.
 - The `pr-monitor` plugin is kept for non-Sesori sessions.
 - OpenCode and Hermes are to be supported. Research (verified live): Hermes
   works with per-session tokens from 0.22.3 and ships in a separate PR.
-  OpenCode's mechanism is pending research (step 15): the owner prefers
-  config at launch, scoped to the process the bridge starts, over the
-  verified client-MCP WebSocket relay. A third option,
+  For OpenCode (step 15) the owner chose, on 2026-11-25, to keep OpenCode's
+  shared server and use the verified client-MCP WebSocket relay, binding
+  every calling session on first call, instead of config at launch. A third
+  option,
   `PUT /api/experimental/mcp/sesori_bridge` with one token and a new
   `_meta`-resolving grant type, ranks last because it needs a bridge grant
   change.
@@ -963,13 +972,8 @@ asking.
 
 ## Open questions
 
-All of the first round were answered by the owner on 2026-11-25 (recorded
-under Decisions). One item stays open:
-
-- **OpenCode mechanism (step 15):** config at launch, scoped to the
-  bridge-launched process, versus the client-MCP WebSocket. Research is
-  checking whether config at launch works without editing the user's config
-  file. It is settled when step 15 starts.
+None. The owner answered every question on 2026-11-25, the OpenCode
+mechanism included (recorded under Decisions).
 
 ## Architecture plan review
 

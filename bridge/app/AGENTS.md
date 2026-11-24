@@ -31,6 +31,7 @@ lib/src/
 
 bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_interface/   Plugin contract — BridgePlugin, BridgePluginDescriptor, PluginHost
+├── sesori_tool_interface/     Sesori MCP tool-group contract — SesoriToolGroup, SesoriToolDefinition
 ├── sesori_bridge_foundation/  Bridge/plugin shared pure-Dart primitives
 ├── sesori_plugin_runtime/     Managed backend-process supervision for plugins
 ├── sesori_plugin_opencode/    OpenCode implementation
@@ -57,6 +58,7 @@ bridge/ workspace modules (siblings of app/):
 | Request routing  | `lib/src/routing/`                 | Explicit handlers; unmatched routes return 404          |
 | Trigger listeners | `lib/src/listeners/`               | One trigger lifecycle per class; typed output only      |
 | Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
+| Sesori MCP tools | `lib/src/routing/sesori_mcp/`      | Protocol dispatcher; in-app tool groups in `groups/`, contract in `../sesori_tool_interface/` |
 | Plugin registry  | `lib/src/runtime/plugin_registry.dart` | Only bridge-app composition point for concrete plugins |
 | OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |
 | Bridge instances | `lib/src/server/`                  | Single-live-bridge enforcement, startup mutex, plugin host abstractions |

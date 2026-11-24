@@ -312,11 +312,12 @@ The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: C
 
 - [Scheduled tasks](scheduled-tasks.md), [MCP management](mcp-management.md),
   [Session history and recovery](session-history-and-recovery.md).
-- Bridge: `SesoriMcpServer` (`foundation/`), `SesoriMcpRequestDispatcher`, `SesoriMcpResultFormatter` and the tool
-  catalog (`routing/sesori_mcp/`), `SesoriMcpAccessService`, `ScheduledTaskAgentService`,
+- Bridge: `SesoriMcpServer` (`foundation/`), `SesoriMcpRequestDispatcher` and the in-app tool groups
+  (`ScheduledTaskToolGroup`, `PageToolGroup`, `WakeUpToolGroup` in `routing/sesori_mcp/groups/`) behind the
+  `SesoriToolGroup` contract in `bridge/sesori_tool_interface`, `SesoriMcpAccessService`, `ScheduledTaskAgentService`,
   `ScheduledTaskChangeDescriptionBuilder`, `AgentApprovalRepository`,
   `SesoriMcpGrantRepository` and `BridgeSesoriMcpAccessImpl` under `bridge/app/lib/src/`, with tests under
-  `bridge/app/test/bridge/sesori_mcp/`. Pages: `AgentPageService`, `AgentPageRepository`,
+  `bridge/app/test/bridge/sesori_mcp/` (`goldens/tools_list.json` pins the exact `tools/list` text). Pages: `AgentPageService`, `AgentPageRepository`,
   `AgentPageAnswerNoticeBuilder` and the `/page` and `/page/submit` handlers. Wake-ups: `SessionWakeUpService`,
   `SessionWakeUpRepository`, `SessionWakeUpDescriptionBuilder`, `WakeUpCommandDescriptionBuilder`,
   `ScheduledCommandService`, `ScheduledCommandRepository`, `ShellCommandApi`, `SessionWakeUpTimerListener`, `readLocalTimeZone`, the

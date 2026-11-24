@@ -1,0 +1,14 @@
+name: sesori_tool_interface
+description: The contract between the Sesori bridge and a group of tools on its MCP server.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  json_annotation: ^4.12.0
+
+dev_dependencies:
+  test: ^1.33.0

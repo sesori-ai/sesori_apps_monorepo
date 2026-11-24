@@ -21,8 +21,11 @@ import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/groups/pages/page_tool_group.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task_tool_group.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task_tool_result_formatter.dart";
+import "package:sesori_bridge/src/routing/sesori_mcp/groups/wake_ups/wake_up_tool_group.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
-import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_result_formatter.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -84,6 +87,7 @@ void main() {
   late SessionWakeUpRepository wakeUps;
   late FakeAutoApproval autoApproval;
   late RecordingScheduledCommands commands;
+  late SesoriMcpAccessService access;
   var nextId = 1;
 
   setUpAll(tz_data.initializeTimeZones);
@@ -153,24 +157,28 @@ void main() {
       notices: notices,
       wakeUps: wakeUpService,
     );
+    access = SesoriMcpAccessService(grants: grants, sessions: sessions);
     final dispatcher = SesoriMcpRequestDispatcher(
-      access: SesoriMcpAccessService(grants: grants, sessions: sessions),
-      agent: agent,
-      formatter: const SesoriMcpResultFormatter(),
-      wakeUps: wakeUpService,
-      pages: () {
-        final imagesRoot = Directory.systemTemp.createTempSync("page_images_test_");
-        addTearDown(() => imagesRoot.deleteSync(recursive: true));
-        final built = buildTestAgentPageService(
-          database: db,
-          sessions: sessions,
-          notices: notices,
-          imagesRoot: imagesRoot.path,
-        );
-        pages = built.pages;
-        addTearDown(pages.dispose);
-        return built.service;
-      }(),
+      access: access,
+      groups: [
+        ScheduledTaskToolGroup(agent: agent, formatter: const ScheduledTaskToolResultFormatter()),
+        PageToolGroup(
+          pages: () {
+            final imagesRoot = Directory.systemTemp.createTempSync("page_images_test_");
+            addTearDown(() => imagesRoot.deleteSync(recursive: true));
+            final built = buildTestAgentPageService(
+              database: db,
+              sessions: sessions,
+              notices: notices,
+              imagesRoot: imagesRoot.path,
+            );
+            pages = built.pages;
+            addTearDown(pages.dispose);
+            return built.service;
+          }(),
+        ),
+        WakeUpToolGroup(wakeUps: wakeUpService),
+      ],
     );
     // As the Orchestrator wires it.
     final subscription = server.requests.listen((request) async {
@@ -391,6 +399,15 @@ void main() {
       expect(listed, golden.readAsStringSync());
     });
 
+    test("two groups offering one tool name fail at construction", () {
+      final tasks = ScheduledTaskToolGroup(agent: agent, formatter: const ScheduledTaskToolResultFormatter());
+
+      expect(
+        () => SesoriMcpRequestDispatcher(access: access, groups: [tasks, tasks]),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
     test("update_task asks agents to leave out the fields they are not changing", () async {
       final tools = ((await rpc(method: "tools/list", params: null))["result"] as Map<String, dynamic>)["tools"];
       Map<String, dynamic> tool(String name) =>
@@ -577,7 +594,7 @@ void main() {
         );
         expect(result.isError, isFalse);
         text = result.text;
-        expect(text.length, lessThan(SesoriMcpResultFormatter.transcriptPageChars + 1000));
+        expect(text.length, lessThan(ScheduledTaskToolResultFormatter.transcriptPageChars + 1000));
         final markers = [
           for (final match in RegExp(r"msg-(\d\d)").allMatches(text)) int.parse(match.group(1) ?? ""),
         ];
