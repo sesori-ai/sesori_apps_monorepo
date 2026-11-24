@@ -29,6 +29,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
@@ -67,6 +68,7 @@ void main() {
     sessions = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
     final clock = Clock.fixed(DateTime.utc(2026, 11, 15, 10));
     service = ScheduledTaskService(
+      mutations: RecordingArmingMutations(),
       repository: repository,
       sessionRepository: sessions,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -75,6 +77,7 @@ void main() {
     addTearDown(service.dispose);
     final operations = _UnusedOperations();
     final runService = ScheduledTaskRunService(
+      mutations: RecordingArmingMutations(),
       repository: repository,
       compaction: ScheduledTaskCompactionService(
         repository: repository,

@@ -34,6 +34,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
@@ -87,6 +88,7 @@ void main() {
   late _FakeBridgeSettings bridgeSettings;
   late ScheduledTaskActivityTracker activity;
   late ScheduledTaskRunService service;
+  late RecordingArmingMutations mutations;
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
   late Set<String> missingFolders;
@@ -112,9 +114,11 @@ void main() {
     yolo = _FakeYoloSettings();
     lifecycle = _FakeLifecycle();
     bridgeSettings = _FakeBridgeSettings();
+    mutations = RecordingArmingMutations();
     final clock = Clock(() => now);
     activity = ScheduledTaskActivityTracker(clock: clock);
     service = ScheduledTaskRunService(
+      mutations: mutations,
       repository: repository,
       compaction: ScheduledTaskCompactionService(
         repository: repository,
@@ -394,6 +398,14 @@ void main() {
       expect(await targetOf(task.id), "ses_1");
       expect(creation.calls.single.$2, (taskId: task.id, approvalOverride: SessionApprovalMode.yolo));
       expect(prompts.sends, isEmpty);
+    });
+
+    test("the first run arms its new session, and each later fire moves that arming", () async {
+      await firstRun();
+      expect(mutations.armedSessionIds, ["ses_1"]);
+
+      await service.runDue();
+      expect(mutations.armedSessionIds, ["ses_1", "ses_1"]);
     });
 
     test("later runs send on the target's lane with the task's current options and approval mode", () async {

@@ -24,6 +24,10 @@ final class const SessionContinuationUpdated({required super.session}) extends L
 /// The session's interruption was recorded, acknowledged or re-anchored.
 final class const SessionInterruptionUpdated({required super.session}) extends LocalSessionMutation;
 
+/// The session's wake-ups or the task runs that continue in it changed, so
+/// its arming may have too.
+final class const SessionArmingUpdated({required super.session}) extends LocalSessionMutation;
+
 final class const SessionApprovalOverrideUpdated({required super.session}) extends LocalSessionMutation;
 
 final class const SessionPinnedUpdated({required super.session}) extends LocalSessionMutation;
@@ -65,6 +69,19 @@ class SessionMutationDispatcher({
     final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
     if (session == null || _mutationsController.isClosed) return;
     _mutationsController.add(SessionInterruptionUpdated(session: session));
+  }
+
+  /// Announces that the session's wake-ups or the task runs that continue in
+  /// it changed. Best effort, like [interruptionUpdated]: the change itself is
+  /// stored, so a failure to announce it is only logged.
+  Future<void> armingUpdated({required String sessionId}) async {
+    try {
+      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+      if (session == null || _mutationsController.isClosed) return;
+      _mutationsController.add(SessionArmingUpdated(session: session));
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not announce the arming of session $sessionId", error, stackTrace);
+    }
   }
 
   /// Acknowledges the session's interruption, because the user opened the

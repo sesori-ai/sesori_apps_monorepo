@@ -76,6 +76,18 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionForkOrigin.fromJson(
           Map<String, dynamic>.from(json['forkedFrom'] as Map),
         ),
+  wakeUps:
+      (json['wakeUps'] as List<dynamic>?)
+          ?.map(
+            (e) => SessionWakeUp.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList() ??
+      const <SessionWakeUp>[],
+  arming: json['arming'] == null
+      ? const SessionArming.unreported()
+      : SessionArming.fromJson(
+          Map<String, dynamic>.from(json['arming'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -97,6 +109,8 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'scheduledTask': ?instance.scheduledTask?.toJson(),
   'interruption': ?instance.interruption?.toJson(),
   'forkedFrom': ?instance.forkedFrom?.toJson(),
+  'wakeUps': instance.wakeUps.map((e) => e.toJson()).toList(),
+  'arming': instance.arming.toJson(),
 };
 
 const _$SessionApprovalModeEnumMap = {

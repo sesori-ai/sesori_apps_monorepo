@@ -22,6 +22,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/fakes/wake_up_command_fakes.dart";
 import "../../helpers/test_database.dart";
@@ -37,11 +38,13 @@ void main() {
   late AgentApprovalRepository approvals;
   late List<AgentApproval> asked;
   late RecordingScheduledCommands commands;
+  late RecordingArmingMutations mutations;
   late DateTime now;
 
   setUpAll(tz_data.initializeTimeZones);
 
   SessionWakeUpService buildService({String? Function()? localTimeZone}) => SessionWakeUpService(
+    mutations: mutations,
     wakeUps: wakeUps,
     sessions: sessions,
     calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -78,6 +81,7 @@ void main() {
     });
     addTearDown(subscription.cancel);
     commands = RecordingScheduledCommands();
+    mutations = RecordingArmingMutations();
     now = DateTime.utc(2026, 11, 15, 10);
     await insertTestSession(
       db: db,
@@ -137,6 +141,24 @@ void main() {
     expect(await wakeUps.exists(id: wakeUp.id), isFalse);
   });
 
+  test("scheduling, firing, advancing and cancelling each announce the session's arming", () async {
+    final service = buildService();
+    await schedule(service: service, when: const WakeUpInMinutes(minutes: 5));
+    expect(mutations.armedSessionIds, ["s1"]);
+
+    final repeating = await schedule(service: service, when: const WakeUpEveryMinutes(minutes: 10));
+    mutations.armedSessionIds.clear();
+    now = now.add(const Duration(minutes: 10));
+    await service.runDue();
+    await pumpEventQueue();
+    // The repeating one advanced, then each delivery settled.
+    expect(mutations.armedSessionIds, ["s1", "s1", "s1"]);
+
+    mutations.armedSessionIds.clear();
+    await service.cancel(sessionId: "s1", wakeUpId: repeating.id);
+    expect(mutations.armedSessionIds, ["s1"]);
+  });
+
   test("a repeating wake-up moves past the times it missed and fires once", () async {
     final service = buildService();
     final wakeUp = await schedule(service: service, when: const WakeUpEveryMinutes(minutes: 10));
@@ -176,7 +198,7 @@ void main() {
     await service.runDue();
     await pumpEventQueue();
 
-    expect(await service.cancel(caller: _caller, wakeUpId: wakeUp.id), WakeUpCancelResult.cancelled);
+    expect(await service.cancel(sessionId: _caller.sessionId, wakeUpId: wakeUp.id), WakeUpCancelResult.cancelled);
     notices.gate?.complete();
     await pumpEventQueue();
 

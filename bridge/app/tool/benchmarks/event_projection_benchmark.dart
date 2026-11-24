@@ -8,6 +8,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -16,6 +17,7 @@ import "package:sesori_bridge/src/repositories/session_continuation_repository.d
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
@@ -104,6 +106,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
             runtime: runtime,
           ),
           interruptions: SessionInterruptionRepository(dao: SessionInterruptionDao(database: database)),
+          wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: database)),
           resetBuffer: const Duration(minutes: 2),
         ),
         sessionPromptService: const _UnusedSessionPromptService(),

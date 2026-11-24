@@ -4,6 +4,7 @@ import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
@@ -12,6 +13,7 @@ import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
@@ -58,6 +60,7 @@ void main() {
     prompts = _Prompts(records: records);
     mutations = _Mutations();
     views = SessionViewService(
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
       sessions: sessions,
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
@@ -385,6 +388,7 @@ void main() {
     final leftover = (await interruptions.readLeftovers(pluginId: "plugin", startedBefore: reset)).single;
     await interruptions.convertLeftover(leftover: leftover, afterMessageId: "m1");
     final projecting = SessionViewService(
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
       sessions: sessions,
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
