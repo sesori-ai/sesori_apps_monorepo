@@ -424,10 +424,9 @@ class AppDatabase(super.e) extends _$AppDatabase {
         await m.createIndex(schema.idxSessionWakeUpsSession);
       },
       from32To33: (m, schema) async {
-        // New nullable columns: existing wake-ups and tasks run no command.
+        // New nullable columns: existing wake-ups run no command.
         await m.addColumn(schema.sessionWakeUps, schema.sessionWakeUps.command);
         await m.addColumn(schema.sessionWakeUps, schema.sessionWakeUps.commandApproval);
-        await m.addColumn(schema.scheduledTasks, schema.scheduledTasks.command);
       },
     ),
     beforeOpen: (details) async {

@@ -96,7 +96,11 @@ class SessionWakeUpService({
         dueAt = first;
     }
 
-    if (command != null && !await _autoApproval.isYolo(sessionId: rootSessionId)) {
+    // Approve everything lets a command through only when it covers both the
+    // session that wrote it and the root session it runs for.
+    if (command != null &&
+        !(await _autoApproval.isYolo(sessionId: caller.sessionId) &&
+            await _autoApproval.isYolo(sessionId: rootSessionId))) {
       final session = await _sessions.getStoredSession(sessionId: rootSessionId);
       if (session == null) return const WakeUpRefused(reason: WakeUpRefusal.callerGone);
       final change = ScheduleCommandWakeUp(

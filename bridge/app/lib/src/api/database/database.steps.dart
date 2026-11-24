@@ -7824,7 +7824,7 @@ final class Schema33 extends i0.VersionedSchema {
     ),
     alias: null,
   );
-  late final Shape39 scheduledTasks = Shape39(
+  late final Shape29 scheduledTasks = Shape29(
     source: i0.VersionedTable(
       entityName: 'scheduled_tasks',
       withoutRowId: true,
@@ -7847,7 +7847,6 @@ final class Schema33 extends i0.VersionedSchema {
         _column_83,
         _column_84,
         _column_85,
-        _column_115,
         _column_63,
         _column_86,
         _column_87,
@@ -8071,7 +8070,7 @@ final class Schema33 extends i0.VersionedSchema {
     ),
     alias: null,
   );
-  late final Shape40 sessionWakeUps = Shape40(
+  late final Shape39 sessionWakeUps = Shape39(
     source: i0.VersionedTable(
       entityName: 'session_wake_ups',
       withoutRowId: true,
@@ -8146,65 +8145,6 @@ class Shape39 extends i0.VersionedTable {
   Shape39({required super.source, required super.alias}) : super.aliased();
   i1.GeneratedColumn<String> get id =>
       columnsByName['id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get name =>
-      columnsByName['name']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get promptJson =>
-      columnsByName['prompt_json']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get projectId =>
-      columnsByName['project_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get pluginId =>
-      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get agent =>
-      columnsByName['agent']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get modelJson =>
-      columnsByName['model_json']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get variant =>
-      columnsByName['variant']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get fastMode =>
-      columnsByName['fast_mode']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get dedicatedWorktree =>
-      columnsByName['dedicated_worktree']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get scheduleJson =>
-      columnsByName['schedule_json']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get timeZone =>
-      columnsByName['time_zone']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get missedRunPolicy =>
-      columnsByName['missed_run_policy']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get runMode =>
-      columnsByName['run_mode']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get autoCompact =>
-      columnsByName['auto_compact']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get approvalMode =>
-      columnsByName['approval_mode']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get command =>
-      columnsByName['command']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get enabled =>
-      columnsByName['enabled']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get nextDueAt =>
-      columnsByName['next_due_at']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get targetSessionId =>
-      columnsByName['target_session_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get completedAt =>
-      columnsByName['completed_at']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get createdAt =>
-      columnsByName['created_at']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get updatedAt =>
-      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
-}
-
-i1.GeneratedColumn<String> _column_115(String aliasedName) =>
-    i1.GeneratedColumn<String>(
-      'command',
-      aliasedName,
-      true,
-      type: i1.DriftSqlType.string,
-      $customConstraints: 'NULL',
-    );
-
-class Shape40 extends i0.VersionedTable {
-  Shape40({required super.source, required super.alias}) : super.aliased();
-  i1.GeneratedColumn<String> get id =>
-      columnsByName['id']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<String> get sessionId =>
       columnsByName['session_id']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<String> get label =>
@@ -8223,6 +8163,14 @@ class Shape40 extends i0.VersionedTable {
       columnsByName['created_at']! as i1.GeneratedColumn<int>;
 }
 
+i1.GeneratedColumn<String> _column_115(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'command',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
 i1.GeneratedColumn<String> _column_116(String aliasedName) =>
     i1.GeneratedColumn<String>(
       'command_approval',

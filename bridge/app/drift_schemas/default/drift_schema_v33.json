@@ -303,16 +303,6 @@
             }
           },
           {
-            "name": "command",
-            "getter_name": "command",
-            "moor_type": "string",
-            "nullable": true,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
             "name": "enabled",
             "getter_name": "enabled",
             "moor_type": "bool",
@@ -2163,7 +2153,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"scheduled_tasks\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"prompt_json\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"agent\" TEXT NULL, \"model_json\" TEXT NULL, \"variant\" TEXT NULL, \"fast_mode\" INTEGER NOT NULL CHECK (\"fast_mode\" IN (0, 1)), \"dedicated_worktree\" INTEGER NOT NULL CHECK (\"dedicated_worktree\" IN (0, 1)), \"schedule_json\" TEXT NOT NULL, \"time_zone\" TEXT NOT NULL, \"missed_run_policy\" TEXT NOT NULL, \"run_mode\" TEXT NOT NULL, \"auto_compact\" INTEGER NOT NULL CHECK (\"auto_compact\" IN (0, 1)), \"approval_mode\" TEXT NOT NULL, \"command\" TEXT NULL, \"enabled\" INTEGER NOT NULL CHECK (\"enabled\" IN (0, 1)), \"next_due_at\" INTEGER NULL, \"target_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE SET NULL, \"completed_at\" INTEGER NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"scheduled_tasks\" (\"id\" TEXT NOT NULL, \"name\" TEXT NOT NULL, \"prompt_json\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL, \"plugin_id\" TEXT NOT NULL, \"agent\" TEXT NULL, \"model_json\" TEXT NULL, \"variant\" TEXT NULL, \"fast_mode\" INTEGER NOT NULL CHECK (\"fast_mode\" IN (0, 1)), \"dedicated_worktree\" INTEGER NOT NULL CHECK (\"dedicated_worktree\" IN (0, 1)), \"schedule_json\" TEXT NOT NULL, \"time_zone\" TEXT NOT NULL, \"missed_run_policy\" TEXT NOT NULL, \"run_mode\" TEXT NOT NULL, \"auto_compact\" INTEGER NOT NULL CHECK (\"auto_compact\" IN (0, 1)), \"approval_mode\" TEXT NOT NULL, \"enabled\" INTEGER NOT NULL CHECK (\"enabled\" IN (0, 1)), \"next_due_at\" INTEGER NULL, \"target_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE SET NULL, \"completed_at\" INTEGER NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"id\")) WITHOUT ROWID;"
         }
       ]
     },

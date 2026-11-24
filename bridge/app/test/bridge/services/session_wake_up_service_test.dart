@@ -332,6 +332,40 @@ void main() {
       expect(notices.sent.single.notice.summary, contains("You allowed the wake-up"));
     });
 
+    test("from a sub-agent asks unless Approve everything covers it as well as its root", () async {
+      await insertTestSession(
+        db: db,
+        sessionId: "s2",
+        backendSessionId: "backend-s2",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 2,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await db.sessionDao.setParentSessionId(sessionId: "s2", parentSessionId: "s1");
+      autoApproval.yoloSessionIds.add("s1");
+      final service = buildService();
+
+      final result = await service.schedule(
+        caller: const SesoriMcpCaller(sessionId: "s2"),
+        label: "Check",
+        prompt: "Look at CI",
+        when: const WakeUpInMinutes(minutes: 5),
+        timeZone: null,
+        command: "make check",
+      );
+      await pumpEventQueue();
+
+      expect(result, isA<WakeUpAwaitingApproval>());
+      expect(asked.single.displaySessionId, "s1");
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+    });
+
     test("that the user rejects is not stored, and the session hears it", () async {
       final service = buildService();
       await service.schedule(

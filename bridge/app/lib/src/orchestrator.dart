@@ -439,11 +439,10 @@ class Orchestrator({
         shell: ShellCommandApi.forPlatform(
           platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
           runner: const StreamingProcessRunner(),
-          filesystem: const FilesystemApi(),
           environment: Platform.environment,
         ),
-        outputs: commandOutputRepository,
       ),
+      outputs: commandOutputRepository,
       formatter: const ScheduledCommandResultFormatter(),
       clock: clock,
     );
@@ -1056,6 +1055,7 @@ class Orchestrator({
       sessionContinuationService: sessionContinuationService,
       sessionContinuationTimer: sessionContinuationTimer,
       sessionWakeUpTimer: sessionWakeUpTimer,
+      scheduledCommandService: scheduledCommandService,
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
@@ -1242,6 +1242,7 @@ class OrchestratorSession._({
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
   required final SessionWakeUpTimerListener _sessionWakeUpTimer,
+  required final ScheduledCommandService _scheduledCommandService,
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
@@ -1705,6 +1706,9 @@ class OrchestratorSession._({
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
+      // Kills running commands, so their wake-ups end before the notice and
+      // mutation dispatchers close.
+      attempt(_scheduledCommandService.dispose),
       attempt(_agentApprovalRepository.dispose),
       attempt(_agentPageRepository.dispose),
     ]);

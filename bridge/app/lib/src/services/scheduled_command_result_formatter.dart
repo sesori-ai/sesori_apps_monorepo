@@ -1,4 +1,4 @@
-import "../api/shell_command_api.dart";
+import "../repositories/models/scheduled_command_result.dart";
 import "scheduled_task_change_description_builder.dart";
 
 /// Writes the block that reports a command's result to the agent: how it
@@ -9,29 +9,38 @@ class const ScheduledCommandResultFormatter() {
   /// The most words a stream may have to be shown whole.
   static const int inlineWordLimit = 500;
 
-  String format({required ShellCommandResult result}) {
+  String format({required ScheduledCommandResult result}) {
     return switch (result) {
-      ShellCommandExited(:final exitCode, :final stdout, :final stderr) => [
+      ScheduledCommandExited(:final exitCode, :final stdout, :final stderr) => [
         "command exited $exitCode",
         _stream(name: "stdout", output: stdout),
         _stream(name: "stderr", output: stderr),
       ].join("\n\n"),
-      ShellCommandTimedOut(:final timeout, :final stdout, :final stderr) => [
+      ScheduledCommandTimedOut(:final timeout, :final stdout, :final stderr) => [
         "timed out after ${timeout.inMinutes} minutes and was stopped",
         _stream(name: "stdout", output: stdout),
         _stream(name: "stderr", output: stderr),
       ].join("\n\n"),
-      ShellCommandCouldNotStart(:final error) => "could not start: $error",
+      ScheduledCommandStopped(:final stdout, :final stderr) => [
+        "stopped by a bridge shutdown",
+        _stream(name: "stdout", output: stdout),
+        _stream(name: "stderr", output: stderr),
+      ].join("\n\n"),
+      ScheduledCommandCouldNotStart(:final error) => "could not start: $error",
     };
   }
 
-  String _stream({required String name, required ShellStreamOutput output}) {
+  String _stream({required String name, required CommandStreamOutput output}) {
     if (output.wordCount == 0) return "$name: empty";
     if (output.text case final text? when output.wordCount <= inlineWordLimit) {
       return "$name:\n${_fenced(text: text.trimRight())}";
     }
     final lines = output.lastLines;
-    return "$name ${_grouped(count: output.wordCount)} words; full output at ${output.path}\n"
+    final where = switch (output.path) {
+      final path? => "full output at $path",
+      null => "the full output could not be saved",
+    };
+    return "$name ${_grouped(count: output.wordCount)} words; $where\n"
         "Its last ${lines.length == 1 ? "line" : "${lines.length} lines"}:\n${_fenced(text: lines.join("\n"))}";
   }
 

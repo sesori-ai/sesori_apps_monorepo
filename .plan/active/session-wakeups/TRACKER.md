@@ -13,21 +13,22 @@
 
 ## Notes for later steps
 
-- Step 4: migration 32 to 33 already added `scheduled_tasks.command`
-  (nullable text), so step 4 needs no schema bump for it. Ready to reuse:
-  `ScheduledCommandService.run(outputKey: "task-<id>", ...)`, which runs the
-  command, keeps its output under `~/.sesori/command-output/<key>/` for seven
-  days and returns the result block; `PromptUploadRepository.reserveFolder`;
-  and the public `ScheduledTaskChangeDescriptionBuilder.fence`, `inline` and
-  `quoted` helpers. Task output keyed `task-<id>` is not deleted with a
-  session; only the seven-day sweep removes it.
+- Step 4 adds `scheduled_tasks.command` in its own migration (33 to 34);
+  step 3's 32 to 33 bump covers only `session_wake_ups`. Ready to reuse:
+  `ScheduledCommandService.run(outputKey: "task-<id>", ...)`, which reserves
+  an output folder under `~/.sesori/command-output/<key>/`, runs the command,
+  keeps the output for seven days and returns the result block, and whose
+  `dispose()` kills running commands at shutdown. Also the public
+  `ScheduledTaskChangeDescriptionBuilder.fence`, `inline` and `quoted`
+  helpers. Task output keyed `task-<id>` is not deleted with a session; only
+  the seven-day sweep removes it.
 - Step 3 renamed `ScheduledTaskAgentChange`'s file to
   `agent_approval_change.dart`, under a sealed `AgentApprovalChange` whose
   `WakeUpCommandChange` family `ScheduledTaskAgentService.settle` hands to
   `SessionWakeUpService.applyCommandApproval`.
-- Known gaps from step 3: a timeout kills the shell, not processes it started
-  in the background; a shutdown does not wait for a running command, so that
-  time is lost; Windows `cmd.exe` quoting is untested.
+- Known gaps from step 3: a timeout or shutdown kills the shell, not
+  processes it started in the background; a command a shutdown kills loses
+  that time's notice; Windows `cmd.exe` quoting is untested.
 - Step 2's `dropped` outcome keeps a one-shot whose claim never ran, so a
   delivery cut by shutdown or a lane error fires again at the next tick.
   A one-shot dropped after its claim, by a failed send, is gone.

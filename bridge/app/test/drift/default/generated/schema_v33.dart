@@ -469,7 +469,6 @@ mixin ScheduledTasksToColumns implements Insertable<ScheduledTasksData> {
   String get runMode;
   int get autoCompact;
   String get approvalMode;
-  String? get command;
   int get enabled;
   int? get nextDueAt;
   String? get targetSessionId;
@@ -501,9 +500,6 @@ mixin ScheduledTasksToColumns implements Insertable<ScheduledTasksData> {
     map['run_mode'] = Variable<String>(runMode);
     map['auto_compact'] = Variable<int>(autoCompact);
     map['approval_mode'] = Variable<String>(approvalMode);
-    if (!nullToAbsent || command != null) {
-      map['command'] = Variable<String>(command);
-    }
     map['enabled'] = Variable<int>(enabled);
     if (!nullToAbsent || nextDueAt != null) {
       map['next_due_at'] = Variable<int>(nextDueAt);
@@ -654,14 +650,6 @@ class ScheduledTasks extends Table
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
-  late final GeneratedColumn<String> command = GeneratedColumn<String>(
-    'command',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
   late final GeneratedColumn<int> enabled = GeneratedColumn<int>(
     'enabled',
     aliasedName,
@@ -729,7 +717,6 @@ class ScheduledTasks extends Table
     runMode,
     autoCompact,
     approvalMode,
-    command,
     enabled,
     nextDueAt,
     targetSessionId,
@@ -812,10 +799,6 @@ class ScheduledTasks extends Table
         DriftSqlType.string,
         data['${effectivePrefix}approval_mode'],
       )!,
-      command: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}command'],
-      ),
       enabled: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}enabled'],
@@ -890,8 +873,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
   @override
   final String approvalMode;
   @override
-  final String? command;
-  @override
   final int enabled;
   @override
   final int? nextDueAt;
@@ -920,7 +901,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
     required this.runMode,
     required this.autoCompact,
     required this.approvalMode,
-    this.command,
     required this.enabled,
     this.nextDueAt,
     this.targetSessionId,
@@ -952,9 +932,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
       runMode: Value(runMode),
       autoCompact: Value(autoCompact),
       approvalMode: Value(approvalMode),
-      command: command == null && nullToAbsent
-          ? const Value.absent()
-          : Value(command),
       enabled: Value(enabled),
       nextDueAt: nextDueAt == null && nullToAbsent
           ? const Value.absent()
@@ -992,7 +969,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
       runMode: serializer.fromJson<String>(json['runMode']),
       autoCompact: serializer.fromJson<int>(json['autoCompact']),
       approvalMode: serializer.fromJson<String>(json['approvalMode']),
-      command: serializer.fromJson<String?>(json['command']),
       enabled: serializer.fromJson<int>(json['enabled']),
       nextDueAt: serializer.fromJson<int?>(json['nextDueAt']),
       targetSessionId: serializer.fromJson<String?>(json['targetSessionId']),
@@ -1021,7 +997,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
       'runMode': serializer.toJson<String>(runMode),
       'autoCompact': serializer.toJson<int>(autoCompact),
       'approvalMode': serializer.toJson<String>(approvalMode),
-      'command': serializer.toJson<String?>(command),
       'enabled': serializer.toJson<int>(enabled),
       'nextDueAt': serializer.toJson<int?>(nextDueAt),
       'targetSessionId': serializer.toJson<String?>(targetSessionId),
@@ -1048,7 +1023,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
     String? runMode,
     int? autoCompact,
     String? approvalMode,
-    Value<String?> command = const Value.absent(),
     int? enabled,
     Value<int?> nextDueAt = const Value.absent(),
     Value<String?> targetSessionId = const Value.absent(),
@@ -1072,7 +1046,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
     runMode: runMode ?? this.runMode,
     autoCompact: autoCompact ?? this.autoCompact,
     approvalMode: approvalMode ?? this.approvalMode,
-    command: command.present ? command.value : this.command,
     enabled: enabled ?? this.enabled,
     nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
     targetSessionId: targetSessionId.present
@@ -1112,7 +1085,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
       approvalMode: data.approvalMode.present
           ? data.approvalMode.value
           : this.approvalMode,
-      command: data.command.present ? data.command.value : this.command,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
       nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
       targetSessionId: data.targetSessionId.present
@@ -1145,7 +1117,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
           ..write('runMode: $runMode, ')
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
-          ..write('command: $command, ')
           ..write('enabled: $enabled, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
@@ -1174,7 +1145,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
     runMode,
     autoCompact,
     approvalMode,
-    command,
     enabled,
     nextDueAt,
     targetSessionId,
@@ -1202,7 +1172,6 @@ class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
           other.runMode == this.runMode &&
           other.autoCompact == this.autoCompact &&
           other.approvalMode == this.approvalMode &&
-          other.command == this.command &&
           other.enabled == this.enabled &&
           other.nextDueAt == this.nextDueAt &&
           other.targetSessionId == this.targetSessionId &&
@@ -1228,7 +1197,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
   final Value<String> runMode;
   final Value<int> autoCompact;
   final Value<String> approvalMode;
-  final Value<String?> command;
   final Value<int> enabled;
   final Value<int?> nextDueAt;
   final Value<String?> targetSessionId;
@@ -1252,7 +1220,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
     this.runMode = const Value.absent(),
     this.autoCompact = const Value.absent(),
     this.approvalMode = const Value.absent(),
-    this.command = const Value.absent(),
     this.enabled = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
@@ -1277,7 +1244,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
     required String runMode,
     required int autoCompact,
     required String approvalMode,
-    this.command = const Value.absent(),
     required int enabled,
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
@@ -1317,7 +1283,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
     Expression<String>? runMode,
     Expression<int>? autoCompact,
     Expression<String>? approvalMode,
-    Expression<String>? command,
     Expression<int>? enabled,
     Expression<int>? nextDueAt,
     Expression<String>? targetSessionId,
@@ -1342,7 +1307,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
       if (runMode != null) 'run_mode': runMode,
       if (autoCompact != null) 'auto_compact': autoCompact,
       if (approvalMode != null) 'approval_mode': approvalMode,
-      if (command != null) 'command': command,
       if (enabled != null) 'enabled': enabled,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (targetSessionId != null) 'target_session_id': targetSessionId,
@@ -1369,7 +1333,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
     Value<String>? runMode,
     Value<int>? autoCompact,
     Value<String>? approvalMode,
-    Value<String?>? command,
     Value<int>? enabled,
     Value<int?>? nextDueAt,
     Value<String?>? targetSessionId,
@@ -1394,7 +1357,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
       runMode: runMode ?? this.runMode,
       autoCompact: autoCompact ?? this.autoCompact,
       approvalMode: approvalMode ?? this.approvalMode,
-      command: command ?? this.command,
       enabled: enabled ?? this.enabled,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       targetSessionId: targetSessionId ?? this.targetSessionId,
@@ -1455,9 +1417,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
     if (approvalMode.present) {
       map['approval_mode'] = Variable<String>(approvalMode.value);
     }
-    if (command.present) {
-      map['command'] = Variable<String>(command.value);
-    }
     if (enabled.present) {
       map['enabled'] = Variable<int>(enabled.value);
     }
@@ -1498,7 +1457,6 @@ class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
           ..write('runMode: $runMode, ')
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
-          ..write('command: $command, ')
           ..write('enabled: $enabled, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
