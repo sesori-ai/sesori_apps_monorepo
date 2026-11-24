@@ -1447,8 +1447,11 @@ message ids was never affected.
 The bridge stores a running turn under the ids the live stream gives it. When
 a harness replays that turn under other ids, an import while the turn runs
 would show the streaming reply twice, so the bridge waits and imports once the
-turn ends (`replaysHistoryDuringTurn: false`). A change made outside Sesori
-during a turn then shows when the turn ends.
+turn ends (`replaysHistoryDuringTurn: false`). A turn that starts while an
+import is fetching, such as a wake-up sent the moment the previous turn ends,
+also defers that import to its end; otherwise its prompt and reply would be
+kept twice. A change made outside Sesori during a turn then shows when the
+turn ends.
 
 | Harness | Status |
 |---|---|

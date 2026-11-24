@@ -1354,6 +1354,11 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        // A turn can start while the fetch runs, such as a wake-up sent the
+        // moment the previous turn ended. The snapshot can then hold its prompt
+        // under the replayed id while its live rows wait behind this import,
+        // and both would be kept. That turn's end imports it instead.
+        await _requireImportableNow(sessionId: sessionId);
         // The row the session's last turn ends on when a bridge stop cut it
         // off. Its running row stays until the plugin is ready to turn it into
         // the interruption, which can come after the first read imports.
