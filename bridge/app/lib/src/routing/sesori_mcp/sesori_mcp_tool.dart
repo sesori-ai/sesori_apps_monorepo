@@ -90,6 +90,7 @@ enum SesoriMcpTool({
         "model": {"type": "string", "description": "$_modelDescription Left out, the harness picks."},
         "effort": {"type": "string", "description": "$_effortDescription Left out, the harness picks."},
         "approval_mode": {..._approvalModeSchema, "description": _approvalModeDescription},
+        "command": {"type": "string", "description": _taskCommandDescription},
       },
       "required": ["name", "prompt", "schedule", "time_zone"],
       "additionalProperties": false,
@@ -121,6 +122,11 @@ enum SesoriMcpTool({
         "model": {"type": "string", "description": "$_modelDescription $_leaveOutUnchanged"},
         "effort": {"type": "string", "description": "$_effortDescription $_leaveOutUnchanged"},
         "approval_mode": {..._approvalModeSchema, "description": "$_approvalModeDescription $_leaveOutUnchanged"},
+        "command": {
+          "type": "string",
+          "description": "$_taskCommandDescription Not for a task that runs a slash command. $_leaveOutUnchanged",
+        },
+        "remove_command": {"type": "boolean", "description": "true stops the task's runs from running its command."},
       },
       "required": ["task_id"],
       "additionalProperties": false,
@@ -248,6 +254,11 @@ const Map<String, Object?> _taskIdSchema = {
 /// Ends update_task's description and each of its setting descriptions: a
 /// model that fills every field would otherwise propose changes nobody asked
 /// for, such as a new schedule when only the prompt should change.
+const String _taskCommandDescription =
+    "A shell command Sesori runs before each run's prompt, through a login shell in the task's project folder (a "
+    "same-session task's session folder once it has one), stopped after 10 minutes. The prompt then carries the "
+    "exit code, stdout and stderr; a stream over 500 words comes as its file's path and its last 20 lines.";
+
 const String _leaveOutUnchanged = "Leave out every field you are not changing; left-out fields keep their value.";
 
 const String _answeredOnItsOwn =

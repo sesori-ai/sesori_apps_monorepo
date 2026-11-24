@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/routing/request_router.dart";
 import "package:sesori_bridge/src/routing/run_scheduled_task_now_handler.dart";
 import "package:sesori_bridge/src/routing/set_scheduled_task_enabled_handler.dart";
 import "package:sesori_bridge/src/routing/update_scheduled_task_handler.dart";
+import "package:sesori_bridge/src/services/scheduled_command_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -102,6 +103,7 @@ void main() {
       ),
       sessionOptions: FakeSessionOptionsService(),
       calculator: const ScheduledTaskOccurrenceCalculator(),
+      commands: _UnusedCommands(),
       clock: clock,
     );
     addTearDown(runService.dispose);
@@ -194,7 +196,7 @@ void main() {
     );
     expect(empty.status, 400);
 
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
     await recordSessionBinding(
       database: db,
       sessionId: "ses_running",
@@ -246,6 +248,11 @@ class _UnusedYoloSettings() implements YoloSettingsService {
 }
 
 class _UnusedLifecycle() implements SessionLifecycleService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedCommands() implements ScheduledCommandService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

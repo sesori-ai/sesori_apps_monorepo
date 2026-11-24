@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/task_command_edit.dart";
 import "../services/scheduled_task_service.dart";
 import "request_handler.dart";
 
@@ -21,7 +22,12 @@ class UpdateScheduledTaskHandler({required final ScheduledTaskService _scheduled
   }) async {
     requireNonEmpty(request: request, value: body.taskId, label: "task id");
     return ScheduledTaskResponse(
-      task: await _scheduledTaskService.update(taskId: body.taskId, definition: body.definition),
+      task: await _scheduledTaskService.update(
+        taskId: body.taskId,
+        definition: body.definition,
+        // The app edits only the definition, so the task keeps its command.
+        command: const TaskCommandUnchanged(),
+      ),
     );
   }
 }

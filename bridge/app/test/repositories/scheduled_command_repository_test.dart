@@ -7,6 +7,7 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/shell_command_api.dart";
+import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/scheduled_command_result.dart";
 import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
@@ -28,8 +29,10 @@ void main() {
       shell: ShellCommandApi.forPlatform(
         platform: PlatformOs.linux,
         runner: const StreamingProcessRunner(),
+        tools: ProcessRunner(),
         environment: const {"SHELL": "/bin/sh"},
       ),
+      files: const FilesystemApi(),
     );
     outputs = PromptUploadRepository(filesystemApi: const FilesystemApi(), uploadsRoot: p.join(root.path, "output"));
   });
@@ -102,6 +105,25 @@ void main() {
       await result.timeout(const Duration(seconds: 10)),
       isA<ScheduledCommandStopped>().having((stopped) => stopped.stdout.text, "stdout", "started\n"),
     );
+  });
+
+  test("a stop kills the processes the command started too", () async {
+    final pidFile = p.join(root.path, "child.pid");
+    final stop = Completer<void>();
+    final result = run(command: "sleep 30 & echo \$! > '$pidFile'; wait", stop: stop.future);
+    while (!File(pidFile).existsSync() || File(pidFile).readAsStringSync().trim().isEmpty) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    final child = File(pidFile).readAsStringSync().trim();
+    stop.complete();
+
+    expect(await result.timeout(const Duration(seconds: 10)), isA<ScheduledCommandStopped>());
+    var alive = true;
+    for (var attempt = 0; alive && attempt < 50; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      alive = Process.runSync("kill", ["-0", child]).exitCode == 0;
+    }
+    expect(alive, isFalse);
   });
 
   test("a stream whose file cannot be written is still counted", () async {

@@ -30,16 +30,22 @@ class ScheduledTaskDao({required AppDatabase database})
     return into(scheduledTasksTable).insertReturning(row);
   }
 
-  /// Writes [row]'s definition columns, next due time and update time, and
-  /// clears the target session when [clearTarget] is set. The other bridge
-  /// state is left alone, so a target a run wrote meanwhile survives, and a
-  /// task completed meanwhile is not written. Returns the rows changed.
-  Future<int> updateTaskDefinition({required ScheduledTaskDto row, required bool clearTarget}) {
+  /// Writes [row]'s definition columns, next due time and update time, its
+  /// command when [writeCommand] is set, and clears the target session when
+  /// [clearTarget] is set. The other bridge state is left alone, so a target a
+  /// run wrote meanwhile survives, and a task completed meanwhile is not
+  /// written. Returns the rows changed.
+  Future<int> updateTaskDefinition({
+    required ScheduledTaskDto row,
+    required bool clearTarget,
+    required bool writeCommand,
+  }) {
     final changes = row
         .toCompanion(false)
         .copyWith(
           id: const Value.absent(),
           enabled: const Value.absent(),
+          command: writeCommand ? Value(row.command) : const Value.absent(),
           targetSessionId: clearTarget ? const Value(null) : const Value.absent(),
           completedAt: const Value.absent(),
           createdAt: const Value.absent(),

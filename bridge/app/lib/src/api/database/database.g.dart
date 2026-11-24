@@ -420,6 +420,10 @@ mixin $ScheduledTasksTableTableToColumns
   TaskApprovalMode get approvalMode;
   bool get enabled;
 
+  /// The shell command each run runs before its prompt, set only through an
+  /// agent request the user allowed. Null for a task that runs none.
+  String? get command;
+
   /// UTC milliseconds of the next run. Null while paused or done.
   int? get nextDueAt;
 
@@ -472,6 +476,9 @@ mixin $ScheduledTasksTableTableToColumns
       );
     }
     map['enabled'] = Variable<bool>(enabled);
+    if (!nullToAbsent || command != null) {
+      map['command'] = Variable<String>(command);
+    }
     if (!nullToAbsent || nextDueAt != null) {
       map['next_due_at'] = Variable<int>(nextDueAt);
     }
@@ -689,6 +696,17 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
       'CHECK ("enabled" IN (0, 1))',
     ),
   );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nextDueAtMeta = const VerificationMeta(
     'nextDueAt',
   );
@@ -766,6 +784,7 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     autoCompact,
     approvalMode,
     enabled,
+    command,
     nextDueAt,
     targetSessionId,
     completedAt,
@@ -896,6 +915,12 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     } else if (isInserting) {
       context.missing(_enabledMeta);
     }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
+    }
     if (data.containsKey('next_due_at')) {
       context.handle(
         _nextDueAtMeta,
@@ -1020,6 +1045,10 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
         DriftSqlType.bool,
         data['${effectivePrefix}enabled'],
       )!,
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      ),
       nextDueAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}next_due_at'],
@@ -1101,6 +1130,11 @@ class ScheduledTaskDto extends DataClass
   @override
   final bool enabled;
 
+  /// The shell command each run runs before its prompt, set only through an
+  /// agent request the user allowed. Null for a task that runs none.
+  @override
+  final String? command;
+
   /// UTC milliseconds of the next run. Null while paused or done.
   @override
   final int? nextDueAt;
@@ -1136,6 +1170,7 @@ class ScheduledTaskDto extends DataClass
     required this.autoCompact,
     required this.approvalMode,
     required this.enabled,
+    this.command,
     this.nextDueAt,
     this.targetSessionId,
     this.completedAt,
@@ -1167,6 +1202,9 @@ class ScheduledTaskDto extends DataClass
       autoCompact: Value(autoCompact),
       approvalMode: Value(approvalMode),
       enabled: Value(enabled),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
       nextDueAt: nextDueAt == null && nullToAbsent
           ? const Value.absent()
           : Value(nextDueAt),
@@ -1209,6 +1247,7 @@ class ScheduledTaskDto extends DataClass
         serializer.fromJson<String>(json['approvalMode']),
       ),
       enabled: serializer.fromJson<bool>(json['enabled']),
+      command: serializer.fromJson<String?>(json['command']),
       nextDueAt: serializer.fromJson<int?>(json['nextDueAt']),
       targetSessionId: serializer.fromJson<String?>(json['targetSessionId']),
       completedAt: serializer.fromJson<int?>(json['completedAt']),
@@ -1245,6 +1284,7 @@ class ScheduledTaskDto extends DataClass
         $ScheduledTasksTableTable.$converterapprovalMode.toJson(approvalMode),
       ),
       'enabled': serializer.toJson<bool>(enabled),
+      'command': serializer.toJson<String?>(command),
       'nextDueAt': serializer.toJson<int?>(nextDueAt),
       'targetSessionId': serializer.toJson<String?>(targetSessionId),
       'completedAt': serializer.toJson<int?>(completedAt),
@@ -1271,6 +1311,7 @@ class ScheduledTaskDto extends DataClass
     bool? autoCompact,
     TaskApprovalMode? approvalMode,
     bool? enabled,
+    Value<String?> command = const Value.absent(),
     Value<int?> nextDueAt = const Value.absent(),
     Value<String?> targetSessionId = const Value.absent(),
     Value<int?> completedAt = const Value.absent(),
@@ -1294,6 +1335,7 @@ class ScheduledTaskDto extends DataClass
     autoCompact: autoCompact ?? this.autoCompact,
     approvalMode: approvalMode ?? this.approvalMode,
     enabled: enabled ?? this.enabled,
+    command: command.present ? command.value : this.command,
     nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
     targetSessionId: targetSessionId.present
         ? targetSessionId.value
@@ -1333,6 +1375,7 @@ class ScheduledTaskDto extends DataClass
           ? data.approvalMode.value
           : this.approvalMode,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      command: data.command.present ? data.command.value : this.command,
       nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
       targetSessionId: data.targetSessionId.present
           ? data.targetSessionId.value
@@ -1365,6 +1408,7 @@ class ScheduledTaskDto extends DataClass
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
           ..write('enabled: $enabled, ')
+          ..write('command: $command, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
           ..write('completedAt: $completedAt, ')
@@ -1393,6 +1437,7 @@ class ScheduledTaskDto extends DataClass
     autoCompact,
     approvalMode,
     enabled,
+    command,
     nextDueAt,
     targetSessionId,
     completedAt,
@@ -1420,6 +1465,7 @@ class ScheduledTaskDto extends DataClass
           other.autoCompact == this.autoCompact &&
           other.approvalMode == this.approvalMode &&
           other.enabled == this.enabled &&
+          other.command == this.command &&
           other.nextDueAt == this.nextDueAt &&
           other.targetSessionId == this.targetSessionId &&
           other.completedAt == this.completedAt &&
@@ -1445,6 +1491,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
   final Value<bool> autoCompact;
   final Value<TaskApprovalMode> approvalMode;
   final Value<bool> enabled;
+  final Value<String?> command;
   final Value<int?> nextDueAt;
   final Value<String?> targetSessionId;
   final Value<int?> completedAt;
@@ -1468,6 +1515,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     this.autoCompact = const Value.absent(),
     this.approvalMode = const Value.absent(),
     this.enabled = const Value.absent(),
+    this.command = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1492,6 +1540,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     required bool autoCompact,
     required TaskApprovalMode approvalMode,
     required bool enabled,
+    this.command = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1531,6 +1580,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     Expression<bool>? autoCompact,
     Expression<String>? approvalMode,
     Expression<bool>? enabled,
+    Expression<String>? command,
     Expression<int>? nextDueAt,
     Expression<String>? targetSessionId,
     Expression<int>? completedAt,
@@ -1555,6 +1605,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
       if (autoCompact != null) 'auto_compact': autoCompact,
       if (approvalMode != null) 'approval_mode': approvalMode,
       if (enabled != null) 'enabled': enabled,
+      if (command != null) 'command': command,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (targetSessionId != null) 'target_session_id': targetSessionId,
       if (completedAt != null) 'completed_at': completedAt,
@@ -1581,6 +1632,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     Value<bool>? autoCompact,
     Value<TaskApprovalMode>? approvalMode,
     Value<bool>? enabled,
+    Value<String?>? command,
     Value<int?>? nextDueAt,
     Value<String?>? targetSessionId,
     Value<int?>? completedAt,
@@ -1605,6 +1657,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
       autoCompact: autoCompact ?? this.autoCompact,
       approvalMode: approvalMode ?? this.approvalMode,
       enabled: enabled ?? this.enabled,
+      command: command ?? this.command,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       targetSessionId: targetSessionId ?? this.targetSessionId,
       completedAt: completedAt ?? this.completedAt,
@@ -1677,6 +1730,9 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     if (enabled.present) {
       map['enabled'] = Variable<bool>(enabled.value);
     }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
     if (nextDueAt.present) {
       map['next_due_at'] = Variable<int>(nextDueAt.value);
     }
@@ -1715,6 +1771,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
           ..write('enabled: $enabled, ')
+          ..write('command: $command, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
           ..write('completedAt: $completedAt, ')
@@ -8662,6 +8719,7 @@ typedef $$ScheduledTasksTableTableCreateCompanionBuilder =
       required bool autoCompact,
       required TaskApprovalMode approvalMode,
       required bool enabled,
+      Value<String?> command,
       Value<int?> nextDueAt,
       Value<String?> targetSessionId,
       Value<int?> completedAt,
@@ -8687,6 +8745,7 @@ typedef $$ScheduledTasksTableTableUpdateCompanionBuilder =
       Value<bool> autoCompact,
       Value<TaskApprovalMode> approvalMode,
       Value<bool> enabled,
+      Value<String?> command,
       Value<int?> nextDueAt,
       Value<String?> targetSessionId,
       Value<int?> completedAt,
@@ -8872,6 +8931,11 @@ class $$ScheduledTasksTableTableFilterComposer
 
   ColumnFilters<bool> get enabled => $composableBuilder(
     column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9064,6 +9128,11 @@ class $$ScheduledTasksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get nextDueAt => $composableBuilder(
     column: $table.nextDueAt,
     builder: (column) => ColumnOrderings(column),
@@ -9182,6 +9251,9 @@ class $$ScheduledTasksTableTableAnnotationComposer
 
   GeneratedColumn<bool> get enabled =>
       $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
 
   GeneratedColumn<int> get nextDueAt =>
       $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
@@ -9330,6 +9402,7 @@ class $$ScheduledTasksTableTableTableManager
                 Value<bool> autoCompact = const Value.absent(),
                 Value<TaskApprovalMode> approvalMode = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
+                Value<String?> command = const Value.absent(),
                 Value<int?> nextDueAt = const Value.absent(),
                 Value<String?> targetSessionId = const Value.absent(),
                 Value<int?> completedAt = const Value.absent(),
@@ -9353,6 +9426,7 @@ class $$ScheduledTasksTableTableTableManager
                 autoCompact: autoCompact,
                 approvalMode: approvalMode,
                 enabled: enabled,
+                command: command,
                 nextDueAt: nextDueAt,
                 targetSessionId: targetSessionId,
                 completedAt: completedAt,
@@ -9378,6 +9452,7 @@ class $$ScheduledTasksTableTableTableManager
                 required bool autoCompact,
                 required TaskApprovalMode approvalMode,
                 required bool enabled,
+                Value<String?> command = const Value.absent(),
                 Value<int?> nextDueAt = const Value.absent(),
                 Value<String?> targetSessionId = const Value.absent(),
                 Value<int?> completedAt = const Value.absent(),
@@ -9401,6 +9476,7 @@ class $$ScheduledTasksTableTableTableManager
                 autoCompact: autoCompact,
                 approvalMode: approvalMode,
                 enabled: enabled,
+                command: command,
                 nextDueAt: nextDueAt,
                 targetSessionId: targetSessionId,
                 completedAt: completedAt,

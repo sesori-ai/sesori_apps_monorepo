@@ -15,6 +15,7 @@ ScheduledTask scheduledTaskFixture({
   TaskRunMode runMode = const TaskRunMode.newSession(),
   bool enabled = true,
   ScheduledTaskInstant? nextRunAt,
+  String? command,
 }) => ScheduledTask(
   id: id,
   definition: ScheduledTaskDefinition(
@@ -36,6 +37,7 @@ ScheduledTask scheduledTaskFixture({
   enabled: enabled,
   nextRunAt: nextRunAt ?? (enabled ? ScheduledTaskInstant(at: _nextRunAt, offsetMinutes: 0) : null),
   lastRun: null,
+  command: command,
 );
 
 final int _nextRunAt = DateTime.utc(2026, 12, 1, 9).millisecondsSinceEpoch;

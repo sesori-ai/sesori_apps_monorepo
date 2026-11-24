@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/models/agent_approval_change.dart";
 import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/session_notice.dart";
+import "../repositories/models/task_command_edit.dart";
 
 /// Writes the Markdown a user reads before allowing an agent's task change,
 /// and the notice its session gets once they answered.
@@ -12,11 +13,19 @@ import "../repositories/models/session_notice.dart";
 /// The security model relies on this text: it opens with the Approve
 /// everything warning whenever the resulting task acts without asking, names
 /// the project before the action, and shows every field the change sets: an
-/// update's old values struck through and its prompt as a line diff.
-/// Agent-written names and prompts are escaped, so they cannot fake a line.
+/// update's old values struck through and its prompt and command as line
+/// diffs. Agent-written names, prompts and commands are escaped, so they cannot
+/// fake a line.
 class const ScheduledTaskChangeDescriptionBuilder() {
   /// Unchanged prompt lines a request shows around each changed one.
   static const _diffContext = 2;
+
+  /// Invisible characters that can reorder or hide what a command shows:
+  /// bidi marks, embeddings, overrides and isolates, and zero-width ones.
+  static final RegExp _invisible = RegExp("[\u061C\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]");
+
+  static const String _invisibleNote =
+      "It contains invisible characters, which the command above shows as their Unicode codes.";
 
   String build({
     required ScheduledTaskAgentChange change,
@@ -68,10 +77,12 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   }) {
     final (action, name) = switch (change) {
       CreateTaskChange(:final definition) => ("creating", definition.name),
-      UpdateTaskChange(:final before, :final after) when before.copyWith(name: after.name) == after => (
-        "renaming",
-        before.name,
-      ),
+      UpdateTaskChange(:final before, :final after, command: TaskCommandUnchanged())
+          when before.copyWith(name: after.name) == after =>
+        (
+          "renaming",
+          before.name,
+        ),
       UpdateTaskChange(:final before) => ("changing", before.name),
       SetTaskEnabledChange(:final before, enabled: true) => ("resuming", before.name),
       SetTaskEnabledChange(:final before, enabled: false) => ("pausing", before.name),
@@ -149,9 +160,10 @@ class const ScheduledTaskChangeDescriptionBuilder() {
 
   List<String> _body({required ScheduledTaskAgentChange change}) {
     switch (change) {
-      case CreateTaskChange(:final definition):
+      case CreateTaskChange(:final definition, :final command):
         return [
           "**Create ${quoted(text: definition.name)}**",
+          if (command case final command?) ..._runsCommand(command: command),
           for (final field in _Field.values)
             if (field != _Field.name)
               "${field.label}: ${inline(
@@ -159,7 +171,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
               )}",
           ..._prompt(label: "Prompt", prompt: definition.prompt),
         ];
-      case UpdateTaskChange(:final before, :final after):
+      case UpdateTaskChange(:final before, :final after, :final beforeCommand, :final afterCommand):
         return [
           "**Update ${quoted(text: before.name)}**",
           for (final field in _Field.values)
@@ -172,15 +184,37 @@ class const ScheduledTaskChangeDescriptionBuilder() {
             ...switch ((_promptText(prompt: before.prompt), _promptText(prompt: after.prompt))) {
               // Only the prompt's kind changed, so a diff would show nothing.
               (final old, final updated) when old == updated => _prompt(label: "New prompt", prompt: after.prompt),
-              (final old, final updated) => _promptDiff(before: old, after: updated),
+              (final old, final updated) => _lineDiffBlock(label: "Prompt changes:", before: old, after: updated),
             },
+          ...switch ((beforeCommand, afterCommand)) {
+            (null, null) => const <String>[],
+            (null, final added?) => ["Adds a command, run before each run's prompt:", ...commandBlock(command: added)],
+            (final removed?, null) => ["Stops running this command:", ...commandBlock(command: removed)],
+            (final old?, final updated?) when old == updated => const <String>[],
+            (final old?, final updated?) => [
+              ..._lineDiffBlock(
+                label: "Command changes:",
+                before: _shown(command: old),
+                after: _shown(command: updated),
+              ),
+              if (_shown(command: old) != old || _shown(command: updated) != updated)
+                "It contains invisible characters, which the changes above show as their Unicode codes.",
+            ],
+          },
         ];
-      case SetTaskEnabledChange(:final before, enabled: true):
-        return ["**Resume ${quoted(text: before.name)}**", "Schedule: ${inline(text: schedule(definition: before))}"];
+      case SetTaskEnabledChange(:final before, :final beforeCommand, enabled: true):
+        return [
+          "**Resume ${quoted(text: before.name)}**",
+          "Schedule: ${inline(text: schedule(definition: before))}",
+          if (beforeCommand case final command?) ..._runsCommand(command: command),
+        ];
       case SetTaskEnabledChange(:final before, enabled: false):
         return ["**Pause ${quoted(text: before.name)}**"];
-      case RunTaskNowChange(:final before):
-        return ["**Run ${quoted(text: before.name)} now**"];
+      case RunTaskNowChange(:final before, :final beforeCommand):
+        return [
+          "**Run ${quoted(text: before.name)} now**",
+          if (beforeCommand case final command?) ..._runsCommand(command: command),
+        ];
     }
   }
 
@@ -229,11 +263,30 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     ScheduledTaskPromptUnknown() => "(a prompt kind this bridge does not know)",
   };
 
-  /// A git-style line diff of the prompt: every removed and added line, with
-  /// [_diffContext] unchanged lines around each change. Each prompt line starts
+  List<String> _runsCommand({required String command}) => [
+    "Runs this command before each run's prompt:",
+    ...commandBlock(command: command),
+  ];
+
+  /// [command] fenced as the shell gets it, except that each invisible
+  /// character shows as its code, so it cannot make the command read
+  /// differently; a note follows when it has any.
+  static List<String> commandBlock({required String command}) {
+    final shown = _shown(command: command);
+    final marker = fence(text: shown);
+    return ["$marker\n$shown\n$marker", if (shown != command) _invisibleNote];
+  }
+
+  static String _shown({required String command}) => command.replaceAllMapped(
+    _invisible,
+    (match) => "<U+${command.codeUnitAt(match.start).toRadixString(16).toUpperCase().padLeft(4, "0")}>",
+  );
+
+  /// A git-style line diff, under [label]: every removed and added line, with
+  /// [_diffContext] unchanged lines around each change. Each text line starts
   /// with "-", "+" or a space, so none can pass for the "@@" line that stands
   /// for unchanged lines left out.
-  List<String> _promptDiff({required String before, required String after}) {
+  List<String> _lineDiffBlock({required String label, required String before, required String after}) {
     final lines = _lineDiff(before: before.split("\n"), after: after.split("\n"));
     final changes = [
       for (final (index, line) in lines.indexed)
@@ -263,7 +316,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     flushSkipped();
     final text = out.join("\n");
     final marker = fence(text: text);
-    return ["Prompt changes:", "${marker}diff\n$text\n$marker"];
+    return [label, "${marker}diff\n$text\n$marker"];
   }
 
   /// [before] turned into [after] through a longest common subsequence, as

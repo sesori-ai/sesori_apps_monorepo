@@ -2,6 +2,8 @@ import "dart:async";
 import "dart:io";
 
 abstract interface class StreamingProcess() {
+  int get pid;
+
   Stream<List<int>> get stdout;
 
   Stream<List<int>> get stderr;
@@ -48,6 +50,9 @@ class const StreamingProcessRunner() {
 }
 
 final class _IoStreamingProcess(final Process _process) implements StreamingProcess {
+  @override
+  int get pid => _process.pid;
+
   @override
   Stream<List<int>> get stdout => _process.stdout;
 

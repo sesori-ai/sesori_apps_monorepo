@@ -2981,6 +2981,8 @@
   "@scheduledTaskWhen": {"description": "Task page row label for the task's schedule."},
   "scheduledTaskNextRun": "Next run",
   "@scheduledTaskNextRun": {"description": "Task page row label for when the task runs next."},
+  "scheduledTaskCommand": "Runs first",
+  "@scheduledTaskCommand": {"description": "Task page row label above the shell command each run runs before its prompt; the command itself is shown below."},
   "scheduledTaskNoNextRun": "Not scheduled",
   "@scheduledTaskNoNextRun": {"description": "Task page next-run value when nothing is left to run."},
   "scheduledTaskRunNow": "Run now",

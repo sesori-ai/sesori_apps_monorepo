@@ -75,7 +75,12 @@ void main() {
   }
 
   test("a single session carries its task's mark", () async {
-    final task = await tasks.create(definition: _daily, nextDueAt: null, now: DateTime.utc(2026, 11, 15));
+    final task = await tasks.create(
+      definition: _daily,
+      nextDueAt: null,
+      now: DateTime.utc(2026, 11, 15),
+      command: null,
+    );
     await storeSession(sessionId: "ses_run", taskId: task.id);
 
     final session = await views.enrich(session: _session(id: "ses_run"));
@@ -87,7 +92,12 @@ void main() {
   });
 
   test("a list reads every mark at once and leaves other sessions unmarked", () async {
-    final task = await tasks.create(definition: _daily, nextDueAt: null, now: DateTime.utc(2026, 11, 15));
+    final task = await tasks.create(
+      definition: _daily,
+      nextDueAt: null,
+      now: DateTime.utc(2026, 11, 15),
+      command: null,
+    );
     await storeSession(sessionId: "ses_run_1", taskId: task.id);
     await storeSession(sessionId: "ses_run_2", taskId: task.id);
     await storeSession(sessionId: "ses_plain", taskId: null);
@@ -105,7 +115,12 @@ void main() {
   });
 
   test("a deleted task leaves its sessions unmarked", () async {
-    final task = await tasks.create(definition: _daily, nextDueAt: null, now: DateTime.utc(2026, 11, 15));
+    final task = await tasks.create(
+      definition: _daily,
+      nextDueAt: null,
+      now: DateTime.utc(2026, 11, 15),
+      command: null,
+    );
     await storeSession(sessionId: "ses_run", taskId: task.id);
     await tasks.delete(taskId: task.id);
 
@@ -131,7 +146,12 @@ void main() {
     );
 
     Future<String> targetSameSessionTask({required DateTime nextDueAt}) async {
-      final task = await tasks.create(definition: _sameSession, nextDueAt: nextDueAt, now: DateTime.utc(2026, 11, 15));
+      final task = await tasks.create(
+        definition: _sameSession,
+        nextDueAt: nextDueAt,
+        now: DateTime.utc(2026, 11, 15),
+        command: null,
+      );
       expect(await tasks.setTargetSession(task: task, sessionId: "ses_root"), isTrue);
       return task.id;
     }

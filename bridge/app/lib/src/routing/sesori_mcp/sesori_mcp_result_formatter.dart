@@ -69,6 +69,11 @@ class const SesoriMcpResultFormatter() {
       "enabled: ${task.enabled ? "yes" : "no"}",
       "next run: ${_instantOrNone(instant: task.nextRunAt)}",
       "last run: ${_runOrNone(run: task.lastRun)}",
+      switch (task.command) {
+        final command? =>
+          "command, run before each run's prompt:\n${ScheduledTaskChangeDescriptionBuilder.fence(text: command)}",
+        null => "command: none",
+      },
       "prompt:",
       switch (definition.prompt) {
         ScheduledTaskPromptText(:final text) => text,

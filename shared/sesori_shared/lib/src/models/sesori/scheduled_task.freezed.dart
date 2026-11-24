@@ -22,7 +22,11 @@ mixin _$ScheduledTask {
 /// run.
  ScheduledTaskInstant? get nextRunAt;/// The newest run row, including skipped, missed and failed ones. Null
 /// before the first run.
- ScheduledTaskRun? get lastRun;
+ ScheduledTaskRun? get lastRun;/// The shell command each run runs before its prompt, which only an agent
+/// request the user allowed can set. It lives outside [definition], which
+/// the app sends whole, so an app edit keeps it. Null for a task that runs
+/// none, and from bridges before task commands, which run none.
+ String? get command;
 /// Create a copy of ScheduledTask
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -36,20 +40,20 @@ $ScheduledTaskCopyWith<ScheduledTask> get copyWith => _$ScheduledTaskCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as ScheduledTask;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTask&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.definition, _this.definition) || other.definition == _this.definition)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled)&&(identical(other.nextRunAt, _this.nextRunAt) || other.nextRunAt == _this.nextRunAt)&&(identical(other.lastRun, _this.lastRun) || other.lastRun == _this.lastRun));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTask&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.definition, _this.definition) || other.definition == _this.definition)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled)&&(identical(other.nextRunAt, _this.nextRunAt) || other.nextRunAt == _this.nextRunAt)&&(identical(other.lastRun, _this.lastRun) || other.lastRun == _this.lastRun)&&(identical(other.command, _this.command) || other.command == _this.command));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ScheduledTask;
-  return Object.hash(runtimeType,_this.id,_this.definition,_this.enabled,_this.nextRunAt,_this.lastRun);
+  return Object.hash(runtimeType,_this.id,_this.definition,_this.enabled,_this.nextRunAt,_this.lastRun,_this.command);
 }
 
 @override
 String toString() {
   final _this = this as ScheduledTask;
-  return 'ScheduledTask(id: ${_this.id}, definition: ${_this.definition}, enabled: ${_this.enabled}, nextRunAt: ${_this.nextRunAt}, lastRun: ${_this.lastRun})';
+  return 'ScheduledTask(id: ${_this.id}, definition: ${_this.definition}, enabled: ${_this.enabled}, nextRunAt: ${_this.nextRunAt}, lastRun: ${_this.lastRun}, command: ${_this.command})';
 }
 
 
@@ -60,7 +64,7 @@ abstract mixin class $ScheduledTaskCopyWith<$Res>  {
   factory $ScheduledTaskCopyWith(ScheduledTask value, $Res Function(ScheduledTask) _then) = _$ScheduledTaskCopyWithImpl;
 @useResult
 $Res call({
- String id, ScheduledTaskDefinition definition, bool enabled, ScheduledTaskInstant? nextRunAt, ScheduledTaskRun? lastRun
+ String id, ScheduledTaskDefinition definition, bool enabled, ScheduledTaskInstant? nextRunAt, ScheduledTaskRun? lastRun, String? command
 });
 
 
@@ -77,14 +81,15 @@ class _$ScheduledTaskCopyWithImpl<$Res>
 
 /// Create a copy of ScheduledTask
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? definition = null,Object? enabled = null,Object? nextRunAt = freezed,Object? lastRun = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? definition = null,Object? enabled = null,Object? nextRunAt = freezed,Object? lastRun = freezed,Object? command = freezed,}) {
   return _then(ScheduledTask(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,definition: null == definition ? _self.definition : definition // ignore: cast_nullable_to_non_nullable
 as ScheduledTaskDefinition,enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
 as bool,nextRunAt: freezed == nextRunAt ? _self.nextRunAt : nextRunAt // ignore: cast_nullable_to_non_nullable
 as ScheduledTaskInstant?,lastRun: freezed == lastRun ? _self.lastRun : lastRun // ignore: cast_nullable_to_non_nullable
-as ScheduledTaskRun?,
+as ScheduledTaskRun?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of ScheduledTask
@@ -129,7 +134,7 @@ $ScheduledTaskRunCopyWith<$Res>? get lastRun {
 @JsonSerializable()
 
 class _ScheduledTask implements ScheduledTask {
-  const _ScheduledTask({required this.id, required this.definition, required this.enabled, required this.nextRunAt, required this.lastRun});
+  const _ScheduledTask({required this.id, required this.definition, required this.enabled, required this.nextRunAt, required this.lastRun, required this.command});
   factory _ScheduledTask.fromJson(Map<String, dynamic> json) => _$ScheduledTaskFromJson(json);
 
 @override final  String id;
@@ -143,6 +148,11 @@ class _ScheduledTask implements ScheduledTask {
 /// The newest run row, including skipped, missed and failed ones. Null
 /// before the first run.
 @override final  ScheduledTaskRun? lastRun;
+/// The shell command each run runs before its prompt, which only an agent
+/// request the user allowed can set. It lives outside [definition], which
+/// the app sends whole, so an app edit keeps it. Null for a task that runs
+/// none, and from bridges before task commands, which run none.
+@override final  String? command;
 
 /// Create a copy of ScheduledTask
 /// with the given fields replaced by the non-null parameter values.
@@ -157,18 +167,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScheduledTask&&(identical(other.id, id) || other.id == id)&&(identical(other.definition, definition) || other.definition == definition)&&(identical(other.enabled, enabled) || other.enabled == enabled)&&(identical(other.nextRunAt, nextRunAt) || other.nextRunAt == nextRunAt)&&(identical(other.lastRun, lastRun) || other.lastRun == lastRun));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScheduledTask&&(identical(other.id, id) || other.id == id)&&(identical(other.definition, definition) || other.definition == definition)&&(identical(other.enabled, enabled) || other.enabled == enabled)&&(identical(other.nextRunAt, nextRunAt) || other.nextRunAt == nextRunAt)&&(identical(other.lastRun, lastRun) || other.lastRun == lastRun)&&(identical(other.command, command) || other.command == command));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,definition,enabled,nextRunAt,lastRun);
+    return Object.hash(runtimeType,id,definition,enabled,nextRunAt,lastRun,command);
 }
 
 @override
 String toString() {
-    return 'ScheduledTask(id: $id, definition: $definition, enabled: $enabled, nextRunAt: $nextRunAt, lastRun: $lastRun)';
+    return 'ScheduledTask(id: $id, definition: $definition, enabled: $enabled, nextRunAt: $nextRunAt, lastRun: $lastRun, command: $command)';
 }
 
 
@@ -179,7 +189,7 @@ abstract mixin class _$ScheduledTaskCopyWith<$Res> implements $ScheduledTaskCopy
   factory _$ScheduledTaskCopyWith(_ScheduledTask value, $Res Function(_ScheduledTask) _then) = __$ScheduledTaskCopyWithImpl;
 @override @useResult
 $Res call({
- String id, ScheduledTaskDefinition definition, bool enabled, ScheduledTaskInstant? nextRunAt, ScheduledTaskRun? lastRun
+ String id, ScheduledTaskDefinition definition, bool enabled, ScheduledTaskInstant? nextRunAt, ScheduledTaskRun? lastRun, String? command
 });
 
 
@@ -196,14 +206,15 @@ class __$ScheduledTaskCopyWithImpl<$Res>
 
 /// Create a copy of ScheduledTask
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? definition = null,Object? enabled = null,Object? nextRunAt = freezed,Object? lastRun = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? definition = null,Object? enabled = null,Object? nextRunAt = freezed,Object? lastRun = freezed,Object? command = freezed,}) {
   return _then(_ScheduledTask(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,definition: null == definition ? _self.definition : definition // ignore: cast_nullable_to_non_nullable
 as ScheduledTaskDefinition,enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
 as bool,nextRunAt: freezed == nextRunAt ? _self.nextRunAt : nextRunAt // ignore: cast_nullable_to_non_nullable
 as ScheduledTaskInstant?,lastRun: freezed == lastRun ? _self.lastRun : lastRun // ignore: cast_nullable_to_non_nullable
-as ScheduledTaskRun?,
+as ScheduledTaskRun?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

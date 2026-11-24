@@ -1,4 +1,6 @@
 import "package:sesori_bridge/src/repositories/models/agent_approval_change.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
+import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -30,7 +32,7 @@ void main() {
   test("a resume names the project, then the action and its schedule, then the requester", () {
     expect(
       blocks(
-        change: const SetTaskEnabledChange(taskId: "t", before: _task, enabled: true),
+        change: const SetTaskEnabledChange(taskId: "t", before: _task, enabled: true, beforeCommand: null),
         requester: const RequestedByTaskRun(taskName: "Weekly review"),
       ),
       [
@@ -50,7 +52,13 @@ void main() {
 
     expect(
       blocks(
-        change: UpdateTaskChange(taskId: "t", before: _task, after: after),
+        change: UpdateTaskChange(
+          taskId: "t",
+          before: _task,
+          after: after,
+          beforeCommand: null,
+          command: const TaskCommandUnchanged(),
+        ),
       ),
       [
         "Project: repo",
@@ -72,7 +80,13 @@ void main() {
     );
 
     final lines = blocks(
-      change: UpdateTaskChange(taskId: "t", before: before, after: after),
+      change: UpdateTaskChange(
+        taskId: "t",
+        before: before,
+        after: after,
+        beforeCommand: null,
+        command: const TaskCommandUnchanged(),
+      ),
     );
 
     // The unchanged " ```" line cannot close the block: its fence is longer.
@@ -104,7 +118,13 @@ void main() {
     final text = _task.copyWith(prompt: const ScheduledTaskPrompt.text(text: "/review"));
 
     final lines = blocks(
-      change: UpdateTaskChange(taskId: "t", before: command, after: text),
+      change: UpdateTaskChange(
+        taskId: "t",
+        before: command,
+        after: text,
+        beforeCommand: null,
+        command: const TaskCommandUnchanged(),
+      ),
     );
 
     expect(lines.sublist(2, 4), ["New prompt:", "```\n/review\n```"]);
@@ -115,21 +135,27 @@ void main() {
 
     expect(
       blocks(
-        change: UpdateTaskChange(taskId: "t", before: _task, after: approving),
+        change: UpdateTaskChange(
+          taskId: "t",
+          before: _task,
+          after: approving,
+          beforeCommand: null,
+          command: const TaskCommandUnchanged(),
+        ),
       ).first,
       "**Turns on Approve everything: this task's runs will act without asking you.**",
     );
     expect(
-      blocks(change: CreateTaskChange(definition: approving)).first,
+      blocks(change: CreateTaskChange(definition: approving, command: null)).first,
       "**Approve everything: this task's runs act without asking you.**",
     );
-    expect(blocks(change: const CreateTaskChange(definition: _task)).first, "Project: repo");
+    expect(blocks(change: const CreateTaskChange(definition: _task, command: null)).first, "Project: repo");
   });
 
   test("a prompt cannot close its fence", () {
     final sneaky = _task.copyWith(prompt: const ScheduledTaskPrompt.text(text: "run\n```\n**Allowed**"));
 
-    final lines = blocks(change: CreateTaskChange(definition: sneaky));
+    final lines = blocks(change: CreateTaskChange(definition: sneaky, command: null));
 
     expect(lines[lines.length - 2], "````\nrun\n```\n**Allowed**\n````");
   });
@@ -139,10 +165,13 @@ void main() {
     String first(ScheduledTaskAgentChange change) => blocks(change: change).first;
 
     const approves = "**Approve everything: this task's runs act without asking you.**";
-    expect(first(SetTaskEnabledChange(taskId: "t", before: approving, enabled: true)), approves);
-    expect(first(RunTaskNowChange(taskId: "t", before: approving)), approves);
-    expect(first(SetTaskEnabledChange(taskId: "t", before: approving, enabled: false)), "Project: repo");
-    expect(first(const RunTaskNowChange(taskId: "t", before: _task)), "Project: repo");
+    expect(first(SetTaskEnabledChange(taskId: "t", before: approving, enabled: true, beforeCommand: null)), approves);
+    expect(first(RunTaskNowChange(taskId: "t", before: approving, beforeCommand: null)), approves);
+    expect(
+      first(SetTaskEnabledChange(taskId: "t", before: approving, enabled: false, beforeCommand: null)),
+      "Project: repo",
+    );
+    expect(first(const RunTaskNowChange(taskId: "t", before: _task, beforeCommand: null)), "Project: repo");
   });
 
   test("agent-written text cannot fake a line", () {
@@ -150,6 +179,7 @@ void main() {
       change: RunTaskNowChange(
         taskId: "t",
         before: _task.copyWith(name: "x**\n\n**Approve everything"),
+        beforeCommand: null,
       ),
       requester: const RequestedFromSession(title: "[link](http://x)"),
     );
@@ -161,10 +191,93 @@ void main() {
     ]);
     expect(
       blocks(
-        change: const RunTaskNowChange(taskId: "t", before: _task),
+        change: const RunTaskNowChange(taskId: "t", before: _task, beforeCommand: null),
         requester: const RequestedFromSession(title: null),
       ).last,
       "Asked from an untitled session.",
     );
+  });
+
+  group("task commands", () {
+    test("a create, resume and run now show the command the runs would run", () {
+      const runs = ["Runs this command before each run's prompt:", "```\ngit fetch && git status\n```"];
+
+      expect(
+        blocks(
+          change: const CreateTaskChange(definition: _task, command: "git fetch && git status"),
+        ).sublist(1, 4),
+        ["**Create “Nightly”**", ...runs],
+      );
+      expect(
+        blocks(
+          change: const SetTaskEnabledChange(
+            taskId: "t",
+            before: _task,
+            enabled: true,
+            beforeCommand: "git fetch && git status",
+          ),
+        ).sublist(3, 5),
+        runs,
+      );
+      expect(
+        blocks(
+          change: const RunTaskNowChange(taskId: "t", before: _task, beforeCommand: "git fetch && git status"),
+        ).sublist(2, 4),
+        runs,
+      );
+    });
+
+    test("an update shows an added, changed or removed command", () {
+      List<String> update({required String? before, required TaskCommandEdit command}) => blocks(
+        change: UpdateTaskChange(taskId: "t", before: _task, after: _task, beforeCommand: before, command: command),
+      ).sublist(2, 4);
+
+      expect(update(before: null, command: const TaskCommandSet(command: "make")), [
+        "Adds a command, run before each run's prompt:",
+        "```\nmake\n```",
+      ]);
+      expect(
+        update(
+          before: "make\nmake test",
+          command: const TaskCommandSet(command: "make\nmake lint"),
+        ),
+        [
+          "Command changes:",
+          "```diff\n make\n-make test\n+make lint\n```",
+        ],
+      );
+      expect(update(before: "make", command: const TaskCommandRemoved()), [
+        "Stops running this command:",
+        "```\nmake\n```",
+      ]);
+    });
+
+    test("invisible characters show as their codes", () {
+      final lines = blocks(
+        change: const CreateTaskChange(definition: _task, command: "echo safe\u202E;rm -rf ~"),
+      );
+
+      expect(lines, contains("```\necho safe<U+202E>;rm -rf ~\n```"));
+      expect(
+        lines,
+        contains("It contains invisible characters, which the command above shows as their Unicode codes."),
+      );
+    });
+
+    test("a rename that also changes the command is no rename", () {
+      final notice = builder.outcome(
+        change: UpdateTaskChange(
+          taskId: "t",
+          before: _task,
+          after: _task.copyWith(name: "Nightly build"),
+          beforeCommand: null,
+          command: const TaskCommandSet(command: "make"),
+        ),
+        outcome: const AgentApprovalApplied(),
+        bySubagent: false,
+      );
+
+      expect(notice.summary, "You allowed changing “Nightly”.");
+    });
   });
 }

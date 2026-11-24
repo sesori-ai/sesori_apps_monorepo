@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -9,11 +11,13 @@ import "package:sesori_bridge/src/repositories/models/session_compaction_result.
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_tool.dart";
+import "package:sesori_bridge/src/services/scheduled_command_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -27,7 +31,8 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildScheduledRunContext;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show buildScheduledCommandContext, buildScheduledRunContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show PluginStaleOptionsException, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
@@ -92,6 +97,7 @@ void main() {
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
   late Set<String> missingFolders;
+  late _FakeCommands commands;
 
   setUp(() async {
     db = createTestDatabase();
@@ -115,6 +121,7 @@ void main() {
     lifecycle = _FakeLifecycle();
     bridgeSettings = _FakeBridgeSettings();
     mutations = RecordingArmingMutations();
+    commands = _FakeCommands();
     final clock = Clock(() => now);
     activity = ScheduledTaskActivityTracker(clock: clock);
     service = ScheduledTaskRunService(
@@ -143,6 +150,7 @@ void main() {
       lifecycle: lifecycle,
       sessionOptions: options,
       calculator: const ScheduledTaskOccurrenceCalculator(),
+      commands: commands,
       clock: clock,
     );
     failures = [];
@@ -156,7 +164,9 @@ void main() {
   Future<ScheduledTaskRecord> createTask({
     ScheduledTaskDefinition definition = _daily,
     required DateTime? nextDueAt,
-  }) => repository.create(definition: definition, nextDueAt: nextDueAt, now: DateTime.utc(2026, 11, 1));
+    String? command,
+  }) =>
+      repository.create(definition: definition, nextDueAt: nextDueAt, now: DateTime.utc(2026, 11, 1), command: command);
 
   Future<List<ScheduledTaskRunOutcome>> outcomes(String taskId) async => [
     for (final run in await repository.listRuns(taskId: taskId)) run.outcome,
@@ -309,6 +319,95 @@ void main() {
     });
   });
 
+  group("task commands", () {
+    test("a run runs its command in the project folder first, then sends the prompt with its result", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9), command: "git fetch");
+
+      await service.runDue();
+
+      expect(commands.calls.single, (outputKey: "task-${task.id}", command: "git fetch", workingDirectory: "/repo"));
+      expect(creation.calls, isEmpty);
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(session: null, late: false)]);
+      await expectLater(
+        () => service.runNow(taskId: task.id),
+        throwsA(
+          isA<ScheduledTaskRequestException>().having((e) => e.code, "code", ScheduledTaskErrorCode.previousRunActive),
+        ),
+      );
+
+      commands.finish(result: "command exited 0");
+      await commands.idle();
+
+      expect(creation.runContexts, [
+        buildScheduledCommandContext(command: "git fetch", workingDirectory: "/repo", result: "command exited 0"),
+      ]);
+      expect(creation.calls.single.$1.parts, [const PromptPart.text(text: "Summarize yesterday")]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
+    });
+
+    test("the result follows the run note when the harness gets Sesori's tools", () async {
+      sessions.sesoriTools = true;
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9), command: "make check");
+
+      await service.runDue();
+      commands.finish(result: "command exited 2");
+      await commands.idle();
+
+      final runNote = buildScheduledRunContext(taskName: "Morning summary", taskId: task.id);
+      final commandNote = buildScheduledCommandContext(
+        command: "make check",
+        workingDirectory: "/repo",
+        result: "command exited 2",
+      );
+      expect(creation.runContexts, ["$runNote\n$commandNote"]);
+    });
+
+    test("a same-session run runs its command in its session's worktree", () async {
+      final task = await createTask(definition: _sameSession, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      await service.runDue();
+      await db.customStatement("UPDATE sessions_table SET worktree_path = '/worktrees/one' WHERE session_id = 'ses_1'");
+      await repository.updateDefinition(
+        taskId: task.id,
+        definition: _sameSession,
+        command: const TaskCommandSet(command: "git status"),
+        nextDueAt: DateTime.utc(2026, 11, 16, 9),
+        clearTarget: false,
+        now: now,
+      );
+      now = now.add(const Duration(days: 1));
+
+      await service.runDue();
+      commands.finish(result: "command exited 0");
+      await commands.idle();
+
+      expect(commands.calls.single.workingDirectory, "/worktrees/one");
+      expect(
+        prompts.sends.single.runContext,
+        buildScheduledCommandContext(
+          command: "git status",
+          workingDirectory: "/worktrees/one",
+          result: "command exited 0",
+        ),
+      );
+    });
+
+    test("a run whose command a shutdown stopped sends no prompt", () async {
+      await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9), command: "sleep 600");
+      await service.runDue();
+
+      final disposed = service.dispose();
+      commands.finish(result: "stopped by a bridge shutdown");
+      await disposed;
+
+      expect(creation.calls, isEmpty);
+    });
+  });
+
   group("archiving old runs", () {
     // The fire's own session first, then older runs, newest first.
     const older = ["old_1", "old_2", "old_3", "old_4", "old_5", "old_6", "old_7", "old_8", "old_9"];
@@ -424,6 +523,7 @@ void main() {
         nextDueAt: DateTime.utc(2026, 11, 16, 9),
         clearTarget: false,
         now: now,
+        command: const TaskCommandUnchanged(),
       );
 
       await service.runDue();
@@ -435,6 +535,7 @@ void main() {
         nextDueAt: null,
         clearTarget: false,
         now: now.add(const Duration(minutes: 1)),
+        command: const TaskCommandUnchanged(),
       );
       now = now.add(ScheduledTaskRunService.startupGrace);
       await service.runNow(taskId: task.id);
@@ -489,6 +590,7 @@ void main() {
           nextDueAt: DateTime.utc(2026, 11, 16, 9),
           clearTarget: false,
           now: now,
+          command: const TaskCommandUnchanged(),
         );
       };
 
@@ -694,6 +796,7 @@ void main() {
         nextDueAt: DateTime.utc(2026, 11, 16, 9),
         clearTarget: true,
         now: now,
+        command: const TaskCommandUnchanged(),
       );
 
       await runDueAt(const Duration(hours: 1));
@@ -713,6 +816,7 @@ void main() {
         nextDueAt: DateTime.utc(2026, 11, 16, 9),
         clearTarget: true,
         now: now,
+        command: const TaskCommandUnchanged(),
       );
 
       await runDueAt(const Duration(hours: 1));
@@ -1268,3 +1372,30 @@ StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsE
   model: _model,
   variant: null,
 );
+
+typedef _CommandCall = ({String outputKey, String command, String workingDirectory});
+
+/// Holds every command until [finish], as a running one would.
+class _FakeCommands() implements ScheduledCommandService {
+  final List<_CommandCall> calls = [];
+  final Completer<String> _result = Completer<String>();
+  final List<Future<void>> _afterRuns = [];
+
+  void finish({required String result}) => _result.complete(result);
+
+  /// Lets the run service finish what it does after the command.
+  Future<void> idle() async {
+    await Future.wait(_afterRuns);
+    await pumpEventQueue();
+  }
+
+  @override
+  Future<String> run({required String outputKey, required String command, required String workingDirectory}) {
+    calls.add((outputKey: outputKey, command: command, workingDirectory: workingDirectory));
+    _afterRuns.add(_result.future);
+    return _result.future;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
