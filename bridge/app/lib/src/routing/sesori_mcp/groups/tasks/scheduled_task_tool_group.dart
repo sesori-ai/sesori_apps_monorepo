@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show PromptModel, ScheduledTaskErrorCode, SessionVariant;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
-import "../../../../foundation/sesori_tool_group_ids.dart";
+import "../../../../repositories/models/sesori_tool_group_ids.dart";
 import "../../../../repositories/models/task_command_edit.dart";
 import "../../../../services/scheduled_task_agent_service.dart";
 import "../../models/sesori_mcp_tool_arguments.dart";

@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:io";
 import "dart:math";
 
-import "package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart";
+import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";

@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show TaskSchedule, TaskTimeOfDay;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
-import "../../../../foundation/sesori_tool_group_ids.dart";
+import "../../../../repositories/models/sesori_tool_group_ids.dart";
 import "../../../../repositories/models/session_wake_up.dart";
 import "../../../../services/session_wake_up_description_builder.dart";
 import "../../../../services/session_wake_up_service.dart";

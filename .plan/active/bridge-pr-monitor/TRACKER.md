@@ -35,10 +35,11 @@
 - Step 4 adds `start`, `dispose`, the host and the `sesori_plugin_interface`
   dependency to the interface (update `bridge/AGENTS.md`'s module order line,
   which says "no internal deps"), and step 10 adds `guide`.
-- Group ids live in `bridge/app/lib/src/foundation/sesori_tool_group_ids.dart`
+- Group ids live in `bridge/app/lib/src/repositories/models/sesori_tool_group_ids.dart`
   (`SesoriToolGroupIds.all`), because launches, the CLI and scheduled runs
   read them before the groups are built. Step 7 adds the PR monitor's id there,
-  in `tools/list` order, beside adding its group to the orchestrator's list.
+  in `tools/list` order, beside adding its group to the orchestrator's list;
+  the orchestrator asserts the two match.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.

@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
-import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroupId;
 
+import "../repositories/models/sesori_tool_group_ids.dart";
 import "../services/plugin_warmup_settings_service.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 import "../services/tool_group_settings_service.dart";
@@ -53,7 +53,15 @@ class PatchBridgeSettingsHandler({
         final committed = await _pluginWarmupSettingsService.update(enabled: enabled);
         return BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: committed);
       case ToolGroupSettingUpdate(:final id, :final enabled):
-        final committed = await _toolGroupSettingsService.update(id: SesoriToolGroupId(id), enabled: enabled);
+        final groupId = SesoriToolGroupIds.parse(value: id);
+        if (groupId == null) {
+          throw buildJsonErrorResponse(
+            request: request,
+            status: 400,
+            body: const BridgeSettingUpdateRejection.unknown().toJson(),
+          );
+        }
+        final committed = await _toolGroupSettingsService.update(id: groupId, enabled: enabled);
         return BridgeSettingUpdate.toolGroup(id: id, enabled: committed);
       case UnknownBridgeSettingUpdate():
         throw buildJsonErrorResponse(

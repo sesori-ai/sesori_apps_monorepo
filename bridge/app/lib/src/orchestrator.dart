@@ -5,6 +5,7 @@ import "dart:math";
 import "dart:typed_data";
 
 import "package:clock/clock.dart";
+import "package:collection/collection.dart" show ListEquality;
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
@@ -12,7 +13,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroup;
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroup, SesoriToolGroupId;
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
@@ -91,6 +92,7 @@ import "repositories/mcp_repository.dart";
 import "repositories/models/agent_approval.dart";
 import "repositories/models/agent_page.dart";
 import "repositories/models/normalized_bridge_event.dart";
+import "repositories/models/sesori_tool_group_ids.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
@@ -931,12 +933,18 @@ class Orchestrator({
       wakeUps: sessionWakeUpService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
-    // In the order of SesoriToolGroupIds.all, which tools/list follows.
     final toolGroups = <SesoriToolGroup>[
       ScheduledTaskToolGroup(agent: scheduledTaskAgentService, formatter: const ScheduledTaskToolResultFormatter()),
       PageToolGroup(pages: agentPageService),
       WakeUpToolGroup(wakeUps: sessionWakeUpService),
     ];
+    // Launches grant groups by SesoriToolGroupIds before these are built.
+    assert(
+      const ListEquality<SesoriToolGroupId>().equals([
+        for (final group in toolGroups) group.id,
+      ], SesoriToolGroupIds.all),
+      "The orchestrator's tool groups must match SesoriToolGroupIds.all, in order.",
+    );
     final toolGroupSettingsService = ToolGroupSettingsService(settings: _bridgeSettingsRepository, groups: toolGroups);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),

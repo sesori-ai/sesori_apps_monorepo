@@ -1,6 +1,7 @@
 import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 
 import '../updater/foundation/release_track.dart';
+import 'models/sesori_tool_group_ids.dart';
 
 const int defaultPluginIdleTimeoutMins = 45;
 const int defaultPullRequestRefreshIntervalSeconds = 30;
@@ -288,6 +289,12 @@ class const BridgeSettings({
   /// Whether sessions launched now get the tool group [id]: [agentTools] is
   /// the master switch over every group.
   bool toolGroupEnabled({required SesoriToolGroupId id}) => agentTools && agentToolGroups.isEnabled(id: id);
+
+  /// The served tool groups sessions launched now get.
+  Set<SesoriToolGroupId> get enabledToolGroups => {
+    for (final id in SesoriToolGroupIds.all)
+      if (toolGroupEnabled(id: id)) id,
+  };
 
   static SleepPreventionMode _parseSleepPrevention(Object? rawValue) {
     return switch (rawValue) {

@@ -1,4 +1,5 @@
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
+import 'package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 import 'package:test/test.dart';
@@ -54,7 +55,8 @@ void main() {
 
       expect(settings.toolGroupEnabled(id: tasks), isFalse);
       expect(settings.toolGroupEnabled(id: const SesoriToolGroupId('pages')), isTrue);
-      expect(settings.copyWith(agentTools: false).toolGroupEnabled(id: const SesoriToolGroupId('pages')), isFalse);
+      expect(settings.enabledToolGroups, {SesoriToolGroupIds.pages, SesoriToolGroupIds.wakeUps});
+      expect(settings.copyWith(agentTools: false).enabledToolGroups, isEmpty);
       expect(settings.toJson()['agentToolGroups'], {
         'disabled': ['from_a_future_bridge', 'tasks'],
       });

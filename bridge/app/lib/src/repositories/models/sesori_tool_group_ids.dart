@@ -7,6 +7,15 @@ abstract final class SesoriToolGroupIds() {
   static const SesoriToolGroupId pages = SesoriToolGroupId("pages");
   static const SesoriToolGroupId wakeUps = SesoriToolGroupId("wake_ups");
 
-  /// Every group, in the order the server lists their tools.
+  /// Every group, in the order the server lists their tools. The orchestrator
+  /// asserts that its groups match.
   static const List<SesoriToolGroupId> all = [tasks, pages, wakeUps];
+
+  /// The served group [value] names, or null for any other id.
+  static SesoriToolGroupId? parse({required String value}) {
+    for (final id in all) {
+      if (id.value == value) return id;
+    }
+    return null;
+  }
 }

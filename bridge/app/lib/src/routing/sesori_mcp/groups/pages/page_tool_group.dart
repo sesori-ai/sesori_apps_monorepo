@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show maxTranscriptImageBytes;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
-import "../../../../foundation/sesori_tool_group_ids.dart";
+import "../../../../repositories/models/sesori_tool_group_ids.dart";
 import "../../../../services/agent_page_service.dart";
 import "../../models/sesori_mcp_tool_arguments.dart";
 import "../in_app_tool_texts.dart";

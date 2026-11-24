@@ -24,10 +24,10 @@ import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
-import 'package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
+import 'package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
@@ -57,7 +57,6 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 import 'package:sesori_shared/sesori_shared.dart' show BridgeKind;
-import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 import 'package:win32/win32.dart' show SetThreadExecutionState;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
@@ -479,7 +478,6 @@ class ConfigToolGroupCommand() extends cli.Command<void> {
   Future<void> run() async {
     final results = argResults ?? usageException('Unable to read command arguments.');
     final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
-    final knownIds = [for (final id in SesoriToolGroupIds.all) id.value];
 
     final (String? idText, bool? enabled) = switch (results.rest) {
       [] => (null, null),
@@ -496,10 +494,11 @@ class ConfigToolGroupCommand() extends cli.Command<void> {
       if (!settings.agentTools) stdout.writeln('Agent tools are off, so no group is served.');
       return;
     }
-    if (!knownIds.contains(idText)) {
-      usageException('Unknown tool group "$idText". Known groups: ${knownIds.join(', ')}.');
-    }
-    final id = SesoriToolGroupId(idText);
+    final id =
+        SesoriToolGroupIds.parse(value: idText) ??
+        usageException(
+          'Unknown tool group "$idText". Known groups: ${SesoriToolGroupIds.all.map((id) => id.value).join(', ')}.',
+        );
     if (enabled == null) {
       final settings = await repository.loadSettings();
       stdout.writeln('$idText: ${settings.agentToolGroups.isEnabled(id: id) ? 'on' : 'off'}');

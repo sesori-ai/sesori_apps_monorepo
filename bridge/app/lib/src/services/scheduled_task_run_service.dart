@@ -6,10 +6,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/sesori_tool_group_ids.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/models/project_not_found_exception.dart";
 import "../repositories/models/scheduled_task_record.dart";
+import "../repositories/models/sesori_tool_group_ids.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_quietness.dart";
 import "../repositories/project_repository.dart";
