@@ -6,6 +6,9 @@ part "pull_request_snapshot.freezed.dart";
 /// agent's acknowledgement from other comments by the same GitHub account.
 const String sesoriReplyPrefix = "[Sesori reply]";
 
+/// The label that marks a PR as ready: the agent finished its work on it.
+const String agentReadyLabel = "agent-ready";
+
 enum PullRequestState() {
   open,
   merged,

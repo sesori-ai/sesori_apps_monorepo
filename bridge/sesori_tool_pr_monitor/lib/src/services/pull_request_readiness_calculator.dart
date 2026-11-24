@@ -3,9 +3,6 @@ import "package:meta/meta.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "pull_request_activity_calculator.dart";
 
-/// The label that marks a PR as ready: the agent finished its work on it.
-const String agentReadyLabel = "agent-ready";
-
 @immutable
 class const PullRequestReadinessAssessment({
   /// Why the PR may not be marked ready automatically, as report text.
