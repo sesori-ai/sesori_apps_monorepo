@@ -91,6 +91,7 @@ _CreateTaskArguments _$CreateTaskArgumentsFromJson(Map json) => $checkedCreate(
             $enumDecodeNullable(_$TaskApprovalModeEnumMap, v) ??
             TaskApprovalMode.ask,
       ),
+      command: $checkedConvert('command', (v) => v as String?),
     );
     return val;
   },
@@ -116,6 +117,7 @@ Map<String, dynamic> _$CreateTaskArgumentsToJson(
   'model': ?instance.model,
   'effort': ?instance.effort,
   'approval_mode': _$TaskApprovalModeEnumMap[instance.approvalMode]!,
+  'command': ?instance.command,
 };
 
 const _$TaskMissedRunPolicyEnumMap = {
@@ -165,6 +167,11 @@ _UpdateTaskArguments _$UpdateTaskArgumentsFromJson(Map json) => $checkedCreate(
         'approval_mode',
         (v) => $enumDecodeNullable(_$TaskApprovalModeEnumMap, v),
       ),
+      command: $checkedConvert('command', (v) => v as String?),
+      removeCommand: $checkedConvert(
+        'remove_command',
+        (v) => v as bool? ?? false,
+      ),
     );
     return val;
   },
@@ -175,6 +182,7 @@ _UpdateTaskArguments _$UpdateTaskArgumentsFromJson(Map json) => $checkedCreate(
     'missedRunPolicy': 'missed_run_policy',
     'runMode': 'run_mode',
     'approvalMode': 'approval_mode',
+    'removeCommand': 'remove_command',
   },
 );
 
@@ -192,6 +200,8 @@ Map<String, dynamic> _$UpdateTaskArgumentsToJson(
   'model': ?instance.model,
   'effort': ?instance.effort,
   'approval_mode': ?_$TaskApprovalModeEnumMap[instance.approvalMode],
+  'command': ?instance.command,
+  'remove_command': instance.removeCommand,
 };
 
 _SendPageArguments _$SendPageArgumentsFromJson(Map json) =>
@@ -345,6 +355,7 @@ _ScheduleWakeUpArguments _$ScheduleWakeUpArgumentsFromJson(Map json) =>
               WakeUpWhenArgument.fromJson(Map<String, dynamic>.from(v as Map)),
         ),
         timeZone: $checkedConvert('time_zone', (v) => v as String?),
+        command: $checkedConvert('command', (v) => v as String?),
       );
       return val;
     }, fieldKeyMap: const {'timeZone': 'time_zone'});

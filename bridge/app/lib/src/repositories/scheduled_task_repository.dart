@@ -6,10 +6,14 @@ import "../api/database/daos/scheduled_task_dao.dart";
 import "../api/database/tables/scheduled_task_runs_table.dart";
 import "mappers/scheduled_task_mapper.dart";
 import "models/scheduled_task_record.dart";
+import "models/task_command_edit.dart";
 import "random_hex_id.dart";
 
 /// A task whose time has come, with the time it fell due.
 typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
+
+/// A same-session task's next run in its session.
+typedef UpcomingTaskRun = ({String taskName, DateTime dueAt});
 
 /// What auto-compact reads of a task's newest started run and its session.
 typedef StartedRunState = ({
@@ -40,6 +44,7 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// Stores a new enabled task.
   Future<ScheduledTaskRecord> create({
     required ScheduledTaskDefinition definition,
+    required String? command,
     required DateTime? nextDueAt,
     required DateTime now,
   }) async {
@@ -48,6 +53,7 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
         id: generateRandomHexId(secureRandom: _secureRandom, prefix: "stk_", byteLength: 16),
         definition: definition,
         enabled: true,
+        command: command,
         nextDueAt: nextDueAt?.millisecondsSinceEpoch,
         targetSessionId: null,
         completedAt: null,
@@ -58,11 +64,13 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     return _mapper.recordFromDto(row: row);
   }
 
-  /// Replaces the task's definition and next due time, clearing its target
-  /// session when [clearTarget] is set. Null when the task is gone.
+  /// Replaces the task's definition and next due time, applies [command],
+  /// and clears its target session when [clearTarget] is set. Null when the
+  /// task is gone.
   Future<ScheduledTaskRecord?> updateDefinition({
     required String taskId,
     required ScheduledTaskDefinition definition,
+    required TaskCommandEdit command,
     required DateTime? nextDueAt,
     required bool clearTarget,
     required DateTime now,
@@ -73,13 +81,24 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       id: taskId,
       definition: definition,
       enabled: existing.enabled,
+      command: switch (command) {
+        TaskCommandSet(:final command) => command,
+        TaskCommandUnchanged() => existing.command,
+        TaskCommandRemoved() => null,
+      },
       nextDueAt: nextDueAt?.millisecondsSinceEpoch,
       targetSessionId: existing.targetSessionId,
       completedAt: existing.completedAt,
       createdAt: existing.createdAt,
       updatedAt: now.millisecondsSinceEpoch,
     );
-    if (await _dao.updateTaskDefinition(row: row, clearTarget: clearTarget) == 0) return null;
+    final changed = await _dao.updateTaskDefinition(
+      row: row,
+      clearTarget: clearTarget,
+      // A command allowed meanwhile survives an edit that leaves it alone.
+      writeCommand: command is! TaskCommandUnchanged,
+    );
+    if (changed == 0) return null;
     return await get(taskId: taskId);
   }
 
@@ -252,6 +271,21 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
         },
       ),
   };
+
+  /// The soonest next run each of [sessionIds] gets as the session an enabled
+  /// same-session task continues in.
+  Future<Map<String, UpcomingTaskRun>> upcomingRunsInSessions({required Set<String> sessionIds}) async {
+    final upcoming = <String, UpcomingTaskRun>{};
+    for (final row in await _dao.listUpcomingTasksInSessions(sessionIds: sessionIds)) {
+      if ((row.targetSessionId, row.nextDueAt) case (final sessionId?, final dueAt?)) {
+        upcoming.putIfAbsent(
+          sessionId,
+          () => (taskName: row.name, dueAt: DateTime.fromMillisecondsSinceEpoch(dueAt, isUtc: true)),
+        );
+      }
+    }
+    return upcoming;
+  }
 
   /// Whether [sessionId]'s newest run has gone without a prompt of the
   /// user's own since it started. False for a session no run went to.

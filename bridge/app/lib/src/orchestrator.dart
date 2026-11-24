@@ -30,6 +30,7 @@ import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
+import "api/shell_command_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
 import "auth/token_refresh_exception.dart";
@@ -102,6 +103,7 @@ import "repositories/project_repository.dart";
 import "repositories/prompt_upload_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/scheduled_command_repository.dart";
 import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/sesori_mcp_grant_repository.dart";
@@ -121,6 +123,7 @@ import "routing/abort_session_handler.dart";
 import "routing/ask_side_question_handler.dart";
 import "routing/cancel_catalog_import_handler.dart";
 import "routing/cancel_queued_prompt_handler.dart";
+import "routing/cancel_session_wake_up_handler.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_scheduled_task_handler.dart";
@@ -232,6 +235,8 @@ import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
+import "services/scheduled_command_result_formatter.dart";
+import "services/scheduled_command_service.dart";
 import "services/scheduled_task_activity_tracker.dart";
 import "services/scheduled_task_agent_service.dart";
 import "services/scheduled_task_change_description_builder.dart";
@@ -261,6 +266,7 @@ import "services/session_view_tracker.dart";
 import "services/session_wake_up_description_builder.dart";
 import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
+import "services/wake_up_command_description_builder.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -275,6 +281,7 @@ typedef OrchestratorComposition = ({
   ChatHistoryReconcileService chatHistoryReconcileService,
   ScratchRepository scratchRepository,
   PromptPartDeliveryService promptPartDeliveryService,
+  ScheduledCommandService scheduledCommandService,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
@@ -421,6 +428,26 @@ class Orchestrator({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriPageImagesDirectory(),
     );
+    // The same layout again for the output of the commands wake-ups and
+    // tasks run, kept for a week and removed with its session.
+    final commandOutputRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriCommandOutputDirectory(),
+    );
+    final scheduledCommandService = ScheduledCommandService(
+      commands: ScheduledCommandRepository(
+        shell: ShellCommandApi.forPlatform(
+          platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
+          runner: const StreamingProcessRunner(),
+          tools: _processRunner,
+          environment: Platform.environment,
+        ),
+        files: const FilesystemApi(),
+      ),
+      outputs: commandOutputRepository,
+      formatter: const ScheduledCommandResultFormatter(),
+      clock: clock,
+    );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -433,11 +460,18 @@ class Orchestrator({
     final sessionInterruptions = SessionInterruptionRepository(
       dao: SessionInterruptionDao(database: _database),
     );
+    final sessionMutationDispatcher = SessionMutationDispatcher(
+      sessionRepository: sessionRepository,
+      sessionOperationDispatcher: sessionOperationDispatcher,
+      interruptions: sessionInterruptions,
+    );
+    final sessionWakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database));
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
       scheduledTasks: scheduledTaskRepository,
       interruptions: sessionInterruptions,
+      wakeUps: sessionWakeUps,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
@@ -446,6 +480,7 @@ class Orchestrator({
     final scheduledTaskService = ScheduledTaskService(
       repository: scheduledTaskRepository,
       sessionRepository: sessionRepository,
+      mutations: sessionMutationDispatcher,
       calculator: scheduledTaskOccurrenceCalculator,
       clock: clock,
     );
@@ -453,11 +488,6 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
       sessionRepository: sessionRepository,
       sideChatRepository: sideChatRepository,
-    );
-    final sessionMutationDispatcher = SessionMutationDispatcher(
-      sessionRepository: sessionRepository,
-      sessionOperationDispatcher: sessionOperationDispatcher,
-      interruptions: sessionInterruptions,
     );
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
@@ -705,6 +735,7 @@ class Orchestrator({
       promptUploadRepository: promptUploadRepository,
       transcriptRepository: transcriptRepository,
       pageImageRepository: pageImageRepository,
+      commandOutputRepository: commandOutputRepository,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
@@ -790,6 +821,7 @@ class Orchestrator({
       sessionCreation: sessionCreationService,
       prompts: sessionPromptService,
       operations: sessionOperationDispatcher,
+      mutations: sessionMutationDispatcher,
       yoloSettings: yoloSettingsService,
       sessions: sessionRepository,
       bridgeSettings: _bridgeSettingsRepository,
@@ -797,6 +829,7 @@ class Orchestrator({
       lifecycle: sessionLifecycleService,
       sessionOptions: sessionOptionsService,
       calculator: scheduledTaskOccurrenceCalculator,
+      commands: scheduledCommandService,
       clock: clock,
     );
     final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
@@ -866,6 +899,20 @@ class Orchestrator({
       notices: sessionNoticeService,
       noticeBuilder: const AgentPageAnswerNoticeBuilder(),
     );
+    final sessionWakeUpService = SessionWakeUpService(
+      wakeUps: sessionWakeUps,
+      sessions: sessionRepository,
+      calculator: scheduledTaskOccurrenceCalculator,
+      notices: sessionNoticeService,
+      descriptions: const SessionWakeUpDescriptionBuilder(),
+      autoApproval: permissionAutoApprovalService,
+      approvals: agentApprovalRepository,
+      commandDescriptions: const WakeUpCommandDescriptionBuilder(),
+      commands: scheduledCommandService,
+      mutations: sessionMutationDispatcher,
+      localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
+      clock: clock,
+    );
     final scheduledTaskAgentService = ScheduledTaskAgentService(
       tasks: scheduledTaskService,
       runner: scheduledTaskRunService,
@@ -876,15 +923,7 @@ class Orchestrator({
       approvals: agentApprovalRepository,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
       notices: sessionNoticeService,
-    );
-    final sessionWakeUpService = SessionWakeUpService(
-      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database)),
-      sessions: sessionRepository,
-      calculator: scheduledTaskOccurrenceCalculator,
-      notices: sessionNoticeService,
-      descriptions: const SessionWakeUpDescriptionBuilder(),
-      localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
-      clock: clock,
+      wakeUps: sessionWakeUpService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
@@ -942,6 +981,7 @@ class Orchestrator({
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
         SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
         SetSessionPinnedHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
+        CancelSessionWakeUpHandler(wakeUps: sessionWakeUpService, sessionViews: sessionViews),
         MoveSessionPinHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
@@ -1018,6 +1058,7 @@ class Orchestrator({
       sessionContinuationService: sessionContinuationService,
       sessionContinuationTimer: sessionContinuationTimer,
       sessionWakeUpTimer: sessionWakeUpTimer,
+      scheduledCommandService: scheduledCommandService,
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
@@ -1094,6 +1135,7 @@ class Orchestrator({
       ),
       scratchRepository: scratchRepository,
       promptPartDeliveryService: promptPartDeliveryService,
+      scheduledCommandService: scheduledCommandService,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
@@ -1120,6 +1162,7 @@ class Orchestrator({
       SessionApprovalOverrideUpdated() ||
       SessionPinnedUpdated() ||
       SessionInterruptionUpdated() ||
+      SessionArmingUpdated() ||
       SessionArchived() => await sessionViews.enrich(session: mutation.session),
     };
     return (
@@ -1129,7 +1172,8 @@ class Orchestrator({
         SessionContinuationUpdated() ||
         SessionApprovalOverrideUpdated() ||
         SessionPinnedUpdated() ||
-        SessionInterruptionUpdated() => [
+        SessionInterruptionUpdated() ||
+        SessionArmingUpdated() => [
           BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         ],
         SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
@@ -1201,6 +1245,7 @@ class OrchestratorSession._({
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
   required final SessionWakeUpTimerListener _sessionWakeUpTimer,
+  required final ScheduledCommandService _scheduledCommandService,
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
@@ -1664,6 +1709,8 @@ class OrchestratorSession._({
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
+      // Kills running commands so shutdown does not wait out their timeout.
+      attempt(_scheduledCommandService.dispose),
       attempt(_agentApprovalRepository.dispose),
       attempt(_agentPageRepository.dispose),
     ]);

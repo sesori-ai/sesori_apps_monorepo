@@ -19,6 +19,12 @@ class CreateScheduledTaskHandler({required final ScheduledTaskService _scheduled
     required RelayRequest request,
     required CreateScheduledTaskRequest body,
   }) async {
-    return ScheduledTaskResponse(task: await _scheduledTaskService.create(definition: body.definition));
+    return ScheduledTaskResponse(
+      task: await _scheduledTaskService.create(
+        definition: body.definition,
+        // The app cannot set a command; only an allowed agent request does.
+        command: null,
+      ),
+    );
   }
 }

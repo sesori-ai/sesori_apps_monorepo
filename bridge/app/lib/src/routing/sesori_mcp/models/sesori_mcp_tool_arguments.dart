@@ -66,6 +66,7 @@ sealed class CreateTaskArguments with _$CreateTaskArguments {
     required String? model,
     required String? effort,
     @JsonKey(name: "approval_mode") @Default(TaskApprovalMode.ask) TaskApprovalMode approvalMode,
+    required String? command,
   }) = _CreateTaskArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$CreateTaskArgumentsFromJson(json);
@@ -87,6 +88,10 @@ sealed class UpdateTaskArguments with _$UpdateTaskArguments {
     required String? model,
     required String? effort,
     @JsonKey(name: "approval_mode") required TaskApprovalMode? approvalMode,
+    required String? command,
+
+    /// Strict-schema providers send false for a field they leave out.
+    @JsonKey(name: "remove_command") @Default(false) bool removeCommand,
   }) = _UpdateTaskArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$UpdateTaskArgumentsFromJson(json);
@@ -176,6 +181,9 @@ sealed class ScheduleWakeUpArguments with _$ScheduleWakeUpArguments {
 
     /// Null for the bridge computer's zone.
     @JsonKey(name: "time_zone") required String? timeZone,
+
+    /// A shell command run right before the prompt is sent.
+    required String? command,
   }) = _ScheduleWakeUpArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$ScheduleWakeUpArgumentsFromJson(json);

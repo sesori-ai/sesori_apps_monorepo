@@ -37,9 +37,25 @@ void main() {
         scheduledFor: ScheduledTaskInstant(at: 1763019000000, offsetMinutes: 120),
         outcome: ScheduledTaskRunOutcome.started(session: null, late: true),
       ),
+      command: "git fetch && git status",
     );
 
     expect(ScheduledTask.fromJson(roundTrip(task.toJson())), task);
+  });
+
+  test("a task from a bridge before task commands reads as running none", () {
+    final json = roundTrip(
+      const ScheduledTask(
+        id: "task-1",
+        definition: definition,
+        enabled: true,
+        nextRunAt: null,
+        lastRun: null,
+        command: null,
+      ).toJson(),
+    )..remove("command");
+
+    expect(ScheduledTask.fromJson(json).command, isNull);
   });
 
   test("every request and response round-trips", () {

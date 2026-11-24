@@ -140,6 +140,7 @@ void main() {
           ),
           nextDueAt: null,
           now: DateTime.utc(2026, 11, 15),
+          command: null,
         );
         final run = await tasks.recordRun(
           taskId: task.id,

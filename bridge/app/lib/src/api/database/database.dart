@@ -60,7 +60,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 34;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -422,6 +422,15 @@ class AppDatabase(super.e) extends _$AppDatabase {
         await m.createTable(schema.sessionWakeUps);
         await m.createIndex(schema.idxSessionWakeUpsNextDue);
         await m.createIndex(schema.idxSessionWakeUpsSession);
+      },
+      from32To33: (m, schema) async {
+        // New nullable columns: existing wake-ups run no command.
+        await m.addColumn(schema.sessionWakeUps, schema.sessionWakeUps.command);
+        await m.addColumn(schema.sessionWakeUps, schema.sessionWakeUps.commandApproval);
+      },
+      from33To34: (m, schema) async {
+        // A new nullable column: existing tasks run no command.
+        await m.addColumn(schema.scheduledTasks, schema.scheduledTasks.command);
       },
     ),
     beforeOpen: (details) async {

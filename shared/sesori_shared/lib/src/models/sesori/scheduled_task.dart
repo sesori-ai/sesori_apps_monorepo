@@ -28,6 +28,12 @@ sealed class ScheduledTask with _$ScheduledTask {
     /// The newest run row, including skipped, missed and failed ones. Null
     /// before the first run.
     required ScheduledTaskRun? lastRun,
+
+    /// The shell command each run runs before its prompt, which only an agent
+    /// request the user allowed can set. It lives outside [definition], which
+    /// the app sends whole, so an app edit keeps it. Null for a task that runs
+    /// none, and from bridges before task commands, which run none.
+    required String? command,
   }) = _ScheduledTask;
 
   factory fromJson(Map<String, dynamic> json) => _$ScheduledTaskFromJson(json);

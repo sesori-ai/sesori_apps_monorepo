@@ -71,6 +71,9 @@ class const SessionTile({
   /// line says where it goes.
   required final SessionSending? sending,
 
+  /// What the meta line says about Sesori waking the session again by itself.
+  required final SessionScheduledMark scheduledMark,
+
   /// Opens the session.
   required final VoidCallback onTap,
 
@@ -568,7 +571,7 @@ class const SessionTile({
       final project? => Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
       null => null,
     };
-    final task = _taskMark(context: context, style: style);
+    final task = _scheduledMark(context: context, style: style);
     final backgroundTasks = _backgroundTasks(context: context, pointer: pointer, style: style);
     if (pointer) {
       Widget separator() => ExcludeSemantics(
@@ -720,7 +723,12 @@ class const SessionTile({
       layoutBuilder: (current, previous) =>
           _currentSemanticsOnly(current: current, previous: previous, alignment: AlignmentDirectional.centerStart),
       child: switch (sending) {
-        null => KeyedSubtree(key: const ValueKey("details"), child: details),
+        // A scheduled mark arriving or leaving moves the words after it, so
+        // the line cross-fades; a mark changing kind cross-fades in place.
+        null => KeyedSubtree(
+          key: ValueKey(("details", scheduledMark is SessionScheduledMarkNone)),
+          child: details,
+        ),
         final sending => ExcludeSemantics(
           key: const ValueKey("sending"),
           child: Text(
@@ -762,11 +770,83 @@ class const SessionTile({
     return null;
   }
 
+  /// The meta line's word on Sesori waking the session again, cross-fading in
+  /// its own room as it changes: the accent repeat glyph with what wakes it
+  /// and when, a quiet "from" and the task for a task's session nothing wakes again,
+  /// or, from an older bridge, the task that started it. Null when there is
+  /// nothing to say.
+  Widget? _scheduledMark({required BuildContext context, required TextStyle style}) {
+    final loc = context.loc;
+    final Widget mark;
+    switch (scheduledMark) {
+      case SessionScheduledMarkNone():
+        return null;
+      case SessionScheduledMarkLegacyTask(:final task):
+        mark = _legacyTaskMark(context: context, style: style, mark: task);
+      case SessionScheduledMarkFromTask(:final name):
+        mark = Text(
+          loc.sessionListFromTask(name),
+          semanticsLabel: loc.sessionListScheduledTaskRun(name),
+          style: style,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        );
+      case SessionScheduledMarkArmed(:final name, :final nextAt):
+        final accent = style.copyWith(color: context.prego.colors.textBrandSecondary, fontWeight: FontWeight.w500);
+        const glyphRoom = _backgroundTasksGlyphSize + PregoSpacing.xs;
+        // The name gives way first, so when it wakes stays readable; the time
+        // ellipsizes only when the line has no room left for it.
+        mark = Semantics(
+          label: loc.sessionListArmedDescription(name, context.formatDateTime(ms: nextAt)),
+          excludeSemantics: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                  child: Icon(TablerRegular.repeat, size: _backgroundTasksGlyphSize, color: accent.color),
+                ),
+                Flexible(
+                  child: Text(name, style: accent, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis),
+                ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: max(0, constraints.maxWidth - glyphRoom)),
+                  child: Text(
+                    "$_separator${loc.sessionListArmedNext(context.formatMessageTimestamp(nextAt))}",
+                    style: accent,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+    }
+    return AnimatedSize(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      curve: transcriptMotionCurve,
+      alignment: AlignmentDirectional.centerStart,
+      child: AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        switchInCurve: transcriptMotionCurve,
+        switchOutCurve: transcriptMotionCurve.flipped,
+        layoutBuilder: (current, previous) =>
+            _currentSemanticsOnly(current: current, previous: previous, alignment: AlignmentDirectional.centerStart),
+        child: KeyedSubtree(key: ValueKey(scheduledMark), child: mark),
+      ),
+    );
+  }
+
   /// The repeat or clock glyph and the name of the scheduled task that
-  /// started the session, or null for a session the user started.
-  Widget? _taskMark({required BuildContext context, required TextStyle style}) {
-    final mark = session.scheduledTask;
-    if (mark == null) return null;
+  /// started the session, as rows showed it before bridges reported arming.
+  Widget _legacyTaskMark({
+    required BuildContext context,
+    required TextStyle style,
+    required SessionScheduledTaskMark mark,
+  }) {
     final loc = context.loc;
     final (glyph, words) = switch (mark.kind) {
       ScheduledTaskKind.recurring => (TablerRegular.repeat, loc.sessionListRecurringTaskRun(mark.name)),

@@ -647,7 +647,10 @@ class ChatHistoryService({
     final page = await _storedOnlyPage(
       sessionId: sessionId,
       window: const HistoryWindowNewest(limit: 1, before: null),
-      attachmentProjection: _attachmentProjectionFor(delivery: MessageAttachmentDelivery.storedReference),
+      // Every send asks this, including wake-ups and task runs the bridge
+      // starts before it registers, and the page never leaves this method, so
+      // its references take a placeholder instead of the bridge id.
+      attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "history-emptiness-check"),
       toolOutputDelivery: ToolOutputDelivery.onExpand,
     );
     return page.messages.isEmpty && !page.awaitingHarnessSync;
@@ -1354,6 +1357,11 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        // A turn can start while the fetch runs, such as a wake-up sent the
+        // moment the previous turn ended. The snapshot can then hold its prompt
+        // under the replayed id while its live rows wait behind this import,
+        // and both would be kept. That turn's end imports it instead.
+        await _requireImportableNow(sessionId: sessionId);
         // The row the session's last turn ends on when a bridge stop cut it
         // off. Its running row stays until the plugin is ready to turn it into
         // the interruption, which can come after the first read imports.

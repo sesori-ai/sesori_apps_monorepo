@@ -617,6 +617,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           action: () => archived.onSessionTap(
                             row: const AllSessionsRow(
                               sending: null,
+                              scheduledMark: SessionScheduledMark.none(),
                               session: _session,
                               project: ProjectSummary(id: "p", name: "UI / Core", path: "/fixture", time: null),
                               isRunning: false,

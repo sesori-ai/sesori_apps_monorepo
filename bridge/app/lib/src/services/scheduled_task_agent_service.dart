@@ -4,12 +4,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/agent_approval_repository.dart";
+import "../repositories/models/agent_approval_change.dart";
 import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/history_window.dart";
-import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
 import "../repositories/models/session_operation.dart";
+import "../repositories/models/task_command_edit.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
@@ -19,6 +20,7 @@ import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_service.dart";
 import "scheduled_task_service.dart";
 import "session_notice_service.dart";
+import "session_wake_up_service.dart";
 
 /// What agents may do with scheduled tasks, through the same services the
 /// app's task routes call. Reads cover every task on this computer.
@@ -37,6 +39,7 @@ class ScheduledTaskAgentService({
   required final AgentApprovalRepository _approvals,
   required final ScheduledTaskChangeDescriptionBuilder _descriptions,
   required final SessionNoticeService _notices,
+  required final SessionWakeUpService _wakeUps,
 }) {
   /// Messages read to find a run's final reply. The reply closes the turn,
   /// so it is among the newest few, even after a short notice turn.
@@ -139,7 +142,7 @@ class ScheduledTaskAgentService({
     if (invalid != null) return invalid;
     return await _propose(
       caller: caller,
-      change: CreateTaskChange(definition: definition),
+      change: CreateTaskChange(definition: definition, command: task.command),
     );
   }
 
@@ -175,6 +178,16 @@ class ScheduledTaskAgentService({
         // Validation refuses a prompt kind this bridge does not know.
         prompt = before.prompt;
     }
+    final command = switch (edits.command) {
+      TaskCommandSet(:final command) when command == record.command => const TaskCommandUnchanged(),
+      TaskCommandRemoved() when record.command == null => const TaskCommandUnchanged(),
+      final edit => edit,
+    };
+    // A slash command's arguments are the command's input, so no note with a
+    // shell command's result can lead them.
+    if (command is TaskCommandSet && before.prompt is ScheduledTaskPromptCommand) {
+      return const AgentProposalRefused(reason: AgentProposalRefusal.shellCommandOnSlashCommand);
+    }
     final after = before.copyWith(
       name: edits.name ?? before.name,
       prompt: prompt,
@@ -186,12 +199,20 @@ class ScheduledTaskAgentService({
       variant: edits.variant ?? before.variant,
       approvalMode: edits.approvalMode ?? before.approvalMode,
     );
-    if (after == before) return const AgentProposalRefused(reason: AgentProposalRefusal.nothingChanged);
+    if (after == before && command is TaskCommandUnchanged) {
+      return const AgentProposalRefused(reason: AgentProposalRefusal.nothingChanged);
+    }
     final invalid = await _invalid(definition: after, previousModel: before.model);
     if (invalid != null) return invalid;
     return await _propose(
       caller: caller,
-      change: UpdateTaskChange(taskId: taskId, before: before, after: after),
+      change: UpdateTaskChange(
+        taskId: taskId,
+        before: before,
+        beforeCommand: record.command,
+        after: after,
+        command: command,
+      ),
     );
   }
 
@@ -206,7 +227,12 @@ class ScheduledTaskAgentService({
     if (record.enabled == enabled) return const AgentProposalRefused(reason: AgentProposalRefusal.alreadyInState);
     return await _propose(
       caller: caller,
-      change: SetTaskEnabledChange(taskId: taskId, before: record.definition, enabled: enabled),
+      change: SetTaskEnabledChange(
+        taskId: taskId,
+        before: record.definition,
+        beforeCommand: record.command,
+        enabled: enabled,
+      ),
     );
   }
 
@@ -216,12 +242,13 @@ class ScheduledTaskAgentService({
     if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
     return await _propose(
       caller: caller,
-      change: RunTaskNowChange(taskId: taskId, before: record.definition),
+      change: RunTaskNowChange(taskId: taskId, before: record.definition, beforeCommand: record.command),
     );
   }
 
-  /// Answers [requestId] when it is an agent approval. Allow applies the
-  /// change through the app's own service calls, unless what it was described
+  /// Answers [requestId] when it is an agent approval. A wake-up command
+  /// goes to the wake-up service. Allow applies a task change through the
+  /// app's own service calls, unless what it was described
   /// against has changed since (see [StoredTaskChange]): an earlier edit, the
   /// user's own or another allowed request, wins.
   ///
@@ -230,12 +257,20 @@ class ScheduledTaskAgentService({
   Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async {
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
-    final outcome = await _outcome(change: approval.change, reply: reply);
+    final ScheduledTaskAgentChange change;
+    switch (approval.change) {
+      case final WakeUpCommandChange wakeUpChange:
+        await _wakeUps.applyCommandApproval(change: wakeUpChange, reply: reply);
+        return const WakeUpCommandAnswered();
+      case final ScheduledTaskAgentChange taskChange:
+        change = taskChange;
+    }
+    final outcome = await _outcome(change: change, reply: reply);
     unawaited(
       _notices.deliver(
         sessionId: approval.displaySessionId ?? approval.sessionId,
         notice: _descriptions.outcome(
-          change: approval.change,
+          change: change,
           outcome: outcome,
           bySubagent: approval.displaySessionId != null,
         ),
@@ -256,8 +291,10 @@ class ScheduledTaskAgentService({
   }) async {
     if (reply == PermissionReply.reject) return const AgentApprovalRejected();
     switch (change) {
-      case CreateTaskChange(:final definition):
-        return AgentApprovalCreated(taskId: (await _tasks.create(definition: definition)).id);
+      case CreateTaskChange(:final definition, :final command):
+        return AgentApprovalCreated(
+          taskId: (await _tasks.create(definition: definition, command: command)).id,
+        );
       case final StoredTaskChange change:
         return await _applyStored(change: change);
     }
@@ -276,12 +313,15 @@ class ScheduledTaskAgentService({
         current.projectId == before.projectId &&
         current.pluginId == before.pluginId &&
         current.approvalMode == before.approvalMode;
+    // A resume or a run shows the command its runs run first.
+    final sameCommand = record.command == change.beforeCommand;
     switch (change) {
       case UpdateTaskChange():
         final rebased = sameContext ? _rebased(change: change, current: current) : null;
-        if (rebased == null) return const AgentApprovalStale();
+        final command = _rebasedCommand(change: change, current: record.command);
+        if (rebased == null || command == null) return const AgentApprovalStale();
         try {
-          await _tasks.update(taskId: taskId, definition: rebased);
+          await _tasks.update(taskId: taskId, definition: rebased, command: command);
         } on ScheduledTaskRequestException catch (error, stackTrace) {
           Log.w("An allowed change to task $taskId no longer validates on the current task", error, stackTrace);
           return const AgentApprovalStale();
@@ -292,10 +332,10 @@ class ScheduledTaskAgentService({
       case SetTaskEnabledChange(enabled: true):
         // A resume request shows the schedule it restarts.
         final sameSchedule = current.schedule == before.schedule && current.timeZone == before.timeZone;
-        if (record.enabled || !sameContext || !sameSchedule) return const AgentApprovalStale();
+        if (record.enabled || !sameContext || !sameCommand || !sameSchedule) return const AgentApprovalStale();
         await _tasks.setEnabled(taskId: taskId, enabled: true);
       case RunTaskNowChange():
-        if (!sameContext) return const AgentApprovalStale();
+        if (!sameContext || !sameCommand) return const AgentApprovalStale();
         final run = await _runner.runNow(taskId: taskId);
         if (run.outcome is! ScheduledTaskRunStarted) return AgentApprovalRunNotStarted(outcome: run.outcome);
     }
@@ -335,6 +375,14 @@ class ScheduledTaskAgentService({
     );
     return conflicts ? null : rebased;
   }
+
+  /// [change]'s command edit, or null when the task's [current] command is
+  /// no longer the one the request was described with.
+  static TaskCommandEdit? _rebasedCommand({required UpdateTaskChange change, required String? current}) =>
+      switch (change.command) {
+        TaskCommandUnchanged() => const TaskCommandUnchanged(),
+        final edit => current == change.beforeCommand ? edit : null,
+      };
 
   Future<AgentProposal> _propose({
     required SesoriMcpCaller caller,
@@ -533,6 +581,9 @@ final class const AgentNewTask({
   /// Null leaves the effort to the harness.
   required final SessionVariant? variant,
   required final TaskApprovalMode approvalMode,
+
+  /// The shell command each run runs first; null for none.
+  required final String? command,
 });
 
 /// The fields an agent changes on a task; null keeps the current value.
@@ -551,6 +602,7 @@ final class const AgentTaskEdits({
   required final PromptModel? model,
   required final SessionVariant? variant,
   required final TaskApprovalMode? approvalMode,
+  required final TaskCommandEdit command,
 });
 
 sealed class const AgentProposal();
@@ -582,6 +634,9 @@ enum AgentProposalRefusal() {
 
   /// A model the task's harness does not offer, so its runs could not start.
   modelNotOffered,
+
+  /// A shell command for a task whose prompt is a slash command.
+  shellCommandOnSlashCommand,
 }
 
 sealed class const AgentApprovalSettlement();
@@ -590,3 +645,7 @@ sealed class const AgentApprovalSettlement();
 final class const NotAgentApproval() extends AgentApprovalSettlement;
 
 final class const AgentApprovalAnswered({required final AgentApprovalOutcome outcome}) extends AgentApprovalSettlement;
+
+/// A wake-up command request was answered; the wake-up service told the
+/// session.
+final class const WakeUpCommandAnswered() extends AgentApprovalSettlement;

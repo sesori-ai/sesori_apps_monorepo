@@ -310,7 +310,7 @@ as int?,
 /// @nodoc
 mixin _$Session {
 
- String get id; String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionPromptDefaults? get promptDefaults; String? get branchName; bool get hasWorktree; bool get unseen; int? get lastUserActivityAt; SessionAutoContinuationView? get autoContinuation;@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? get approvalOverride; int? get pinOrder; SessionScheduledTaskMark? get scheduledTask; SessionInterruption? get interruption; SessionForkOrigin? get forkedFrom;
+ String get id; String get pluginId; String get projectID; String get directory; String? get parentID; String? get title; SessionTime? get time; SessionPromptDefaults? get promptDefaults; String? get branchName; bool get hasWorktree; bool get unseen; int? get lastUserActivityAt; SessionAutoContinuationView? get autoContinuation;@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? get approvalOverride; int? get pinOrder; SessionScheduledTaskMark? get scheduledTask; SessionInterruption? get interruption; SessionForkOrigin? get forkedFrom; List<SessionWakeUp> get wakeUps; SessionArming get arming;
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -324,20 +324,20 @@ $SessionCopyWith<Session> get copyWith => _$SessionCopyWithImpl<Session>(this as
 @override
 bool operator ==(Object other) {
   final _this = this as Session;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.projectID, _this.projectID) || other.projectID == _this.projectID)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.parentID, _this.parentID) || other.parentID == _this.parentID)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.promptDefaults, _this.promptDefaults) || other.promptDefaults == _this.promptDefaults)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName)&&(identical(other.hasWorktree, _this.hasWorktree) || other.hasWorktree == _this.hasWorktree)&&(identical(other.unseen, _this.unseen) || other.unseen == _this.unseen)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.autoContinuation, _this.autoContinuation) || other.autoContinuation == _this.autoContinuation)&&(identical(other.approvalOverride, _this.approvalOverride) || other.approvalOverride == _this.approvalOverride)&&(identical(other.pinOrder, _this.pinOrder) || other.pinOrder == _this.pinOrder)&&(identical(other.scheduledTask, _this.scheduledTask) || other.scheduledTask == _this.scheduledTask)&&(identical(other.interruption, _this.interruption) || other.interruption == _this.interruption)&&(identical(other.forkedFrom, _this.forkedFrom) || other.forkedFrom == _this.forkedFrom));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.projectID, _this.projectID) || other.projectID == _this.projectID)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.parentID, _this.parentID) || other.parentID == _this.parentID)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.promptDefaults, _this.promptDefaults) || other.promptDefaults == _this.promptDefaults)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName)&&(identical(other.hasWorktree, _this.hasWorktree) || other.hasWorktree == _this.hasWorktree)&&(identical(other.unseen, _this.unseen) || other.unseen == _this.unseen)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.autoContinuation, _this.autoContinuation) || other.autoContinuation == _this.autoContinuation)&&(identical(other.approvalOverride, _this.approvalOverride) || other.approvalOverride == _this.approvalOverride)&&(identical(other.pinOrder, _this.pinOrder) || other.pinOrder == _this.pinOrder)&&(identical(other.scheduledTask, _this.scheduledTask) || other.scheduledTask == _this.scheduledTask)&&(identical(other.interruption, _this.interruption) || other.interruption == _this.interruption)&&(identical(other.forkedFrom, _this.forkedFrom) || other.forkedFrom == _this.forkedFrom)&&const DeepCollectionEquality().equals(other.wakeUps, _this.wakeUps)&&(identical(other.arming, _this.arming) || other.arming == _this.arming));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as Session;
-  return Object.hash(runtimeType,_this.id,_this.pluginId,_this.projectID,_this.directory,_this.parentID,_this.title,_this.time,_this.promptDefaults,_this.branchName,_this.hasWorktree,_this.unseen,_this.lastUserActivityAt,_this.autoContinuation,_this.approvalOverride,_this.pinOrder,_this.scheduledTask,_this.interruption,_this.forkedFrom);
+  return Object.hashAll([runtimeType,_this.id,_this.pluginId,_this.projectID,_this.directory,_this.parentID,_this.title,_this.time,_this.promptDefaults,_this.branchName,_this.hasWorktree,_this.unseen,_this.lastUserActivityAt,_this.autoContinuation,_this.approvalOverride,_this.pinOrder,_this.scheduledTask,_this.interruption,_this.forkedFrom,const DeepCollectionEquality().hash(_this.wakeUps),_this.arming]);
 }
 
 @override
 String toString() {
   final _this = this as Session;
-  return 'Session(id: ${_this.id}, pluginId: ${_this.pluginId}, projectID: ${_this.projectID}, directory: ${_this.directory}, parentID: ${_this.parentID}, title: ${_this.title}, time: ${_this.time}, promptDefaults: ${_this.promptDefaults}, branchName: ${_this.branchName}, hasWorktree: ${_this.hasWorktree}, unseen: ${_this.unseen}, lastUserActivityAt: ${_this.lastUserActivityAt}, autoContinuation: ${_this.autoContinuation}, approvalOverride: ${_this.approvalOverride}, pinOrder: ${_this.pinOrder}, scheduledTask: ${_this.scheduledTask}, interruption: ${_this.interruption}, forkedFrom: ${_this.forkedFrom})';
+  return 'Session(id: ${_this.id}, pluginId: ${_this.pluginId}, projectID: ${_this.projectID}, directory: ${_this.directory}, parentID: ${_this.parentID}, title: ${_this.title}, time: ${_this.time}, promptDefaults: ${_this.promptDefaults}, branchName: ${_this.branchName}, hasWorktree: ${_this.hasWorktree}, unseen: ${_this.unseen}, lastUserActivityAt: ${_this.lastUserActivityAt}, autoContinuation: ${_this.autoContinuation}, approvalOverride: ${_this.approvalOverride}, pinOrder: ${_this.pinOrder}, scheduledTask: ${_this.scheduledTask}, interruption: ${_this.interruption}, forkedFrom: ${_this.forkedFrom}, wakeUps: ${_this.wakeUps}, arming: ${_this.arming})';
 }
 
 
@@ -348,11 +348,11 @@ abstract mixin class $SessionCopyWith<$Res>  {
   factory $SessionCopyWith(Session value, $Res Function(Session) _then) = _$SessionCopyWithImpl;
 @useResult
 $Res call({
- String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionPromptDefaults? promptDefaults, String? branchName, bool hasWorktree, bool unseen, int? lastUserActivityAt, SessionAutoContinuationView? autoContinuation,@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? approvalOverride, int? pinOrder, SessionScheduledTaskMark? scheduledTask, SessionInterruption? interruption, SessionForkOrigin? forkedFrom
+ String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionPromptDefaults? promptDefaults, String? branchName, bool hasWorktree, bool unseen, int? lastUserActivityAt, SessionAutoContinuationView? autoContinuation,@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? approvalOverride, int? pinOrder, SessionScheduledTaskMark? scheduledTask, SessionInterruption? interruption, SessionForkOrigin? forkedFrom, List<SessionWakeUp> wakeUps, SessionArming arming
 });
 
 
-$SessionTimeCopyWith<$Res>? get time;$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;$SessionScheduledTaskMarkCopyWith<$Res>? get scheduledTask;$SessionInterruptionCopyWith<$Res>? get interruption;$SessionForkOriginCopyWith<$Res>? get forkedFrom;
+$SessionTimeCopyWith<$Res>? get time;$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;$SessionScheduledTaskMarkCopyWith<$Res>? get scheduledTask;$SessionInterruptionCopyWith<$Res>? get interruption;$SessionForkOriginCopyWith<$Res>? get forkedFrom;$SessionArmingCopyWith<$Res> get arming;
 
 }
 /// @nodoc
@@ -365,7 +365,7 @@ class _$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? promptDefaults = freezed,Object? branchName = freezed,Object? hasWorktree = null,Object? unseen = null,Object? lastUserActivityAt = freezed,Object? autoContinuation = freezed,Object? approvalOverride = freezed,Object? pinOrder = freezed,Object? scheduledTask = freezed,Object? interruption = freezed,Object? forkedFrom = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? promptDefaults = freezed,Object? branchName = freezed,Object? hasWorktree = null,Object? unseen = null,Object? lastUserActivityAt = freezed,Object? autoContinuation = freezed,Object? approvalOverride = freezed,Object? pinOrder = freezed,Object? scheduledTask = freezed,Object? interruption = freezed,Object? forkedFrom = freezed,Object? wakeUps = null,Object? arming = null,}) {
   return _then(Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
@@ -385,7 +385,9 @@ as SessionApprovalMode?,pinOrder: freezed == pinOrder ? _self.pinOrder : pinOrde
 as int?,scheduledTask: freezed == scheduledTask ? _self.scheduledTask : scheduledTask // ignore: cast_nullable_to_non_nullable
 as SessionScheduledTaskMark?,interruption: freezed == interruption ? _self.interruption : interruption // ignore: cast_nullable_to_non_nullable
 as SessionInterruption?,forkedFrom: freezed == forkedFrom ? _self.forkedFrom : forkedFrom // ignore: cast_nullable_to_non_nullable
-as SessionForkOrigin?,
+as SessionForkOrigin?,wakeUps: null == wakeUps ? _self.wakeUps : wakeUps // ignore: cast_nullable_to_non_nullable
+as List<SessionWakeUp>,arming: null == arming ? _self.arming : arming // ignore: cast_nullable_to_non_nullable
+as SessionArming,
   ));
 }
 /// Create a copy of Session
@@ -448,6 +450,15 @@ $SessionForkOriginCopyWith<$Res>? get forkedFrom {
   return $SessionForkOriginCopyWith<$Res>(_self.forkedFrom!, (value) {
     return _then(_self.copyWith(forkedFrom: value));
   });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionArmingCopyWith<$Res> get arming {
+  
+  return $SessionArmingCopyWith<$Res>(_self.arming, (value) {
+    return _then(_self.copyWith(arming: value));
+  });
 }
 }
 
@@ -457,7 +468,7 @@ $SessionForkOriginCopyWith<$Res>? get forkedFrom {
 @JsonSerializable()
 
 class _Session extends Session {
-  const _Session({required this.id, this.pluginId = legacyMissingPluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.promptDefaults, required this.branchName, this.hasWorktree = false, this.unseen = false, required this.lastUserActivityAt, required this.autoContinuation, @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required this.approvalOverride, required this.pinOrder, required this.scheduledTask, required this.interruption, required this.forkedFrom}): super._();
+  const _Session({required this.id, this.pluginId = legacyMissingPluginId, required this.projectID, required this.directory, required this.parentID, required this.title, required this.time, required this.promptDefaults, required this.branchName, this.hasWorktree = false, this.unseen = false, required this.lastUserActivityAt, required this.autoContinuation, @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required this.approvalOverride, required this.pinOrder, required this.scheduledTask, required this.interruption, required this.forkedFrom,  List<SessionWakeUp> wakeUps = const <SessionWakeUp>[], this.arming = const SessionArming.unreported()}): _wakeUps = wakeUps,super._();
   factory _Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
 
 @override final  String id;
@@ -478,6 +489,14 @@ class _Session extends Session {
 @override final  SessionScheduledTaskMark? scheduledTask;
 @override final  SessionInterruption? interruption;
 @override final  SessionForkOrigin? forkedFrom;
+ final  List<SessionWakeUp> _wakeUps;
+@override@JsonKey() List<SessionWakeUp> get wakeUps {
+  if (_wakeUps is EqualUnmodifiableListView) return _wakeUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_wakeUps);
+}
+
+@override@JsonKey() final  SessionArming arming;
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
@@ -492,18 +511,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.autoContinuation, autoContinuation) || other.autoContinuation == autoContinuation)&&(identical(other.approvalOverride, approvalOverride) || other.approvalOverride == approvalOverride)&&(identical(other.pinOrder, pinOrder) || other.pinOrder == pinOrder)&&(identical(other.scheduledTask, scheduledTask) || other.scheduledTask == scheduledTask)&&(identical(other.interruption, interruption) || other.interruption == interruption)&&(identical(other.forkedFrom, forkedFrom) || other.forkedFrom == forkedFrom));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.autoContinuation, autoContinuation) || other.autoContinuation == autoContinuation)&&(identical(other.approvalOverride, approvalOverride) || other.approvalOverride == approvalOverride)&&(identical(other.pinOrder, pinOrder) || other.pinOrder == pinOrder)&&(identical(other.scheduledTask, scheduledTask) || other.scheduledTask == scheduledTask)&&(identical(other.interruption, interruption) || other.interruption == interruption)&&(identical(other.forkedFrom, forkedFrom) || other.forkedFrom == forkedFrom)&&const DeepCollectionEquality().equals(other.wakeUps, _wakeUps)&&(identical(other.arming, arming) || other.arming == arming));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,pluginId,projectID,directory,parentID,title,time,promptDefaults,branchName,hasWorktree,unseen,lastUserActivityAt,autoContinuation,approvalOverride,pinOrder,scheduledTask,interruption,forkedFrom);
+    return Object.hashAll([runtimeType,id,pluginId,projectID,directory,parentID,title,time,promptDefaults,branchName,hasWorktree,unseen,lastUserActivityAt,autoContinuation,approvalOverride,pinOrder,scheduledTask,interruption,forkedFrom,const DeepCollectionEquality().hash(_wakeUps),arming]);
 }
 
 @override
 String toString() {
-    return 'Session(id: $id, pluginId: $pluginId, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, promptDefaults: $promptDefaults, branchName: $branchName, hasWorktree: $hasWorktree, unseen: $unseen, lastUserActivityAt: $lastUserActivityAt, autoContinuation: $autoContinuation, approvalOverride: $approvalOverride, pinOrder: $pinOrder, scheduledTask: $scheduledTask, interruption: $interruption, forkedFrom: $forkedFrom)';
+    return 'Session(id: $id, pluginId: $pluginId, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, promptDefaults: $promptDefaults, branchName: $branchName, hasWorktree: $hasWorktree, unseen: $unseen, lastUserActivityAt: $lastUserActivityAt, autoContinuation: $autoContinuation, approvalOverride: $approvalOverride, pinOrder: $pinOrder, scheduledTask: $scheduledTask, interruption: $interruption, forkedFrom: $forkedFrom, wakeUps: $wakeUps, arming: $arming)';
 }
 
 
@@ -514,11 +533,11 @@ abstract mixin class _$SessionCopyWith<$Res> implements $SessionCopyWith<$Res> {
   factory _$SessionCopyWith(_Session value, $Res Function(_Session) _then) = __$SessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionPromptDefaults? promptDefaults, String? branchName, bool hasWorktree, bool unseen, int? lastUserActivityAt, SessionAutoContinuationView? autoContinuation,@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? approvalOverride, int? pinOrder, SessionScheduledTaskMark? scheduledTask, SessionInterruption? interruption, SessionForkOrigin? forkedFrom
+ String id, String pluginId, String projectID, String directory, String? parentID, String? title, SessionTime? time, SessionPromptDefaults? promptDefaults, String? branchName, bool hasWorktree, bool unseen, int? lastUserActivityAt, SessionAutoContinuationView? autoContinuation,@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) SessionApprovalMode? approvalOverride, int? pinOrder, SessionScheduledTaskMark? scheduledTask, SessionInterruption? interruption, SessionForkOrigin? forkedFrom, List<SessionWakeUp> wakeUps, SessionArming arming
 });
 
 
-@override $SessionTimeCopyWith<$Res>? get time;@override $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;@override $SessionScheduledTaskMarkCopyWith<$Res>? get scheduledTask;@override $SessionInterruptionCopyWith<$Res>? get interruption;@override $SessionForkOriginCopyWith<$Res>? get forkedFrom;
+@override $SessionTimeCopyWith<$Res>? get time;@override $SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;@override $SessionScheduledTaskMarkCopyWith<$Res>? get scheduledTask;@override $SessionInterruptionCopyWith<$Res>? get interruption;@override $SessionForkOriginCopyWith<$Res>? get forkedFrom;@override $SessionArmingCopyWith<$Res> get arming;
 
 }
 /// @nodoc
@@ -531,7 +550,7 @@ class __$SessionCopyWithImpl<$Res>
 
 /// Create a copy of Session
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? promptDefaults = freezed,Object? branchName = freezed,Object? hasWorktree = null,Object? unseen = null,Object? lastUserActivityAt = freezed,Object? autoContinuation = freezed,Object? approvalOverride = freezed,Object? pinOrder = freezed,Object? scheduledTask = freezed,Object? interruption = freezed,Object? forkedFrom = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? pluginId = null,Object? projectID = null,Object? directory = null,Object? parentID = freezed,Object? title = freezed,Object? time = freezed,Object? promptDefaults = freezed,Object? branchName = freezed,Object? hasWorktree = null,Object? unseen = null,Object? lastUserActivityAt = freezed,Object? autoContinuation = freezed,Object? approvalOverride = freezed,Object? pinOrder = freezed,Object? scheduledTask = freezed,Object? interruption = freezed,Object? forkedFrom = freezed,Object? wakeUps = null,Object? arming = null,}) {
   return _then(_Session(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
@@ -551,7 +570,9 @@ as SessionApprovalMode?,pinOrder: freezed == pinOrder ? _self.pinOrder : pinOrde
 as int?,scheduledTask: freezed == scheduledTask ? _self.scheduledTask : scheduledTask // ignore: cast_nullable_to_non_nullable
 as SessionScheduledTaskMark?,interruption: freezed == interruption ? _self.interruption : interruption // ignore: cast_nullable_to_non_nullable
 as SessionInterruption?,forkedFrom: freezed == forkedFrom ? _self.forkedFrom : forkedFrom // ignore: cast_nullable_to_non_nullable
-as SessionForkOrigin?,
+as SessionForkOrigin?,wakeUps: null == wakeUps ? _self._wakeUps : wakeUps // ignore: cast_nullable_to_non_nullable
+as List<SessionWakeUp>,arming: null == arming ? _self.arming : arming // ignore: cast_nullable_to_non_nullable
+as SessionArming,
   ));
 }
 
@@ -614,6 +635,15 @@ $SessionForkOriginCopyWith<$Res>? get forkedFrom {
 
   return $SessionForkOriginCopyWith<$Res>(_self.forkedFrom!, (value) {
     return _then(_self.copyWith(forkedFrom: value));
+  });
+}/// Create a copy of Session
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionArmingCopyWith<$Res> get arming {
+  
+  return $SessionArmingCopyWith<$Res>(_self.arming, (value) {
+    return _then(_self.copyWith(arming: value));
   });
 }
 }

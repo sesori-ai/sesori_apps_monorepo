@@ -35,6 +35,7 @@ class const ScheduledTaskMapper() {
         approvalMode: row.approvalMode,
       ),
       enabled: row.enabled,
+      command: row.command,
       nextDueAt: _instantOrNull(row.nextDueAt),
       targetSessionId: row.targetSessionId,
       completedAt: _instantOrNull(row.completedAt),
@@ -42,12 +43,13 @@ class const ScheduledTaskMapper() {
     );
   }
 
-  /// A task row holding [definition] and the given bridge state, in storage
-  /// units.
+  /// A task row holding [definition], its [command] and the given bridge
+  /// state, in storage units.
   ScheduledTaskDto taskDto({
     required String id,
     required ScheduledTaskDefinition definition,
     required bool enabled,
+    required String? command,
     required int? nextDueAt,
     required String? targetSessionId,
     required int? completedAt,
@@ -78,6 +80,7 @@ class const ScheduledTaskMapper() {
       autoCompact: autoCompact,
       approvalMode: definition.approvalMode,
       enabled: enabled,
+      command: command,
       nextDueAt: nextDueAt,
       targetSessionId: targetSessionId,
       completedAt: completedAt,

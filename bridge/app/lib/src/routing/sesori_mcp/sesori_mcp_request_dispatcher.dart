@@ -9,6 +9,8 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../repositories/models/sesori_mcp_caller.dart";
+import "../../repositories/models/session_wake_up.dart";
+import "../../repositories/models/task_command_edit.dart";
 import "../../services/agent_page_service.dart";
 import "../../services/scheduled_task_agent_service.dart";
 import "../../services/sesori_mcp_access_service.dart";
@@ -221,6 +223,7 @@ class SesoriMcpRequestDispatcher({
             model: _model(text: args.model),
             variant: _variant(id: args.effort),
             approvalMode: args.approvalMode,
+            command: _optionalText(value: args.command),
           ),
         );
         return _proposal(proposal: proposal, sent: _appliesToNextRun);
@@ -240,6 +243,12 @@ class SesoriMcpRequestDispatcher({
             model: _model(text: args.model),
             variant: _variant(id: args.effort),
             approvalMode: args.approvalMode,
+            command: switch ((_optionalText(value: args.command), args.removeCommand)) {
+              (null, false) => const TaskCommandUnchanged(),
+              (final command?, false) => TaskCommandSet(command: command),
+              (null, true) => const TaskCommandRemoved(),
+              (_?, true) => throw const _InvalidArguments(reason: "Pass command or remove_command, not both."),
+            },
           ),
         );
         return _proposal(proposal: proposal, sent: _appliesToNextRun);
@@ -272,6 +281,7 @@ class SesoriMcpRequestDispatcher({
             prompt: _requiredText(value: args.prompt, field: "prompt"),
             when: _wakeUpTime(when: args.when),
             timeZone: _optionalText(value: args.timeZone),
+            command: _optionalText(value: args.command),
           ),
         );
       case SesoriMcpTool.listWakeUps:
@@ -282,7 +292,7 @@ class SesoriMcpRequestDispatcher({
       case SesoriMcpTool.cancelWakeUp:
         final args = _parse(json: arguments, fromJson: CancelWakeUpArguments.fromJson);
         final wakeUpId = args.wakeUpId;
-        return switch (await _wakeUps.cancel(caller: caller, wakeUpId: wakeUpId)) {
+        return switch (await _wakeUps.cancel(sessionId: caller.sessionId, wakeUpId: wakeUpId)) {
           WakeUpCancelResult.cancelled => _ToolOutcome(isError: false, text: "Cancelled wake-up $wakeUpId."),
           WakeUpCancelResult.notFound => _ToolOutcome(
             isError: true,
@@ -298,6 +308,12 @@ class SesoriMcpRequestDispatcher({
   _ToolOutcome _wakeUpScheduled({required WakeUpScheduleResult result}) {
     return switch (result) {
       WakeUpScheduled(:final wakeUp) => _ToolOutcome(isError: false, text: _formatter.wakeUpScheduled(wakeUp: wakeUp)),
+      WakeUpAwaitingApproval() => const _ToolOutcome(
+        isError: false,
+        text:
+            "Sent to the user for approval, because it runs a command. Nothing is set unless they allow it. "
+            "$_answerFollows End your turn now; don't wait or poll.",
+      ),
       WakeUpRefused(:final reason) => _ToolOutcome(
         isError: true,
         text: switch (reason) {
@@ -473,6 +489,8 @@ class SesoriMcpRequestDispatcher({
           AgentProposalRefusal.alreadyInState => "The task is already in that state.",
           AgentProposalRefusal.modelNotOffered =>
             "model is not one this task's harness offers. Leave it out unless the user named a model.",
+          AgentProposalRefusal.shellCommandOnSlashCommand =>
+            "This task runs a slash command, so it cannot also run a shell command first.",
         },
       ),
     };

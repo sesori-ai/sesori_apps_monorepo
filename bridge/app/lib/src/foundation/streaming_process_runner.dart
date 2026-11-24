@@ -2,11 +2,17 @@ import "dart:async";
 import "dart:io";
 
 abstract interface class StreamingProcess() {
+  int get pid;
+
   Stream<List<int>> get stdout;
 
   Stream<List<int>> get stderr;
 
   Future<int> get exitCode;
+
+  /// Ends the process's input, so a command that reads it sees end of file
+  /// instead of waiting.
+  Future<void> closeStdin();
 
   bool kill();
 }
@@ -45,6 +51,9 @@ class const StreamingProcessRunner() {
 
 final class _IoStreamingProcess(final Process _process) implements StreamingProcess {
   @override
+  int get pid => _process.pid;
+
+  @override
   Stream<List<int>> get stdout => _process.stdout;
 
   @override
@@ -52,6 +61,9 @@ final class _IoStreamingProcess(final Process _process) implements StreamingProc
 
   @override
   Future<int> get exitCode => _process.exitCode;
+
+  @override
+  Future<void> closeStdin() => _process.stdin.close();
 
   @override
   bool kill() => _process.kill();

@@ -265,6 +265,28 @@ void main() {
       throwsStateError,
     );
   });
+
+  test("the emptiness check every send makes works before bridge registration", () async {
+    final history = createTestChatHistory(bridgeIdProvider: const _BridgeIdProvider(null));
+    await history.service.captureMessage(
+      sessionId: "ses_a",
+      message: _message(id: "m1"),
+    );
+    await history.service.capturePart(
+      sessionId: "ses_a",
+      part: _part(
+        id: "p1",
+        messageId: "m1",
+        attachment: MessageAttachment.inlineImage(
+          mime: "image/png",
+          base64: base64Encode(Uint8List.fromList([1])),
+          filename: null,
+        ),
+      ),
+    );
+
+    expect(await history.service.isKnownEmpty(sessionId: "ses_a"), isFalse);
+  });
 }
 
 Future<void> _insertStoredPart({

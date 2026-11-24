@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/routing/request_router.dart";
 import "package:sesori_bridge/src/routing/run_scheduled_task_now_handler.dart";
 import "package:sesori_bridge/src/routing/set_scheduled_task_enabled_handler.dart";
 import "package:sesori_bridge/src/routing/update_scheduled_task_handler.dart";
+import "package:sesori_bridge/src/services/scheduled_command_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -29,6 +30,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
@@ -67,6 +69,7 @@ void main() {
     sessions = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
     final clock = Clock.fixed(DateTime.utc(2026, 11, 15, 10));
     service = ScheduledTaskService(
+      mutations: RecordingArmingMutations(),
       repository: repository,
       sessionRepository: sessions,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -75,6 +78,7 @@ void main() {
     addTearDown(service.dispose);
     final operations = _UnusedOperations();
     final runService = ScheduledTaskRunService(
+      mutations: RecordingArmingMutations(),
       repository: repository,
       compaction: ScheduledTaskCompactionService(
         repository: repository,
@@ -99,6 +103,7 @@ void main() {
       ),
       sessionOptions: FakeSessionOptionsService(),
       calculator: const ScheduledTaskOccurrenceCalculator(),
+      commands: _UnusedCommands(),
       clock: clock,
     );
     addTearDown(runService.dispose);
@@ -191,7 +196,7 @@ void main() {
     );
     expect(empty.status, 400);
 
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
     await recordSessionBinding(
       database: db,
       sessionId: "ses_running",
@@ -243,6 +248,11 @@ class _UnusedYoloSettings() implements YoloSettingsService {
 }
 
 class _UnusedLifecycle() implements SessionLifecycleService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedCommands() implements ScheduledCommandService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

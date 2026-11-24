@@ -4,16 +4,20 @@ import "package:clock/clock.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/scheduled_task_record.dart";
+import "../repositories/models/task_command_edit.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "scheduled_task_occurrence_calculator.dart";
 import "scheduled_task_request_exception.dart";
+import "session_mutation_dispatcher.dart";
 
 /// Creates, edits, pauses and deletes tasks, and keeps each task's next due
-/// time. Every change is announced on [changes].
+/// time. Every change is announced on [changes], and a change to a
+/// same-session task also as its target session's arming.
 class ScheduledTaskService({
   required final ScheduledTaskRepository _repository,
   required final SessionRepository _sessionRepository,
+  required final SessionMutationDispatcher _mutations,
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final Clock _clock,
 }) {
@@ -30,28 +34,38 @@ class ScheduledTaskService({
     );
   }
 
-  Future<ScheduledTask> create({required ScheduledTaskDefinition definition}) async {
+  /// [command] is the shell command each run runs first; only an allowed
+  /// agent request sets one.
+  Future<ScheduledTask> create({required ScheduledTaskDefinition definition, required String? command}) async {
     final now = _clock.now();
     final firstDueAt = await _validate(definition: definition, now: now);
-    final record = await _repository.create(definition: definition, nextDueAt: firstDueAt, now: now);
+    final record = await _repository.create(definition: definition, command: command, nextDueAt: firstDueAt, now: now);
     _changes.add(null);
     return _toWire(record: record, lastRun: null);
   }
 
-  /// Replaces the definition; future runs only. A paused task stays paused.
-  Future<ScheduledTask> update({required String taskId, required ScheduledTaskDefinition definition}) async {
+  /// Replaces the definition and applies [command]; future runs only. A
+  /// paused task stays paused. A slash-command prompt runs no shell command,
+  /// so an app edit that turns the prompt into one removes it.
+  Future<ScheduledTask> update({
+    required String taskId,
+    required ScheduledTaskDefinition definition,
+    required TaskCommandEdit command,
+  }) async {
     final existing = await _requireUncompleted(taskId: taskId);
     final now = _clock.now();
     final firstDueAt = await _validate(definition: definition, now: now);
     final record = await _repository.updateDefinition(
       taskId: taskId,
       definition: definition,
+      command: definition.prompt is ScheduledTaskPromptCommand ? const TaskCommandRemoved() : command,
       nextDueAt: existing.enabled ? firstDueAt : null,
       clearTarget: !_keepsTargetSession(before: existing.definition, after: definition),
       now: now,
     );
     if (record == null) _refuse(code: ScheduledTaskErrorCode.taskNotFound);
     _changes.add(null);
+    await _announceTarget(sessionId: existing.targetSessionId);
     return _toWire(
       record: record,
       lastRun: await _latestRun(taskId: taskId),
@@ -80,6 +94,7 @@ class ScheduledTaskService({
     );
     if (record == null) _refuse(code: ScheduledTaskErrorCode.taskNotFound);
     _changes.add(null);
+    await _announceTarget(sessionId: existing.targetSessionId);
     return _toWire(
       record: record,
       lastRun: await _latestRun(taskId: taskId),
@@ -88,10 +103,18 @@ class ScheduledTaskService({
 
   /// Deletes the task and its history. Its sessions stay as ordinary sessions.
   Future<void> delete({required String taskId}) async {
+    final targetSessionId = (await _repository.get(taskId: taskId))?.targetSessionId;
     if (!await _repository.delete(taskId: taskId)) {
       _refuse(code: ScheduledTaskErrorCode.taskNotFound);
     }
     _changes.add(null);
+    await _announceTarget(sessionId: targetSessionId);
+  }
+
+  /// A task that continues in a session moves or ends that session's arming
+  /// when it changes.
+  Future<void> _announceTarget({required String? sessionId}) async {
+    if (sessionId != null) await _mutations.armingUpdated(sessionId: sessionId);
   }
 
   /// The task's run history, newest first. A done one-off task still has one.
@@ -205,6 +228,7 @@ class ScheduledTaskService({
       id: record.id,
       definition: record.definition,
       enabled: record.enabled,
+      command: record.command,
       nextRunAt: nextDueAt == null
           ? null
           : ScheduledTaskInstant(

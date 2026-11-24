@@ -6,6 +6,9 @@ final class const ScheduledTaskRecord({
   required final ScheduledTaskDefinition definition,
   required final bool enabled,
 
+  /// The shell command each run runs before its prompt; null for none.
+  required final String? command,
+
   /// Null while paused or done.
   required final DateTime? nextDueAt,
 

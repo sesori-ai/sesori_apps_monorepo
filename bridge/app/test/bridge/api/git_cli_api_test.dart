@@ -296,6 +296,9 @@ class _FakeStreamingProcess({
   final int _exitCode = 0,
 }) implements StreamingProcess {
   @override
+  int get pid => 0;
+
+  @override
   Stream<List<int>> get stdout => Stream.fromIterable(stdoutChunks);
 
   @override
@@ -303,6 +306,9 @@ class _FakeStreamingProcess({
 
   @override
   Future<int> get exitCode async => _exitCode;
+
+  @override
+  Future<void> closeStdin() async {}
 
   @override
   bool kill() => true;

@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart" show PendingPermission, PermissionReply;
 
-import "scheduled_task_agent_change.dart";
+import "agent_approval_change.dart";
 
 /// A change an agent proposed, shown to the user as a permission request on
 /// the session that asked. It lives in memory only, so a bridge restart drops
@@ -12,7 +12,7 @@ final class const AgentApproval({
   /// The root session the request is surfaced under, or null when
   /// [sessionId] is a root.
   required final String? displaySessionId,
-  required final ScheduledTaskAgentChange change,
+  required final AgentApprovalChange change,
 
   /// The Markdown the user approves.
   required final String description,

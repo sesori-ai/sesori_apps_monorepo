@@ -518,6 +518,7 @@ void main() {
         ),
         nextDueAt: null,
         now: DateTime.utc(2026, 11, 15),
+        command: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
@@ -1197,6 +1198,10 @@ SessionDeletionService _deletionService({
     pageImageRepository: PromptUploadRepository(
       filesystemApi: const FilesystemApi(),
       uploadsRoot: p.join(uploadsParent, "page-images"),
+    ),
+    commandOutputRepository: PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: p.join(uploadsParent, "command-output"),
     ),
   );
 }

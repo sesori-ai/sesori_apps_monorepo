@@ -82,8 +82,17 @@ String sesoriTranscriptsDirectory() => path.join(_sesoriHomeDirectory(), "transc
 /// unset.
 String sesoriPageImagesDirectory() => path.join(_sesoriHomeDirectory(), "page-images");
 
+/// The root that holds the output of the shell commands wake-ups and tasks
+/// run, one folder per session: `<home>/.sesori/command-output`.
+///
+/// Beside the uploads root and for the same reasons, and unlike `/tmp` it
+/// survives a reboot. Shared by every bridge data directory. Throws
+/// [StateError] when the home environment variable is unset.
+String sesoriCommandOutputDirectory() => path.join(_sesoriHomeDirectory(), "command-output");
+
 /// `<home>/.sesori`, the one home folder that holds Sesori's worktrees,
-/// scratch folders, prompt uploads, sent transcripts and page images.
+/// scratch folders, prompt uploads, sent transcripts, page images and command
+/// output.
 String _sesoriHomeDirectory() => path.join(_requireUserHome(environment: Platform.environment), ".sesori");
 
 /// Resolves the persistent attachment root shared by every bridge data directory

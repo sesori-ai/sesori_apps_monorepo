@@ -69,6 +69,10 @@ class const SesoriMcpResultFormatter() {
       "enabled: ${task.enabled ? "yes" : "no"}",
       "next run: ${_instantOrNone(instant: task.nextRunAt)}",
       "last run: ${_runOrNone(run: task.lastRun)}",
+      switch (task.command) {
+        final command? => "command, run before each run's prompt:\n${_fenced(text: command)}",
+        null => "command: none",
+      },
       "prompt:",
       switch (definition.prompt) {
         ScheduledTaskPromptText(:final text) => text,
@@ -83,6 +87,7 @@ class const SesoriMcpResultFormatter() {
     return [
       "Wake-up ${wakeUp.id} is set for ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}.",
       "Sesori sends this session its prompt then, once the session's turn has ended.",
+      if (wakeUp.command != null) "Right before, it runs the command and adds its result to the prompt.",
       if (repeats != null) "It repeats $repeats until you call cancel_wakeup.",
       "End your turn now; don't wait or poll.",
     ].join(" ");
@@ -96,6 +101,7 @@ class const SesoriMcpResultFormatter() {
           "- ${wakeUp.label} (id: ${wakeUp.id})",
           "  next: ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}",
           "  repeats: ${_wakeUpWords.repeats(schedule: wakeUp.schedule) ?? "no"}",
+          if (wakeUp.command != null) "  runs a command first",
         ].join("\n"),
     ].join("\n");
   }
@@ -237,6 +243,11 @@ class const SesoriMcpResultFormatter() {
 
   String _date({required int year, required int month, required int day}) =>
       "${year.toString().padLeft(4, "0")}-${_two(value: month)}-${_two(value: day)}";
+
+  String _fenced({required String text}) {
+    final fence = ScheduledTaskChangeDescriptionBuilder.fence(text: text);
+    return "$fence\n$text\n$fence";
+  }
 
   String _two({required int value}) => value.toString().padLeft(2, "0");
 

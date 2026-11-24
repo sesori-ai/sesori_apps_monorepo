@@ -22,6 +22,7 @@ _ScheduledTask _$ScheduledTaskFromJson(Map json) => _ScheduledTask(
       : ScheduledTaskRun.fromJson(
           Map<String, dynamic>.from(json['lastRun'] as Map),
         ),
+  command: json['command'] as String?,
 );
 
 Map<String, dynamic> _$ScheduledTaskToJson(_ScheduledTask instance) =>
@@ -31,6 +32,7 @@ Map<String, dynamic> _$ScheduledTaskToJson(_ScheduledTask instance) =>
       'enabled': instance.enabled,
       'nextRunAt': ?instance.nextRunAt?.toJson(),
       'lastRun': ?instance.lastRun?.toJson(),
+      'command': ?instance.command,
     };
 
 _ScheduledTaskDefinition _$ScheduledTaskDefinitionFromJson(Map json) =>

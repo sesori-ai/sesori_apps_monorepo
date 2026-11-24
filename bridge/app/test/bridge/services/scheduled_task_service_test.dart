@@ -1,6 +1,7 @@
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
 import "package:sesori_bridge/src/services/scheduled_task_request_exception.dart";
@@ -9,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -19,6 +21,7 @@ void main() {
   late ScheduledTaskRepository repository;
   late FakeSessionRepository sessionRepository;
   late ScheduledTaskService service;
+  late RecordingArmingMutations mutations;
   late DateTime now;
   late int changeCount;
 
@@ -47,7 +50,9 @@ void main() {
     now = DateTime.utc(2026, 11, 15, 10);
     repository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
     sessionRepository = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
+    mutations = RecordingArmingMutations();
     service = ScheduledTaskService(
+      mutations: mutations,
       repository: repository,
       sessionRepository: sessionRepository,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -88,7 +93,7 @@ void main() {
   }
 
   test("create stores an enabled task due at its first time after now, in its zone", () async {
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
     await flushChanges();
 
     expect(task.enabled, isTrue);
@@ -108,6 +113,7 @@ void main() {
           at: TaskLocalDateTime(year: 2026, month: 11, day: 15, hour: 13, minute: 0),
         ),
       ),
+      command: null,
     );
 
     expect(task.nextRunAt?.at, DateTime.utc(2026, 11, 15, 11).millisecondsSinceEpoch);
@@ -199,7 +205,7 @@ void main() {
     };
     for (final MapEntry(key: description, value: (invalid, code)) in cases.entries) {
       test(description, () async {
-        expect(await refusalOf(() => service.create(definition: invalid)), code);
+        expect(await refusalOf(() => service.create(definition: invalid, command: null)), code);
         await flushChanges();
         expect((await service.list()).items, isEmpty);
         expect(changeCount, 0);
@@ -208,12 +214,15 @@ void main() {
 
     test("a project it does not know", () async {
       sessionRepository.projectPathResult = null;
-      expect(await refusalOf(() => service.create(definition: definition)), ScheduledTaskErrorCode.unknownProject);
+      expect(
+        await refusalOf(() => service.create(definition: definition, command: null)),
+        ScheduledTaskErrorCode.unknownProject,
+      );
     });
   });
 
   test("pausing clears the next time and resuming computes it from now", () async {
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
 
     final paused = await service.setEnabled(taskId: task.id, enabled: false);
     expect(paused.enabled, isFalse);
@@ -227,7 +236,7 @@ void main() {
   });
 
   test("setting the enabled state it already has changes nothing", () async {
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
     now = DateTime.utc(2026, 11, 17, 12);
 
     final unchanged = await service.setEnabled(taskId: task.id, enabled: true);
@@ -237,29 +246,55 @@ void main() {
   });
 
   test("an edit recomputes the next time, and a paused task stays paused", () async {
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
     final later = definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 13, minute: 0)));
 
-    final edited = await service.update(taskId: task.id, definition: later);
+    final edited = await service.update(taskId: task.id, definition: later, command: const TaskCommandUnchanged());
     expect(edited.definition, later);
     expect(edited.nextRunAt?.at, DateTime.utc(2026, 11, 15, 11).millisecondsSinceEpoch);
 
     await service.setEnabled(taskId: task.id, enabled: false);
-    final pausedEdit = await service.update(taskId: task.id, definition: definition);
+    final pausedEdit = await service.update(
+      taskId: task.id,
+      definition: definition,
+      command: const TaskCommandUnchanged(),
+    );
     expect(pausedEdit.enabled, isFalse);
     expect(pausedEdit.nextRunAt, isNull);
+  });
+
+  test("an edit to a slash-command prompt drops the task's shell command", () async {
+    final task = await service.create(definition: definition, command: "make");
+    expect(task.command, "make");
+
+    final kept = await service.update(
+      taskId: task.id,
+      definition: definition.copyWith(name: "Renamed"),
+      command: const TaskCommandUnchanged(),
+    );
+    expect(kept.command, "make");
+
+    final slash = await service.update(
+      taskId: task.id,
+      definition: definition.copyWith(
+        prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.skill, arguments: null),
+      ),
+      command: const TaskCommandUnchanged(),
+    );
+    expect(slash.command, isNull);
   });
 
   group("a same-session task's session", () {
     Future<String?> targetOf({required String taskId}) async => (await repository.get(taskId: taskId))?.targetSessionId;
 
     test("survives an edit that keeps where it runs", () async {
-      final task = await service.create(definition: definition);
+      final task = await service.create(definition: definition, command: null);
       await targetSession(taskId: task.id);
 
       await service.update(
         taskId: task.id,
         definition: definition.copyWith(name: "Renamed", fastMode: true),
+        command: const TaskCommandUnchanged(),
       );
       expect(await targetOf(taskId: task.id), "s1");
     });
@@ -272,39 +307,60 @@ void main() {
     };
     for (final MapEntry(key: field, value: moved) in moves.entries) {
       test("is cleared by a $field change", () async {
-        final task = await service.create(definition: definition);
+        final task = await service.create(definition: definition, command: null);
         await targetSession(taskId: task.id);
         sessionRepository.eligiblePluginIds = {"fake", "fake-2"};
 
-        await service.update(taskId: task.id, definition: moved);
+        await service.update(taskId: task.id, definition: moved, command: const TaskCommandUnchanged());
         expect(await targetOf(taskId: task.id), isNull);
+        // The session it no longer continues in loses its arming.
+        expect(mutations.armedSessionIds, ["s1"]);
       });
     }
+
+    test("hears of each edit, pause, resume and delete as its arming", () async {
+      final task = await service.create(definition: definition, command: null);
+      expect(mutations.armedSessionIds, isEmpty);
+      await targetSession(taskId: task.id);
+
+      await service.update(
+        taskId: task.id,
+        definition: definition.copyWith(name: "Renamed"),
+        command: const TaskCommandUnchanged(),
+      );
+      await service.setEnabled(taskId: task.id, enabled: false);
+      await service.setEnabled(taskId: task.id, enabled: true);
+      await service.delete(taskId: task.id);
+
+      expect(mutations.armedSessionIds, ["s1", "s1", "s1", "s1"]);
+    });
   });
 
   test("the list shows each task's newest run and leaves out done one-off tasks", () async {
-    final recurring = await service.create(definition: definition);
+    final recurring = await service.create(definition: definition, command: null);
     final run = await repository.recordRun(
       taskId: recurring.id,
       scheduledFor: const ScheduledTaskInstant(at: 1, offsetMinutes: bucharestOffset),
       outcome: const ScheduledTaskRunOutcome.skipped(),
       firedAt: now,
     );
-    final done = await service.create(definition: definition.copyWith(name: "Done"));
+    final done = await service.create(definition: definition.copyWith(name: "Done"), command: null);
     await db.customStatement("UPDATE scheduled_tasks SET completed_at = 1 WHERE id = ?", [done.id]);
 
     final items = (await service.list()).items;
     expect(items.map((task) => task.id), [recurring.id]);
     expect(items.single.lastRun, run);
     expect(
-      await refusalOf(() => service.update(taskId: done.id, definition: definition)),
+      await refusalOf(
+        () => service.update(taskId: done.id, definition: definition, command: const TaskCommandUnchanged()),
+      ),
       ScheduledTaskErrorCode.taskNotFound,
     );
     expect((await service.listRuns(taskId: done.id)).items, isEmpty);
   });
 
   test("deleting a task removes it, and a missing task is refused", () async {
-    final task = await service.create(definition: definition);
+    final task = await service.create(definition: definition, command: null);
 
     await service.delete(taskId: task.id);
     await flushChanges();

@@ -232,7 +232,16 @@ Wake-ups: every harness that gets the server can call `schedule_wakeup`,
 waits for the session's turn to end on every harness, steering ones included,
 so it never cuts into a turn. GitHub Copilot asks its own permission before
 `schedule_wakeup` and `cancel_wakeup`, as for the other non-read-only tools.
-Live checks are pending (step 8 of `session-wakeups`).
+A wake-up's or task's `command` runs on the bridge through the login shell, not
+through the harness, so it behaves the same on every harness and never meets
+the harness's own permission check; only Sesori's Allow guards it. Windows
+`cmd.exe` quoting and `taskkill /T` are untested.
+Verified live on 2026-11-24 through a test model: Claude Code 2.1.330, Codex
+0.171.0, Pi 1.6.0, Oh My Pi 19.1.1, Grok 1.0.30 and GitHub Copilot 1.0.114 each
+took a one-shot and answered its notice, and ran `every 2` twice before
+`cancel_wakeup` stopped it. A wake-up due mid-turn waited for the turn on
+Claude Code and Grok. Oh My Pi reaches the tools through its `xd://` file and
+Grok through tool search, as for pages.
 
 ## Transcript turn boundaries
 
@@ -1443,8 +1452,11 @@ message ids was never affected.
 The bridge stores a running turn under the ids the live stream gives it. When
 a harness replays that turn under other ids, an import while the turn runs
 would show the streaming reply twice, so the bridge waits and imports once the
-turn ends (`replaysHistoryDuringTurn: false`). A change made outside Sesori
-during a turn then shows when the turn ends.
+turn ends (`replaysHistoryDuringTurn: false`). A turn that starts while an
+import is fetching, such as a wake-up sent the moment the previous turn ends,
+also defers that import to its end; otherwise its prompt and reply would be
+kept twice. A change made outside Sesori during a turn then shows when the
+turn ends.
 
 | Harness | Status |
 |---|---|

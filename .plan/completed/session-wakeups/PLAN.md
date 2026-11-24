@@ -265,8 +265,10 @@ How each situation is handled:
     exist yet.
 - **Concurrency.** A command never runs on the session lane, nor inside the
   task fire lock.
-- **Known gap.** A kill may leave grandchild processes running. If a real
-  command hits this, move to process-group kill.
+- **Kill.** A stop kills the whole process tree (shipped in step 4): POSIX
+  stops the shell, kills its `ps` descendants, then the shell; Windows uses
+  `taskkill /T /F`. A child forked between the listing and the kill can
+  survive.
 
 ### Approval of command wake-ups
 
@@ -493,6 +495,8 @@ separately.
     7-day sweep.
   - An app edit drops a task's command.
   - An armed mark stays after its wake-up or task stops arming the session.
+
+Results of the 2026-11-24 run are in [TRACKER.md](TRACKER.md#verification-results).
 
 ## Cleanup assessment
 

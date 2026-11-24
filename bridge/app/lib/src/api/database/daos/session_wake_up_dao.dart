@@ -23,6 +23,14 @@ class SessionWakeUpDao({required AppDatabase database})
         .get();
   }
 
+  /// The wake-ups of [sessionIds], soonest first.
+  Future<List<SessionWakeUpDto>> listForSessions({required Set<String> sessionIds}) {
+    return (select(sessionWakeUpsTable)
+          ..where((row) => row.sessionId.isIn(sessionIds))
+          ..orderBy([(row) => OrderingTerm.asc(row.nextDueAt), (row) => OrderingTerm.asc(row.id)]))
+        .get();
+  }
+
   /// The wake-ups due at or before [nowMs], soonest first.
   Future<List<SessionWakeUpDto>> listDue({required int nowMs}) {
     return (select(sessionWakeUpsTable)
@@ -47,6 +55,12 @@ class SessionWakeUpDao({required AppDatabase database})
   Future<bool> deleteSessionWakeUp({required String id, required String sessionId}) async {
     final statement = delete(sessionWakeUpsTable)..where((row) => row.id.equals(id) & row.sessionId.equals(sessionId));
     return await statement.go() > 0;
+  }
+
+  /// Sets wake-up [id]'s command approval; true when the row exists.
+  Future<bool> setCommandApproval({required String id, required SessionWakeUpCommandApproval approval}) async {
+    final statement = update(sessionWakeUpsTable)..where((row) => row.id.equals(id));
+    return await statement.write(SessionWakeUpsTableCompanion(commandApproval: Value(approval))) > 0;
   }
 
   Future<void> setNextDueAt({required String id, required int nextDueAtMs}) async {

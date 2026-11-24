@@ -2592,6 +2592,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionListArmedNext(String time) {
+    return 'next $time';
+  }
+
+  @override
+  String sessionListArmedDescription(String name, String time) {
+    return 'Wakes again for $name at $time';
+  }
+
+  @override
+  String sessionListFromTask(String name) {
+    return 'from $name';
+  }
+
+  @override
   String sessionListOnceTaskRun(String name) {
     return 'Run of one-time task $name';
   }
@@ -3753,6 +3768,26 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not confirm the change. Reconnect and check auto continuation before trying again.';
 
   @override
+  String sessionWakeUpChip(String time) {
+    return 'Wakes $time';
+  }
+
+  @override
+  String get sessionWakeUpsTitle => 'Wake-ups';
+
+  @override
+  String get sessionWakeUpCancel => 'Cancel';
+
+  @override
+  String get sessionWakeUpRepeats => 'Repeats';
+
+  @override
+  String get sessionWakeUpRunsCommand => 'Runs a command';
+
+  @override
+  String get sessionWakeUpCancelFailed => 'Could not cancel the wake-up. It may still run. Reconnect and try again.';
+
+  @override
   String get sessionAutoContinuationAlreadySubmitted =>
       'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.';
 
@@ -4360,6 +4395,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduledTaskNextRun => 'Next run';
+
+  @override
+  String get scheduledTaskCommand => 'Runs first';
 
   @override
   String get scheduledTaskNoNextRun => 'Not scheduled';
