@@ -170,6 +170,35 @@ void main() {
     });
   });
 
+  group("zip (windows command)", () {
+    test("runs Windows PowerShell isolated from an inherited module path and fails closed", () {
+      final command = ArchiveExtractor.windowsZipCommand(
+        archivePath: r"C:\Users\o'neil\runtime.zip",
+        stagingPath: r"C:\Users\o'neil\staging",
+        systemRoot: r"C:\Windows",
+      );
+
+      expect(command.executable, r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
+      const String script =
+          r"$ErrorActionPreference = 'Stop'; "
+          r"$ProgressPreference = 'SilentlyContinue'; "
+          r"$env:PSModulePath = Join-Path $PSHOME 'Modules'; "
+          r"Expand-Archive -LiteralPath 'C:\Users\o''neil\runtime.zip' "
+          r"-DestinationPath 'C:\Users\o''neil\staging' -Force";
+      expect(command.arguments, ["-NoProfile", "-Command", script]);
+    });
+
+    test("falls back to powershell on PATH when SystemRoot is unset", () {
+      final command = ArchiveExtractor.windowsZipCommand(
+        archivePath: r"C:\a.zip",
+        stagingPath: r"C:\staging",
+        systemRoot: null,
+      );
+
+      expect(command.executable, "powershell");
+    });
+  });
+
   for (final format in ArchiveFormat.values) {
     test("${format.name} forwards its budget to slow archive commands", () async {
       final durations = format == ArchiveFormat.zip && Platform.isWindows
