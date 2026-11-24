@@ -29,16 +29,10 @@ class ScheduledCommandService({
   /// session it reports to, or `task-<taskId>` for a task run that has no
   /// session yet. Never throws: a failure to run reads as a command that
   /// could not start.
-  Future<String> run({required String outputKey, required String command, required String workingDirectory}) async {
-    final run = _runOrFailure(outputKey: outputKey, command: command, workingDirectory: workingDirectory);
+  Future<String> run({required String outputKey, required String command, required String workingDirectory}) {
+    final run = _runAndSweep(outputKey: outputKey, command: command, workingDirectory: workingDirectory);
     _running.add(run);
-    try {
-      final result = await run;
-      unawaited(sweepExpiredOutputs());
-      return _formatter.format(result: result);
-    } finally {
-      _running.remove(run);
-    }
+    return run.whenComplete(() => _running.remove(run));
   }
 
   /// Best-effort: deletes the output kept longer than [outputLifetime] and
@@ -57,6 +51,18 @@ class ScheduledCommandService({
   Future<void> dispose() async {
     if (!_stop.isCompleted) _stop.complete();
     await Future.wait(_running.toList());
+  }
+
+  /// The sweep is awaited, so [dispose] also waits for it: a directory
+  /// listing left running past shutdown can crash the Dart VM.
+  Future<String> _runAndSweep({
+    required String outputKey,
+    required String command,
+    required String workingDirectory,
+  }) async {
+    final result = await _runOrFailure(outputKey: outputKey, command: command, workingDirectory: workingDirectory);
+    await sweepExpiredOutputs();
+    return _formatter.format(result: result);
   }
 
   Future<ScheduledCommandResult> _runOrFailure({
