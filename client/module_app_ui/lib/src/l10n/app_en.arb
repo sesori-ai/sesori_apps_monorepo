@@ -1891,13 +1891,10 @@
       }
     }
   },
-  "sessionListArmed": "{name} · next {time}",
-  "@sessionListArmed": {
-    "description": "Session-row mark, after a repeat glyph, while Sesori will wake the session again by itself: the wake-up's label or the scheduled task's name, and when it next runs. The time is local, with the date only when it is not today.",
+  "sessionListArmedNext": "next {time}",
+  "@sessionListArmedNext": {
+    "description": "Session-row mark, after a repeat glyph and the name of the wake-up or scheduled task that will wake the session again, and a middle dot: when it next runs. The time is local, with the date only when it is not today.",
     "placeholders": {
-      "name": {
-        "type": "String"
-      },
       "time": {
         "type": "String"
       }
@@ -2783,7 +2780,6 @@
   "sessionWakeUpRunsCommand": "Runs a command",
   "@sessionWakeUpRunsCommand": {"description": "Screen-reader wording for the terminal mark on a wake-up that runs a shell command when it fires."},
   "sessionWakeUpCancelFailed": "Could not cancel the wake-up. It may still run. Reconnect and try again.",
-  "sessionWakeUpCancelUnavailable": "This bridge cannot cancel wake-ups. Update your bridge.",
   "sessionAutoContinuationAlreadySubmitted": "Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.",
   "@sessionAutoContinuationOffer": {
     "placeholders": {

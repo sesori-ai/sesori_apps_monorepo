@@ -52,6 +52,9 @@
     chip reads `session.autoContinuation`; the session detail state carries no mark.
   - Cancel needs no in-flight state: the menu closes on tap and the updated session
     removes the row. No analytics event: cancel volume answers no product question.
+  - No route-not-found message for cancel: an older bridge sends no wake-ups, so the
+    chip never shows against it. A stale tap after a downgrade gets the generic
+    "could not cancel" notice.
 
 ## Verification results
 

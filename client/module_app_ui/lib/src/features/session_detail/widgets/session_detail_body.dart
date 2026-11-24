@@ -514,12 +514,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 5),
       ),
-      SessionDetailWakeUpCancelUnavailable() => (
-        context.loc.sessionWakeUpCancelUnavailable,
-        null,
-        PregoPopupAlertsNotificationsVariant.warning,
-        const Duration(seconds: 5),
-      ),
       SessionDetailWakeUpCancelFailed() => (
         context.loc.sessionWakeUpCancelFailed,
         null,

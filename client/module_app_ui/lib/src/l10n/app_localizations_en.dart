@@ -2592,8 +2592,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String sessionListArmed(String name, String time) {
-    return '$name · next $time';
+  String sessionListArmedNext(String time) {
+    return 'next $time';
   }
 
   @override
@@ -3786,9 +3786,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionWakeUpCancelFailed => 'Could not cancel the wake-up. It may still run. Reconnect and try again.';
-
-  @override
-  String get sessionWakeUpCancelUnavailable => 'This bridge cannot cancel wake-ups. Update your bridge.';
 
   @override
   String get sessionAutoContinuationAlreadySubmitted =>

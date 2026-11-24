@@ -668,16 +668,42 @@ void main() {
         ),
       );
 
-      final mark = find.textContaining("Nightly triage · next");
-      expect(mark, findsOneWidget);
-      final style = tester.widget<Text>(mark).style;
-      expect(style?.color, colors.textBrandSecondary);
-      expect(style?.fontWeight, FontWeight.w500);
+      for (final words in [find.text("Nightly triage"), find.textContaining(" · next ")]) {
+        final style = tester.widget<Text>(words).style;
+        expect(style?.color, colors.textBrandSecondary);
+        expect(style?.fontWeight, FontWeight.w500);
+      }
       expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
       expect(find.bySemanticsLabel(RegExp("Wakes again for Nightly triage at")), findsOneWidget);
       expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
       semantics.dispose();
     });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets("a long name gives way to when it wakes in a narrow row, without overflowing, at ${scale}x text", (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        const name = "Check whether CI on the release branch went green";
+        await pumpTile(
+          tester,
+          tile(
+            session: testSession(title: "My Session").copyWith(
+              arming: SessionArming.armed(name: name, nextAt: now + 3600000),
+            ),
+            projectLabel: "demo-app",
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        final next = find.textContaining(" · next ");
+        expect(tester.getSize(next).width, greaterThan(0));
+      });
+    }
 
     testWidgets("a task's row that nothing wakes again says where it came from, in grey with no glyph", (
       tester,

@@ -691,22 +691,10 @@ void main() {
         expect(await notice, isA<SessionDetailWakeUpCancelFailed>());
         expect(cubit.state.hydratedSession?.wakeUps, [wakeUp]);
       });
-
-      test("an older bridge without the route reports it cannot cancel", () async {
-        when(() => mockSessionRepository.cancelWakeUp(sessionId: sessionId, wakeUpId: "w-1")).thenAnswer(
-          (_) async => ApiResponse.error(
-            ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/wake-up/cancel"),
-          ),
-        );
-        final cubit = await loadedCubit();
-        final notice = cubit.noticeStream.first;
-        await cubit.cancelWakeUp(wakeUpId: "w-1");
-        expect(await notice, isA<SessionDetailWakeUpCancelUnavailable>());
-      });
     });
 
     group("fast mode", () {
-      const fastModel =AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
+      const fastModel = AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
       // testSession's last update, which stands in for model activity because
       // the default transcript's assistant message carries no timestamps.
       final lastActivity = DateTime.fromMillisecondsSinceEpoch(1700000000000);

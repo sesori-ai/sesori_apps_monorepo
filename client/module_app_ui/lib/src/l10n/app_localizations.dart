@@ -4519,11 +4519,11 @@ abstract class AppLocalizations {
   /// **'Run of scheduled task {name}'**
   String sessionListScheduledTaskRun(String name);
 
-  /// Session-row mark, after a repeat glyph, while Sesori will wake the session again by itself: the wake-up's label or the scheduled task's name, and when it next runs. The time is local, with the date only when it is not today.
+  /// Session-row mark, after a repeat glyph and the name of the wake-up or scheduled task that will wake the session again, and a middle dot: when it next runs. The time is local, with the date only when it is not today.
   ///
   /// In en, this message translates to:
-  /// **'{name} · next {time}'**
-  String sessionListArmed(String name, String time);
+  /// **'next {time}'**
+  String sessionListArmedNext(String time);
 
   /// Screen-reader wording for the session-row mark of a session Sesori will wake again; the time includes the date.
   ///
@@ -6462,12 +6462,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not cancel the wake-up. It may still run. Reconnect and try again.'**
   String get sessionWakeUpCancelFailed;
-
-  /// No description provided for @sessionWakeUpCancelUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'This bridge cannot cancel wake-ups. Update your bridge.'**
-  String get sessionWakeUpCancelUnavailable;
 
   /// No description provided for @sessionAutoContinuationAlreadySubmitted.
   ///

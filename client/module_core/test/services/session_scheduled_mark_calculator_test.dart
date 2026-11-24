@@ -8,12 +8,17 @@ void main() {
   const task = SessionScheduledTaskMark(taskId: "t-1", name: "Nightly triage", kind: ScheduledTaskKind.recurring);
 
   SessionScheduledMark markOf({required SessionArming arming, required SessionScheduledTaskMark? task}) =>
-      calculator.mark(session: testSession(id: "s-1").copyWith(arming: arming, scheduledTask: task));
+      calculator.mark(
+        session: testSession(id: "s-1").copyWith(arming: arming, scheduledTask: task),
+      );
 
   test("an armed session names what wakes it and when, task or not", () {
     for (final mark in [task, null]) {
       expect(
-        markOf(arming: const SessionArming.armed(name: "Check CI", nextAt: 9000), task: mark),
+        markOf(
+          arming: const SessionArming.armed(name: "Check CI", nextAt: 9000),
+          task: mark,
+        ),
         const SessionScheduledMark.armed(name: "Check CI", nextAt: 9000),
       );
     }

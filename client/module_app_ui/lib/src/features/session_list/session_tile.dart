@@ -788,23 +788,36 @@ class const SessionTile({
         );
       case SessionScheduledMarkArmed(:final name, :final nextAt):
         final accent = style.copyWith(color: context.prego.colors.textBrandSecondary, fontWeight: FontWeight.w500);
-        mark = Text.rich(
-          TextSpan(
-            children: [
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Padding(
+        const glyphRoom = _backgroundTasksGlyphSize + PregoSpacing.xs;
+        // The name gives way first, so when it wakes stays readable; the time
+        // ellipsizes only when the line has no room left for it.
+        mark = Semantics(
+          label: loc.sessionListArmedDescription(name, context.formatDateTime(ms: nextAt)),
+          excludeSemantics: true,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
                   padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
                   child: Icon(TablerRegular.repeat, size: _backgroundTasksGlyphSize, color: accent.color),
                 ),
-              ),
-              TextSpan(text: loc.sessionListArmed(name, context.formatMessageTimestamp(nextAt))),
-            ],
+                Flexible(
+                  child: Text(name, style: accent, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis),
+                ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: max(0, constraints.maxWidth - glyphRoom)),
+                  child: Text(
+                    "$_separator${loc.sessionListArmedNext(context.formatMessageTimestamp(nextAt))}",
+                    style: accent,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
-          semanticsLabel: loc.sessionListArmedDescription(name, context.formatDateTime(ms: nextAt)),
-          style: accent,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         );
     }
     return AnimatedSize(

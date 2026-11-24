@@ -28,9 +28,6 @@ final class const SessionDetailAutoContinuationUpdateFailed() extends SessionDet
 /// Disabling prevents future sends, but cannot retract an accepted prompt.
 final class const SessionDetailAutoContinuationAlreadySubmitted() extends SessionDetailNotice;
 
-/// The bridge predates wake-ups and has no route to cancel one.
-final class const SessionDetailWakeUpCancelUnavailable() extends SessionDetailNotice;
-
 /// The bridge did not confirm a wake-up's cancel, so it may still fire.
 final class const SessionDetailWakeUpCancelFailed() extends SessionDetailNotice;
 

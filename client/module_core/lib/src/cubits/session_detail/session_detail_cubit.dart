@@ -2179,9 +2179,6 @@ class SessionDetailCubit(
       final updated = await _wakeUpService.cancel(sessionId: _sessionId, wakeUpId: wakeUpId);
       if (isClosed) return;
       _handleEvent(SesoriSessionUpdated(info: updated));
-    } on SessionWakeUpCancelUnavailableException catch (error, stackTrace) {
-      loge("Wake-up cancel unavailable for session $_sessionId", error.innerError, stackTrace);
-      if (!isClosed) _noticeStream.add(const SessionDetailWakeUpCancelUnavailable());
     } on Object catch (error, stackTrace) {
       loge("Failed to cancel wake-up $wakeUpId of session $_sessionId", error, stackTrace);
       if (!isClosed) _noticeStream.add(const SessionDetailWakeUpCancelFailed());

@@ -104,7 +104,7 @@ them or can't start. Same-session tasks can compact their session between runs (
   Questions are never auto-answered.
 - Session rows carry a scheduled mark in the meta line, after the state and before the project, on one line that
   ellipsizes. A session that something will wake again (its soonest wake-up or the next run of a same-session task,
-  whichever comes first) shows an accent repeat glyph and "<name> · next <time>" in local time; screen readers hear
+  whichever comes first) shows an accent repeat glyph and "<name> · next <time>" in local time, the name ellipsizing before the time; screen readers hear
   "Wakes again for <name> at <date and time>". A task's run session that nothing will wake again shows a plain grey
   "from <task>". With an older bridge that reports no arming, run rows keep the earlier mark: a repeat glyph for a
   recurring task, a clock for a one-off or a calendar for a kind this app doesn't know, then its name, heard as "Run
