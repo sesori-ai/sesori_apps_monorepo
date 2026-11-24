@@ -15,10 +15,8 @@ import "../foundation/streaming_process_runner.dart";
 /// Windows runs `cmd.exe /d /s /c <command>`. A kill stops the shell and
 /// every process below it: `taskkill /T` on Windows, and on POSIX the shell is
 /// stopped, then its descendants in the process table and the shell killed.
-final class ShellCommandApi._({
+sealed class ShellCommandApi._({
   required final StreamingProcessRunner _runner,
-  required final ProcessRunner _tools,
-  required final bool _isWindows,
   required final String _shell,
   required final List<String> _shellArguments,
 }) {
@@ -30,23 +28,15 @@ final class ShellCommandApi._({
     required ProcessRunner tools,
     required Map<String, String> environment,
   }) => switch (platform) {
-    PlatformOs.macos || PlatformOs.linux => ShellCommandApi._(
+    PlatformOs.macos || PlatformOs.linux => _PosixShellCommandApi(
       runner: runner,
       tools: tools,
-      isWindows: false,
       shell: switch (environment["SHELL"]) {
         final shell? when shell.trim().isNotEmpty => shell,
         _ => "/bin/sh",
       },
-      shellArguments: const ["-lc"],
     ),
-    PlatformOs.windows => ShellCommandApi._(
-      runner: runner,
-      tools: tools,
-      isWindows: true,
-      shell: "cmd.exe",
-      shellArguments: const ["/d", "/s", "/c"],
-    ),
+    PlatformOs.windows => _WindowsShellCommandApi(runner: runner, tools: tools),
   };
 
   /// Runs [command] in [workingDirectory] with no input, handing its stdout
@@ -82,24 +72,48 @@ final class ShellCommandApi._({
 
   /// Kills [process] and everything below it. A failure is logged, and the
   /// runner then still kills the shell itself.
+  Future<void> _killTree({required StreamingProcess process});
+}
+
+final class _WindowsShellCommandApi({
+  required super.runner,
+  required final ProcessRunner _tools,
+}) extends ShellCommandApi {
+  this : super._(shell: "cmd.exe", shellArguments: const ["/d", "/s", "/c"]);
+
+  @override
   Future<void> _killTree({required StreamingProcess process}) async {
     final pid = process.pid;
     try {
-      if (_isWindows) {
-        final result = await _tools.run(
-          executable: "taskkill",
-          arguments: ["/PID", "$pid", "/T", "/F"],
-          workingDirectory: null,
-          environment: null,
-        );
-        if (result.exitCode != 0) Log.w("taskkill could not stop command process $pid: ${result.stderr}");
-        return;
-      }
+      final result = await _tools.run(
+        executable: "taskkill",
+        arguments: ["/PID", "$pid", "/T", "/F"],
+        workingDirectory: null,
+        environment: null,
+      );
+      if (result.exitCode != 0) Log.w("taskkill could not stop command process $pid: ${result.stderr}");
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not stop every process below command process $pid", error, stackTrace);
+    }
+  }
+}
+
+final class _PosixShellCommandApi({
+  required super.runner,
+  required super.shell,
+  required final ProcessRunner _tools,
+}) extends ShellCommandApi {
+  this : super._(shellArguments: const ["-lc"]);
+
+  @override
+  Future<void> _killTree({required StreamingProcess process}) async {
+    final pid = process.pid;
+    try {
       // Stopped first, so the shell cannot start more while the table is read.
       // ponytail: a descendant that forks between the read and its kill
       // leaves that child running; stop each level first if one ever does.
       Process.killPid(pid, ProcessSignal.sigstop);
-      for (final descendant in await _posixDescendants(pid: pid)) {
+      for (final descendant in await _descendants(pid: pid)) {
         Process.killPid(descendant, ProcessSignal.sigkill);
       }
       Process.killPid(pid, ProcessSignal.sigkill);
@@ -108,7 +122,7 @@ final class ShellCommandApi._({
     }
   }
 
-  Future<List<int>> _posixDescendants({required int pid}) async {
+  Future<List<int>> _descendants({required int pid}) async {
     final result = await _tools.run(
       executable: "ps",
       arguments: const ["-A", "-o", "pid=,ppid="],
