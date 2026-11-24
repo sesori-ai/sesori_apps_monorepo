@@ -3,7 +3,8 @@
 // ignore_for_file: invalid_annotation_target
 
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_shared/sesori_shared.dart" show TaskApprovalMode, TaskMissedRunPolicy, TaskRunMode, TaskSchedule;
+import "package:sesori_shared/sesori_shared.dart"
+    show TaskApprovalMode, TaskMissedRunPolicy, TaskRunMode, TaskSchedule, TaskWeekday;
 
 part "sesori_mcp_tool_arguments.freezed.dart";
 part "sesori_mcp_tool_arguments.g.dart";
@@ -163,4 +164,41 @@ sealed class PageOptionArgument with _$PageOptionArgument {
   }) = _PageOptionArgument;
 
   factory fromJson(Map<String, dynamic> json) => _$PageOptionArgumentFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class ScheduleWakeUpArguments with _$ScheduleWakeUpArguments {
+  @JsonSerializable(checked: true, createToJson: false)
+  const factory({
+    required String label,
+    required String prompt,
+    required WakeUpWhenArgument when,
+
+    /// Null for the bridge computer's zone.
+    @JsonKey(name: "time_zone") required String? timeZone,
+  }) = _ScheduleWakeUpArguments;
+
+  factory fromJson(Map<String, dynamic> json) => _$ScheduleWakeUpArgumentsFromJson(json);
+}
+
+/// Each kind reads only its own fields, so the empty ones a strict-schema
+/// provider fills in for the others are ignored. Times are `HH:MM`.
+@Freezed(unionKey: "kind", fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class WakeUpWhenArgument with _$WakeUpWhenArgument {
+  @FreezedUnionValue("in")
+  const factory after({required int minutes}) = WakeUpWhenAfterArgument;
+  const factory every({required int minutes}) = WakeUpWhenEveryArgument;
+  const factory daily({required String time}) = WakeUpWhenDailyArgument;
+  const factory weekdays({required String time}) = WakeUpWhenWeekdaysArgument;
+  const factory weekly({required Set<TaskWeekday> days, required String time}) = WakeUpWhenWeeklyArgument;
+
+  factory fromJson(Map<String, dynamic> json) => _$WakeUpWhenArgumentFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false, copyWith: false, equal: false)
+sealed class CancelWakeUpArguments with _$CancelWakeUpArguments {
+  @JsonSerializable(checked: true)
+  const factory({@JsonKey(name: "wakeup_id") required String wakeUpId}) = _CancelWakeUpArguments;
+
+  factory fromJson(Map<String, dynamic> json) => _$CancelWakeUpArgumentsFromJson(json);
 }

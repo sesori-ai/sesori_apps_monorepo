@@ -22,6 +22,7 @@ import "api/database/daos/scheduled_task_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_interruption_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
+import "api/database/daos/session_wake_up_dao.dart";
 import "api/database/daos/side_chat_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
@@ -36,6 +37,7 @@ import "auth/token_refresher.dart";
 import "control/control_status_notifier.dart";
 import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
+import "foundation/local_time_zone.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
 import "foundation/relay_plaintext_codec.dart";
@@ -54,6 +56,7 @@ import "listeners/session_continuation_timer_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
+import "listeners/session_wake_up_timer_listener.dart";
 import "listeners/viewed_session_plugin_warmup_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
@@ -110,6 +113,7 @@ import "repositories/session_options_repository.dart";
 import "repositories/session_repository.dart";
 import "repositories/session_unseen_calculator.dart";
 import "repositories/session_unseen_repository.dart";
+import "repositories/session_wake_up_repository.dart";
 import "repositories/side_chat_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
@@ -254,6 +258,8 @@ import "services/session_send_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_service.dart";
 import "services/session_view_tracker.dart";
+import "services/session_wake_up_description_builder.dart";
+import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
@@ -871,10 +877,21 @@ class Orchestrator({
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
       notices: sessionNoticeService,
     );
+    final sessionWakeUpService = SessionWakeUpService(
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database)),
+      sessions: sessionRepository,
+      calculator: scheduledTaskOccurrenceCalculator,
+      notices: sessionNoticeService,
+      descriptions: const SessionWakeUpDescriptionBuilder(),
+      localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
+      clock: clock,
+    );
+    final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
       agent: scheduledTaskAgentService,
       pages: agentPageService,
+      wakeUps: sessionWakeUpService,
       formatter: const SesoriMcpResultFormatter(),
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
@@ -1000,6 +1017,7 @@ class Orchestrator({
     final session = OrchestratorSession._(
       sessionContinuationService: sessionContinuationService,
       sessionContinuationTimer: sessionContinuationTimer,
+      sessionWakeUpTimer: sessionWakeUpTimer,
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
@@ -1182,6 +1200,7 @@ class OrchestratorSession._({
   required final SessionPromptService _sessionPromptService,
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
+  required final SessionWakeUpTimerListener _sessionWakeUpTimer,
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
@@ -1386,6 +1405,7 @@ class OrchestratorSession._({
     _chatHistoryActivityListener.start();
     _sessionContinuationTimer.start();
     _scheduledTaskTimer.start();
+    _sessionWakeUpTimer.start();
     // After the mutation listener, so a resolution's announcement reaches
     // clients.
     _interruptedTurnListener.start();
@@ -1626,6 +1646,7 @@ class OrchestratorSession._({
       attempt(_pluginEventListener.dispose),
       attempt(_sessionContinuationTimer.dispose),
       attempt(_scheduledTaskTimer.dispose),
+      attempt(_sessionWakeUpTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),

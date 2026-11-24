@@ -333,3 +333,73 @@ _PageOptionArgument _$PageOptionArgumentFromJson(Map json) => $checkedCreate(
     return val;
   },
 );
+
+_ScheduleWakeUpArguments _$ScheduleWakeUpArgumentsFromJson(Map json) =>
+    $checkedCreate('_ScheduleWakeUpArguments', json, ($checkedConvert) {
+      final val = _ScheduleWakeUpArguments(
+        label: $checkedConvert('label', (v) => v as String),
+        prompt: $checkedConvert('prompt', (v) => v as String),
+        when: $checkedConvert(
+          'when',
+          (v) =>
+              WakeUpWhenArgument.fromJson(Map<String, dynamic>.from(v as Map)),
+        ),
+        timeZone: $checkedConvert('time_zone', (v) => v as String?),
+      );
+      return val;
+    }, fieldKeyMap: const {'timeZone': 'time_zone'});
+
+WakeUpWhenAfterArgument _$WakeUpWhenAfterArgumentFromJson(Map json) =>
+    WakeUpWhenAfterArgument(
+      minutes: (json['minutes'] as num).toInt(),
+      $type: json['kind'] as String?,
+    );
+
+WakeUpWhenEveryArgument _$WakeUpWhenEveryArgumentFromJson(Map json) =>
+    WakeUpWhenEveryArgument(
+      minutes: (json['minutes'] as num).toInt(),
+      $type: json['kind'] as String?,
+    );
+
+WakeUpWhenDailyArgument _$WakeUpWhenDailyArgumentFromJson(Map json) =>
+    WakeUpWhenDailyArgument(
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
+
+WakeUpWhenWeekdaysArgument _$WakeUpWhenWeekdaysArgumentFromJson(Map json) =>
+    WakeUpWhenWeekdaysArgument(
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
+
+WakeUpWhenWeeklyArgument _$WakeUpWhenWeeklyArgumentFromJson(Map json) =>
+    WakeUpWhenWeeklyArgument(
+      days: (json['days'] as List<dynamic>)
+          .map((e) => $enumDecode(_$TaskWeekdayEnumMap, e))
+          .toSet(),
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
+
+const _$TaskWeekdayEnumMap = {
+  TaskWeekday.monday: 'monday',
+  TaskWeekday.tuesday: 'tuesday',
+  TaskWeekday.wednesday: 'wednesday',
+  TaskWeekday.thursday: 'thursday',
+  TaskWeekday.friday: 'friday',
+  TaskWeekday.saturday: 'saturday',
+  TaskWeekday.sunday: 'sunday',
+};
+
+_CancelWakeUpArguments _$CancelWakeUpArgumentsFromJson(Map json) =>
+    $checkedCreate('_CancelWakeUpArguments', json, ($checkedConvert) {
+      final val = _CancelWakeUpArguments(
+        wakeUpId: $checkedConvert('wakeup_id', (v) => v as String),
+      );
+      return val;
+    }, fieldKeyMap: const {'wakeUpId': 'wakeup_id'});
+
+Map<String, dynamic> _$CancelWakeUpArgumentsToJson(
+  _CancelWakeUpArguments instance,
+) => <String, dynamic>{'wakeup_id': instance.wakeUpId};

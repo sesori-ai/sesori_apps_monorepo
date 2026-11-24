@@ -227,6 +227,13 @@ sit slightly below the current pins but above the minimums. No harness
 showed its own permission prompt for `send_page`. Dismissal was checked on
 Claude Code only.
 
+Wake-ups: every harness that gets the server can call `schedule_wakeup`,
+`list_wakeups` and `cancel_wakeup`, with no harness-specific code. A wake-up
+waits for the session's turn to end on every harness, steering ones included,
+so it never cuts into a turn. GitHub Copilot asks its own permission before
+`schedule_wakeup` and `cancel_wakeup`, as for the other non-read-only tools.
+Live checks are pending (step 8 of `session-wakeups`).
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

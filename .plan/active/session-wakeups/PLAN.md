@@ -186,8 +186,13 @@ coordination fields and reverse three same-session rules.
   The in-flight set is in memory; a restart empties it. For each due row:
   1. Advance the row. A repeating row moves `nextDueAt` to the first
      occurrence after now, so missed occurrences never pile up. A one-shot
-     keeps its row.
+     without a command keeps its row until its claim.
   2. Run the command, if any, through `ScheduledCommandService`, off the lane.
+     Two checks come first. The session must still be active: an archived
+     or deleted one deletes the row and runs nothing. Then the use is
+     committed: a one-shot command wake-up claims (deletes) its row before
+     the command runs, so a restart before its notice is delivered never runs
+     the command twice. A repeating one is already advanced by step 1.
   3. Deliver through `SessionNoticeService.deliver`, unawaited. The user's
      line is `Wake-up: <label>`. The guidance says when the agent asked, the
      due time, how late it is if the bridge was off, and whether it repeats,
@@ -214,7 +219,7 @@ How each situation is handled:
 | Archived session (`skippedInactive`) | `runDue` deletes the row, whether one-shot or repeating. If the session is unarchived before the wake-up fires, the wake-up stays. |
 | Deleted session | The cascade removes the row. |
 | Bridge restart | The row survives until its claim, so a waiting wake-up fires again. A due time the bridge missed fires on return and states how late it is. A crash between the claim and the send loses that one delivery: the tasks' "lose, never duplicate" rule. |
-| Harness unavailable (`dropped`) | Logged with the session id. A one-shot is removed. A repeating one tries again at its next time. |
+| Harness unavailable (`dropped`) | Logged with the session id. A one-shot whose claim already ran is gone; one dropped before its claim fires again at the next tick. A repeating one tries again at its next time. |
 
 ### Commands
 
