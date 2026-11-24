@@ -38,16 +38,19 @@ In phase 1:
 - Guides: `get_guide`, plus skill injection on Claude Code, Codex, Pi, Oh My
   Pi, Grok and GitHub Copilot, each verified live. Pi also gets deferred tools
   and the server instructions.
-- A per-session mark: the session row mark and the composer chip, with Stop.
-- Sesori tools on OpenCode through its client-MCP WebSocket (step 14).
-  Hermes gets the Sesori MCP from a separate small PR outside this plan
+- A per-session mark: the session row mark and the composer chip.
+- The watched-PR list across sessions (option B, chosen by the owner): a PR
+  button in the home top bar opening a grouped sheet, and a "Pull requests"
+  sidebar row on desktop (step 14).
+- Sesori tools on OpenCode (step 15; mechanism pending research). Hermes
+  gets the Sesori MCP from a separate small PR outside this plan
   (`injectsSesoriTools` on, version-gated at Hermes 0.22.3, which scopes MCP
   per ACP session), so the PR monitor reaches it with no step here.
 - Regression docs and `docs/HARNESS_CAPABILITIES.md`.
 
 Not in phase 1 (see [Later phases](#later-phases-rough-intent-only)): the
-GitHub App and webhooks, labels and profiles for non-dev sessions,
-out-of-process community plugins, and the cross-session watched-PR list.
+GitHub App and webhooks, labels and profiles for non-dev sessions, and
+out-of-process community plugins.
 
 **Reversal noted.** `.plan/completed/pr-tracking-removal/PLAN.md` records "The
 bridge never runs `gh` and never calls GitHub". The owner has reversed that for
@@ -77,7 +80,7 @@ enabled.
   off. Each descriptor declares `injectsSesoriTools`. Claude Code, Codex, Pi,
   Oh My Pi, Grok and Copilot are on. Hermes is off on `main`; a separate PR
   turns it on from Hermes 0.22.3, whose gateway scopes MCP per ACP session.
-  OpenCode has no launch-time seam (step 14 uses its client-MCP WebSocket),
+  OpenCode has no verified launch-time seam yet (step 15),
   DeepSeek rejects MCP, and Cursor and Antigravity are unverified.
 - **Size.** `tools/list` is about 17.5 KB (about 4.4k tokens). `create_task` and
   `update_task` are about 43% of it, because `update_task` repeats every
@@ -191,9 +194,10 @@ abstract class SesoriToolGroup {
     id, and is the target `ScheduledTaskAgentService.settle` routes
     `ToolGroupAgentChange` replies to, as it routes `WakeUpCommandChange` to
     `applyCommandApproval`. The existing card and push show it. A restart
-    drops it (`dropped`), as for every agent approval, and YOLO never
-    answers it. The group applies an allowed change and sends its own
-    outcome notice.
+    drops it (`dropped`), as for every agent approval. **With YOLO on, it
+    returns `allowed` at once and shows no card** (owner decision for tool
+    groups; task approvals keep their own rule). The group applies an
+    allowed change and sends its own outcome notice.
 - **Labels.** "Development" and other labels are not part of the phase-1
   interface: nothing would read them. Adding a field later is an in-repo
   lockstep change.
@@ -410,6 +414,10 @@ and the group for the app's composition, projection and stop route.
   - A watch ends on a terminal report's claim, on `unwatch_pr`, on the app's
     Stop, on not-found, or after ten consecutive poll failures. Each end
     except unwatch and Stop sends the stop notice.
+  - **Merged stays listed until end of day.** A merged report's claim marks
+    the record `merged` with `mergedAt` instead of deleting it. It no longer
+    polls. The first tick after local midnight deletes merged records, and
+    the session cascade still applies. Every other end deletes the record.
 - **Delivery.**
   - Reports use `SessionNoticeTiming.derived`: a steering harness hears an
     urgent report mid-turn, as Claude Code does with the plugin today, and the
@@ -422,7 +430,7 @@ and the group for the app's composition, projection and stop route.
 - **The claim, which is the restart rule.** Inside the lane right before the
   send, the claim checks that the watch record still exists and writes the
   watch's new baseline and `lastReportAt`. A terminal report's claim deletes
-  the record instead. A crash between the claim and the send loses that one
+  the record instead (or marks it merged, above). A crash between the claim and the send loses that one
   report and never duplicates it, as for wake-ups. `claimLost` (the watch
   ended while waiting) drops the report. `dropped` leaves the baseline alone,
   so the next due check re-reports.
@@ -464,25 +472,36 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
   override; `quiet_minutes` (1–60), `ci_wait_minutes` (5–240) and
   `idle_reminder_minutes` (0 = off, else 5–240). Timeouts are global only.
 - It is stored in the group's bridge record as `PullRequestMonitorConfig`.
-  The defaults are the plugin's, with auto-merge off.
+  The defaults are the plugin's, with auto-merge off everywhere. Nothing is
+  imported or migrated from the plugin's config files or `.pr-monitor.json`.
 - The repo override wins over the global default when `watch_pr` leaves
   `auto_merge` out. Existing watches keep their choice. New timeouts apply to
   every watch at the next poll.
-- **Approval (pending Q1; the plan assumes the recommendation).** A change
-  that widens auto-merge (the global default to on, or a repo override to on)
-  goes through `host.requestApproval`. The card names the scope. The tool
-  returns "Sent to the user for approval…" and the session hears the outcome
-  through the usual notice. Narrowing changes and timeouts apply at once.
-  Per-PR opt-in through `watch_pr` and `set_pr_auto_merge` stays as today,
-  with no Allow.
+- **Approval (owner decision).** A change that widens auto-merge (the global
+  default to on, or a repo override to on) goes through
+  `host.requestApproval`. The card names the scope. The tool returns "Sent to
+  the user for approval…" and the session hears the outcome through the
+  usual notice. With YOLO on there is no card: the change applies at once
+  and the tool says so. Narrowing changes and timeouts apply at once. Per-PR
+  opt-in through `watch_pr` and `set_pr_auto_merge` stays as today, with no
+  Allow.
 
 ### Wire and app
 
 - **`Session.pullRequestWatches: List<SessionPullRequestWatch>`** (additive):
-  `repository`, `number`, `title`, `url`, `autoMerge`. It defaults to empty
-  with `// COMPATIBILITY 2026-11-24 (v1.16.0): bridges before the bridge PR
-  monitor omit the list, which honestly means none. Remove the default once
-  the minimum supported bridge always sends it.`
+  `repository`, `number`, `title`, `url`, `autoMerge`, `status`. It defaults
+  to empty with `// COMPATIBILITY 2026-11-24 (v1.16.0): bridges before the
+  bridge PR monitor omit the list, which honestly means none. Remove the
+  default once the minimum supported bridge always sends it.`
+  - `status` is a sealed `PullRequestWatchStatus` (unionKey `kind`, fallback
+    `unknown`): `needsYou(reasons)`, `waiting`, `ready`, `merged(mergedAt)`.
+    `reasons` is a non-empty list of the closed enum `ciFailing | conflict |
+    newReviewComments | readyWithoutAutoMerge`. This is the owner's red-count
+    rule: a Ready PR whose auto-merge is off needs the user.
+  - `PullRequestWatchService` computes it from the PR's last snapshot and
+    the watch: unhandled threads (no `[Sesori reply]`) are new review
+    comments, the `agent-ready` label is ready, and merged records are
+    merged. "Needs you" wins over the others.
   - `SessionViewService` reads it through `PullRequestWatchRepository` (the
     app composes the package, as wake-ups compose their repository).
   - The orchestrator subscribes to `watchesChanged` and maps each session id
@@ -491,29 +510,71 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
     hence the stream).
 - **`SessionArming` is unchanged.** A watch has no next time, and the app can
   derive the mark from the list. `SessionScheduledMarkCalculator` gains a
-  `watchingPullRequests(count, first)` mark. A timed `armed` mark wins; a
-  watch wins over the plain task mark.
-- **Stop.** `POST /session/pull-request-watch/stop` with a
-  `StopPullRequestWatchRequest(sessionId, repository, number)` in
-  `sesori_shared`. `StopPullRequestWatchHandler` calls
-  `PullRequestWatchService.stopFromApp`. The agent is not told, as for a
+  `watchingPullRequests(lead, others)` mark. `lead` is the PR that needs the
+  user most (needs you, then ready, then waiting, then merged; ties by
+  number), and `others` is the "+N". A timed `armed` mark wins; a watch wins
+  over the plain task mark.
+- **App actions on one watch.** `POST /session/pull-request-watch/stop` and
+  `POST /session/pull-request-watch/auto-merge`, with
+  `StopPullRequestWatchRequest(sessionId, repository, number)` and
+  `SetPullRequestWatchAutoMergeRequest(sessionId, repository, number,
+  enabled)` in `sesori_shared`. Their handlers call
+  `PullRequestWatchService.stopFromApp` and `setAutoMergeFromApp`. The user
+  needs no Allow for their own per-PR choice. The agent is not told, as for a
   wake-up cancelled in the app. An older bridge never sends watches, so the
-  app never offers Stop to it.
-- **`module_core`.** `SessionApi.stopPullRequestWatch` →
-  `SessionRepository.stopPullRequestWatch`, called by a `SessionDetailCubit`
-  action, as `cancelWakeUp` is today. The calculator change and the list and
-  cubit state come with it.
-- **`module_app_ui`** (follows the wake-up precedent):
-  - The composer chip shows while a wake-up or a watch exists. With only
-    watches it shows a pull-request glyph and `#123` (or `2 PRs`); with both,
-    the wake-up's time leads.
-  - The menu adds one row per watched PR: `owner/repo#123`, the title, an
-    auto-merge mark, and Stop watching.
-  - The session row shows `Watching #123` (or `Watching 2 PRs`) in grey with
-    the same glyph, unless a timed armed mark wins.
+  app never offers these to it.
+- **The cross-session list.** `GET /pull-request-watches` returns
+  `PullRequestWatchListResponse(watches: [PullRequestWatchListItem(sessionId,
+  sessionTitle, projectId, watch)])` for every watch on this bridge,
+  including today's merged ones. A `pullRequestWatchesChanged` event on
+  `SesoriSseEvent` tells the app to refetch; older apps already skip unknown
+  event types. The orchestrator emits it from `watchesChanged`.
+- **`module_core`.**
+  - `SessionApi` and `SessionRepository` gain `stopPullRequestWatch` and
+    `setPullRequestWatchAutoMerge`, called by `SessionDetailCubit` and the
+    list cubit, as `cancelWakeUp` is today.
+  - A `PullRequestWatchApi` → `PullRequestWatchRepository` (client) serves
+    the list route and the change event. A `PullRequestWatchListCubit` holds
+    the grouped list, the needs-you count, and an optional session filter.
+  - The calculator change.
+  - **Other computers.** Phase 1 lists the current computer's PRs, plus one
+    `<computer> · N watched · Switch` row for each other paired computer. The
+    step first checks what multi-computer already knows about the other
+    bridges. If N cannot be had without connecting to them, it raises that
+    on a review page instead of inventing a channel.
+- **`module_app_ui`, the session and composer.** This follows the wake-up
+  precedent:
+  - The session row shows the lead PR (`#123`, coloured by its status) plus
+    `+N` with a pull-request glyph, unless a timed armed mark wins.
+  - The composer chip shows while a wake-up or a watch exists. With watches
+    it shows the glyph and the count; with a wake-up too, the wake-up's time
+    leads. With the list sheet in place (step 14), tapping the PR part opens
+    the sheet filtered to this session. Before that (step 13), its menu lists
+    this session's PRs with Stop watching. This interim menu is small and is
+    replaced in step 14.
   - The chip fades in place in its existing row, and mark changes cross-fade,
     so nothing above the transcript moves.
-  - l10n, widget tests, and before and after visuals in the PR.
+- **`module_app_ui`, the list (option B).** The owner approved the option-B board
+  mock in the design review (a temporary local copy is at
+  `/tmp/pr-list-mocks/option-B-board.png`). The step attaches its own
+  fixture visuals.
+  - **Home top bar:** a PR button left of the computer and Settings buttons.
+    It shows only while at least one PR is watched, and appears and
+    disappears with a fade and scale, without moving the other buttons. It
+    shows a red badge with the needs-you count only when that count is above
+    zero, and the count rolls when it changes.
+  - **The sheet** opens over home. It groups rows as Needs you, Waiting,
+    Ready, and Merged today. Each row shows `owner/repo#N`, the title, the
+    session, the reasons or state, and an auto-merge mark.
+    - Tap opens the session. Swipe shows Auto-merge (toggle) and Stop.
+    - While the sheet is open, a row changes its state in place; it does
+      not jump between groups. It regroups on the next open, so nothing
+      moves under the user's finger.
+    - Opened from the composer chip, it is filtered to that session.
+  - **Desktop:** a "Pull requests" sidebar row under Scheduled opens the same
+    list in the cockpit's content area.
+- **Each app step** brings its l10n, widget tests, and before and after
+  visuals in the PR.
 
 ## Complexity budget
 
@@ -522,7 +583,7 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
     future group;
   - `agentToolGroups.disabled` in bridge settings;
   - the PR monitor's watch records (one per session and PR) and its config
-    record;
+    record; merged ones stay until local midnight for the list;
   - the skill bundle folder, regenerated whole, holding no state.
 - **New in-memory parts:**
   - the grant's immutable group set;
@@ -532,8 +593,9 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
   - one in-flight delivery flag per watch;
   - the cached `gh` login;
   - pending approval completers, held by `ToolGroupApprovalService` and keyed
-    by request id,
-    for the configure approval only.
+    by request id, for the configure approval only;
+  - in the app, the list cubit's state, plus the open sheet's frozen group
+    order, which lives only until the sheet closes.
 - **Deliberately not added:**
   - SSE or `listChanged` pushes;
   - per-session profiles or labels;
@@ -551,7 +613,7 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
 
 ## Steps
 
-Titles follow `<emoji> [bridge-pr-monitor] … [step x/16]`. Line estimates
+Titles follow `<emoji> [bridge-pr-monitor] … [step x/17]`. Line estimates
 count additions plus deletions, excluding generated files unless noted.
 
 1. 🌱 **Raise the plan.**
@@ -582,7 +644,7 @@ count additions plus deletions, excluding generated files unless noted.
      route.
    - Group `start` and `dispose` in startup and shutdown order.
    - Tests: cascade on session delete; claim passing through to `deliver`;
-     approval allow, reject and restart drop; YOLO not answering.
+     approval allow, reject and restart drop; YOLO allows without a card.
 5. ⚙️ **PR monitor package: `gh` API and snapshots** (~1,400).
    - `sesori_tool_pr_monitor` skeleton, `GhCliApi` with its DTOs, the
      GraphQL query with follow-up pages, and `PullRequestSnapshotRepository`
@@ -617,8 +679,8 @@ count additions plus deletions, excluding generated files unless noted.
      auto-merge across two watchers.
 9. ⚙️ **`configure_pr_monitor`** (~600).
    - The config record and the tool.
-   - Widening goes through `requestApproval` (per Q1), and the timeouts are
-     applied.
+   - Widening goes through `requestApproval` (no card under YOLO), and the
+     timeouts are applied.
    - The description builder for the card.
 10. ⚙️ **Guides and skills on Claude Code and Codex** (~900).
     - `get_guide`, the final guide text, `SesoriSkillBundleStorage`,
@@ -633,16 +695,34 @@ count additions plus deletions, excluding generated files unless noted.
     - The Pi startup-extension changes, and each seam in the table.
     - Live verification per harness. A failed seam is left unwired and
       recorded.
-12. ⚙️ **Bridge projection and Stop** (~700).
-    - `Session.pullRequestWatches`, the `SessionViewService` read, and the
-      orchestrator subscription.
-    - The stop request model, handler and route.
-13. ⚙️ **App: watch chip, row mark and group toggles** (~1,300).
-    - The `module_core` chain and calculator; the chip, menu and row mark.
+12. ⚙️ **Bridge projection, status and app actions** (~1,100).
+    - `Session.pullRequestWatches` with `PullRequestWatchStatus`, the
+      `SessionViewService` read, and the orchestrator subscription.
+    - Merged records kept until local midnight.
+    - The stop and auto-merge request models, handlers and routes.
+    - `GET /pull-request-watches` and the `pullRequestWatchesChanged` event.
+13. ⚙️ **App: row mark, composer chip and group toggles** (~1,300).
+    - The `module_core` session actions and calculator; the row mark (lead
+      PR plus `+N`); the chip with its interim per-session menu and Stop.
     - The Agent tools settings section on phone and desktop.
-    - l10n, widget tests and visuals.
-14. ⚙️ **Sesori tools on OpenCode** (~500–800 plus tests;
-    `sesori_plugin_opencode` only, no bridge or interface change).
+14. ⚙️ **App: watched-PR list** (~1,400).
+    - `PullRequestWatchApi`, the client repository and
+      `PullRequestWatchListCubit`.
+    - The home top-bar button with its rolling red count, and the grouped
+      sheet with tap, swipe (Auto-merge, Stop), in-place updates and
+      regroup on next open.
+    - The other-computers rows (checked first, see Wire and app).
+    - The composer chip opens the sheet filtered to its session, replacing
+      the interim menu.
+    - The desktop "Pull requests" sidebar row under Scheduled.
+15. ⚙️ **Sesori tools on OpenCode** (`sesori_plugin_opencode` only).
+    **Mechanism pending research: config-at-launch vs client-MCP
+    WebSocket.** The owner suggested scoping the Sesori MCP to the OpenCode
+    process the bridge launches, through config supplied at launch (an env
+    var or flag, never an edit to the user's config file), so TUI sessions
+    never see the tools. Research is checking whether that works. The step
+    settles it when it starts. The WebSocket candidate, verified live, is
+    below (~500–800 lines plus tests, no bridge or interface change):
     - Version-gated at OpenCode ≥ 2.2.0. Per open project folder, the plugin
       opens a WebSocket to OpenCode's experimental
       `GET /api/experimental/client-mcp?location[directory]=…&name=sesori_bridge`.
@@ -663,16 +743,17 @@ count additions plus deletions, excluding generated files unless noted.
       experimental; the server `instructions` don't reach the prompt for
       WebSocket-attached servers; OpenCode has no skill seam, so `get_guide`
       is its only guide path (the tool descriptions point at it); TUI
-      sessions in the same folder see the tools (Q5).
+      sessions in the same folder see the tools (the reason config-at-launch is preferred if it works).
     - Live verification on OpenCode through the test proxy, as in the
       matrix. Hermes needs nothing here: it gets the Sesori MCP from a
       separate PR (below).
-15. 🌱 **Reconcile regression docs.**
+16. 🌱 **Reconcile regression docs.**
     - A new `docs/regression/pull-request-monitor.md`.
     - `sesori-mcp.md`: groups, gating, `get_guide`, skills.
-    - The session list and detail docs for the mark and chip.
+    - The session list and detail docs for the mark and chip, and the home
+      and desktop docs for the PR list.
     - `HARNESS_CAPABILITIES.md` checked against the verified results.
-16. 🌿 **Verify and retire.** Run the matrix below, record it, and move the plan
+17. 🌿 **Verify and retire.** Run the matrix below, record it, and move the plan
     to `completed/`.
 
 **Dependencies:**
@@ -688,11 +769,12 @@ count additions plus deletions, excluding generated files unless noted.
 - Step 11 needs 10.
 - Step 12 needs 7.
 - Step 13 needs 3 and 12.
-- Step 14 needs 3 (it is plugin-only and can run any time after it; live
+- Step 14 needs 13.
+- Step 15 needs 3 (it is plugin-only and can run any time after it; live
   verification of the PR monitor on OpenCode needs 7).
-- Steps 15 and 16 come last.
+- Steps 16 and 17 come last.
 
-Steps 6, 7 and 8 are the ones likeliest to exceed 1,500 lines. Each splits
+Steps 6, 7, 8 and 14 are the ones likeliest to exceed 1,500 lines. Each splits
 cleanly (for example 6.a feedback builder, 7.a delivery and restart) without
 asking.
 
@@ -727,14 +809,22 @@ asking.
   - OpenCode: two sessions in one folder each call with their own bound
     grant, so reports land in the right session; closing the socket removes
     the tools.
-- **`configure_pr_monitor`.** Widening shows the card and applies on Allow. A
-  YOLO session still shows it. Narrowing applies at once.
+- **`configure_pr_monitor`.** Widening shows the card and applies on Allow.
+  With YOLO on, it applies with no card. Narrowing applies at once.
 - **App, headless iOS simulator only:**
-  - the chip with only watches and with a wake-up too;
-  - the menu, and Stop watching;
-  - the row mark against a timed armed mark;
+  - the chip with only watches and with a wake-up too, and opening the
+    session-filtered sheet from it;
+  - the row mark (lead PR plus `+N`) against a timed armed mark;
+  - the top-bar button appearing and disappearing without moving the other
+    buttons, the red count only for needs-you, and the count rolling;
+  - the sheet's groups, tap to session, swipe Auto-merge and Stop, a row
+    changing state in place while open and regrouping on the next open, and
+    Merged today until midnight;
+  - the other-computers rows;
   - the settings toggles and their round trip;
-  - an older-bridge fixture shows no section and no chip.
+  - an older-bridge fixture shows no section, no chip and no button.
+- **Desktop:** the "Pull requests" sidebar row under Scheduled opens the
+  list. This runs on the desktop shell, because the row is desktop-only.
 - **Material failure signals:**
   - A report is duplicated, delivered to the wrong session, or lost on an
     ordinary restart.
@@ -760,7 +850,7 @@ asking.
   - It gains Pi's deferred-tools and instructions result.
   - It gains a PR-monitor paragraph like the wake-ups one: delivery timing
     per harness, and Copilot's permission prompts.
-  - OpenCode's client-MCP relay and its limitations (step 14), and that
+  - OpenCode's chosen mechanism and its limitations (step 15), and that
     OpenCode and Hermes have no skill seam, so `get_guide` is their only
     guide path.
 - `bridge/README.md` and `bridge/app/README.md`: the `config tool-group`
@@ -773,10 +863,10 @@ asking.
     replaced in step 2.
   - The duplicated `update_task` text goes in step 3.
 - **Outside this repository, after phase 1:**
-  - The plugin stays for non-Sesori use, and for OpenCode until step 14.
-    Its retirement is Q4.
+  - The plugin stays for non-Sesori sessions (owner decision), and for
+    OpenCode until step 15.
   - This repository's `.pr-monitor.json` serves only the plugin, so it stays
-    until Q4 decides.
+    while the plugin does.
   - The owner's global instructions name `pr_monitor` actions and
     `await-activity.mjs` in the merge gate. They need rewording to the new
     tool names once the owner switches. That is the owner's own file, so the
@@ -790,8 +880,8 @@ asking.
   per minute is far under the limit for realistic counts. Status shows the
   count. Webhooks are the later fix.
 - **Two monitors in one session** while the plugin is still installed. The
-  guide says to use Sesori's tools when both are present. Q4 decides the
-  plugin's future.
+  guide says to use Sesori's tools when both are present. The plugin is kept
+  for non-Sesori sessions.
 - **A stale skill after a toggle** on process-wide seams. Its text tells the
   agent to skip it when the tools are absent.
 - **Readiness retry and stuck state reset on restart.** At most one extra
@@ -814,17 +904,35 @@ asking.
 - Skills are injected where the harness allows, with a `get_guide`-style
   fallback. Descriptions and skills say plainly when to use them.
 - The app shows a per-session mark that reuses the arming mark path and the
-  wake-up chip. A list of watched PRs across sessions comes later, with its UI
-  to be decided on a review page.
+  wake-up chip. A session with several PRs shows the PR that needs attention
+  most plus "+N" on its row; the composer chip shows the count and opens the
+  list filtered to that session.
+- The watched-PR list is option B, in phase 1 as its own step: the home
+  top-bar button (shown only while a PR is watched, red rolling count only
+  when something needs the user), the grouped sheet (Needs you, Waiting,
+  Ready, Merged today), tap to the session, swipe for Auto-merge and Stop,
+  in-place updates and regroup on next open, and a desktop "Pull requests"
+  sidebar row under Scheduled. Phase 1 lists this computer's PRs plus a
+  `<computer> · N watched · Switch` row for each other computer.
+- The red count covers CI failure, conflict and new review comments, plus
+  Ready PRs whose auto-merge is off. Merged PRs stay listed until the end of
+  the day.
 - Auto-merge keeps the per-PR opt-in.
 - A `configure` tool sets auto-merge globally or per repo, and changes
-  timeouts.
+  timeouts. Only widening auto-merge shows an Allow card, and YOLO skips the
+  card. Narrowing and timeouts apply directly; per-PR opt-in needs no Allow.
+- Auto-merge defaults to off everywhere, with no import or migration of the
+  plugin's config or `.pr-monitor.json`.
+- New groups are on by default, the PR monitor included.
+- The `pr-monitor` plugin is kept for non-Sesori sessions.
 - OpenCode and Hermes are to be supported. Research (verified live): Hermes
-  works with per-session tokens from 0.22.3 and ships in a separate PR;
-  OpenCode uses its client-MCP WebSocket relay (step 14). The runner-up,
+  works with per-session tokens from 0.22.3 and ships in a separate PR.
+  OpenCode's mechanism is pending research (step 15): the owner prefers
+  config at launch, scoped to the process the bridge starts, over the
+  verified client-MCP WebSocket relay. A third option,
   `PUT /api/experimental/mcp/sesori_bridge` with one token and a new
-  `_meta`-resolving grant type, was not chosen because it needs a bridge
-  grant change.
+  `_meta`-resolving grant type, ranks last because it needs a bridge grant
+  change.
 
 **Engineering (open to veto):**
 
@@ -855,28 +963,13 @@ asking.
 
 ## Open questions
 
-- **Q1. Does an agent's `configure_pr_monitor` need the user's Allow?**
-  Recommended: yes, only for changes that widen auto-merge (the global
-  default or a repo override turned on). YOLO never answers it, as for task
-  changes. Narrowing changes and timeouts apply at once, and per-PR opt-in
-  stays without Allow, as today.
-- **Q2. What is the starting auto-merge default?** Recommended: off, without
-  importing the plugin's `~/.config/pr-monitor/config.json` or this
-  repository's `.pr-monitor.json` (both say on today). The agent or the user
-  can turn it on through `configure_pr_monitor`.
-- **Q3. Are new groups on by default, the PR monitor included?** Recommended:
-  yes. The bridge calls `gh` only for PRs an agent asks it to watch.
-- **Q4. What happens to the `pr-monitor` plugin?** Recommended: keep
-  publishing it for non-Sesori sessions, and for OpenCode until step 14.
-  Its README gains "Inside Sesori sessions, Sesori's built-in PR monitor
-  replaces this plugin". Retirement is decided once parity lands.
-- **Q5. On OpenCode, may sessions outside Sesori see Sesori's tools?**
-  OpenCode's client-MCP attaches per folder, so a TUI session in a folder
-  Sesori has open lists them too. The plugin finds no Sesori session for
-  that call's session id, so it answers with a clear "only available in
-  Sesori sessions" error and mints nothing.
-  Recommended: accept it and say so in `HARNESS_CAPABILITIES.md`. The
-  alternative is no Sesori tools on OpenCode at all.
+All of the first round were answered by the owner on 2026-11-25 (recorded
+under Decisions). One item stays open:
+
+- **OpenCode mechanism (step 15):** config at launch, scoped to the
+  bridge-launched process, versus the client-MCP WebSocket. Research is
+  checking whether config at launch works without editing the user's config
+  file. It is settled when step 15 starts.
 
 ## Architecture plan review
 
@@ -908,7 +1001,7 @@ All were valid and applied without re-review:
 12. `toolGroups` uses `@Default([])` instead of nullable.
 13. Corrected the wake-up republish precedent (`armingUpdated`).
 
-Step 14 (OpenCode) was added after the review, from the separate research.
+The OpenCode step (now step 15) was added after the review, from the separate research.
 It changes only `sesori_plugin_opencode`, with no new bridge or interface
 contract.
 
@@ -922,9 +1015,9 @@ contract.
   extends the grant's group set per session.
 - **Out-of-process community tool plugins** behind the same interface. Why:
   third-party groups without shipping them in the bridge.
-- **A list of every watched PR across sessions,** with its UI and access
-  point to be decided on a review page. Why: one place to see and stop what
-  the bridge is watching.
+- **Live PRs from every computer in one list**, instead of the phase-1
+  "N watched · Switch" rows. Why: one place for everything, without
+  switching computers.
 - **App editing of PR-monitor config,** if the agent-only `configure` proves
   insufficient. Why: humans and agents should use the same API.
 - **Harness parity follow-ups** for Cursor and Antigravity once their MCP
