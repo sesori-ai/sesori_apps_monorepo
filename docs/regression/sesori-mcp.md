@@ -10,8 +10,9 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-Claude Code sessions, Codex threads and Pi, Oh My Pi, Grok and GitHub Copilot sessions get the server. Antigravity,
-Hermes and Cursor stay off until a live check passes, and OpenCode and DeepSeek have no per-session seam for it; their
+Claude Code sessions, Codex threads and Pi, Oh My Pi, Grok and GitHub Copilot sessions get the server. Antigravity
+and Cursor stay off until a live check passes, Hermes stays off until a Hermes release fixes the user's own MCP
+servers in sessions that get one ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)), and OpenCode and DeepSeek have no per-session seam for it; their
 checks run headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 
 | Tool | Effect |
@@ -277,8 +278,9 @@ task to its start and compare it with the app's view of the session. Use fixture
 ## Known Limitations
 
 - Only Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot inject the server, as recorded in
-  [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity, Hermes and Cursor stay off until a live check
-  passes; OpenCode has no per-session seam; DeepSeek's adapter rejects MCP servers.
+  [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity and Cursor stay off until a live check passes;
+  Hermes stays off because a session given Sesori's server loses the user's own `config.yaml` MCP servers on 0.23.4
+  and older ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)); OpenCode has no per-session seam; DeepSeek's adapter rejects MCP servers.
 - `update_task` and the scheduled-run note ask agents to leave out every field they are not changing, but a model
   that fills every schema field (seen with the OpenAI-compatible test provider through Claude Code and Copilot) can
   still send a whole `schedule` object when only the prompt should change. The request lists every field that
