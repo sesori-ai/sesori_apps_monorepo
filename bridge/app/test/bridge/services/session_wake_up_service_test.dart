@@ -73,7 +73,13 @@ void main() {
     required SessionWakeUpService service,
     required WakeUpRequestedTime when,
   }) async {
-    final result = await service.schedule(caller: _caller, label: "Check", prompt: "Look at CI", when: when, timeZone: null);
+    final result = await service.schedule(
+      caller: _caller,
+      label: "Check",
+      prompt: "Look at CI",
+      when: when,
+      timeZone: null,
+    );
     return switch (result) {
       WakeUpScheduled(:final wakeUp) => wakeUp,
       WakeUpRefused(:final reason) => fail("refused: $reason"),

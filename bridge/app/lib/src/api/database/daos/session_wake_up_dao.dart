@@ -45,8 +45,7 @@ class SessionWakeUpDao({required AppDatabase database})
 
   /// Deletes wake-up [id] when it belongs to [sessionId]; true when it did.
   Future<bool> deleteSessionWakeUp({required String id, required String sessionId}) async {
-    final statement = delete(sessionWakeUpsTable)
-      ..where((row) => row.id.equals(id) & row.sessionId.equals(sessionId));
+    final statement = delete(sessionWakeUpsTable)..where((row) => row.id.equals(id) & row.sessionId.equals(sessionId));
     return await statement.go() > 0;
   }
 

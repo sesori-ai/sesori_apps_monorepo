@@ -10,7 +10,8 @@ String? readLocalTimeZone({required Map<String, String> environment}) {
   if (configured != null && configured.isNotEmpty && !configured.startsWith("/")) return configured;
   if (Platform.isWindows) return null;
   try {
-    final target = File(configured == null || configured.isEmpty ? "/etc/localtime" : configured).resolveSymbolicLinksSync();
+    final target = File(configured == null || configured.isEmpty ? "/etc/localtime" : configured)
+        .resolveSymbolicLinksSync();
     const marker = "/zoneinfo/";
     final index = target.indexOf(marker);
     return index < 0 ? null : target.substring(index + marker.length);
