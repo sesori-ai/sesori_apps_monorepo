@@ -55,12 +55,59 @@ void main() {
       [
         "Project: repo",
         "**Update “Nightly”**",
-        "Schedule: daily at 02:00 (UTC) → Monday to Friday at 08:30 (UTC)",
-        "New prompt:",
-        "```\nCheck the build and the tests\n```",
+        "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
+        "Prompt changes:",
+        "```diff\n-Check the build\n+Check the build and the tests\n```",
         "Asked by a scheduled run of this task.",
       ],
     );
+  });
+
+  test("a prompt change shows its changed lines with two unchanged lines around each", () {
+    final before = _task.copyWith(
+      prompt: const ScheduledTaskPrompt.text(text: "1\n2\n3\n```\nold\n6\n7\n8\n9\n10\n11\nold"),
+    );
+    final after = before.copyWith(
+      prompt: const ScheduledTaskPrompt.text(text: "1\n2\n3\n```\nnew\nadded\n6\n7\n8\n9\n10\n11"),
+    );
+
+    final lines = blocks(
+      change: UpdateTaskChange(taskId: "t", before: before, after: after),
+    );
+
+    // The unchanged " ```" line cannot close the block: its fence is longer.
+    expect(
+      lines[lines.length - 2],
+      [
+        "````diff",
+        "@@ 2 unchanged lines @@",
+        " 3",
+        " ```",
+        "-old",
+        "+new",
+        "+added",
+        " 6",
+        " 7",
+        "@@ 2 unchanged lines @@",
+        " 10",
+        " 11",
+        "-old",
+        "````",
+      ].join("\n"),
+    );
+  });
+
+  test("a prompt whose text stays the same but whose kind changes shows the new prompt", () {
+    final command = _task.copyWith(
+      prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.command, arguments: null),
+    );
+    final text = _task.copyWith(prompt: const ScheduledTaskPrompt.text(text: "/review"));
+
+    final lines = blocks(
+      change: UpdateTaskChange(taskId: "t", before: command, after: text),
+    );
+
+    expect(lines.sublist(2, 4), ["New prompt:", "```\n/review\n```"]);
   });
 
   test("a create or update that ends in Approve everything opens with the warning", () {

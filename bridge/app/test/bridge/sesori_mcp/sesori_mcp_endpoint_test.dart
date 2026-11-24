@@ -691,7 +691,7 @@ void main() {
       expect(result.isError, isFalse, reason: result.text);
       expect(
         asked().description,
-        "Project: repo\n\n**Update “Morning summary”**\n\nNew prompt:\n\n```\nSummarize the week\n```\n\n"
+        "Project: repo\n\n**Update “Morning summary”**\n\nPrompt changes:\n\n```diff\n-Summarize yesterday\n+Summarize the week\n```\n\n"
         "Asked by a scheduled run of this task.",
       );
     });
