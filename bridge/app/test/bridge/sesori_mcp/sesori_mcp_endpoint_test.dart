@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
 import "package:sesori_bridge/src/repositories/agent_page_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
+import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
@@ -29,6 +30,7 @@ import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
 import "package:sesori_bridge/src/services/session_wake_up_description_builder.dart";
 import "package:sesori_bridge/src/services/session_wake_up_service.dart";
+import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -38,6 +40,7 @@ import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/fakes/wake_up_command_fakes.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 
@@ -78,6 +81,8 @@ void main() {
   late AgentPageRepository pages;
   late List<AgentApprovalEvent> approvalEvents;
   late SessionWakeUpRepository wakeUps;
+  late FakeAutoApproval autoApproval;
+  late RecordingScheduledCommands commands;
   var nextId = 1;
 
   setUpAll(tz_data.initializeTimeZones);
@@ -112,6 +117,23 @@ void main() {
     final approvalSubscription = approvals.events.listen(approvalEvents.add);
     addTearDown(approvalSubscription.cancel);
     runner = _FakeRunService();
+    notices = RecordingSessionNotices();
+    autoApproval = FakeAutoApproval();
+    commands = RecordingScheduledCommands();
+    final wakeUpService = SessionWakeUpService(
+      mutations: RecordingArmingMutations(),
+      wakeUps: wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
+      sessions: sessions,
+      calculator: const ScheduledTaskOccurrenceCalculator(),
+      notices: notices,
+      descriptions: const SessionWakeUpDescriptionBuilder(),
+      autoApproval: autoApproval,
+      approvals: approvals,
+      commandDescriptions: const WakeUpCommandDescriptionBuilder(),
+      commands: commands,
+      localTimeZone: () => "Europe/Bucharest",
+      clock: Clock(() => now),
+    );
     agent = ScheduledTaskAgentService(
       tasks: tasks,
       runner: runner,
@@ -127,22 +149,14 @@ void main() {
       history: history.service,
       approvals: approvals,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
-      notices: notices = RecordingSessionNotices(),
+      notices: notices,
+      wakeUps: wakeUpService,
     );
     final dispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: grants, sessions: sessions),
       agent: agent,
       formatter: const SesoriMcpResultFormatter(),
-      wakeUps: SessionWakeUpService(
-        mutations: RecordingArmingMutations(),
-        wakeUps: wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
-        sessions: sessions,
-        calculator: const ScheduledTaskOccurrenceCalculator(),
-        notices: notices,
-        descriptions: const SessionWakeUpDescriptionBuilder(),
-        localTimeZone: () => "Europe/Bucharest",
-        clock: Clock(() => now),
-      ),
+      wakeUps: wakeUpService,
       pages: () {
         final imagesRoot = Directory.systemTemp.createTempSync("page_images_test_");
         addTearDown(() => imagesRoot.deleteSync(recursive: true));
@@ -263,6 +277,7 @@ void main() {
   Future<AgentApprovalOutcome> answer({required String requestId, required PermissionReply reply}) async =>
       switch (await agent.settle(requestId: requestId, reply: reply)) {
         AgentApprovalAnswered(:final outcome) => outcome,
+        WakeUpCommandAnswered() => fail("$requestId is a wake-up command approval"),
         NotAgentApproval() => fail("$requestId is not an agent approval"),
       };
 
@@ -1618,6 +1633,49 @@ void main() {
         contains("label is longer than"),
       );
       expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+    });
+
+    group("with a command", () {
+      Future<({String text, bool isError})> scheduleCommand() => call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Tests",
+          "prompt": "Read the result",
+          "when": {"kind": "in", "minutes": 30},
+          "command": "dart test",
+        },
+      );
+
+      test("asks the user first, and their Allow stores it", () async {
+        final result = await scheduleCommand();
+
+        expect(result.isError, isFalse, reason: result.text);
+        expect(result.text, contains("Sent to the user for approval"));
+        expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+        final asked = approvalEvents.whereType<AgentApprovalAsked>().single.permission;
+        expect(asked.sessionID, "s1");
+        expect(asked.description, contains("dart test"));
+
+        expect(await agent.settle(requestId: asked.id, reply: PermissionReply.once), isA<WakeUpCommandAnswered>());
+        final stored = (await wakeUps.forSession(sessionId: "s1")).single;
+        expect(stored.command?.command, "dart test");
+        expect(stored.command?.approval, WakeUpCommandApproval.allowed);
+        await pumpEventQueue();
+        expect(notices.delivered.single.notice.summary, contains("You allowed the wake-up"));
+      });
+
+      test("is stored at once while the session approves everything", () async {
+        autoApproval.yoloSessionIds.add("s1");
+
+        final result = await scheduleCommand();
+
+        expect(result.isError, isFalse, reason: result.text);
+        expect(result.text, contains("runs the command"));
+        expect(approvalEvents, isEmpty);
+        final stored = (await wakeUps.forSession(sessionId: "s1")).single;
+        expect(stored.command?.approval, WakeUpCommandApproval.byMode);
+        expect((await call(tool: "list_wakeups", arguments: {})).text, contains("runs a command first"));
+      });
     });
 
     test("a sub-agent's wake-up belongs to its root session, which lists and cancels it", () async {

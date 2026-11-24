@@ -176,6 +176,9 @@ sealed class ScheduleWakeUpArguments with _$ScheduleWakeUpArguments {
 
     /// Null for the bridge computer's zone.
     @JsonKey(name: "time_zone") required String? timeZone,
+
+    /// A shell command run right before the prompt is sent.
+    required String? command,
   }) = _ScheduleWakeUpArguments;
 
   factory fromJson(Map<String, dynamic> json) => _$ScheduleWakeUpArgumentsFromJson(json);

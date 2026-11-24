@@ -19,6 +19,7 @@ class SessionDeletionService({
   required final PromptUploadRepository _promptUploadRepository,
   required final PromptUploadRepository _transcriptRepository,
   required final PromptUploadRepository _pageImageRepository,
+  required final PromptUploadRepository _commandOutputRepository,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
@@ -44,9 +45,10 @@ class SessionDeletionService({
         );
         await _purgeHistory(deleted.sessionIds);
         // Not awaited: the family lock must not be held while large folders
-        // are removed. The uploads, the transcripts sent into the family and
-        // the images its agents sent on pages go on every delete, because
-        // they are Sesori's copies and not the user's project files.
+        // are removed. The uploads, the transcripts sent into the family, the
+        // images its agents sent on pages and the output of its wake-up
+        // commands go on every delete, because they are Sesori's copies and
+        // not the user's project files.
         final sessionIds = deleted.sessionIds;
         unawaited(
           _deleteSessionCopies(repository: _promptUploadRepository, files: "prompt uploads", sessionIds: sessionIds),
@@ -55,6 +57,9 @@ class SessionDeletionService({
           _deleteSessionCopies(repository: _transcriptRepository, files: "transcripts", sessionIds: sessionIds),
         );
         unawaited(_deleteSessionCopies(repository: _pageImageRepository, files: "page images", sessionIds: sessionIds));
+        unawaited(
+          _deleteSessionCopies(repository: _commandOutputRepository, files: "command output", sessionIds: sessionIds),
+        );
         if (deleteSessionFolder) {
           unawaited(_deleteSessionFolder(deleted: deleted));
         }

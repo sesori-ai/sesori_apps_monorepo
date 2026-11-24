@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../repositories/models/sesori_mcp_caller.dart";
+import "../../repositories/models/session_wake_up.dart";
 import "../../services/agent_page_service.dart";
 import "../../services/scheduled_task_agent_service.dart";
 import "../../services/sesori_mcp_access_service.dart";
@@ -272,6 +273,7 @@ class SesoriMcpRequestDispatcher({
             prompt: _requiredText(value: args.prompt, field: "prompt"),
             when: _wakeUpTime(when: args.when),
             timeZone: _optionalText(value: args.timeZone),
+            command: _optionalText(value: args.command),
           ),
         );
       case SesoriMcpTool.listWakeUps:
@@ -298,6 +300,12 @@ class SesoriMcpRequestDispatcher({
   _ToolOutcome _wakeUpScheduled({required WakeUpScheduleResult result}) {
     return switch (result) {
       WakeUpScheduled(:final wakeUp) => _ToolOutcome(isError: false, text: _formatter.wakeUpScheduled(wakeUp: wakeUp)),
+      WakeUpAwaitingApproval() => const _ToolOutcome(
+        isError: false,
+        text:
+            "Sent to the user for approval, because it runs a command. Nothing is set unless they allow it. "
+            "$_answerFollows End your turn now; don't wait or poll.",
+      ),
       WakeUpRefused(:final reason) => _ToolOutcome(
         isError: true,
         text: switch (reason) {

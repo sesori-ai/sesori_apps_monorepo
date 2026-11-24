@@ -1,8 +1,12 @@
 import "dart:async";
+import "dart:math";
 
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval_change.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_mcp_caller.dart";
 import "package:sesori_bridge/src/repositories/models/session_notice.dart";
 import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
@@ -13,12 +17,14 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_bridge/src/services/session_wake_up_description_builder.dart";
 import "package:sesori_bridge/src/services/session_wake_up_service.dart";
+import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
 import "../../helpers/arming_test_support.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/fakes/wake_up_command_fakes.dart";
 import "../../helpers/test_database.dart";
 
 const _caller = SesoriMcpCaller(sessionId: "s1");
@@ -28,19 +34,27 @@ void main() {
   late SessionRepository sessions;
   late SessionWakeUpRepository wakeUps;
   late _Notices notices;
+  late FakeAutoApproval autoApproval;
+  late AgentApprovalRepository approvals;
+  late List<AgentApproval> asked;
+  late RecordingScheduledCommands commands;
   late RecordingArmingMutations mutations;
   late DateTime now;
 
   setUpAll(tz_data.initializeTimeZones);
 
-  SessionWakeUpService buildService() => SessionWakeUpService(
+  SessionWakeUpService buildService({String? Function()? localTimeZone}) => SessionWakeUpService(
     mutations: mutations,
     wakeUps: wakeUps,
     sessions: sessions,
     calculator: const ScheduledTaskOccurrenceCalculator(),
     notices: notices,
     descriptions: const SessionWakeUpDescriptionBuilder(),
-    localTimeZone: () => "Europe/Bucharest",
+    autoApproval: autoApproval,
+    approvals: approvals,
+    commandDescriptions: const WakeUpCommandDescriptionBuilder(),
+    commands: commands,
+    localTimeZone: localTimeZone ?? () => "Europe/Bucharest",
     clock: Clock(() => now),
   );
 
@@ -55,6 +69,18 @@ void main() {
     );
     wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db));
     notices = _Notices();
+    autoApproval = FakeAutoApproval();
+    approvals = AgentApprovalRepository(random: Random(1));
+    addTearDown(approvals.dispose);
+    asked = [];
+    final subscription = approvals.events.listen((event) {
+      if (event case AgentApprovalAsked(:final permission)) {
+        // Takes the approval as the reply handler would, keeping it to answer.
+        asked.add(approvals.take(requestId: permission.id, reply: PermissionReply.once) ?? fail("not pending"));
+      }
+    });
+    addTearDown(subscription.cancel);
+    commands = RecordingScheduledCommands();
     mutations = RecordingArmingMutations();
     now = DateTime.utc(2026, 11, 15, 10);
     await insertTestSession(
@@ -76,6 +102,7 @@ void main() {
   Future<StoredSessionWakeUp> schedule({
     required SessionWakeUpService service,
     required WakeUpRequestedTime when,
+    String? command,
   }) async {
     final result = await service.schedule(
       caller: _caller,
@@ -83,9 +110,11 @@ void main() {
       prompt: "Look at CI",
       when: when,
       timeZone: null,
+      command: command,
     );
     return switch (result) {
       WakeUpScheduled(:final wakeUp) => wakeUp,
+      WakeUpAwaitingApproval() => fail("awaits approval"),
       WakeUpRefused(:final reason) => fail("refused: $reason"),
     };
   }
@@ -234,16 +263,7 @@ void main() {
   });
 
   test("a calendar wake-up is refused when the bridge cannot tell its zone", () async {
-    final service = SessionWakeUpService(
-      mutations: mutations,
-      wakeUps: wakeUps,
-      sessions: sessions,
-      calculator: const ScheduledTaskOccurrenceCalculator(),
-      notices: notices,
-      descriptions: const SessionWakeUpDescriptionBuilder(),
-      localTimeZone: () => null,
-      clock: Clock(() => now),
-    );
+    final service = buildService(localTimeZone: () => null);
 
     final result = await service.schedule(
       caller: _caller,
@@ -251,9 +271,218 @@ void main() {
       prompt: "Summarize",
       when: const WakeUpOnSchedule(schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0))),
       timeZone: null,
+      command: null,
     );
 
     expect(result, isA<WakeUpRefused>().having((refused) => refused.reason, "reason", WakeUpRefusal.timeZoneNeeded));
+  });
+
+  group("a wake-up with a command", () {
+    WakeUpCommandChange askedCommand() => switch (asked.single.change) {
+      final WakeUpCommandChange change => change,
+      final other => fail("asked for $other"),
+    };
+
+    test("is stored at once while the session approves everything, and runs before its prompt", () async {
+      autoApproval.yoloSessionIds.add("s1");
+      final service = buildService();
+      final wakeUp = await schedule(service: service, when: const WakeUpInMinutes(minutes: 5), command: "make check");
+      expect(wakeUp.command?.approval, WakeUpCommandApproval.byMode);
+      expect(asked, isEmpty);
+
+      // The one-shot's row is gone while its command runs.
+      bool? existedDuringCommand;
+      commands.beforeResult = () async => existedDuringCommand = await wakeUps.exists(id: wakeUp.id);
+      now = now.add(const Duration(minutes: 5));
+      await service.runDue();
+      await pumpEventQueue();
+
+      expect(commands.runs.single, (outputKey: "s1", command: "make check", workingDirectory: "/repo"));
+      expect(existedDuringCommand, isFalse);
+      final guidance = notices.sent.single.notice.guidance;
+      expect(guidance, contains("Before this message, Sesori ran your command in /repo:"));
+      expect(guidance, contains("command exited 0"));
+    });
+
+    test("outside Approve everything waits for the user's Allow, its first time counted from it", () async {
+      final service = buildService();
+      final result = await service.schedule(
+        caller: _caller,
+        label: "Check",
+        prompt: "Look at CI",
+        when: const WakeUpInMinutes(minutes: 5),
+        timeZone: null,
+        command: "make check",
+      );
+      expect(result, isA<WakeUpAwaitingApproval>());
+      await pumpEventQueue();
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+      final change = askedCommand();
+      expect(change, isA<ScheduleCommandWakeUp>());
+      expect(asked.single.description, contains("make check"));
+
+      now = now.add(const Duration(minutes: 3));
+      await service.applyCommandApproval(change: change, reply: PermissionReply.once);
+      await pumpEventQueue();
+
+      final stored = (await wakeUps.forSession(sessionId: "s1")).single;
+      expect(stored.command?.command, "make check");
+      expect(stored.command?.approval, WakeUpCommandApproval.allowed);
+      expect(stored.nextDueAt, DateTime.utc(2026, 11, 15, 10, 8));
+      expect(notices.sent.single.notice.summary, contains("You allowed the wake-up"));
+    });
+
+    test("from a sub-agent asks unless Approve everything covers it as well as its root", () async {
+      await insertTestSession(
+        db: db,
+        sessionId: "s2",
+        backendSessionId: "backend-s2",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 2,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await db.sessionDao.setParentSessionId(sessionId: "s2", parentSessionId: "s1");
+      autoApproval.yoloSessionIds.add("s1");
+      final service = buildService();
+
+      final result = await service.schedule(
+        caller: const SesoriMcpCaller(sessionId: "s2"),
+        label: "Check",
+        prompt: "Look at CI",
+        when: const WakeUpInMinutes(minutes: 5),
+        timeZone: null,
+        command: "make check",
+      );
+      await pumpEventQueue();
+
+      expect(result, isA<WakeUpAwaitingApproval>());
+      expect(asked.single.displaySessionId, "s1");
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+    });
+
+    test("that the user rejects is not stored, and the session hears it", () async {
+      final service = buildService();
+      await service.schedule(
+        caller: _caller,
+        label: "Check",
+        prompt: "Look at CI",
+        when: const WakeUpInMinutes(minutes: 5),
+        timeZone: null,
+        command: "make check",
+      );
+      await pumpEventQueue();
+
+      await service.applyCommandApproval(
+        change: askedCommand(),
+        reply: PermissionReply.reject,
+      );
+      await pumpEventQueue();
+
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+      expect(notices.sent.single.notice.summary, contains("didn’t allow"));
+    });
+
+    group("set under Approve everything, once the session left it", () {
+      late SessionWakeUpService service;
+      late StoredSessionWakeUp wakeUp;
+
+      setUp(() async {
+        autoApproval.yoloSessionIds.add("s1");
+        service = buildService();
+        wakeUp = await schedule(service: service, when: const WakeUpEveryMinutes(minutes: 5), command: "make check");
+        autoApproval.yoloSessionIds.clear();
+        now = now.add(const Duration(minutes: 5));
+        await service.runDue();
+        await pumpEventQueue();
+      });
+
+      test("asks before the command runs and skips later times meanwhile", () async {
+        expect(commands.runs, isEmpty);
+        expect(notices.sent, isEmpty);
+        expect(
+          askedCommand(),
+          isA<ConfirmByModeCommand>().having((change) => change.wakeUp.id, "wakeUp.id", wakeUp.id),
+        );
+
+        now = now.add(const Duration(minutes: 5));
+        await service.runDue();
+        await pumpEventQueue();
+        expect(asked, hasLength(1));
+      });
+
+      test("an Allow runs it now and later times run without asking", () async {
+        await service.applyCommandApproval(
+          change: askedCommand(),
+          reply: PermissionReply.once,
+        );
+        await pumpEventQueue();
+        expect(commands.runs, hasLength(1));
+        expect(notices.sent, hasLength(1));
+        expect((await wakeUps.forSession(sessionId: "s1")).single.command?.approval, WakeUpCommandApproval.allowed);
+
+        now = now.add(const Duration(minutes: 5));
+        await service.runDue();
+        await pumpEventQueue();
+        expect(commands.runs, hasLength(2));
+        expect(asked, hasLength(1));
+      });
+
+      test("a Reject cancels the wake-up and tells the session", () async {
+        await service.applyCommandApproval(
+          change: askedCommand(),
+          reply: PermissionReply.reject,
+        );
+        await pumpEventQueue();
+
+        expect(commands.runs, isEmpty);
+        expect(await wakeUps.exists(id: wakeUp.id), isFalse);
+        expect(notices.sent.single.notice.summary, contains("so it is cancelled"));
+      });
+    });
+
+    test("of an archived session is removed without running its command", () async {
+      autoApproval.yoloSessionIds.add("s1");
+      final service = buildService();
+      final wakeUp = await schedule(
+        service: service,
+        when: const WakeUpEveryMinutes(minutes: 5),
+        command: "make check",
+      );
+      await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+      now = now.add(const Duration(minutes: 5));
+
+      await service.runDue();
+      await pumpEventQueue();
+
+      expect(commands.runs, isEmpty);
+      expect(notices.sent, isEmpty);
+      expect(await wakeUps.exists(id: wakeUp.id), isFalse);
+    });
+
+    test("a repeating one moves to its next time before its command runs", () async {
+      autoApproval.yoloSessionIds.add("s1");
+      final service = buildService();
+      final wakeUp = await schedule(
+        service: service,
+        when: const WakeUpEveryMinutes(minutes: 5),
+        command: "make check",
+      );
+      DateTime? dueDuringCommand;
+      commands.beforeResult = () async =>
+          dueDuringCommand = (await wakeUps.forSession(sessionId: "s1")).single.nextDueAt;
+      now = now.add(const Duration(minutes: 5));
+
+      await service.runDue();
+      await pumpEventQueue();
+
+      expect(dueDuringCommand, wakeUp.nextDueAt.add(const Duration(minutes: 5)));
+    });
   });
 }
 

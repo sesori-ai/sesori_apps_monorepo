@@ -3,6 +3,10 @@ import "../repositories/models/session_wake_up.dart";
 import "scheduled_task_change_description_builder.dart";
 import "scheduled_task_occurrence_calculator.dart";
 
+/// A wake-up command that ran: its text, the folder it ran in, and the block
+/// that reports its result.
+typedef WakeUpCommandRun = ({String command, String workingDirectory, String result});
+
 /// Words for wake-ups, the same in tool results as in the notice a wake-up
 /// sends. Times read in the bridge computer's local time with their UTC
 /// offset.
@@ -32,10 +36,15 @@ class const SessionWakeUpDescriptionBuilder() {
   }
 
   /// What [wakeUp] sends when the bridge fires it at [firedAt] for its due
-  /// time. The user's line names only its label; the agent also reads when
-  /// it asked, how late the wake-up is when the bridge was off, whether it
-  /// repeats, and its prompt.
-  SessionNotice notice({required StoredSessionWakeUp wakeUp, required DateTime firedAt}) {
+  /// time, with the result of the command it [ran], if any. The user's line
+  /// names only its label; the agent also reads when it asked, how late the
+  /// wake-up is when the bridge was off, whether it repeats, its prompt, and
+  /// the command's result.
+  SessionNotice notice({
+    required StoredSessionWakeUp wakeUp,
+    required DateTime firedAt,
+    required WakeUpCommandRun? ran,
+  }) {
     final lateBy = firedAt.difference(wakeUp.nextDueAt);
     final repeats = this.repeats(schedule: wakeUp.schedule);
     return SessionNotice(
@@ -50,9 +59,20 @@ class const SessionWakeUpDescriptionBuilder() {
           "It repeats $repeats until you call cancel_wakeup with wakeup_id ${wakeUp.id}, so don't set it again.",
         "Your prompt:",
         wakeUp.prompt,
+        if (ran case (:final command, :final workingDirectory, :final result)) ...[
+          "",
+          "Before this message, Sesori ran your command in $workingDirectory:",
+          _fenced(text: command),
+          result,
+        ],
       ].join("\n"),
       pageRequestId: null,
     );
+  }
+
+  String _fenced({required String text}) {
+    final marker = ScheduledTaskChangeDescriptionBuilder.fence(text: text);
+    return "$marker\n$text\n$marker";
   }
 
   String _lateness({required Duration late}) {

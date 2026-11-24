@@ -8,6 +8,10 @@ abstract interface class StreamingProcess() {
 
   Future<int> get exitCode;
 
+  /// Ends the process's input, so a command that reads it sees end of file
+  /// instead of waiting.
+  Future<void> closeStdin();
+
   bool kill();
 }
 
@@ -52,6 +56,9 @@ final class _IoStreamingProcess(final Process _process) implements StreamingProc
 
   @override
   Future<int> get exitCode => _process.exitCode;
+
+  @override
+  Future<void> closeStdin() => _process.stdin.close();
 
   @override
   bool kill() => _process.kill();

@@ -2,8 +2,8 @@ import "dart:math";
 
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/agent_approval_change.dart";
 import "../repositories/models/agent_approval_outcome.dart";
-import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/session_notice.dart";
 
 /// Writes the Markdown a user reads before allowing an agent's task change,
@@ -47,12 +47,12 @@ class const ScheduledTaskChangeDescriptionBuilder() {
         "**Turns on Approve everything: this task's runs will act without asking you.**"
       else if (approvesEverything)
         "**Approve everything: this task's runs act without asking you.**",
-      "Project: ${_inline(text: projectName)}",
+      "Project: ${inline(text: projectName)}",
       ..._body(change: change),
       switch (requester) {
         RequestedByOwnRun() => "Asked by a scheduled run of this task.",
-        RequestedByTaskRun(:final taskName) => "Asked by a scheduled run of task ${_quoted(text: taskName)}.",
-        RequestedFromSession(:final title?) => "Asked from session ${_quoted(text: title)}.",
+        RequestedByTaskRun(:final taskName) => "Asked by a scheduled run of task ${quoted(text: taskName)}.",
+        RequestedFromSession(:final title?) => "Asked from session ${quoted(text: title)}.",
         RequestedFromSession(title: null) => "Asked from an untitled session.",
       },
     ].join("\n\n");
@@ -77,7 +77,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
       SetTaskEnabledChange(:final before, enabled: false) => ("pausing", before.name),
       RunTaskNowChange(:final before) => ("running", before.name),
     };
-    final request = "$action ${_quoted(text: name)}${change is RunTaskNowChange ? " now" : ""}";
+    final request = "$action ${quoted(text: name)}${change is RunTaskNowChange ? " now" : ""}";
     final (summary, guidance) = switch (outcome) {
       AgentApprovalCreated(:final taskId) => (
         "You allowed $request.",
@@ -151,21 +151,21 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     switch (change) {
       case CreateTaskChange(:final definition):
         return [
-          "**Create ${_quoted(text: definition.name)}**",
+          "**Create ${quoted(text: definition.name)}**",
           for (final field in _Field.values)
             if (field != _Field.name)
-              "${field.label}: ${_inline(
+              "${field.label}: ${inline(
                 text: _value(field: field, definition: definition),
               )}",
           ..._prompt(label: "Prompt", prompt: definition.prompt),
         ];
       case UpdateTaskChange(:final before, :final after):
         return [
-          "**Update ${_quoted(text: before.name)}**",
+          "**Update ${quoted(text: before.name)}**",
           for (final field in _Field.values)
             if (_value(field: field, definition: before) case final old
                 when old != _value(field: field, definition: after))
-              "${field.label}: ~~${_inline(text: old)}~~ → ${_inline(
+              "${field.label}: ~~${inline(text: old)}~~ → ${inline(
                 text: _value(field: field, definition: after),
               )}",
           if (before.prompt != after.prompt)
@@ -176,11 +176,11 @@ class const ScheduledTaskChangeDescriptionBuilder() {
             },
         ];
       case SetTaskEnabledChange(:final before, enabled: true):
-        return ["**Resume ${_quoted(text: before.name)}**", "Schedule: ${_inline(text: schedule(definition: before))}"];
+        return ["**Resume ${quoted(text: before.name)}**", "Schedule: ${inline(text: schedule(definition: before))}"];
       case SetTaskEnabledChange(:final before, enabled: false):
-        return ["**Pause ${_quoted(text: before.name)}**"];
+        return ["**Pause ${quoted(text: before.name)}**"];
       case RunTaskNowChange(:final before):
-        return ["**Run ${_quoted(text: before.name)} now**"];
+        return ["**Run ${quoted(text: before.name)} now**"];
     }
   }
 
@@ -219,8 +219,8 @@ class const ScheduledTaskChangeDescriptionBuilder() {
 
   List<String> _prompt({required String label, required ScheduledTaskPrompt prompt}) {
     final text = _promptText(prompt: prompt);
-    final fence = _fence(text: text);
-    return ["$label:", "$fence\n$text\n$fence"];
+    final marker = fence(text: text);
+    return ["$label:", "$marker\n$text\n$marker"];
   }
 
   String _promptText({required ScheduledTaskPrompt prompt}) => switch (prompt) {
@@ -262,8 +262,8 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     }
     flushSkipped();
     final text = out.join("\n");
-    final fence = _fence(text: text);
-    return ["Prompt changes:", "${fence}diff\n$text\n$fence"];
+    final marker = fence(text: text);
+    return ["Prompt changes:", "${marker}diff\n$text\n$marker"];
   }
 
   /// [before] turned into [after] through a longest common subsequence, as
@@ -298,7 +298,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   }
 
   /// A fence longer than any backtick run in [text], so the text stays verbatim.
-  String _fence({required String text}) {
+  static String fence({required String text}) {
     final longestRun = RegExp("`+").allMatches(text).fold(0, (longest, match) {
       final length = match.end - match.start;
       return length > longest ? length : longest;
@@ -306,10 +306,11 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     return "`" * (longestRun < 3 ? 3 : longestRun + 1);
   }
 
-  String _quoted({required String text}) => "“${_inline(text: text)}”";
+  /// [text] escaped by [inline], in curly quotes.
+  static String quoted({required String text}) => "“${inline(text: text)}”";
 
   /// [text] on one line with Markdown syntax escaped.
-  String _inline({required String text}) {
+  static String inline({required String text}) {
     return text
         .replaceAll(RegExp(r"\s+"), " ")
         .trim()

@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/repositories/models/scheduled_task_agent_change.dart";
+import "package:sesori_bridge/src/repositories/models/agent_approval_change.dart";
 import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
