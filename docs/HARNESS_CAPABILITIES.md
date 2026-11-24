@@ -1023,6 +1023,7 @@ shows its id and the agent pill is left out.
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
 | OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; a choice and its paired "other" text property render as one question with an "Other" field; the schema default arrives selected; other string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, OMP plugin, shared bridge contract, and widget tests pass; live `18.19.0` built-in `ask` roundtrip on 2026-11-12 through the headless iOS simulator: default accepted, another option, "Other" text and decline each reached OMP as sent |
+| GitHub Copilot | ✅ From `1.0.115`, `ask_user` arrives as an ACP form: string `enum`/`oneOf` choices, `items.anyOf` and `items.enum` arrays, booleans, numbers and free text render as question cards. Copilot tells its model every choice also takes a free-form answer, so each choice question offers custom text, sent as that property's own value (an extra array item for a multi-select). Earlier versions do not send `ask_user` over ACP | Mapper and Copilot plugin tests; live `1.0.115` ACP wire probe on 2026-11-24 (fixture model): choices, multi-selects, free text, off-list answers and decline each reached Copilot as sent. No on-device roundtrip yet |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.
