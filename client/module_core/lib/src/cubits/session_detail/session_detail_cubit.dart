@@ -2169,6 +2169,23 @@ class SessionDetailCubit(
     }
   }
 
+  /// Cancels one of the session's wake-ups. The session the bridge answers
+  /// with drops it; a failure keeps it and says why.
+  Future<void> cancelWakeUp({required String wakeUpId}) async {
+    if (isClosed) return;
+    try {
+      final updated = switch (await _sessionRepository.cancelWakeUp(sessionId: _sessionId, wakeUpId: wakeUpId)) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+    } on Object catch (error, stackTrace) {
+      loge("Failed to cancel wake-up $wakeUpId of session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailWakeUpCancelFailed());
+    }
+  }
+
   /// Asks the bridge to answer this session's permission requests in [mode].
   /// The acknowledged session carries the new override.
   Future<void> setApprovalMode({required SessionApprovalMode mode}) async {

@@ -275,6 +275,7 @@ Widget sessionRowApp({
   final rows = [
     AllSessionsRow(
       sending: null,
+      scheduledMark: const SessionScheduledMark.none(),
       session: session,
       project: project,
       isRunning: false,

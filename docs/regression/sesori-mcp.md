@@ -173,6 +173,11 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   the affected session. Older bridges omit both fields: no wake-ups and `unreported` arming, so the app keeps its
   plain task mark. `POST /session/wake-up/cancel` lets the user cancel any of a root session's wake-ups, repeating
   ones included, and answers with the updated session, also when the wake-up was already gone.
+- In the app, a session with wake-ups shows an alarm chip in its composer's model row, "Wakes <time>" for the
+  soonest one (the glyph alone on touch rows). The chip grows in beside the pickers as it fades up and folds away when
+  the last wake-up goes; nothing above the composer moves. Its menu lists each wake-up with its label, time, a repeat
+  or alarm glyph and a terminal glyph when it runs a command, and a Cancel button that closes the menu and cancels
+  it. A failed cancel says so and keeps the wake-up. Older bridges send no wake-ups, so the chip never offers them.
 - A run's final reply (`list_task_runs`) is the agent's last text in the newest turn a user prompt started, read from
   the newest 10 messages. A turn a notice started is skipped, so the agent's answer to a notice never replaces the
   run's reply and a Sesori row is never one. A later same-session run's reply replaces it.

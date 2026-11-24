@@ -61,6 +61,7 @@ Widget _buildApp({
             onFastModeChanged: (_) {},
             compact: compact,
             trailing: const [],
+            transientTrailing: null,
           ),
         ],
       ),
@@ -146,6 +147,7 @@ class _EffortHarnessState() extends State<_EffortHarness> {
     onFastModeChanged: (_) {},
     compact: widget.compact,
     trailing: const [],
+    transientTrailing: null,
   );
 }
 
@@ -232,6 +234,7 @@ Widget _buildFastModeApp({
             onFastModeChanged: onFastModeChanged,
             compact: false,
             trailing: const [],
+            transientTrailing: null,
           ),
         ],
       ),
@@ -716,6 +719,7 @@ void main() {
             onFastModeChanged: (_) {},
             compact: true,
             trailing: const [],
+            transientTrailing: null,
           ),
         ),
       ),
@@ -775,6 +779,7 @@ void main() {
                 onFastModeChanged: (_) {},
                 compact: compact,
                 trailing: [square("YOLO"), square("Auto-continue")].take(chips).toList(),
+                transientTrailing: null,
               ),
             ),
           ),

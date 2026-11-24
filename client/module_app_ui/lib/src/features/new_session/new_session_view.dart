@@ -305,6 +305,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         compact: compact,
         readOnly: readOnly,
         trailing: const [],
+        transientTrailing: null,
       ),
     );
   }

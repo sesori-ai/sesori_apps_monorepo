@@ -59,6 +59,10 @@ class SessionRepository({
     return _api.setAutoContinuation(sessionId: sessionId, enabled: enabled);
   }
 
+  Future<ApiResponse<Session>> cancelWakeUp({required String sessionId, required String wakeUpId}) {
+    return _api.cancelWakeUp(sessionId: sessionId, wakeUpId: wakeUpId);
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,

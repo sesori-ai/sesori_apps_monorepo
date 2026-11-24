@@ -92,6 +92,7 @@ Future<List<_Pick>> _pump(
                     compact: mode == PregoInteractionMode.pointer,
                     readOnly: readOnly,
                     trailing: trailing,
+                    transientTrailing: null,
                   ),
                 ),
               ),

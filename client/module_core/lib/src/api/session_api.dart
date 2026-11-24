@@ -339,6 +339,16 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Cancels one of a root session's wake-ups. The bridge answers with the
+  /// session, also when the wake-up was already gone.
+  Future<ApiResponse<Session>> cancelWakeUp({required String sessionId, required String wakeUpId}) {
+    return _client.post(
+      "/session/wake-up/cancel",
+      fromJson: Session.fromJson,
+      body: CancelSessionWakeUpRequest(sessionId: sessionId, wakeUpId: wakeUpId),
+    );
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,

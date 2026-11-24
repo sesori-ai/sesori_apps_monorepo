@@ -14,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "composer_chip_presence.dart";
 import "fast_mode_toggle.dart";
 import "model_effort/model_effort_chip.dart";
 import "model_effort/orbits_picker.dart";
@@ -63,6 +64,11 @@ class const AgentModelButtons({
   /// Status chips after the selectors, such as the session's YOLO chip. Keep
   /// them compact on touch, where the pickers share the remaining width.
   required final List<Widget> trailing,
+
+  /// A status chip after [trailing] that comes and goes while the composer is
+  /// up, such as the session's wake-ups, or null while there is none. It grows
+  /// in and folds away with its gap, so the pickers ease rather than jump.
+  required final Widget? transientTrailing,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
@@ -179,7 +185,15 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
       ?fastModeButton,
       for (final chip in widget.trailing) _pillHalo(reachesLayerBottom: false, child: chip),
     ];
-    final row = _pillRow(compact: compact, pills: selectors);
+    final transientTrailing = widget.transientTrailing;
+    final row = _pillRow(
+      compact: compact,
+      pills: selectors,
+      presence: ComposerChipPresence(
+        gap: _pillGap,
+        chip: transientTrailing == null ? null : _pillHalo(reachesLayerBottom: false, child: transientTrailing),
+      ),
+    );
     // Under a pointer they sit on the composer's action row, in its line.
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) return row;
@@ -264,7 +278,7 @@ class const ReadOnlyAgentModelPills({
     if (modelLabel == null && agentPill == null) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
-      child: _pillRow(compact: compact, pills: pills),
+      child: _pillRow(compact: compact, pills: pills, presence: null),
     );
   }
 }
@@ -274,9 +288,23 @@ class const ReadOnlyAgentModelPills({
 Widget _pillHalo({required bool reachesLayerBottom, required Widget child}) =>
     PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: reachesLayerBottom, child: child);
 
-/// Hugging pointer pills sit leading-aligned; touch pills fill the strip.
-Widget _pillRow({required bool compact, required List<Widget> pills}) {
-  final row = Row(mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max, spacing: 8, children: pills);
+const double _pillGap = 8;
+
+/// Hugging pointer pills sit leading-aligned; touch pills fill the strip. A
+/// [presence] ends the row with its own gap, so a chip coming or going there
+/// moves the pills smoothly.
+Widget _pillRow({required bool compact, required List<Widget> pills, required Widget? presence}) {
+  final size = compact ? MainAxisSize.min : MainAxisSize.max;
+  final pillsRow = Row(mainAxisSize: size, spacing: _pillGap, children: pills);
+  final row = presence == null
+      ? pillsRow
+      : Row(
+          mainAxisSize: size,
+          children: [
+            if (compact) Flexible(child: pillsRow) else Expanded(child: pillsRow),
+            presence,
+          ],
+        );
   return compact ? Align(alignment: AlignmentDirectional.centerStart, heightFactor: 1, child: row) : row;
 }
 

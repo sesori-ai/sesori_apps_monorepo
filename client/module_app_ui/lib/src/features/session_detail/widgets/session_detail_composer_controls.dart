@@ -21,6 +21,7 @@ import "session_approval_chip.dart";
 import "session_auto_continuation_chip.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
+import "session_wake_up_chip.dart";
 import "transcript_motion.dart";
 import "yolo_chip.dart";
 
@@ -90,6 +91,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         modelOrbits: composer.modelOrbits,
         fastModeControl: composer.fastModeControl,
         statusChips: ({required surfaceStyle, required pointer}) => const [],
+        wakeUpChip: ({required surfaceStyle, required pointer}) => null,
         composerTrailing: null,
         availableCommands: composer.commands,
         stagedCommand: stagedCommand,
@@ -138,6 +140,15 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     fastModeControl: state.fastModeControl,
     statusChips: ({required surfaceStyle, required pointer}) =>
         _statusChips(state: state, surfaceStyle: surfaceStyle, pointer: pointer),
+    wakeUpChip: ({required surfaceStyle, required pointer}) => switch (state.session.wakeUps) {
+      [] => null,
+      final wakeUps => SessionWakeUpChip(
+        surfaceStyle: surfaceStyle,
+        wakeUps: wakeUps,
+        showLabel: pointer,
+        onCancel: (wakeUpId) => unawaited(context.read<SessionDetailCubit>().cancelWakeUp(wakeUpId: wakeUpId)),
+      ),
+    },
     composerTrailing: state.children.isEmpty
         ? null
         : ValueListenableBuilder<PregoComposerSurfaceStyle>(
@@ -237,6 +248,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required FastModeControl fastModeControl,
     required List<Widget> Function({required PregoComposerSurfaceStyle surfaceStyle, required bool pointer})
     statusChips,
+    required Widget? Function({required PregoComposerSurfaceStyle surfaceStyle, required bool pointer}) wakeUpChip,
     required Widget? composerTrailing,
     required List<CommandInfo> availableCommands,
     required CommandInfo? stagedCommand,
@@ -336,6 +348,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                   compact: pointer,
                   readOnly: optionsReadOnly,
                   trailing: statusChips(surfaceStyle: surfaceStyle, pointer: pointer),
+                  transientTrailing: wakeUpChip(surfaceStyle: surfaceStyle, pointer: pointer),
                 ),
               ),
               composerTrailing: composerTrailing,
