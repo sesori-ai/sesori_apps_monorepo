@@ -1,0 +1,7 @@
+{
+  "data": { "repository": { "pullRequest": null } },
+  "errors": [
+    { "type": "RATE_LIMITED", "message": "API rate limit exceeded" },
+    { "type": "NOT_FOUND", "path": ["repository", "pullRequest", "labels"] }
+  ]
+}

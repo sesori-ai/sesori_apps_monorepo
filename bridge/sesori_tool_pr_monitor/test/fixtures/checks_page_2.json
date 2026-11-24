@@ -1,0 +1,22 @@
+{
+  "data": {
+    "repository": {
+      "object": {
+        "statusCheckRollup": {
+          "contexts": {
+            "pageInfo": { "hasNextPage": false, "endCursor": "checks-2" },
+            "nodes": [
+              { "__typename": "CheckRun", "id": "CR_docs", "name": "docs", "status": "COMPLETED", "conclusion": "SKIPPED" },
+              { "__typename": "CheckRun", "id": "CR_bench", "name": "bench", "status": "COMPLETED", "conclusion": "NEUTRAL" },
+              { "__typename": "CheckRun", "id": "CR_slow", "name": "slow", "status": "COMPLETED", "conclusion": "TIMED_OUT" },
+              { "__typename": "CheckRun", "id": "CR_queued", "name": "queued", "status": "QUEUED", "conclusion": null },
+              { "__typename": "StatusContext", "context": "ci/expected", "state": "EXPECTED", "createdAt": "2026-11-20T10:10:00Z" },
+              { "__typename": "StatusContext", "context": "coverage", "state": "SUCCESS", "createdAt": "2026-11-20T10:15:00Z" },
+              { "__typename": "StatusContext", "context": "security", "state": "FAILURE", "createdAt": "2026-11-20T10:20:00Z" }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

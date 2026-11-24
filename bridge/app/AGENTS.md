@@ -44,7 +44,8 @@ bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_grok/        Grok Build implementation over ACP
 ├── sesori_plugin_pi/          Pi implementation
 ├── sesori_plugin_deepseek/    DeepSeek implementation over ACP
-└── sesori_plugin_copilot/     GitHub Copilot implementation over ACP
+├── sesori_plugin_copilot/     GitHub Copilot implementation over ACP
+└── sesori_tool_pr_monitor/    PR monitor tool group — GhCliApi (gh CLI), PR snapshots
 ```
 
 ## WHERE TO LOOK

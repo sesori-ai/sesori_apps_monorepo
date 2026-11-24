@@ -1,0 +1,25 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "reviewThreads": {
+          "pageInfo": { "hasNextPage": false, "endCursor": "threads-2" },
+          "nodes": [
+            {
+              "id": "T_two",
+              "isResolved": true,
+              "path": "lib/sizing.dart",
+              "line": null,
+              "originalLine": 7,
+              "comments": {
+                "nodes": [
+                  { "id": "TC_ghost", "author": null, "body": "Outdated remark.", "createdAt": "2026-11-20T11:40:00Z", "pullRequestReview": { "state": "COMMENTED" } }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
