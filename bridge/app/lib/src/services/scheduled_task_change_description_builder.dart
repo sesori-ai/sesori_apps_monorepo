@@ -27,6 +27,11 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   /// A token that is a word.
   static final _word = RegExp(r"^[\p{L}\p{N}_]", unicode: true);
 
+  /// The most token pairs a changed line pair's word diff compares: its
+  /// table takes memory and time in proportion. A longer change shows its
+  /// lines without word marks.
+  static const _wordDiffBudget = 250000;
+
   /// Invisible characters that can reorder or hide what a command shows:
   /// bidi marks, embeddings, overrides and isolates, and zero-width ones.
   static final RegExp _invisible = RegExp("[\u061C\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]");
@@ -392,11 +397,29 @@ class const ScheduledTaskChangeDescriptionBuilder() {
 
   /// The ranges of [before] and of [after] whose words a word-level diff
   /// removes or adds, with ranges that only whitespace separates joined;
-  /// null when the two share no word.
+  /// null when the two share no word, or when the part between their shared
+  /// start and end is too long to compare within [_wordDiffBudget].
   ({List<_Span> before, List<_Span> after})? _wordDiff({required String before, required String after}) {
     final oldTokens = _tokens.allMatches(before).toList();
     final newTokens = _tokens.allMatches(after).toList();
     String text({required String line, required Match token}) => line.substring(token.start, token.end);
+    final oldTexts = [for (final token in oldTokens) text(line: before, token: token)];
+    final newTexts = [for (final token in newTokens) text(line: after, token: token)];
+    // Only the part between a shared start and end needs comparing, which
+    // keeps a small edit to a long line cheap.
+    var prefix = 0;
+    while (prefix < oldTexts.length && prefix < newTexts.length && oldTexts[prefix] == newTexts[prefix]) {
+      prefix++;
+    }
+    var suffix = 0;
+    while (suffix < oldTexts.length - prefix &&
+        suffix < newTexts.length - prefix &&
+        oldTexts[oldTexts.length - 1 - suffix] == newTexts[newTexts.length - 1 - suffix]) {
+      suffix++;
+    }
+    final oldMiddle = oldTexts.sublist(prefix, oldTexts.length - suffix);
+    final newMiddle = newTexts.sublist(prefix, newTexts.length - suffix);
+    if (oldMiddle.length * newMiddle.length > _wordDiffBudget) return null;
     final removed = <_Span>[];
     final added = <_Span>[];
     void mark({required List<_Span> spans, required String line, required Match token}) {
@@ -410,10 +433,11 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     var sharesWord = false;
     var i = 0;
     var j = 0;
-    for (final edit in _diff(
-      before: [for (final token in oldTokens) text(line: before, token: token)],
-      after: [for (final token in newTokens) text(line: after, token: token)],
-    )) {
+    for (final edit in [
+      for (var k = 0; k < prefix; k++) _Edit.keep,
+      ..._diff(before: oldMiddle, after: newMiddle),
+      for (var k = 0; k < suffix; k++) _Edit.keep,
+    ]) {
       switch (edit) {
         case _Edit.keep:
           sharesWord = sharesWord || _word.hasMatch(text(line: before, token: oldTokens[i]));

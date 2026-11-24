@@ -148,6 +148,37 @@ void main() {
     );
   });
 
+  test("a one-word change in a long line still marks its word, and a long reworded line shows unmarked", () {
+    String diffFence({required String before, required String after}) {
+      final lines = blocks(
+        change: UpdateTaskChange(
+          taskId: "t",
+          before: _task.copyWith(prompt: ScheduledTaskPrompt.text(text: before)),
+          after: _task.copyWith(prompt: ScheduledTaskPrompt.text(text: after)),
+          beforeCommand: null,
+          command: const TaskCommandUnchanged(),
+        ),
+      );
+      return lines[lines.length - 2].split("\n").first;
+    }
+
+    final long = List.generate(5000, (i) => "w$i").join(" ");
+    final start = long.indexOf(" w2500 ") + 1;
+    expect(
+      diffFence(before: long, after: long.replaceFirst(" w2500 ", " changed ")),
+      "```diff words=0:$start-${start + 5};1:$start-${start + 7}",
+    );
+
+    // Only the shared end matches, and the rest is too long to compare.
+    expect(
+      diffFence(
+        before: "${List.generate(600, (i) => "a$i").join(" ")} shared",
+        after: "${List.generate(600, (i) => "b$i").join(" ")} shared",
+      ),
+      "```diff",
+    );
+  });
+
   test("a prompt whose text stays the same but whose kind changes shows the new prompt", () {
     final command = _task.copyWith(
       prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.command, arguments: null),
