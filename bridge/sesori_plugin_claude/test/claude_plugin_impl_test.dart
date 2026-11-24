@@ -2064,6 +2064,104 @@ void main() {
       expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
     });
 
+    test("an outcome recorded while idle shows its Automation row live, under the id history gives it", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      // What the CLI records: the launch's outcome folds into its tile, and
+      // the SendMessage resume's outcome, which names that call, is its own
+      // turn. The stream delivers neither turn, only the typed frames.
+      _writeTranscript(
+        harness: harness,
+        records: [
+          _transcriptRecord(uuid: "initial-$testSessionId", message: {"role": "user", "content": "hello"}),
+          _transcriptRecord(
+            type: "assistant",
+            uuid: "agent-call",
+            message: _assistantToolUse(
+              id: "toolu-agent",
+              name: "Agent",
+              input: {"description": "Say hi", "prompt": "hi", "subagent_type": "general-purpose"},
+            ).field<Map<String, Object?>>("message"),
+          ),
+          _transcriptRecord(
+            uuid: "launch-result",
+            message: {
+              "role": "user",
+              "content": [
+                {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+              ],
+            },
+          ),
+          _notificationRecord(uuid: "agent-outcome", toolUseId: "toolu-agent"),
+          _transcriptRecord(
+            type: "assistant",
+            uuid: "send-call",
+            message: _assistantToolUse(
+              id: "toolu-send",
+              name: "SendMessage",
+              input: {"to": "abc123", "message": "more"},
+            ).field<Map<String, Object?>>("message"),
+          ),
+          _transcriptRecord(
+            uuid: "send-result",
+            message: {
+              "role": "user",
+              "content": [
+                {"type": "tool_result", "tool_use_id": "toolu-send", "content": "Resuming agent abc123"},
+              ],
+            },
+          ),
+          _notificationRecord(uuid: "resumed-outcome", toolUseId: "toolu-send"),
+        ],
+      );
+
+      _runAgentToCompletion(process);
+      process.emit(_result());
+      _resumeAgent(process);
+      process.emit(_result());
+      process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-send"));
+      List<BridgeSseEvent> rowEvents() => [
+        for (final event in events)
+          if (event
+              case BridgeSseMessageUpdated(info: PluginMessage(id: "resumed-outcome")) ||
+                  BridgeSseMessagePartUpdated(part: PluginMessagePart(messageID: "resumed-outcome")))
+            event,
+      ];
+      for (var attempt = 0; attempt < 500 && rowEvents().isEmpty; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      await pump();
+
+      final liveInfo = rowEvents().whereType<BridgeSseMessageUpdated>().single.info;
+      final liveParts = rowEvents().whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
+      expect(
+        liveInfo,
+        isA<PluginMessageAssistant>().having((info) => info.sender, "sender", PluginMessageSender.system),
+      );
+      expect(liveParts, isNotEmpty);
+      // The known launch's outcome stays in its tile.
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info.id == "agent-outcome"),
+        isEmpty,
+      );
+
+      // The re-import finds the same row rather than a second one.
+      final replayed = await harness.plugin.getSessionMessages(testSessionId);
+      final automation = replayed.where(
+        (message) => switch (message.info) {
+          PluginMessageAssistant(sender: PluginMessageSender.system) => true,
+          _ => false,
+        },
+      );
+      expect(automation.map((message) => message.info.id), ["resumed-outcome"]);
+      expect(automation.single.info.toJson(), liveInfo.toJson());
+      expect(automation.single.parts, liveParts);
+      await subscription.cancel();
+    });
+
     test(
       "a sub-agent resumed after its process exited runs in its child status, the summary and the stop count alike",
       () async {
@@ -2433,6 +2531,41 @@ void _launchAgent(FakeClaudeProcess process) {
   });
   process.emit(_agentTaskFrame(subtype: "task_started", toolUseId: "toolu-agent"));
 }
+
+void _writeTranscript({required _PluginHarness harness, required List<Map<String, Object?>> records}) {
+  final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
+  transcript.parent.createSync(recursive: true);
+  transcript.writeAsStringSync(records.map(jsonEncode).join("\n"));
+}
+
+Map<String, Object?> _transcriptRecord({
+  String type = "user",
+  required String uuid,
+  required Map<String, Object?> message,
+  Map<String, Object?>? origin,
+}) => {
+  "type": type,
+  "sessionId": testSessionId,
+  "cwd": "/tmp/project",
+  "uuid": uuid,
+  "timestamp": "2026-08-11T12:00:00Z",
+  "message": message,
+  "origin": ?origin,
+};
+
+/// The turn in which the CLI delivers `abc123`'s outcome, named by
+/// [toolUseId], to the model.
+Map<String, Object?> _notificationRecord({required String uuid, required String toolUseId}) => _transcriptRecord(
+  uuid: uuid,
+  origin: {"kind": "task-notification"},
+  message: {
+    "role": "user",
+    "content":
+        "<task-notification>\n<task-id>abc123</task-id>\n<tool-use-id>$toolUseId</tool-use-id>\n"
+        '<status>completed</status>\n<summary>Agent "Say hi" finished</summary>\n'
+        "<result>hi</result>\n</task-notification>",
+  },
+);
 
 /// Resumes `abc123` through `SendMessage`; the CLI registers the run under
 /// that call.

@@ -1676,11 +1676,11 @@ sends none. In both modes `wait_agent` renders as a "Waiting for N sub-agents" t
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 
-⁴ Copilot CLI (plugin targets 1.0.114) runs custom agents as subagents. When
+⁴ Copilot CLI (plugin targets 1.0.115) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
 Protocol server exposed no subagent lifecycle, no child session, and only the
 turn-wide `session/cancel`. Copilot's changelog says ACP clients receive
-subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.114 pin and maps
+subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.115 pin and maps
 no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
 sub-agent identity, lifecycle and per-child stop.
 

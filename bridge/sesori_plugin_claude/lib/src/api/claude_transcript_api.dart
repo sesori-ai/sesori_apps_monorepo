@@ -134,6 +134,18 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
 
   static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
 
+  /// Decodes the records within the last [tailByteBudget] bytes whose line
+  /// contains [text], oldest first. Like [readTailRecords], other lines are
+  /// dropped before they are decoded.
+  List<ClaudeTranscriptRecordDto> readTailRecordsContaining({required String transcriptPath, required String text}) =>
+      _decodeRecords(
+        [
+          for (final line in _readTailLines(transcriptPath: transcriptPath, budget: tailByteBudget).lines)
+            if (line.contains(text)) line,
+        ],
+        ignoreMalformedLastLine: true,
+      );
+
   /// The whole lines within the last [budget] bytes; [truncated] when the file
   /// is longer.
   ({List<String> lines, bool truncated}) _readTailLines({required String transcriptPath, required int budget}) {
