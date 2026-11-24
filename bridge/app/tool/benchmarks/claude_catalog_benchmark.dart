@@ -27,6 +27,7 @@ import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dar
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -40,6 +41,7 @@ import "package:sesori_bridge/src/repositories/session_continuation_repository.d
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -157,6 +159,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
         runtime: runtime,
       ),
       interruptions: SessionInterruptionRepository(dao: SessionInterruptionDao(database: database)),
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: database)),
       resetBuffer: const Duration(minutes: 2),
     );
     var totalBytes = 0;

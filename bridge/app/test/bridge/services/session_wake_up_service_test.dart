@@ -17,9 +17,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/test_database.dart";
-import "../../helpers/arming_test_support.dart";
 
 const _caller = SesoriMcpCaller(sessionId: "s1");
 

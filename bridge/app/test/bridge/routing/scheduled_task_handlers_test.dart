@@ -29,12 +29,12 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
-import "../../helpers/arming_test_support.dart";
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);

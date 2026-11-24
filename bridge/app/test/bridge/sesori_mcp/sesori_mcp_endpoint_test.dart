@@ -34,12 +34,12 @@ import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
 import "../../helpers/agent_page_test_support.dart";
+import "../../helpers/arming_test_support.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
-import "../../helpers/arming_test_support.dart";
 
 const _definition = ScheduledTaskDefinition(
   name: "Morning summary",

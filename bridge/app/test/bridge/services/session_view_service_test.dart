@@ -1,9 +1,11 @@
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -12,9 +14,6 @@ import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
-
-import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
-import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 
 const _daily = ScheduledTaskDefinition(
   name: "Morning summary",
