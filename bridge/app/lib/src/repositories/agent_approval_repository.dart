@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart" show PendingPermission, Permis
 
 import "mappers/agent_approval_mapper.dart";
 import "models/agent_approval.dart";
-import "models/scheduled_task_agent_change.dart";
+import "models/agent_approval_change.dart";
 
 /// The in-memory approvals agents are waiting on. A session may have several
 /// waiting at once, and each is answered on its own.
@@ -28,7 +28,7 @@ class AgentApprovalRepository({required final Random _random}) {
   void add({
     required String sessionId,
     required String? displaySessionId,
-    required ScheduledTaskAgentChange change,
+    required AgentApprovalChange change,
     required String description,
   }) {
     final approval = AgentApproval(

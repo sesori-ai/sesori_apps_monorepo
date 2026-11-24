@@ -46,8 +46,7 @@ class const SessionViewService({
                 nextDueAt: wakeUp.nextDueAt.millisecondsSinceEpoch,
                 label: wakeUp.label,
                 repeats: wakeUp.schedule is! WakeUpOnce,
-                // Wake-ups cannot carry a command yet.
-                runsCommand: false,
+                runsCommand: wakeUp.command != null,
               ),
           ],
           arming: _arming(

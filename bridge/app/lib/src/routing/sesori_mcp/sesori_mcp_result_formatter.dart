@@ -83,6 +83,7 @@ class const SesoriMcpResultFormatter() {
     return [
       "Wake-up ${wakeUp.id} is set for ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}.",
       "Sesori sends this session its prompt then, once the session's turn has ended.",
+      if (wakeUp.command != null) "Right before, it runs the command and adds its result to the prompt.",
       if (repeats != null) "It repeats $repeats until you call cancel_wakeup.",
       "End your turn now; don't wait or poll.",
     ].join(" ");
@@ -96,6 +97,7 @@ class const SesoriMcpResultFormatter() {
           "- ${wakeUp.label} (id: ${wakeUp.id})",
           "  next: ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}",
           "  repeats: ${_wakeUpWords.repeats(schedule: wakeUp.schedule) ?? "no"}",
+          if (wakeUp.command != null) "  runs a command first",
         ].join("\n"),
     ].join("\n");
   }

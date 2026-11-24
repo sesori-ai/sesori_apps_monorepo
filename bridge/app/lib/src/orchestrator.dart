@@ -30,6 +30,7 @@ import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
+import "api/shell_command_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
 import "auth/token_refresh_exception.dart";
@@ -102,6 +103,7 @@ import "repositories/project_repository.dart";
 import "repositories/prompt_upload_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/scheduled_command_repository.dart";
 import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/sesori_mcp_grant_repository.dart";
@@ -233,6 +235,8 @@ import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
+import "services/scheduled_command_result_formatter.dart";
+import "services/scheduled_command_service.dart";
 import "services/scheduled_task_activity_tracker.dart";
 import "services/scheduled_task_agent_service.dart";
 import "services/scheduled_task_change_description_builder.dart";
@@ -262,6 +266,7 @@ import "services/session_view_tracker.dart";
 import "services/session_wake_up_description_builder.dart";
 import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
+import "services/wake_up_command_description_builder.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -276,6 +281,7 @@ typedef OrchestratorComposition = ({
   ChatHistoryReconcileService chatHistoryReconcileService,
   ScratchRepository scratchRepository,
   PromptPartDeliveryService promptPartDeliveryService,
+  ScheduledCommandService scheduledCommandService,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
@@ -421,6 +427,24 @@ class Orchestrator({
     final pageImageRepository = PromptUploadRepository(
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriPageImagesDirectory(),
+    );
+    // The same layout again for the output of the commands wake-ups run,
+    // kept for a week and removed with its session.
+    final commandOutputRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriCommandOutputDirectory(),
+    );
+    final scheduledCommandService = ScheduledCommandService(
+      commands: ScheduledCommandRepository(
+        shell: ShellCommandApi.forPlatform(
+          platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
+          runner: const StreamingProcessRunner(),
+          environment: Platform.environment,
+        ),
+      ),
+      outputs: commandOutputRepository,
+      formatter: const ScheduledCommandResultFormatter(),
+      clock: clock,
     );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
@@ -709,6 +733,7 @@ class Orchestrator({
       promptUploadRepository: promptUploadRepository,
       transcriptRepository: transcriptRepository,
       pageImageRepository: pageImageRepository,
+      commandOutputRepository: commandOutputRepository,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
@@ -871,6 +896,20 @@ class Orchestrator({
       notices: sessionNoticeService,
       noticeBuilder: const AgentPageAnswerNoticeBuilder(),
     );
+    final sessionWakeUpService = SessionWakeUpService(
+      wakeUps: sessionWakeUps,
+      sessions: sessionRepository,
+      calculator: scheduledTaskOccurrenceCalculator,
+      notices: sessionNoticeService,
+      descriptions: const SessionWakeUpDescriptionBuilder(),
+      autoApproval: permissionAutoApprovalService,
+      approvals: agentApprovalRepository,
+      commandDescriptions: const WakeUpCommandDescriptionBuilder(),
+      commands: scheduledCommandService,
+      mutations: sessionMutationDispatcher,
+      localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
+      clock: clock,
+    );
     final scheduledTaskAgentService = ScheduledTaskAgentService(
       tasks: scheduledTaskService,
       runner: scheduledTaskRunService,
@@ -881,16 +920,7 @@ class Orchestrator({
       approvals: agentApprovalRepository,
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
       notices: sessionNoticeService,
-    );
-    final sessionWakeUpService = SessionWakeUpService(
-      wakeUps: sessionWakeUps,
-      sessions: sessionRepository,
-      calculator: scheduledTaskOccurrenceCalculator,
-      notices: sessionNoticeService,
-      descriptions: const SessionWakeUpDescriptionBuilder(),
-      mutations: sessionMutationDispatcher,
-      localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
-      clock: clock,
+      wakeUps: sessionWakeUpService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
@@ -1025,6 +1055,7 @@ class Orchestrator({
       sessionContinuationService: sessionContinuationService,
       sessionContinuationTimer: sessionContinuationTimer,
       sessionWakeUpTimer: sessionWakeUpTimer,
+      scheduledCommandService: scheduledCommandService,
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
@@ -1101,6 +1132,7 @@ class Orchestrator({
       ),
       scratchRepository: scratchRepository,
       promptPartDeliveryService: promptPartDeliveryService,
+      scheduledCommandService: scheduledCommandService,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
@@ -1210,6 +1242,7 @@ class OrchestratorSession._({
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
   required final SessionWakeUpTimerListener _sessionWakeUpTimer,
+  required final ScheduledCommandService _scheduledCommandService,
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
@@ -1673,6 +1706,8 @@ class OrchestratorSession._({
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
+      // Kills running commands so shutdown does not wait out their timeout.
+      attempt(_scheduledCommandService.dispose),
       attempt(_agentApprovalRepository.dispose),
       attempt(_agentPageRepository.dispose),
     ]);

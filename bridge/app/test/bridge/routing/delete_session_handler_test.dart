@@ -46,6 +46,7 @@ void main() {
     late _RecordingPromptUploadRepository promptUploadRepository;
     late _RecordingPromptUploadRepository transcriptRepository;
     late _RecordingPromptUploadRepository pageImageRepository;
+    late _RecordingPromptUploadRepository commandOutputRepository;
 
     setUp(() {
       db = createTestDatabase();
@@ -70,6 +71,12 @@ void main() {
         delegate: PromptUploadRepository(
           filesystemApi: const FilesystemApi(),
           uploadsRoot: p.join(scratchParent.path, "page-images"),
+        ),
+      );
+      commandOutputRepository = _RecordingPromptUploadRepository(
+        delegate: PromptUploadRepository(
+          filesystemApi: const FilesystemApi(),
+          uploadsRoot: p.join(scratchParent.path, "command-output"),
         ),
       );
       operationLog = [];
@@ -120,6 +127,7 @@ void main() {
           promptUploadRepository: promptUploadRepository,
           transcriptRepository: transcriptRepository,
           pageImageRepository: pageImageRepository,
+          commandOutputRepository: commandOutputRepository,
         ),
       );
     });
@@ -194,14 +202,20 @@ void main() {
       });
     });
 
-    // The prompt uploads, the transcripts sent into a session and the images
-    // its agents sent on pages share one folder layout and are deleted the
-    // same way.
-    for (final (folder, repositoryOf, otherRepositoriesOf) in [
-      ("uploads", () => promptUploadRepository, () => [transcriptRepository, pageImageRepository]),
-      ("transcripts", () => transcriptRepository, () => [promptUploadRepository, pageImageRepository]),
-      ("page-images", () => pageImageRepository, () => [promptUploadRepository, transcriptRepository]),
-    ]) {
+    // The prompt uploads, the transcripts sent into a session, the images
+    // its agents sent on pages and its wake-up command output share one
+    // folder layout and are deleted the same way.
+    final repositories = {
+      "uploads": () => promptUploadRepository,
+      "transcripts": () => transcriptRepository,
+      "page-images": () => pageImageRepository,
+      "command-output": () => commandOutputRepository,
+    };
+    for (final MapEntry(key: folder, value: repositoryOf) in repositories.entries) {
+      List<_RecordingPromptUploadRepository> otherRepositoriesOf() => [
+        for (final MapEntry(:key, :value) in repositories.entries)
+          if (key != folder) value(),
+      ];
       group("session files in $folder", () {
         late _RecordingPromptUploadRepository repository;
 
@@ -724,6 +738,9 @@ class _RecordingPromptUploadRepository({required final PromptUploadRepository _d
   @override
   Future<String> save({required String sessionId, required List<int> bytes, required String filename}) =>
       _delegate.save(sessionId: sessionId, bytes: bytes, filename: filename);
+
+  @override
+  Future<String> reserveFolder({required String sessionId}) => _delegate.reserveFolder(sessionId: sessionId);
 
   @override
   Future<void> deleteSaved({required String path}) => _delegate.deleteSaved(path: path);

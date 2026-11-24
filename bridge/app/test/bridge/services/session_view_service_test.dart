@@ -116,10 +116,15 @@ void main() {
     final nine = DateTime.utc(2026, 11, 16, 9);
     final ten = DateTime.utc(2026, 11, 16, 10);
 
-    Future<StoredSessionWakeUp> addWakeUp({required DateTime dueAt, required WakeUpSchedule schedule}) => wakeUps.add(
+    Future<StoredSessionWakeUp> addWakeUp({
+      required DateTime dueAt,
+      required WakeUpSchedule schedule,
+      WakeUpCommand? command,
+    }) => wakeUps.add(
       sessionId: "ses_root",
       label: "Check CI",
       prompt: "Look at the checks",
+      command: command,
       schedule: schedule,
       nextDueAt: dueAt,
       createdAt: DateTime.utc(2026, 11, 15),
@@ -142,7 +147,11 @@ void main() {
 
     test("wake-ups are listed soonest first and arm the session with the soonest", () async {
       final repeating = await addWakeUp(dueAt: ten, schedule: const WakeUpSchedule.every(minutes: 30));
-      final once = await addWakeUp(dueAt: nine, schedule: const WakeUpSchedule.once());
+      final once = await addWakeUp(
+        dueAt: nine,
+        schedule: const WakeUpSchedule.once(),
+        command: const WakeUpCommand(command: "make check", approval: WakeUpCommandApproval.allowed),
+      );
 
       final session = await views.enrich(session: _session(id: "ses_root"));
 
@@ -152,7 +161,7 @@ void main() {
           nextDueAt: nine.millisecondsSinceEpoch,
           label: "Check CI",
           repeats: false,
-          runsCommand: false,
+          runsCommand: true,
         ),
         SessionWakeUp(
           id: repeating.id,

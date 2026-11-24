@@ -181,8 +181,8 @@ enum SesoriMcpTool({
         "Ask Sesori to send this session a prompt later, once or on repeat. Use it instead of a harness timer, a "
         "sleep or a polling loop: the user sees each wake-up in the Sesori app and can cancel it, and it survives a "
         "bridge restart. The prompt arrives as a message once this session's turn has ended, never inside one; a "
-        "sub-agent's goes to its root session. Needs no approval. A repeating wake-up repeats until you call "
-        "cancel_wakeup, so never set it again yourself.",
+        "sub-agent's goes to its root session. Needs no approval unless it runs a command. A repeating wake-up "
+        "repeats until you call cancel_wakeup, so never set it again yourself.",
     inputSchema: {
       "type": "object",
       "properties": {
@@ -194,6 +194,14 @@ enum SesoriMcpTool({
           "description":
               "An IANA time zone, such as Europe/Bucharest, for daily, weekdays and weekly. This "
               "computer's zone by default.",
+        },
+        "command": {
+          "type": "string",
+          "description":
+              "A shell command Sesori runs right before it sends the prompt, through a login shell in this "
+              "session's folder (its worktree when it has one), stopped after 10 minutes. The prompt then ends "
+              "with the exit code, stdout and stderr; a stream over 500 words comes as its file's path and its "
+              "last 20 lines. Needs the user's Allow, once, unless this session approves everything.",
         },
       },
       "required": ["label", "prompt", "when"],

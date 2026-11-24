@@ -305,5 +305,8 @@ class _FakeStreamingProcess({
   Future<int> get exitCode async => _exitCode;
 
   @override
+  Future<void> closeStdin() async {}
+
+  @override
   bool kill() => true;
 }

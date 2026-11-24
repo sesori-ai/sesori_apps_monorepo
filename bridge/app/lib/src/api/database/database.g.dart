@@ -7445,6 +7445,12 @@ mixin $SessionWakeUpsTableTableToColumns
   String get sessionId;
   String get label;
   String get prompt;
+
+  /// The shell command run before the prompt is sent, if any.
+  String? get command;
+
+  /// Null exactly when [command] is.
+  SessionWakeUpCommandApproval? get commandApproval;
   String get scheduleJson;
 
   /// UTC milliseconds.
@@ -7459,6 +7465,16 @@ mixin $SessionWakeUpsTableTableToColumns
     map['session_id'] = Variable<String>(sessionId);
     map['label'] = Variable<String>(label);
     map['prompt'] = Variable<String>(prompt);
+    if (!nullToAbsent || command != null) {
+      map['command'] = Variable<String>(command);
+    }
+    if (!nullToAbsent || commandApproval != null) {
+      map['command_approval'] = Variable<String>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toSql(
+          commandApproval,
+        ),
+      );
+    }
     map['schedule_json'] = Variable<String>(scheduleJson);
     map['next_due_at'] = Variable<int>(nextDueAt);
     map['created_at'] = Variable<int>(createdAt);
@@ -7513,6 +7529,32 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    SessionWakeUpCommandApproval?,
+    String
+  >
+  commandApproval =
+      GeneratedColumn<String>(
+        'command_approval',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<SessionWakeUpCommandApproval?>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln,
+      );
   static const VerificationMeta _scheduleJsonMeta = const VerificationMeta(
     'scheduleJson',
   );
@@ -7552,6 +7594,8 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     sessionId,
     label,
     prompt,
+    command,
+    commandApproval,
     scheduleJson,
     nextDueAt,
     createdAt,
@@ -7596,6 +7640,12 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
       );
     } else if (isInserting) {
       context.missing(_promptMeta);
+    }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
     }
     if (data.containsKey('schedule_json')) {
       context.handle(
@@ -7649,6 +7699,17 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
         DriftSqlType.string,
         data['${effectivePrefix}prompt'],
       )!,
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      ),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}command_approval'],
+            ),
+          ),
       scheduleJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}schedule_json'],
@@ -7669,6 +7730,15 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     return $SessionWakeUpsTableTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<SessionWakeUpCommandApproval, String, String>
+  $convertercommandApproval =
+      const EnumNameConverter<SessionWakeUpCommandApproval>(
+        SessionWakeUpCommandApproval.values,
+      );
+  static JsonTypeConverter2<SessionWakeUpCommandApproval?, String?, String?>
+  $convertercommandApprovaln = JsonTypeConverter2.asNullable(
+    $convertercommandApproval,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -7685,6 +7755,14 @@ class SessionWakeUpDto extends DataClass
   final String label;
   @override
   final String prompt;
+
+  /// The shell command run before the prompt is sent, if any.
+  @override
+  final String? command;
+
+  /// Null exactly when [command] is.
+  @override
+  final SessionWakeUpCommandApproval? commandApproval;
   @override
   final String scheduleJson;
 
@@ -7700,6 +7778,8 @@ class SessionWakeUpDto extends DataClass
     required this.sessionId,
     required this.label,
     required this.prompt,
+    this.command,
+    this.commandApproval,
     required this.scheduleJson,
     required this.nextDueAt,
     required this.createdAt,
@@ -7710,6 +7790,12 @@ class SessionWakeUpDto extends DataClass
       sessionId: Value(sessionId),
       label: Value(label),
       prompt: Value(prompt),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
+      commandApproval: commandApproval == null && nullToAbsent
+          ? const Value.absent()
+          : Value(commandApproval),
       scheduleJson: Value(scheduleJson),
       nextDueAt: Value(nextDueAt),
       createdAt: Value(createdAt),
@@ -7726,6 +7812,9 @@ class SessionWakeUpDto extends DataClass
       sessionId: serializer.fromJson<String>(json['sessionId']),
       label: serializer.fromJson<String>(json['label']),
       prompt: serializer.fromJson<String>(json['prompt']),
+      command: serializer.fromJson<String?>(json['command']),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromJson(serializer.fromJson<String?>(json['commandApproval'])),
       scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
       nextDueAt: serializer.fromJson<int>(json['nextDueAt']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -7739,6 +7828,12 @@ class SessionWakeUpDto extends DataClass
       'sessionId': serializer.toJson<String>(sessionId),
       'label': serializer.toJson<String>(label),
       'prompt': serializer.toJson<String>(prompt),
+      'command': serializer.toJson<String?>(command),
+      'commandApproval': serializer.toJson<String?>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toJson(
+          commandApproval,
+        ),
+      ),
       'scheduleJson': serializer.toJson<String>(scheduleJson),
       'nextDueAt': serializer.toJson<int>(nextDueAt),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -7750,6 +7845,8 @@ class SessionWakeUpDto extends DataClass
     String? sessionId,
     String? label,
     String? prompt,
+    Value<String?> command = const Value.absent(),
+    Value<SessionWakeUpCommandApproval?> commandApproval = const Value.absent(),
     String? scheduleJson,
     int? nextDueAt,
     int? createdAt,
@@ -7758,6 +7855,10 @@ class SessionWakeUpDto extends DataClass
     sessionId: sessionId ?? this.sessionId,
     label: label ?? this.label,
     prompt: prompt ?? this.prompt,
+    command: command.present ? command.value : this.command,
+    commandApproval: commandApproval.present
+        ? commandApproval.value
+        : this.commandApproval,
     scheduleJson: scheduleJson ?? this.scheduleJson,
     nextDueAt: nextDueAt ?? this.nextDueAt,
     createdAt: createdAt ?? this.createdAt,
@@ -7768,6 +7869,10 @@ class SessionWakeUpDto extends DataClass
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       label: data.label.present ? data.label.value : this.label,
       prompt: data.prompt.present ? data.prompt.value : this.prompt,
+      command: data.command.present ? data.command.value : this.command,
+      commandApproval: data.commandApproval.present
+          ? data.commandApproval.value
+          : this.commandApproval,
       scheduleJson: data.scheduleJson.present
           ? data.scheduleJson.value
           : this.scheduleJson,
@@ -7783,6 +7888,8 @@ class SessionWakeUpDto extends DataClass
           ..write('sessionId: $sessionId, ')
           ..write('label: $label, ')
           ..write('prompt: $prompt, ')
+          ..write('command: $command, ')
+          ..write('commandApproval: $commandApproval, ')
           ..write('scheduleJson: $scheduleJson, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('createdAt: $createdAt')
@@ -7796,6 +7903,8 @@ class SessionWakeUpDto extends DataClass
     sessionId,
     label,
     prompt,
+    command,
+    commandApproval,
     scheduleJson,
     nextDueAt,
     createdAt,
@@ -7808,6 +7917,8 @@ class SessionWakeUpDto extends DataClass
           other.sessionId == this.sessionId &&
           other.label == this.label &&
           other.prompt == this.prompt &&
+          other.command == this.command &&
+          other.commandApproval == this.commandApproval &&
           other.scheduleJson == this.scheduleJson &&
           other.nextDueAt == this.nextDueAt &&
           other.createdAt == this.createdAt);
@@ -7818,6 +7929,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
   final Value<String> sessionId;
   final Value<String> label;
   final Value<String> prompt;
+  final Value<String?> command;
+  final Value<SessionWakeUpCommandApproval?> commandApproval;
   final Value<String> scheduleJson;
   final Value<int> nextDueAt;
   final Value<int> createdAt;
@@ -7826,6 +7939,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     this.sessionId = const Value.absent(),
     this.label = const Value.absent(),
     this.prompt = const Value.absent(),
+    this.command = const Value.absent(),
+    this.commandApproval = const Value.absent(),
     this.scheduleJson = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -7835,6 +7950,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     required String sessionId,
     required String label,
     required String prompt,
+    this.command = const Value.absent(),
+    this.commandApproval = const Value.absent(),
     required String scheduleJson,
     required int nextDueAt,
     required int createdAt,
@@ -7850,6 +7967,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     Expression<String>? sessionId,
     Expression<String>? label,
     Expression<String>? prompt,
+    Expression<String>? command,
+    Expression<String>? commandApproval,
     Expression<String>? scheduleJson,
     Expression<int>? nextDueAt,
     Expression<int>? createdAt,
@@ -7859,6 +7978,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
       if (sessionId != null) 'session_id': sessionId,
       if (label != null) 'label': label,
       if (prompt != null) 'prompt': prompt,
+      if (command != null) 'command': command,
+      if (commandApproval != null) 'command_approval': commandApproval,
       if (scheduleJson != null) 'schedule_json': scheduleJson,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -7870,6 +7991,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     Value<String>? sessionId,
     Value<String>? label,
     Value<String>? prompt,
+    Value<String?>? command,
+    Value<SessionWakeUpCommandApproval?>? commandApproval,
     Value<String>? scheduleJson,
     Value<int>? nextDueAt,
     Value<int>? createdAt,
@@ -7879,6 +8002,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
       sessionId: sessionId ?? this.sessionId,
       label: label ?? this.label,
       prompt: prompt ?? this.prompt,
+      command: command ?? this.command,
+      commandApproval: commandApproval ?? this.commandApproval,
       scheduleJson: scheduleJson ?? this.scheduleJson,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       createdAt: createdAt ?? this.createdAt,
@@ -7900,6 +8025,16 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     if (prompt.present) {
       map['prompt'] = Variable<String>(prompt.value);
     }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
+    if (commandApproval.present) {
+      map['command_approval'] = Variable<String>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toSql(
+          commandApproval.value,
+        ),
+      );
+    }
     if (scheduleJson.present) {
       map['schedule_json'] = Variable<String>(scheduleJson.value);
     }
@@ -7919,6 +8054,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
           ..write('sessionId: $sessionId, ')
           ..write('label: $label, ')
           ..write('prompt: $prompt, ')
+          ..write('command: $command, ')
+          ..write('commandApproval: $commandApproval, ')
           ..write('scheduleJson: $scheduleJson, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('createdAt: $createdAt')
@@ -14667,6 +14804,8 @@ typedef $$SessionWakeUpsTableTableCreateCompanionBuilder =
       required String sessionId,
       required String label,
       required String prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
       required String scheduleJson,
       required int nextDueAt,
       required int createdAt,
@@ -14677,6 +14816,8 @@ typedef $$SessionWakeUpsTableTableUpdateCompanionBuilder =
       Value<String> sessionId,
       Value<String> label,
       Value<String> prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
       Value<String> scheduleJson,
       Value<int> nextDueAt,
       Value<int> createdAt,
@@ -14735,6 +14876,21 @@ class $$SessionWakeUpsTableTableFilterComposer
   ColumnFilters<String> get prompt => $composableBuilder(
     column: $table.prompt,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    SessionWakeUpCommandApproval?,
+    SessionWakeUpCommandApproval,
+    String
+  >
+  get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get scheduleJson => $composableBuilder(
@@ -14800,6 +14956,16 @@ class $$SessionWakeUpsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get scheduleJson => $composableBuilder(
     column: $table.scheduleJson,
     builder: (column) => ColumnOrderings(column),
@@ -14856,6 +15022,15 @@ class $$SessionWakeUpsTableTableAnnotationComposer
 
   GeneratedColumn<String> get prompt =>
       $composableBuilder(column: $table.prompt, builder: (column) => column);
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SessionWakeUpCommandApproval?, String>
+  get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get scheduleJson => $composableBuilder(
     column: $table.scheduleJson,
@@ -14932,6 +15107,9 @@ class $$SessionWakeUpsTableTableTableManager
                 Value<String> sessionId = const Value.absent(),
                 Value<String> label = const Value.absent(),
                 Value<String> prompt = const Value.absent(),
+                Value<String?> command = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 Value<String> scheduleJson = const Value.absent(),
                 Value<int> nextDueAt = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -14940,6 +15118,8 @@ class $$SessionWakeUpsTableTableTableManager
                 sessionId: sessionId,
                 label: label,
                 prompt: prompt,
+                command: command,
+                commandApproval: commandApproval,
                 scheduleJson: scheduleJson,
                 nextDueAt: nextDueAt,
                 createdAt: createdAt,
@@ -14950,6 +15130,9 @@ class $$SessionWakeUpsTableTableTableManager
                 required String sessionId,
                 required String label,
                 required String prompt,
+                Value<String?> command = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 required String scheduleJson,
                 required int nextDueAt,
                 required int createdAt,
@@ -14958,6 +15141,8 @@ class $$SessionWakeUpsTableTableTableManager
                 sessionId: sessionId,
                 label: label,
                 prompt: prompt,
+                command: command,
+                commandApproval: commandApproval,
                 scheduleJson: scheduleJson,
                 nextDueAt: nextDueAt,
                 createdAt: createdAt,

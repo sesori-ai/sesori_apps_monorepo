@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | 1 | 🌱 Plan session wake-ups and scheduled commands | Merged | #2885 |
 | 2 | 🚧 Bridge wake-ups, one-shot and repeating | Merged | #2887 |
-| 3 | 🚧 Wake-up commands | Not started | |
+| 3 | 🚧 Wake-up commands | Merged | #2889 |
 | 4 | ⚙️ Scheduled-task commands | Not started | |
 | 5 | ⚙️ Bridge projection of wake-ups and arming | Merged | #2888 |
 | 6 | ⚙️ App: wake-up chip, cancel and armed marks | In this PR | |
@@ -13,17 +13,29 @@
 
 ## Notes for later steps
 
-- Step 2 left the command columns out of `session_wake_ups`. Step 3 adds
-  `command` and its approval state in a 32 to 33 migration, ideally together
-  with step 4's `scheduled_tasks.command`.
-- Step 3 (from the Codex review of #2885, now in `PLAN.md` under "Firing and
-  delivery"):
-  - Before a command runs, commit that it was used: a one-shot deletes its row
-    and a repeating one has already advanced. Otherwise a restart after the
-    command but before its notice is delivered runs the command again.
-  - Before a command runs, check that the session is still active. Today the
-    archived or deleted check happens only inside `SessionNoticeService.deliver`,
-    after the command. Test an archived command wake-up.
+- Step 4 adds `scheduled_tasks.command` in its own migration (33 to 34);
+  step 3's 32 to 33 bump covers only `session_wake_ups`. Ready to reuse:
+  `ScheduledCommandService.run(outputKey: "task-<id>", ...)`, which reserves
+  an output folder under `~/.sesori/command-output/<key>/`, runs the command,
+  keeps the output for seven days and returns the result block, and whose
+  `dispose()` kills running commands at shutdown. Also the public
+  `ScheduledTaskChangeDescriptionBuilder.fence`, `inline` and `quoted`
+  helpers. Task output keyed `task-<id>` is not deleted with a session; only
+  the seven-day sweep removes it.
+- Step 3 renamed `ScheduledTaskAgentChange`'s file to
+  `agent_approval_change.dart`, under a sealed `AgentApprovalChange` whose
+  `WakeUpCommandChange` family `ScheduledTaskAgentService.settle` hands to
+  `SessionWakeUpService.applyCommandApproval`.
+- Known gaps from step 3: a timeout or shutdown kills the shell, not the
+  processes it started, so a foreground build or script it was running keeps
+  going (Codex on #2889). Step 4 runs task commands through the same runner,
+  so fix it there: kill the descendants before the shell, for example with
+  `SystemProcessApi.listDescendants` on POSIX and `taskkill /T` on Windows.
+  Also in step 4: `ScheduledCommandRepository` opens and writes its output
+  files with `dart:io` directly; move that behind a `FilesystemApi` write
+  operation, as `PromptUploadRepository` does for its folders. A command a
+  shutdown kills loses that time's notice; Windows `cmd.exe` quoting is
+  untested.
 - Step 2's `dropped` outcome keeps a one-shot whose claim never ran, so a
   delivery cut by shutdown or a lane error fires again at the next tick.
   A one-shot dropped after its claim, by a failed send, is gone.

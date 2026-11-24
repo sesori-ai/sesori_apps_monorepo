@@ -345,6 +345,7 @@ _ScheduleWakeUpArguments _$ScheduleWakeUpArgumentsFromJson(Map json) =>
               WakeUpWhenArgument.fromJson(Map<String, dynamic>.from(v as Map)),
         ),
         timeZone: $checkedConvert('time_zone', (v) => v as String?),
+        command: $checkedConvert('command', (v) => v as String?),
       );
       return val;
     }, fieldKeyMap: const {'timeZone': 'time_zone'});
