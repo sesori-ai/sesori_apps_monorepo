@@ -496,6 +496,8 @@ separately.
   - An app edit drops a task's command.
   - An armed mark stays after its wake-up or task stops arming the session.
 
+Results of the 2026-11-24 run are in [TRACKER.md](TRACKER.md#verification-results).
+
 ## Cleanup assessment
 
 Nothing becomes obsolete:
