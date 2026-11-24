@@ -647,7 +647,10 @@ class ChatHistoryService({
     final page = await _storedOnlyPage(
       sessionId: sessionId,
       window: const HistoryWindowNewest(limit: 1, before: null),
-      attachmentProjection: _attachmentProjectionFor(delivery: MessageAttachmentDelivery.storedReference),
+      // Every send asks this, including wake-ups and task runs the bridge
+      // starts before it registers, and the page never leaves this method, so
+      // its references take a placeholder instead of the bridge id.
+      attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "history-emptiness-check"),
       toolOutputDelivery: ToolOutputDelivery.onExpand,
     );
     return page.messages.isEmpty && !page.awaitingHarnessSync;

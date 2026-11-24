@@ -8,8 +8,8 @@
 | 4 | ⚙️ Scheduled-task commands | Merged | #2892 |
 | 5 | ⚙️ Bridge projection of wake-ups and arming | Merged | #2888 |
 | 6 | ⚙️ App: wake-up chip, cancel and armed marks | Merged | #2891 |
-| 7 | 🌱 Reconcile regression docs | In this PR | |
-| 8 | 🌿 Verify and retire | Not started | |
+| 7 | 🌱 Reconcile regression docs | Merged | #2893 |
+| 8 | 🌿 Verify and retire | In this PR | |
 
 ## Notes for later steps
 
@@ -72,4 +72,35 @@
 
 ## Verification results
 
-None yet; step 8 records the matrix from `PLAN.md`.
+Run on 2026-11-24 on a bridge built from `main` (15fbab8f0b, then with the
+fixes below), an isolated home and the local test proxy. Harnesses: Claude Code
+2.1.330, Codex 0.171.0, Pi 1.6.0, Oh My Pi 19.1.1, Grok 1.0.30, GitHub Copilot
+1.0.114.
+
+| Check | Result |
+| --- | --- |
+| One-shot, all six harnesses | Pass. Claude Code needs an explicit model through the proxy; Copilot asks its own allow first. |
+| `every 2` twice, then `cancel_wakeup`, all six | Pass; no third notice, arming back to not armed. |
+| Busy wait, Claude Code and Grok | Pass; the notice came after the turn's last reply. |
+| Restart with a one-shot pending and a repeating one active | Failed first: the one-shot was lost (bug 1). Pass after the fix: each fired once, the one-shot with "3 minutes late". |
+| Archiving | Pass; not armed at once, the wake-up removed at its time without delivery. |
+| YOLO stores a command wake-up without a card; ask mode card, then Allow | Pass (Codex, Pi). Nothing stored before Allow; due 2 minutes after it. |
+| `byMode` re-ask after leaving YOLO | Pass (Codex). "Remembered on the next occurrence" not seen live: the agent cancelled first; L2 covers it. |
+| Inline and file output; the agent reads the file | Pass; folders `0700`, files `0600`, under `~/.sesori/command-output`. |
+| Task with a command | Pass (Codex); the run's hidden note held the output; an edit through `/scheduled-task/update` kept the command. |
+| Timeout through a fixture `sleep` | Pass; the shell and its background `sleep` were gone at 10 minutes. |
+| App: chip, menu marks, Cancel on a repeating wake-up | Pass. |
+| App: armed mark for a wake-up and a same-session task | Pass. |
+| App: `from <task>` on a paused task's session | Pass. |
+| App: legacy mark against a bridge from before step 2 (449e769ee5) | Pass. |
+| App: read-only task command | Pass ("Runs first"). |
+
+Bugs found and fixed:
+
+1. A send at startup failed before bridge registration: the first-prompt check
+   read history with the bridge id. The startup `runDue` therefore dropped due
+   wake-ups, and a one-shot was lost for good. Fixed in this PR; same-session
+   task runs and continuations at startup shared the failure.
+2. A prompt sent while a history import was fetching (Grok and the other
+   harnesses that don't replay a running turn) could leave a second copy of
+   the prompt or its reply. Not wake-up specific. Fixed in #2894.

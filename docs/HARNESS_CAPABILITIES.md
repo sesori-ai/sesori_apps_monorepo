@@ -236,7 +236,12 @@ A wake-up's or task's `command` runs on the bridge through the login shell, not
 through the harness, so it behaves the same on every harness and never meets
 the harness's own permission check; only Sesori's Allow guards it. Windows
 `cmd.exe` quoting and `taskkill /T` are untested.
-Live checks are pending (step 8 of `session-wakeups`).
+Verified live on 2026-11-24 through a test model: Claude Code 2.1.330, Codex
+0.171.0, Pi 1.6.0, Oh My Pi 19.1.1, Grok 1.0.30 and GitHub Copilot 1.0.114 each
+took a one-shot and answered its notice, and ran `every 2` twice before
+`cancel_wakeup` stopped it. A wake-up due mid-turn waited for the turn on
+Claude Code and Grok. Oh My Pi reaches the tools through its `xd://` file and
+Grok through tool search, as for pages.
 
 ## Transcript turn boundaries
 
