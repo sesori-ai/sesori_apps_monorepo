@@ -252,6 +252,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("tints a diff block's removed and added lines and strikes old values", (tester) async {
+    final router = _createRouter(
+      permission: _permission.copyWith(
+        tool: "Sesori: update task",
+        description: [
+          "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
+          "Prompt changes:",
+          "```diff\n@@ 2 unchanged lines @@\n Keep\n-Old line\n+New line\n```",
+        ].join("\n\n"),
+      ),
+      capture: _ReplyCapture(),
+    );
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    Color? tintOf(String text) => tester
+        .widgetList<DecoratedBox>(find.ancestor(of: find.text(text), matching: find.byType(DecoratedBox)))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .first
+        .color;
+    final prego = PregoDesignSystem.light.colors;
+    expect(tintOf("Old line"), prego.fgErrorPrimary.withValues(alpha: 0.1));
+    expect(tintOf("New line"), prego.fgSuccessPrimary.withValues(alpha: 0.1));
+    expect(tintOf("Keep"), Colors.transparent);
+    expect(find.text("@@ 2 unchanged lines @@"), findsOneWidget);
+
+    // Markdown paragraphs are selectable, so their spans live in the editable text.
+    final schedule = find.textContaining("Schedule", findRichText: true);
+    final spans = <TextSpan>[];
+    tester
+        .widget<EditableText>(schedule)
+        .controller
+        .buildTextSpan(context: tester.element(schedule), withComposing: false)
+        .visitChildren((span) {
+          if (span is TextSpan) spans.add(span);
+          return true;
+        });
+    expect(
+      spans.singleWhere((span) => span.text == "daily at 02:00 (UTC)").style?.decoration,
+      TextDecoration.lineThrough,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("hides always approve when the backend forbids it", (tester) async {
     final router = _createRouter(permission: _permission.copyWith(allowAlways: false), capture: _ReplyCapture());
     await tester.pumpWidget(_buildApp(router: router));

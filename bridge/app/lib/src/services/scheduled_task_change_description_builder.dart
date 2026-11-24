@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/agent_approval_outcome.dart";
@@ -9,9 +11,13 @@ import "../repositories/models/session_notice.dart";
 ///
 /// The security model relies on this text: it opens with the Approve
 /// everything warning whenever the resulting task acts without asking, names
-/// the project before the action, and shows every field the change sets.
+/// the project before the action, and shows every field the change sets: an
+/// update's old values struck through and its prompt as a line diff.
 /// Agent-written names and prompts are escaped, so they cannot fake a line.
 class const ScheduledTaskChangeDescriptionBuilder() {
+  /// Unchanged prompt lines a request shows around each changed one.
+  static const _diffContext = 2;
+
   String build({
     required ScheduledTaskAgentChange change,
     required String projectName,
@@ -159,10 +165,15 @@ class const ScheduledTaskChangeDescriptionBuilder() {
           for (final field in _Field.values)
             if (_value(field: field, definition: before) case final old
                 when old != _value(field: field, definition: after))
-              "${field.label}: ${_inline(text: old)} → ${_inline(
+              "${field.label}: ~~${_inline(text: old)}~~ → ${_inline(
                 text: _value(field: field, definition: after),
               )}",
-          if (before.prompt != after.prompt) ..._prompt(label: "New prompt", prompt: after.prompt),
+          if (before.prompt != after.prompt)
+            ...switch ((_promptText(prompt: before.prompt), _promptText(prompt: after.prompt))) {
+              // Only the prompt's kind changed, so a diff would show nothing.
+              (final old, final updated) when old == updated => _prompt(label: "New prompt", prompt: after.prompt),
+              (final old, final updated) => _promptDiff(before: old, after: updated),
+            },
         ];
       case SetTaskEnabledChange(:final before, enabled: true):
         return ["**Resume ${_quoted(text: before.name)}**", "Schedule: ${_inline(text: schedule(definition: before))}"];
@@ -207,18 +218,92 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   }
 
   List<String> _prompt({required String label, required ScheduledTaskPrompt prompt}) {
-    final text = switch (prompt) {
-      ScheduledTaskPromptText(:final text) => text,
-      ScheduledTaskPromptCommand(:final name, :final arguments) => "/$name${arguments == null ? "" : " $arguments"}",
-      ScheduledTaskPromptUnknown() => "(a prompt kind this bridge does not know)",
-    };
-    // A fence longer than any backtick run inside keeps the prompt verbatim.
+    final text = _promptText(prompt: prompt);
+    final fence = _fence(text: text);
+    return ["$label:", "$fence\n$text\n$fence"];
+  }
+
+  String _promptText({required ScheduledTaskPrompt prompt}) => switch (prompt) {
+    ScheduledTaskPromptText(:final text) => text,
+    ScheduledTaskPromptCommand(:final name, :final arguments) => "/$name${arguments == null ? "" : " $arguments"}",
+    ScheduledTaskPromptUnknown() => "(a prompt kind this bridge does not know)",
+  };
+
+  /// A git-style line diff of the prompt: every removed and added line, with
+  /// [_diffContext] unchanged lines around each change. Each prompt line starts
+  /// with "-", "+" or a space, so none can pass for the "@@" line that stands
+  /// for unchanged lines left out.
+  List<String> _promptDiff({required String before, required String after}) {
+    final lines = _lineDiff(before: before.split("\n"), after: after.split("\n"));
+    final changes = [
+      for (final (index, line) in lines.indexed)
+        if (!line.startsWith(" ")) index,
+    ];
+    bool shown(int index) => changes.any((change) => (change - index).abs() <= _diffContext);
+    final out = <String>[];
+    final skipped = <String>[];
+    void flushSkipped() {
+      // One left-out line takes as much room as its marker, so show it.
+      if (skipped.length == 1) {
+        out.add(skipped.single);
+      } else if (skipped.isNotEmpty) {
+        out.add("@@ ${skipped.length} unchanged lines @@");
+      }
+      skipped.clear();
+    }
+
+    for (final (index, line) in lines.indexed) {
+      if (shown(index)) {
+        flushSkipped();
+        out.add(line);
+      } else {
+        skipped.add(line);
+      }
+    }
+    flushSkipped();
+    final text = out.join("\n");
+    final fence = _fence(text: text);
+    return ["Prompt changes:", "${fence}diff\n$text\n$fence"];
+  }
+
+  /// [before] turned into [after] through a longest common subsequence, as
+  /// lines marked " " (kept), "-" (removed) or "+" (added). Removals come
+  /// before the additions that replace them, as in git.
+  List<String> _lineDiff({required List<String> before, required List<String> after}) {
+    // common[i][j]: the length of the longest common subsequence of
+    // before[i..] and after[j..].
+    final common = List.generate(before.length + 1, (_) => List.filled(after.length + 1, 0));
+    for (var i = before.length - 1; i >= 0; i--) {
+      for (var j = after.length - 1; j >= 0; j--) {
+        common[i][j] = before[i] == after[j] ? common[i + 1][j + 1] + 1 : max(common[i + 1][j], common[i][j + 1]);
+      }
+    }
+    final lines = <String>[];
+    var i = 0;
+    var j = 0;
+    while (i < before.length || j < after.length) {
+      if (i < before.length && j < after.length && before[i] == after[j]) {
+        lines.add(" ${before[i]}");
+        i++;
+        j++;
+      } else if (i < before.length && (j == after.length || common[i + 1][j] >= common[i][j + 1])) {
+        lines.add("-${before[i]}");
+        i++;
+      } else {
+        lines.add("+${after[j]}");
+        j++;
+      }
+    }
+    return lines;
+  }
+
+  /// A fence longer than any backtick run in [text], so the text stays verbatim.
+  String _fence({required String text}) {
     final longestRun = RegExp("`+").allMatches(text).fold(0, (longest, match) {
       final length = match.end - match.start;
       return length > longest ? length : longest;
     });
-    final fence = "`" * (longestRun < 3 ? 3 : longestRun + 1);
-    return ["$label:", "$fence\n$text\n$fence"];
+    return "`" * (longestRun < 3 ? 3 : longestRun + 1);
   }
 
   String _quoted({required String text}) => "“${_inline(text: text)}”";

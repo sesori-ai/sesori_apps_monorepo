@@ -10,6 +10,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../platform/external_link_opener.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
+import "../../session_diffs/utils/diff_theme.dart";
 import "pending_request_auto_dismiss.dart";
 
 // Shared by the touch and pointer layouts so integration tests find a
@@ -101,6 +102,7 @@ class const PermissionModal({
       ),
       tooltip: context.loc.sessionDetailCopy,
     );
+    final paragraphStyle = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
     final description = MarkdownBody(
       data: permission.description,
       selectable: true,
@@ -109,8 +111,14 @@ class const PermissionModal({
       styleSheet:
           buildSessionMarkdownStyleSheet(
             prego: prego,
-            paragraphStyle: prego.textTheme.code.copyWith(color: prego.colors.textPrimary),
+            paragraphStyle: paragraphStyle,
           ).copyWith(
+            // An updated task's old values, struck through beside the new
+            // ones. Set whole, or the platform fallback's font and size win.
+            del: paragraphStyle.copyWith(
+              color: prego.colors.textSecondary,
+              decoration: TextDecoration.lineThrough,
+            ),
             codeblockDecoration: BoxDecoration(
               color: prego.colors.bgSurface1,
               borderRadius: BorderRadius.circular(prego.radius.md),
@@ -226,11 +234,71 @@ class _WrappingCodeBlockBuilder({required final double padding}) extends Markdow
     TextStyle? parentStyle,
   ) {
     final raw = element.textContent;
+    final code = raw.endsWith("\n") ? raw.substring(0, raw.length - 1) : raw;
+    final isDiff = element.children?.any(
+      (child) => child is md.Element && child.tag == "code" && child.attributes["class"] == "language-diff",
+    );
+    if (isDiff ?? false) return _DiffBlock(diff: code, padding: padding, style: preferredStyle);
     return SizedBox(
       width: double.infinity,
       child: Padding(
         padding: EdgeInsets.all(padding),
-        child: SelectableText(raw.endsWith("\n") ? raw.substring(0, raw.length - 1) : raw, style: preferredStyle),
+        child: SelectableText(code, style: preferredStyle),
+      ),
+    );
+  }
+}
+
+/// A unified diff, such as the prompt change of a task update, tinted like
+/// the session's file diffs: removed lines red, added lines green. A wrapped
+/// line keeps its text clear of the `-`/`+` marker.
+class const _DiffBlock({required final String diff, required final double padding, required final TextStyle? style})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = DiffTheme.of(context);
+    const barWidth = 2.0;
+    Widget row({required String line}) {
+      final (Color, Color)? tint = switch (line.isEmpty ? null : line[0]) {
+        "-" => (theme.removedBg, theme.removedBar),
+        "+" => (theme.addedBg, theme.addedBar),
+        " " => (theme.contextBg, Colors.transparent),
+        _ => null,
+      };
+      if (tint case (final background, final bar)) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: background,
+            border: BorderDirectional(
+              start: BorderSide(color: bar, width: barWidth),
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(start: padding - barWidth, end: padding),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(line[0], style: style?.copyWith(color: theme.prefixText)),
+                Expanded(child: Text(line.substring(1), style: style)),
+              ],
+            ),
+          ),
+        );
+      }
+      // A hunk header, such as the "@@" line for unchanged lines left out.
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: padding),
+        child: Text(line, style: style?.copyWith(color: theme.hunkHeaderText)),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: padding),
+      child: SelectionArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [for (final line in diff.split("\n")) row(line: line)],
+        ),
       ),
     );
   }
