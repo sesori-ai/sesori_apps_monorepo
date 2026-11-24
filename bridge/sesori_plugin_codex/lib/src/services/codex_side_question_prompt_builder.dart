@@ -4,7 +4,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 /// Builds the one `thread/sample` prompt for a side question. Codex has no
 /// history parameter, so this side chat's earlier exchanges go inside the
-/// prompt, which Codex caps at [maxBytes] UTF-8 bytes.
+/// prompt, which Codex 0.164.0 to 0.171.x cap at [maxBytes] UTF-8 bytes
+/// (0.172.0 removed the cap).
 class const CodexSideQuestionPromptBuilder() {
   static const maxBytes = 4000;
 
