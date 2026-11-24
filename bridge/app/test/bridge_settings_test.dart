@@ -58,7 +58,7 @@ void main() {
       expect(settings.enabledToolGroups, {SesoriToolGroupIds.pages, SesoriToolGroupIds.wakeUps});
       expect(settings.copyWith(agentTools: false).enabledToolGroups, isEmpty);
       expect(settings.toJson()['agentToolGroups'], {
-        'disabled': ['from_a_future_bridge', 'tasks'],
+        'disabled': ['tasks', 'from_a_future_bridge'],
       });
 
       final reenabled = settings.copyWith(

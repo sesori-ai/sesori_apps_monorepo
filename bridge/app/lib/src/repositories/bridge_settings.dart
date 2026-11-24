@@ -1,7 +1,11 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 
 import '../updater/foundation/release_track.dart';
 import 'models/sesori_tool_group_ids.dart';
+
+part 'bridge_settings.freezed.dart';
+part 'bridge_settings.g.dart';
 
 const int defaultPluginIdleTimeoutMins = 45;
 const int defaultPullRequestRefreshIntervalSeconds = 30;
@@ -174,19 +178,14 @@ class const BridgePluginSettings({
 
 /// Which Sesori tool groups are off. A group is on unless it is listed;
 /// unknown ids are kept and ignored, as for `plugins.disabled`.
-class const BridgeAgentToolGroupSettings({final Set<String> disabledIds = const {}}) {
-  factory fromJson({required Object? rawValue}) {
-    return switch (rawValue) {
-      {'disabled': final List<Object?> ids} => BridgeAgentToolGroupSettings(
-        disabledIds: Set<String>.unmodifiable(ids.whereType<String>()),
-      ),
-      _ => const BridgeAgentToolGroupSettings(),
-    };
-  }
+@Freezed(fromJson: true, toJson: true, copyWith: false)
+sealed class const BridgeAgentToolGroupSettings._() with _$BridgeAgentToolGroupSettings {
+  const factory({@Default(<String>{}) @JsonKey(name: 'disabled') Set<String> disabledIds}) =
+      _BridgeAgentToolGroupSettings;
+
+  factory fromJson(Map<String, dynamic> json) => _$BridgeAgentToolGroupSettingsFromJson(json);
 
   bool isEnabled({required SesoriToolGroupId id}) => !disabledIds.contains(id.value);
-
-  Map<String, dynamic> toJson() => {'disabled': disabledIds.toList()..sort()};
 
   BridgeAgentToolGroupSettings withGroupEnabled({required SesoriToolGroupId id, required bool enabled}) {
     final updated = Set<String>.of(disabledIds);
@@ -243,7 +242,10 @@ class const BridgeSettings({
         rawValue: json['warmUpPluginsOnSessionOpen'],
       ),
       agentTools: json['agentTools'] != false,
-      agentToolGroups: BridgeAgentToolGroupSettings.fromJson(rawValue: json['agentToolGroups']),
+      agentToolGroups: switch (json['agentToolGroups']) {
+        final Map<String, dynamic> groups => BridgeAgentToolGroupSettings.fromJson(groups),
+        _ => const BridgeAgentToolGroupSettings(),
+      },
     );
   }
 
