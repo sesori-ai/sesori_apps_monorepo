@@ -29,8 +29,8 @@ declaration into a `SideQuestionAvailability`: `available`,
   interrupt it. The main turn's messages, the Claude Code `.jsonl` and the
   Codex rollout never contain the question or answer.
 - A follow-up passes the side chat's earlier exchanges, oldest first, as
-  history. Codex puts them in its 4,000-byte prompt and trims the oldest text
-  first.
+  history. Codex 0.172.0 and later get them all in the prompt; older Codex
+  caps the prompt at 4,000 bytes, so Sesori trims the oldest text first.
 - An answer is stored with its question and optional notice and returned with
   its side chat id. A refusal (`harnessUnsupported`, `harnessUpdateRequired`,
   `noTurnYet`, `tooLong`, `noAnswer`, `repeatedRunningReply`) and a failure
@@ -130,7 +130,7 @@ declaration into a `SideQuestionAvailability`: `available`,
 | --- | --- |
 | L1 Smoke | Not included. |
 | L2 Routine | Automated: bridge route, repository and migration tests (`side_question_handlers_test`, `side_chat_repository_test`, `side_chat_exchanges_migration_test`) cover the routes, refusals, storage, history order, archived read-only and delete cascade; Claude Code (`claude_stream_client_test`, `claude_side_answer_mapper_test`, `claude_session_process_repository_test` for the running-reply echo) and Codex (`codex_side_questions_test`, `codex_side_question_prompt_builder_test`) plugin tests against fakes; client `side_chat_cubit_test`, `session_detail_side_question_test`, `side_chat_view_test`, `prego_detent_sheet_test`, `side_chat_keyboard_hold_test`, `command_picker_test` and `desktop_session_detail_screen_test`; one `side_question_asked` per ask with bounded parameters. |
-| L3 Release | Live Claude Code and Codex: ask while the main turn streams and check it finishes normally; a follow-up uses the history; an ask after a cold resume answers; the `.jsonl` and the rollout are unchanged, and an over-budget Codex history is trimmed. On a headless iOS simulator, against Claude Code and Codex: both entries (button, and "/btw " with ✕ back keeping the text, and the picker row); sheet heights and drag; ask during streaming and follow up; reopen an earlier chat; close while waiting and reopen to see the answer; no main-transcript jump; the tap reason on an unsupported harness and on an older bridge. On macOS: the panel slides in without the transcript moving, stops above the composer with Send clickable and follows a growing draft, answers a question and a follow-up, and closes on Escape and on a session switch. |
+| L3 Release | Live Claude Code and Codex: ask while the main turn streams and check it finishes normally; a follow-up uses the history; an ask after a cold resume answers; the `.jsonl` and the rollout are unchanged, a long Codex side chat arrives whole on 0.172.0 and later and is trimmed to 4,000 bytes on an older PATH Codex. On a headless iOS simulator, against Claude Code and Codex: both entries (button, and "/btw " with ✕ back keeping the text, and the picker row); sheet heights and drag; ask during streaming and follow up; reopen an earlier chat; close while waiting and reopen to see the answer; no main-transcript jump; the tap reason on an unsupported harness and on an older bridge. On macOS: the panel slides in without the transcript moving, stops above the composer with Send clickable and follows a growing draft, answers a question and a follow-up, and closes on Escape and on a session switch. |
 | L4 Extended | Very long questions and answers, the largest text size, a reopened chat with many exchanges, and an ask on a session with no turn yet. |
 | L5 Full | No additional coverage. |
 

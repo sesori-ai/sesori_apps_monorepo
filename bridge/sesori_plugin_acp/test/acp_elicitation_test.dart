@@ -189,6 +189,41 @@ void main() {
       });
     }
 
+    test("maps an untitled items.enum multi-select to its string values", () async {
+      requests.add(
+        form(
+          properties: {
+            "platforms": {
+              "type": "array",
+              "title": "Platforms",
+              "items": {
+                "type": "string",
+                "enum": ["ios", "web"],
+              },
+            },
+          },
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.questions.single.options.map((option) => option.label), ["ios", "web"]);
+      expect(asked.questions.single.custom, isFalse);
+
+      await registry.replyQuestion(
+        requestId: asked.id,
+        answers: [
+          ["web"],
+        ],
+      );
+
+      expect(responses.single.$2, {
+        "action": "accept",
+        "content": {
+          "platforms": ["web"],
+        },
+      });
+    });
+
     test("array response encoding does not retain mutable source choices", () {
       final choice = <String, Object?>{"const": "original", "title": "Choice"};
       final request = form(

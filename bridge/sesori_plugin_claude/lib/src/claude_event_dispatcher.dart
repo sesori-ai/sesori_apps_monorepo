@@ -154,6 +154,10 @@ final class ClaudeEventDispatcher({
   /// process; a replayed task outside this set is dead.
   Set<String> residentTaskToolUseIds({required String sessionId}) => _tools.runningTaskToolUseIds(sessionId: sessionId);
 
+  /// Whether [toolUseId] launched a task this process tracks, whose tile
+  /// absorbs a `<task-notification>` envelope naming it.
+  bool isKnownTask({required String toolUseId}) => _tools.isKnownTask(toolUseId: toolUseId);
+
   void _clearStreamedMessages({required String sessionId}) {
     final messageIds = _streamedMessageIds.remove(sessionId);
     if (messageIds == null) return;

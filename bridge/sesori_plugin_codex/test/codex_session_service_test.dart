@@ -118,6 +118,28 @@ void main() {
       expect(answer, isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.tooLong));
       expect(threadRepository.samples, isEmpty);
     });
+
+    test("a Codex without the prompt cap gets the whole side chat", () async {
+      threadRepository.samplePromptCap = null;
+      final history = [
+        for (var i = 0; i < 6; i++) PluginSideExchange(question: "Old $i?", answer: "${"x" * 900} end $i."),
+      ];
+
+      final answer = await service.askSideQuestion(
+        threadId: "thread-id",
+        activeTurnId: "turn-running",
+        question: "x" * 4000,
+        history: history,
+      );
+
+      expect(answer, isA<PluginSideAnswered>());
+      final prompt = threadRepository.samples.single.prompt;
+      for (var i = 0; i < 6; i++) {
+        expect(prompt, contains("Question: Old $i?"));
+        expect(prompt, contains("end $i."));
+      }
+      expect(prompt, contains("Side question: ${"x" * 4000}"));
+    });
   });
 
   test("getCommands always includes compact without duplicating an advertised command", () async {
@@ -845,6 +867,11 @@ class _StubThreadRepository() extends CodexThreadRepository {
   Future<void> compactThread({required String threadId}) async {
     compactCount += 1;
   }
+
+  int? samplePromptCap = CodexThreadRepository.cappedSamplePromptBytes;
+
+  @override
+  int? get samplePromptMaxBytes => samplePromptCap;
 
   String? latestTurn = "turn-latest";
   int latestTurnReads = 0;

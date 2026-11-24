@@ -2,6 +2,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/copilot_catalog_probe_api.dart";
+import "copilot_approval_registry.dart";
 import "copilot_binary.dart";
 import "copilot_identity.dart";
 import "repositories/copilot_catalog_repository.dart";
@@ -9,8 +10,9 @@ import "services/copilot_session_options_service.dart";
 
 /// GitHub Copilot CLI backend over standard ACP v1.
 ///
-/// It supports standard cancellation but does not currently forward its
-/// `ask_user` interaction over ACP, so form elicitation remains unadvertised.
+/// It supports standard cancellation. Since 1.0.115 Copilot sends its
+/// `ask_user` questions as standard ACP form elicitation when the client
+/// advertises forms.
 class CopilotPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -82,6 +84,17 @@ class CopilotPlugin._({
   @override
   String? get authenticationFailureActionHint =>
       super.authenticationFailureActionHint == null ? null : CopilotBinary.loginActionHint;
+
+  @override
+  bool get supportsFormElicitation => true;
+
+  @override
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => CopilotApprovalRegistry(
+    client: client,
+    emit: emitActivityEvent,
+    idGenerator: null,
+    activeSessionResolver: () => activeTurnSessionId,
+  );
 
   @override
   void captureSessionConfig(

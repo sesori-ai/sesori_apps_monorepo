@@ -147,6 +147,45 @@ void main() {
     expect(step.id, isNot("toolu-send"));
   });
 
+  test("an outcome recorded without a user frame maps from its record to the row replay shows", () async {
+    // Idle, the CLI records the turn and streams only the typed frame.
+    final records = [
+      _assistant(toolUseId: "toolu-agent", name: "Agent"),
+      _launchResult(toolUseId: "toolu-agent"),
+      _user(
+        uuid: "agent-outcome",
+        content: _envelope(toolUseId: "toolu-agent"),
+        origin: _origin,
+      ),
+      _assistant(toolUseId: "toolu-send", name: "SendMessage"),
+      _user(
+        uuid: "notification",
+        content: _envelope(toolUseId: "toolu-send"),
+        origin: _origin,
+      ),
+    ];
+    final stored = (await replay(records: records)).where((message) => message.info.id == "notification").single;
+    final recent = (await transcripts.readRecentTaskNotificationRecords(sessionId: _sessionId)) ?? const [];
+    PluginMessageWithParts? recorded({required String? toolUseId}) => [
+      for (final record in recent)
+        ?history.recordedTaskNotificationTurn(
+          sessionId: _sessionId,
+          record: record,
+          taskId: "task-1",
+          toolUseId: toolUseId,
+          isKnownTask: ({required toolUseId}) => toolUseId == "toolu-agent",
+        ),
+    ].singleOrNull;
+
+    final live = recorded(toolUseId: "toolu-send");
+    expect(live?.info.toJson(), stored.info.toJson());
+    expect(live?.parts, stored.parts);
+    // A known launch's outcome folds into its tile and has no row, and a
+    // record naming another call is not this frame's.
+    expect(recorded(toolUseId: "toolu-agent"), isNull);
+    expect(recorded(toolUseId: "toolu-other"), isNull);
+  });
+
   test("a failed task carries its summary as the error", () async {
     final stored = await automation(
       frames: [
