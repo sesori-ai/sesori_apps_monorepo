@@ -209,7 +209,7 @@ void main() {
       final initialize = await waitForFrame(process: fake, method: "initialize");
       final initializeParams = (initialize["params"] as Map).cast<String, dynamic>();
       final clientCapabilities = (initializeParams["clientCapabilities"] as Map).cast<String, dynamic>();
-      expect(clientCapabilities, isNot(contains("elicitation")));
+      expect(clientCapabilities["elicitation"], {"form": <String, dynamic>{}});
       fake.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": _copilotInitializeResult});
 
       final authenticate = await waitForFrame(process: fake, method: "authenticate");
@@ -249,6 +249,132 @@ void main() {
         ),
         throwsA(isA<PluginStaleOptionsException>()),
       );
+    });
+
+    group("ask_user form elicitation", () {
+      // Request shapes Copilot 1.0.115 sent live, with fixture ids.
+      Future<PluginPendingQuestion> ask({required Map<String, dynamic> properties}) async {
+        final connecting = plugin.ensureConnected();
+        await completeHandshake(process: fake);
+        expect(await connecting, isTrue);
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": 0,
+          "method": "elicitation/create",
+          "params": {
+            "sessionId": "session-1",
+            "mode": "form",
+            "message": "Choose the framework and optional project settings.",
+            "requestedSchema": {"type": "object", "properties": properties},
+            "toolCallId": "call-1",
+          },
+        });
+        await pump();
+        return (await plugin.getPendingQuestions(sessionId: "session-1")).single;
+      }
+
+      Future<Object?> reply({required PluginPendingQuestion pending, required List<List<String>> answers}) async {
+        await plugin.replyToQuestion(questionId: pending.id, sessionId: "session-1", answers: answers);
+        expect(await plugin.getPendingQuestions(sessionId: "session-1"), isEmpty);
+        return fake.written.where((frame) => frame["id"] == 0 && frame.containsKey("result")).single["result"];
+      }
+
+      test("maps titled choices, a multi-select, and free text to one form reply", () async {
+        final pending = await ask(
+          properties: {
+            "framework": {
+              "type": "string",
+              "title": "Framework",
+              "description": "Required project framework.",
+              "oneOf": [
+                {"const": "react", "title": "React"},
+                {"const": "vue", "title": "Vue"},
+                {"const": "svelte", "title": "Svelte"},
+              ],
+              "default": "react",
+            },
+            "features": {
+              "type": "array",
+              "title": "Features",
+              "description": "Optional project features.",
+              "default": <String>[],
+              "items": {
+                "anyOf": [
+                  {"const": "tests", "title": "Tests"},
+                  {"const": "lint", "title": "Lint"},
+                  {"const": "ci", "title": "CI"},
+                ],
+              },
+            },
+            "name": {"type": "string", "title": "Name", "description": "Optional project name."},
+          },
+        );
+        final [framework, features, name] = pending.questions;
+        expect(framework.options.map((option) => option.label), ["React", "Vue", "Svelte"]);
+        expect(framework.options.first.isDefault, isTrue);
+        expect((framework.multiple, framework.custom), (false, true));
+        expect((features.multiple, features.custom), (true, true));
+        expect(name.options, isEmpty);
+        expect(name.custom, isTrue);
+
+        final result = await reply(
+          pending: pending,
+          answers: const [
+            ["Vue"],
+            ["Tests", "CI"],
+            ["demo"],
+          ],
+        );
+
+        expect(result, {
+          "action": "accept",
+          "content": {
+            "framework": "vue",
+            "features": ["tests", "ci"],
+            "name": "demo",
+          },
+        });
+      });
+
+      test("sends free text outside plain enum choices as the field's own value", () async {
+        final pending = await ask(
+          properties: {
+            "color": {
+              "type": "string",
+              "title": "Color",
+              "enum": ["red", "green", "blue"],
+            },
+            "platforms": {
+              "type": "array",
+              "title": "Platforms",
+              "items": {
+                "type": "string",
+                "enum": ["ios", "android", "web"],
+              },
+            },
+          },
+        );
+        final [color, platforms] = pending.questions;
+        expect(color.options.map((option) => option.label), ["red", "green", "blue"]);
+        expect(platforms.options.map((option) => option.label), ["ios", "android", "web"]);
+        expect((platforms.multiple, platforms.custom), (true, true));
+
+        final result = await reply(
+          pending: pending,
+          answers: const [
+            ["purple"],
+            ["ios", "watchOS"],
+          ],
+        );
+
+        expect(result, {
+          "action": "accept",
+          "content": {
+            "color": "purple",
+            "platforms": ["ios", "watchOS"],
+          },
+        });
+      });
     });
 
     test("serializes reasoning refreshes for different selected models", () async {
