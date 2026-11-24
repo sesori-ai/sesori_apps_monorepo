@@ -418,6 +418,10 @@ mixin $ScheduledTasksTableTableToColumns
   ScheduledTaskRunModeKind get runMode;
   bool get autoCompact;
   TaskApprovalMode get approvalMode;
+
+  /// The shell command a run executes before its prompt, if any. Outside the
+  /// definition JSON, because the app sends the definition whole.
+  String? get command;
   bool get enabled;
 
   /// UTC milliseconds of the next run. Null while paused or done.
@@ -470,6 +474,9 @@ mixin $ScheduledTasksTableTableToColumns
       map['approval_mode'] = Variable<String>(
         $ScheduledTasksTableTable.$converterapprovalMode.toSql(approvalMode),
       );
+    }
+    if (!nullToAbsent || command != null) {
+      map['command'] = Variable<String>(command);
     }
     map['enabled'] = Variable<bool>(enabled);
     if (!nullToAbsent || nextDueAt != null) {
@@ -675,6 +682,17 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
       ).withConverter<TaskApprovalMode>(
         $ScheduledTasksTableTable.$converterapprovalMode,
       );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _enabledMeta = const VerificationMeta(
     'enabled',
   );
@@ -765,6 +783,7 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     runMode,
     autoCompact,
     approvalMode,
+    command,
     enabled,
     nextDueAt,
     targetSessionId,
@@ -887,6 +906,12 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
       );
     } else if (isInserting) {
       context.missing(_autoCompactMeta);
+    }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
     }
     if (data.containsKey('enabled')) {
       context.handle(
@@ -1016,6 +1041,10 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
           data['${effectivePrefix}approval_mode'],
         )!,
       ),
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      ),
       enabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}enabled'],
@@ -1098,6 +1127,11 @@ class ScheduledTaskDto extends DataClass
   final bool autoCompact;
   @override
   final TaskApprovalMode approvalMode;
+
+  /// The shell command a run executes before its prompt, if any. Outside the
+  /// definition JSON, because the app sends the definition whole.
+  @override
+  final String? command;
   @override
   final bool enabled;
 
@@ -1135,6 +1169,7 @@ class ScheduledTaskDto extends DataClass
     required this.runMode,
     required this.autoCompact,
     required this.approvalMode,
+    this.command,
     required this.enabled,
     this.nextDueAt,
     this.targetSessionId,
@@ -1166,6 +1201,9 @@ class ScheduledTaskDto extends DataClass
       runMode: Value(runMode),
       autoCompact: Value(autoCompact),
       approvalMode: Value(approvalMode),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
       enabled: Value(enabled),
       nextDueAt: nextDueAt == null && nullToAbsent
           ? const Value.absent()
@@ -1208,6 +1246,7 @@ class ScheduledTaskDto extends DataClass
       approvalMode: $ScheduledTasksTableTable.$converterapprovalMode.fromJson(
         serializer.fromJson<String>(json['approvalMode']),
       ),
+      command: serializer.fromJson<String?>(json['command']),
       enabled: serializer.fromJson<bool>(json['enabled']),
       nextDueAt: serializer.fromJson<int?>(json['nextDueAt']),
       targetSessionId: serializer.fromJson<String?>(json['targetSessionId']),
@@ -1244,6 +1283,7 @@ class ScheduledTaskDto extends DataClass
       'approvalMode': serializer.toJson<String>(
         $ScheduledTasksTableTable.$converterapprovalMode.toJson(approvalMode),
       ),
+      'command': serializer.toJson<String?>(command),
       'enabled': serializer.toJson<bool>(enabled),
       'nextDueAt': serializer.toJson<int?>(nextDueAt),
       'targetSessionId': serializer.toJson<String?>(targetSessionId),
@@ -1270,6 +1310,7 @@ class ScheduledTaskDto extends DataClass
     ScheduledTaskRunModeKind? runMode,
     bool? autoCompact,
     TaskApprovalMode? approvalMode,
+    Value<String?> command = const Value.absent(),
     bool? enabled,
     Value<int?> nextDueAt = const Value.absent(),
     Value<String?> targetSessionId = const Value.absent(),
@@ -1293,6 +1334,7 @@ class ScheduledTaskDto extends DataClass
     runMode: runMode ?? this.runMode,
     autoCompact: autoCompact ?? this.autoCompact,
     approvalMode: approvalMode ?? this.approvalMode,
+    command: command.present ? command.value : this.command,
     enabled: enabled ?? this.enabled,
     nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
     targetSessionId: targetSessionId.present
@@ -1332,6 +1374,7 @@ class ScheduledTaskDto extends DataClass
       approvalMode: data.approvalMode.present
           ? data.approvalMode.value
           : this.approvalMode,
+      command: data.command.present ? data.command.value : this.command,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
       nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
       targetSessionId: data.targetSessionId.present
@@ -1364,6 +1407,7 @@ class ScheduledTaskDto extends DataClass
           ..write('runMode: $runMode, ')
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
+          ..write('command: $command, ')
           ..write('enabled: $enabled, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
@@ -1392,6 +1436,7 @@ class ScheduledTaskDto extends DataClass
     runMode,
     autoCompact,
     approvalMode,
+    command,
     enabled,
     nextDueAt,
     targetSessionId,
@@ -1419,6 +1464,7 @@ class ScheduledTaskDto extends DataClass
           other.runMode == this.runMode &&
           other.autoCompact == this.autoCompact &&
           other.approvalMode == this.approvalMode &&
+          other.command == this.command &&
           other.enabled == this.enabled &&
           other.nextDueAt == this.nextDueAt &&
           other.targetSessionId == this.targetSessionId &&
@@ -1444,6 +1490,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
   final Value<ScheduledTaskRunModeKind> runMode;
   final Value<bool> autoCompact;
   final Value<TaskApprovalMode> approvalMode;
+  final Value<String?> command;
   final Value<bool> enabled;
   final Value<int?> nextDueAt;
   final Value<String?> targetSessionId;
@@ -1467,6 +1514,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     this.runMode = const Value.absent(),
     this.autoCompact = const Value.absent(),
     this.approvalMode = const Value.absent(),
+    this.command = const Value.absent(),
     this.enabled = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
@@ -1491,6 +1539,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     required ScheduledTaskRunModeKind runMode,
     required bool autoCompact,
     required TaskApprovalMode approvalMode,
+    this.command = const Value.absent(),
     required bool enabled,
     this.nextDueAt = const Value.absent(),
     this.targetSessionId = const Value.absent(),
@@ -1530,6 +1579,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     Expression<String>? runMode,
     Expression<bool>? autoCompact,
     Expression<String>? approvalMode,
+    Expression<String>? command,
     Expression<bool>? enabled,
     Expression<int>? nextDueAt,
     Expression<String>? targetSessionId,
@@ -1554,6 +1604,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
       if (runMode != null) 'run_mode': runMode,
       if (autoCompact != null) 'auto_compact': autoCompact,
       if (approvalMode != null) 'approval_mode': approvalMode,
+      if (command != null) 'command': command,
       if (enabled != null) 'enabled': enabled,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (targetSessionId != null) 'target_session_id': targetSessionId,
@@ -1580,6 +1631,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
     Value<ScheduledTaskRunModeKind>? runMode,
     Value<bool>? autoCompact,
     Value<TaskApprovalMode>? approvalMode,
+    Value<String?>? command,
     Value<bool>? enabled,
     Value<int?>? nextDueAt,
     Value<String?>? targetSessionId,
@@ -1604,6 +1656,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
       runMode: runMode ?? this.runMode,
       autoCompact: autoCompact ?? this.autoCompact,
       approvalMode: approvalMode ?? this.approvalMode,
+      command: command ?? this.command,
       enabled: enabled ?? this.enabled,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       targetSessionId: targetSessionId ?? this.targetSessionId,
@@ -1674,6 +1727,9 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
         ),
       );
     }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
     if (enabled.present) {
       map['enabled'] = Variable<bool>(enabled.value);
     }
@@ -1714,6 +1770,7 @@ class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
           ..write('runMode: $runMode, ')
           ..write('autoCompact: $autoCompact, ')
           ..write('approvalMode: $approvalMode, ')
+          ..write('command: $command, ')
           ..write('enabled: $enabled, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('targetSessionId: $targetSessionId, ')
@@ -7445,6 +7502,12 @@ mixin $SessionWakeUpsTableTableToColumns
   String get sessionId;
   String get label;
   String get prompt;
+
+  /// The shell command run before the prompt is sent, if any.
+  String? get command;
+
+  /// Null exactly when [command] is.
+  SessionWakeUpCommandApproval? get commandApproval;
   String get scheduleJson;
 
   /// UTC milliseconds.
@@ -7459,6 +7522,16 @@ mixin $SessionWakeUpsTableTableToColumns
     map['session_id'] = Variable<String>(sessionId);
     map['label'] = Variable<String>(label);
     map['prompt'] = Variable<String>(prompt);
+    if (!nullToAbsent || command != null) {
+      map['command'] = Variable<String>(command);
+    }
+    if (!nullToAbsent || commandApproval != null) {
+      map['command_approval'] = Variable<String>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toSql(
+          commandApproval,
+        ),
+      );
+    }
     map['schedule_json'] = Variable<String>(scheduleJson);
     map['next_due_at'] = Variable<int>(nextDueAt);
     map['created_at'] = Variable<int>(createdAt);
@@ -7513,6 +7586,32 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _commandMeta = const VerificationMeta(
+    'command',
+  );
+  @override
+  late final GeneratedColumn<String> command = GeneratedColumn<String>(
+    'command',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    SessionWakeUpCommandApproval?,
+    String
+  >
+  commandApproval =
+      GeneratedColumn<String>(
+        'command_approval',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<SessionWakeUpCommandApproval?>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln,
+      );
   static const VerificationMeta _scheduleJsonMeta = const VerificationMeta(
     'scheduleJson',
   );
@@ -7552,6 +7651,8 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     sessionId,
     label,
     prompt,
+    command,
+    commandApproval,
     scheduleJson,
     nextDueAt,
     createdAt,
@@ -7596,6 +7697,12 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
       );
     } else if (isInserting) {
       context.missing(_promptMeta);
+    }
+    if (data.containsKey('command')) {
+      context.handle(
+        _commandMeta,
+        command.isAcceptableOrUnknown(data['command']!, _commandMeta),
+      );
     }
     if (data.containsKey('schedule_json')) {
       context.handle(
@@ -7649,6 +7756,17 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
         DriftSqlType.string,
         data['${effectivePrefix}prompt'],
       )!,
+      command: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}command'],
+      ),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}command_approval'],
+            ),
+          ),
       scheduleJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}schedule_json'],
@@ -7669,6 +7787,15 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     return $SessionWakeUpsTableTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<SessionWakeUpCommandApproval, String, String>
+  $convertercommandApproval =
+      const EnumNameConverter<SessionWakeUpCommandApproval>(
+        SessionWakeUpCommandApproval.values,
+      );
+  static JsonTypeConverter2<SessionWakeUpCommandApproval?, String?, String?>
+  $convertercommandApprovaln = JsonTypeConverter2.asNullable(
+    $convertercommandApproval,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -7685,6 +7812,14 @@ class SessionWakeUpDto extends DataClass
   final String label;
   @override
   final String prompt;
+
+  /// The shell command run before the prompt is sent, if any.
+  @override
+  final String? command;
+
+  /// Null exactly when [command] is.
+  @override
+  final SessionWakeUpCommandApproval? commandApproval;
   @override
   final String scheduleJson;
 
@@ -7700,6 +7835,8 @@ class SessionWakeUpDto extends DataClass
     required this.sessionId,
     required this.label,
     required this.prompt,
+    this.command,
+    this.commandApproval,
     required this.scheduleJson,
     required this.nextDueAt,
     required this.createdAt,
@@ -7710,6 +7847,12 @@ class SessionWakeUpDto extends DataClass
       sessionId: Value(sessionId),
       label: Value(label),
       prompt: Value(prompt),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
+      commandApproval: commandApproval == null && nullToAbsent
+          ? const Value.absent()
+          : Value(commandApproval),
       scheduleJson: Value(scheduleJson),
       nextDueAt: Value(nextDueAt),
       createdAt: Value(createdAt),
@@ -7726,6 +7869,9 @@ class SessionWakeUpDto extends DataClass
       sessionId: serializer.fromJson<String>(json['sessionId']),
       label: serializer.fromJson<String>(json['label']),
       prompt: serializer.fromJson<String>(json['prompt']),
+      command: serializer.fromJson<String?>(json['command']),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromJson(serializer.fromJson<String?>(json['commandApproval'])),
       scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
       nextDueAt: serializer.fromJson<int>(json['nextDueAt']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -7739,6 +7885,12 @@ class SessionWakeUpDto extends DataClass
       'sessionId': serializer.toJson<String>(sessionId),
       'label': serializer.toJson<String>(label),
       'prompt': serializer.toJson<String>(prompt),
+      'command': serializer.toJson<String?>(command),
+      'commandApproval': serializer.toJson<String?>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toJson(
+          commandApproval,
+        ),
+      ),
       'scheduleJson': serializer.toJson<String>(scheduleJson),
       'nextDueAt': serializer.toJson<int>(nextDueAt),
       'createdAt': serializer.toJson<int>(createdAt),
@@ -7750,6 +7902,8 @@ class SessionWakeUpDto extends DataClass
     String? sessionId,
     String? label,
     String? prompt,
+    Value<String?> command = const Value.absent(),
+    Value<SessionWakeUpCommandApproval?> commandApproval = const Value.absent(),
     String? scheduleJson,
     int? nextDueAt,
     int? createdAt,
@@ -7758,6 +7912,10 @@ class SessionWakeUpDto extends DataClass
     sessionId: sessionId ?? this.sessionId,
     label: label ?? this.label,
     prompt: prompt ?? this.prompt,
+    command: command.present ? command.value : this.command,
+    commandApproval: commandApproval.present
+        ? commandApproval.value
+        : this.commandApproval,
     scheduleJson: scheduleJson ?? this.scheduleJson,
     nextDueAt: nextDueAt ?? this.nextDueAt,
     createdAt: createdAt ?? this.createdAt,
@@ -7768,6 +7926,10 @@ class SessionWakeUpDto extends DataClass
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       label: data.label.present ? data.label.value : this.label,
       prompt: data.prompt.present ? data.prompt.value : this.prompt,
+      command: data.command.present ? data.command.value : this.command,
+      commandApproval: data.commandApproval.present
+          ? data.commandApproval.value
+          : this.commandApproval,
       scheduleJson: data.scheduleJson.present
           ? data.scheduleJson.value
           : this.scheduleJson,
@@ -7783,6 +7945,8 @@ class SessionWakeUpDto extends DataClass
           ..write('sessionId: $sessionId, ')
           ..write('label: $label, ')
           ..write('prompt: $prompt, ')
+          ..write('command: $command, ')
+          ..write('commandApproval: $commandApproval, ')
           ..write('scheduleJson: $scheduleJson, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('createdAt: $createdAt')
@@ -7796,6 +7960,8 @@ class SessionWakeUpDto extends DataClass
     sessionId,
     label,
     prompt,
+    command,
+    commandApproval,
     scheduleJson,
     nextDueAt,
     createdAt,
@@ -7808,6 +7974,8 @@ class SessionWakeUpDto extends DataClass
           other.sessionId == this.sessionId &&
           other.label == this.label &&
           other.prompt == this.prompt &&
+          other.command == this.command &&
+          other.commandApproval == this.commandApproval &&
           other.scheduleJson == this.scheduleJson &&
           other.nextDueAt == this.nextDueAt &&
           other.createdAt == this.createdAt);
@@ -7818,6 +7986,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
   final Value<String> sessionId;
   final Value<String> label;
   final Value<String> prompt;
+  final Value<String?> command;
+  final Value<SessionWakeUpCommandApproval?> commandApproval;
   final Value<String> scheduleJson;
   final Value<int> nextDueAt;
   final Value<int> createdAt;
@@ -7826,6 +7996,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     this.sessionId = const Value.absent(),
     this.label = const Value.absent(),
     this.prompt = const Value.absent(),
+    this.command = const Value.absent(),
+    this.commandApproval = const Value.absent(),
     this.scheduleJson = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -7835,6 +8007,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     required String sessionId,
     required String label,
     required String prompt,
+    this.command = const Value.absent(),
+    this.commandApproval = const Value.absent(),
     required String scheduleJson,
     required int nextDueAt,
     required int createdAt,
@@ -7850,6 +8024,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     Expression<String>? sessionId,
     Expression<String>? label,
     Expression<String>? prompt,
+    Expression<String>? command,
+    Expression<String>? commandApproval,
     Expression<String>? scheduleJson,
     Expression<int>? nextDueAt,
     Expression<int>? createdAt,
@@ -7859,6 +8035,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
       if (sessionId != null) 'session_id': sessionId,
       if (label != null) 'label': label,
       if (prompt != null) 'prompt': prompt,
+      if (command != null) 'command': command,
+      if (commandApproval != null) 'command_approval': commandApproval,
       if (scheduleJson != null) 'schedule_json': scheduleJson,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -7870,6 +8048,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     Value<String>? sessionId,
     Value<String>? label,
     Value<String>? prompt,
+    Value<String?>? command,
+    Value<SessionWakeUpCommandApproval?>? commandApproval,
     Value<String>? scheduleJson,
     Value<int>? nextDueAt,
     Value<int>? createdAt,
@@ -7879,6 +8059,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
       sessionId: sessionId ?? this.sessionId,
       label: label ?? this.label,
       prompt: prompt ?? this.prompt,
+      command: command ?? this.command,
+      commandApproval: commandApproval ?? this.commandApproval,
       scheduleJson: scheduleJson ?? this.scheduleJson,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       createdAt: createdAt ?? this.createdAt,
@@ -7900,6 +8082,16 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
     if (prompt.present) {
       map['prompt'] = Variable<String>(prompt.value);
     }
+    if (command.present) {
+      map['command'] = Variable<String>(command.value);
+    }
+    if (commandApproval.present) {
+      map['command_approval'] = Variable<String>(
+        $SessionWakeUpsTableTable.$convertercommandApprovaln.toSql(
+          commandApproval.value,
+        ),
+      );
+    }
     if (scheduleJson.present) {
       map['schedule_json'] = Variable<String>(scheduleJson.value);
     }
@@ -7919,6 +8111,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
           ..write('sessionId: $sessionId, ')
           ..write('label: $label, ')
           ..write('prompt: $prompt, ')
+          ..write('command: $command, ')
+          ..write('commandApproval: $commandApproval, ')
           ..write('scheduleJson: $scheduleJson, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('createdAt: $createdAt')
@@ -8524,6 +8718,7 @@ typedef $$ScheduledTasksTableTableCreateCompanionBuilder =
       required ScheduledTaskRunModeKind runMode,
       required bool autoCompact,
       required TaskApprovalMode approvalMode,
+      Value<String?> command,
       required bool enabled,
       Value<int?> nextDueAt,
       Value<String?> targetSessionId,
@@ -8549,6 +8744,7 @@ typedef $$ScheduledTasksTableTableUpdateCompanionBuilder =
       Value<ScheduledTaskRunModeKind> runMode,
       Value<bool> autoCompact,
       Value<TaskApprovalMode> approvalMode,
+      Value<String?> command,
       Value<bool> enabled,
       Value<int?> nextDueAt,
       Value<String?> targetSessionId,
@@ -8731,6 +8927,11 @@ class $$ScheduledTasksTableTableFilterComposer
   get approvalMode => $composableBuilder(
     column: $table.approvalMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<bool> get enabled => $composableBuilder(
@@ -8922,6 +9123,11 @@ class $$ScheduledTasksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get enabled => $composableBuilder(
     column: $table.enabled,
     builder: (column) => ColumnOrderings(column),
@@ -9042,6 +9248,9 @@ class $$ScheduledTasksTableTableAnnotationComposer
         column: $table.approvalMode,
         builder: (column) => column,
       );
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
 
   GeneratedColumn<bool> get enabled =>
       $composableBuilder(column: $table.enabled, builder: (column) => column);
@@ -9192,6 +9401,7 @@ class $$ScheduledTasksTableTableTableManager
                 Value<ScheduledTaskRunModeKind> runMode = const Value.absent(),
                 Value<bool> autoCompact = const Value.absent(),
                 Value<TaskApprovalMode> approvalMode = const Value.absent(),
+                Value<String?> command = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
                 Value<int?> nextDueAt = const Value.absent(),
                 Value<String?> targetSessionId = const Value.absent(),
@@ -9215,6 +9425,7 @@ class $$ScheduledTasksTableTableTableManager
                 runMode: runMode,
                 autoCompact: autoCompact,
                 approvalMode: approvalMode,
+                command: command,
                 enabled: enabled,
                 nextDueAt: nextDueAt,
                 targetSessionId: targetSessionId,
@@ -9240,6 +9451,7 @@ class $$ScheduledTasksTableTableTableManager
                 required ScheduledTaskRunModeKind runMode,
                 required bool autoCompact,
                 required TaskApprovalMode approvalMode,
+                Value<String?> command = const Value.absent(),
                 required bool enabled,
                 Value<int?> nextDueAt = const Value.absent(),
                 Value<String?> targetSessionId = const Value.absent(),
@@ -9263,6 +9475,7 @@ class $$ScheduledTasksTableTableTableManager
                 runMode: runMode,
                 autoCompact: autoCompact,
                 approvalMode: approvalMode,
+                command: command,
                 enabled: enabled,
                 nextDueAt: nextDueAt,
                 targetSessionId: targetSessionId,
@@ -14667,6 +14880,8 @@ typedef $$SessionWakeUpsTableTableCreateCompanionBuilder =
       required String sessionId,
       required String label,
       required String prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
       required String scheduleJson,
       required int nextDueAt,
       required int createdAt,
@@ -14677,6 +14892,8 @@ typedef $$SessionWakeUpsTableTableUpdateCompanionBuilder =
       Value<String> sessionId,
       Value<String> label,
       Value<String> prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
       Value<String> scheduleJson,
       Value<int> nextDueAt,
       Value<int> createdAt,
@@ -14735,6 +14952,21 @@ class $$SessionWakeUpsTableTableFilterComposer
   ColumnFilters<String> get prompt => $composableBuilder(
     column: $table.prompt,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    SessionWakeUpCommandApproval?,
+    SessionWakeUpCommandApproval,
+    String
+  >
+  get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get scheduleJson => $composableBuilder(
@@ -14800,6 +15032,16 @@ class $$SessionWakeUpsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get command => $composableBuilder(
+    column: $table.command,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get scheduleJson => $composableBuilder(
     column: $table.scheduleJson,
     builder: (column) => ColumnOrderings(column),
@@ -14856,6 +15098,15 @@ class $$SessionWakeUpsTableTableAnnotationComposer
 
   GeneratedColumn<String> get prompt =>
       $composableBuilder(column: $table.prompt, builder: (column) => column);
+
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SessionWakeUpCommandApproval?, String>
+  get commandApproval => $composableBuilder(
+    column: $table.commandApproval,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get scheduleJson => $composableBuilder(
     column: $table.scheduleJson,
@@ -14932,6 +15183,9 @@ class $$SessionWakeUpsTableTableTableManager
                 Value<String> sessionId = const Value.absent(),
                 Value<String> label = const Value.absent(),
                 Value<String> prompt = const Value.absent(),
+                Value<String?> command = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 Value<String> scheduleJson = const Value.absent(),
                 Value<int> nextDueAt = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -14940,6 +15194,8 @@ class $$SessionWakeUpsTableTableTableManager
                 sessionId: sessionId,
                 label: label,
                 prompt: prompt,
+                command: command,
+                commandApproval: commandApproval,
                 scheduleJson: scheduleJson,
                 nextDueAt: nextDueAt,
                 createdAt: createdAt,
@@ -14950,6 +15206,9 @@ class $$SessionWakeUpsTableTableTableManager
                 required String sessionId,
                 required String label,
                 required String prompt,
+                Value<String?> command = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 required String scheduleJson,
                 required int nextDueAt,
                 required int createdAt,
@@ -14958,6 +15217,8 @@ class $$SessionWakeUpsTableTableTableManager
                 sessionId: sessionId,
                 label: label,
                 prompt: prompt,
+                command: command,
+                commandApproval: commandApproval,
                 scheduleJson: scheduleJson,
                 nextDueAt: nextDueAt,
                 createdAt: createdAt,

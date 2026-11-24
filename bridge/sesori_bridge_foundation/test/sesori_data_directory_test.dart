@@ -75,6 +75,10 @@ void main() {
       expect(sesoriPageImagesDirectory(), path.join(home, ".sesori", "page-images"));
     });
 
+    test("puts command output in <home>/.sesori/command-output", () {
+      expect(sesoriCommandOutputDirectory(), path.join(home, ".sesori", "command-output"));
+    });
+
     test("keeps both roots under one .sesori folder", () {
       expect(path.dirname(sesoriWorktreesDirectory()), path.dirname(sesoriScratchDirectory()));
     });

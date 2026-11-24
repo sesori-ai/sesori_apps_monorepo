@@ -28,9 +28,37 @@ final class const StoredSessionWakeUp({
   required final String sessionId,
   required final String label,
   required final String prompt,
+
+  /// The shell command run before the prompt is sent, if any.
+  required final WakeUpCommand? command,
   required final WakeUpSchedule schedule,
 
   /// When it fires next.
   required final DateTime nextDueAt,
   required final DateTime createdAt,
 });
+
+/// A shell command a wake-up runs right before its prompt is sent; the result
+/// goes into the prompt.
+final class const WakeUpCommand({required final String command, required final WakeUpCommandApproval approval});
+
+enum WakeUpCommandApproval() {
+  /// The user allowed it, so it never asks again.
+  allowed,
+
+  /// Set while its session approved everything, so no one allowed it. It asks
+  /// before it runs once the session no longer approves everything.
+  byMode,
+}
+
+/// When a requested wake-up fires.
+sealed class const WakeUpRequestedTime();
+
+/// Once, [minutes] from now.
+final class const WakeUpInMinutes({required final int minutes}) extends WakeUpRequestedTime;
+
+/// Every [minutes], the first [minutes] from now.
+final class const WakeUpEveryMinutes({required final int minutes}) extends WakeUpRequestedTime;
+
+/// On a daily, weekdays or weekly [schedule].
+final class const WakeUpOnSchedule({required final TaskSchedule schedule}) extends WakeUpRequestedTime;

@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/database/daos/session_wake_up_dao.dart";
 import "../api/database/database.dart";
+import "../api/database/tables/session_wake_ups_table.dart";
 import "models/session_wake_up.dart";
 import "random_hex_id.dart";
 
@@ -19,6 +20,7 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
     required String sessionId,
     required String label,
     required String prompt,
+    required WakeUpCommand? command,
     required WakeUpSchedule schedule,
     required DateTime nextDueAt,
     required DateTime createdAt,
@@ -28,6 +30,7 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
       sessionId: sessionId,
       label: label,
       prompt: prompt,
+      command: command,
       schedule: schedule,
       nextDueAt: nextDueAt,
       createdAt: createdAt,
@@ -38,6 +41,12 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
         sessionId: sessionId,
         label: label,
         prompt: prompt,
+        command: command?.command,
+        commandApproval: switch (command?.approval) {
+          WakeUpCommandApproval.allowed => SessionWakeUpCommandApproval.allowed,
+          WakeUpCommandApproval.byMode => SessionWakeUpCommandApproval.byMode,
+          null => null,
+        },
         scheduleJson: jsonEncode(schedule.toJson()),
         nextDueAt: nextDueAt.millisecondsSinceEpoch,
         createdAt: createdAt.millisecondsSinceEpoch,
@@ -66,6 +75,11 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
   Future<bool> removeFromSession({required String id, required String sessionId}) =>
       _dao.deleteSessionWakeUp(id: id, sessionId: sessionId);
 
+  /// Records that the user allowed wake-up [id]'s command; false when the
+  /// wake-up is gone.
+  Future<bool> markCommandAllowed({required String id}) =>
+      _dao.setCommandApproval(id: id, approval: SessionWakeUpCommandApproval.allowed);
+
   Future<void> setNextDueAt({required String id, required DateTime nextDueAt}) =>
       _dao.setNextDueAt(id: id, nextDueAtMs: nextDueAt.millisecondsSinceEpoch);
 
@@ -75,6 +89,17 @@ class SessionWakeUpRepository({required final SessionWakeUpDao _dao}) {
       sessionId: row.sessionId,
       label: row.label,
       prompt: row.prompt,
+      command: switch ((row.command, row.commandApproval)) {
+        (final command?, final approval?) => WakeUpCommand(
+          command: command,
+          approval: switch (approval) {
+            SessionWakeUpCommandApproval.allowed => WakeUpCommandApproval.allowed,
+            SessionWakeUpCommandApproval.byMode => WakeUpCommandApproval.byMode,
+          },
+        ),
+        // The two columns are written together.
+        _ => null,
+      },
       schedule: WakeUpSchedule.fromJson(jsonDecodeMap(row.scheduleJson)),
       nextDueAt: DateTime.fromMillisecondsSinceEpoch(row.nextDueAt, isUtc: true),
       createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt, isUtc: true),

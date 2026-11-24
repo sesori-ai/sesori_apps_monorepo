@@ -300,6 +300,7 @@ class _Fixture() {
       promptUploadRepository: _NoPromptUploadRepository(),
       transcriptRepository: _NoPromptUploadRepository(),
       pageImageRepository: _NoPromptUploadRepository(),
+      commandOutputRepository: _NoPromptUploadRepository(),
     );
   }
 
@@ -590,6 +591,9 @@ class _NoPromptUploadRepository() implements PromptUploadRepository {
   @override
   Future<String> save({required String sessionId, required List<int> bytes, required String filename}) =>
       throw UnimplementedError();
+
+  @override
+  Future<String> reserveFolder({required String sessionId}) => throw UnimplementedError();
 
   @override
   Future<void> deleteSaved({required String path}) => throw UnimplementedError();

@@ -34,6 +34,10 @@ class ScheduledTasksTable() extends Table {
   TextColumn get runMode => textEnum<ScheduledTaskRunModeKind>()();
   BoolColumn get autoCompact => boolean()();
   TextColumn get approvalMode => textEnum<TaskApprovalMode>()();
+
+  /// The shell command a run executes before its prompt, if any. Outside the
+  /// definition JSON, because the app sends the definition whole.
+  TextColumn get command => text().nullable()();
   BoolColumn get enabled => boolean()();
 
   /// UTC milliseconds of the next run. Null while paused or done.

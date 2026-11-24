@@ -49,6 +49,12 @@ class SessionWakeUpDao({required AppDatabase database})
     return await statement.go() > 0;
   }
 
+  /// Sets wake-up [id]'s command approval; true when the row exists.
+  Future<bool> setCommandApproval({required String id, required SessionWakeUpCommandApproval approval}) async {
+    final statement = update(sessionWakeUpsTable)..where((row) => row.id.equals(id));
+    return await statement.write(SessionWakeUpsTableCompanion(commandApproval: Value(approval))) > 0;
+  }
+
   Future<void> setNextDueAt({required String id, required int nextDueAtMs}) async {
     await (update(sessionWakeUpsTable)..where((row) => row.id.equals(id))).write(
       SessionWakeUpsTableCompanion(nextDueAt: Value(nextDueAtMs)),

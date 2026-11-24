@@ -4,9 +4,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/agent_approval_repository.dart";
+import "../repositories/models/agent_approval_change.dart";
 import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/history_window.dart";
-import "../repositories/models/scheduled_task_agent_change.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/sesori_mcp_caller.dart";
 import "../repositories/models/session_operation.dart";
@@ -19,6 +19,7 @@ import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_service.dart";
 import "scheduled_task_service.dart";
 import "session_notice_service.dart";
+import "session_wake_up_service.dart";
 
 /// What agents may do with scheduled tasks, through the same services the
 /// app's task routes call. Reads cover every task on this computer.
@@ -37,6 +38,7 @@ class ScheduledTaskAgentService({
   required final AgentApprovalRepository _approvals,
   required final ScheduledTaskChangeDescriptionBuilder _descriptions,
   required final SessionNoticeService _notices,
+  required final SessionWakeUpService _wakeUps,
 }) {
   /// Messages read to find a run's final reply. The reply closes the turn,
   /// so it is among the newest few, even after a short notice turn.
@@ -220,8 +222,9 @@ class ScheduledTaskAgentService({
     );
   }
 
-  /// Answers [requestId] when it is an agent approval. Allow applies the
-  /// change through the app's own service calls, unless what it was described
+  /// Answers [requestId] when it is an agent approval. A wake-up command
+  /// goes to the wake-up service. Allow applies a task change through the
+  /// app's own service calls, unless what it was described
   /// against has changed since (see [StoredTaskChange]): an earlier edit, the
   /// user's own or another allowed request, wins.
   ///
@@ -230,12 +233,20 @@ class ScheduledTaskAgentService({
   Future<AgentApprovalSettlement> settle({required String requestId, required PermissionReply reply}) async {
     final approval = _approvals.take(requestId: requestId, reply: reply);
     if (approval == null) return const NotAgentApproval();
-    final outcome = await _outcome(change: approval.change, reply: reply);
+    final ScheduledTaskAgentChange change;
+    switch (approval.change) {
+      case final WakeUpCommandChange wakeUpChange:
+        await _wakeUps.applyCommandApproval(change: wakeUpChange, reply: reply);
+        return const WakeUpCommandAnswered();
+      case final ScheduledTaskAgentChange taskChange:
+        change = taskChange;
+    }
+    final outcome = await _outcome(change: change, reply: reply);
     unawaited(
       _notices.deliver(
         sessionId: approval.displaySessionId ?? approval.sessionId,
         notice: _descriptions.outcome(
-          change: approval.change,
+          change: change,
           outcome: outcome,
           bySubagent: approval.displaySessionId != null,
         ),
@@ -590,3 +601,7 @@ sealed class const AgentApprovalSettlement();
 final class const NotAgentApproval() extends AgentApprovalSettlement;
 
 final class const AgentApprovalAnswered({required final AgentApprovalOutcome outcome}) extends AgentApprovalSettlement;
+
+/// A wake-up command request was answered; the wake-up service told the
+/// session.
+final class const WakeUpCommandAnswered() extends AgentApprovalSettlement;

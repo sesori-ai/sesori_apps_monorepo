@@ -1198,6 +1198,10 @@ SessionDeletionService _deletionService({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: p.join(uploadsParent, "page-images"),
     ),
+    commandOutputRepository: PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: p.join(uploadsParent, "command-output"),
+    ),
   );
 }
 

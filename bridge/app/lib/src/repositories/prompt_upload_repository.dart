@@ -36,13 +36,7 @@ class PromptUploadRepository({
   /// A failed write removes the new folder and rethrows. Throws [StateError]
   /// when [sessionId] is not a single path segment.
   Future<String> save({required String sessionId, required List<int> bytes, required String filename}) async {
-    final sessionFolder = _sessionFolder(sessionId: sessionId);
-    await _filesystemApi.createOwnerOnlyDirectory(path: _uploadsRoot);
-    await _filesystemApi.createOwnerOnlyDirectory(path: sessionFolder);
-    final fileFolder = await _filesystemApi.createOwnerOnlyTemporaryDirectory(
-      parent: sessionFolder,
-      prefix: "${_formatDate(date: clock.now())}-",
-    );
+    final fileFolder = await reserveFolder(sessionId: sessionId);
     try {
       final filePath = p.join(fileFolder, _sanitizeName(filename: filename));
       await _filesystemApi.writeOwnerOnlyFile(path: filePath, bytes: bytes);
@@ -51,6 +45,21 @@ class PromptUploadRepository({
       await _deleteFolderOfFailedSave(path: fileFolder);
       rethrow;
     }
+  }
+
+  /// Creates a new, empty file folder inside the session's folder and returns
+  /// its path, for files written as a stream rather than saved from bytes.
+  /// The age sweep and the session's deletion remove it like a saved file's.
+  ///
+  /// Throws [StateError] when [sessionId] is not a single path segment.
+  Future<String> reserveFolder({required String sessionId}) async {
+    final sessionFolder = _sessionFolder(sessionId: sessionId);
+    await _filesystemApi.createOwnerOnlyDirectory(path: _uploadsRoot);
+    await _filesystemApi.createOwnerOnlyDirectory(path: sessionFolder);
+    return await _filesystemApi.createOwnerOnlyTemporaryDirectory(
+      parent: sessionFolder,
+      prefix: "${_formatDate(date: clock.now())}-",
+    );
   }
 
   /// Deletes the file at [path], which [save] returned, with its folder.

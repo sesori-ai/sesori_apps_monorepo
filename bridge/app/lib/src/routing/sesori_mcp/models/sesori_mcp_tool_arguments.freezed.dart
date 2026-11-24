@@ -627,7 +627,8 @@ String toString() {
 mixin _$ScheduleWakeUpArguments {
 
  String get label; String get prompt; WakeUpWhenArgument get when;/// Null for the bridge computer's zone.
-@JsonKey(name: "time_zone") String? get timeZone;
+@JsonKey(name: "time_zone") String? get timeZone;/// A shell command run right before the prompt is sent.
+ String? get command;
 
 
 
@@ -636,7 +637,7 @@ mixin _$ScheduleWakeUpArguments {
 @override
 String toString() {
   final _this = this as ScheduleWakeUpArguments;
-  return 'ScheduleWakeUpArguments(label: ${_this.label}, prompt: ${_this.prompt}, when: ${_this.when}, timeZone: ${_this.timeZone})';
+  return 'ScheduleWakeUpArguments(label: ${_this.label}, prompt: ${_this.prompt}, when: ${_this.when}, timeZone: ${_this.timeZone}, command: ${_this.command})';
 }
 
 
@@ -650,7 +651,7 @@ String toString() {
 
 @JsonSerializable(checked: true, createToJson: false)
 class _ScheduleWakeUpArguments implements ScheduleWakeUpArguments {
-  const _ScheduleWakeUpArguments({required this.label, required this.prompt, required this.when, @JsonKey(name: "time_zone") required this.timeZone});
+  const _ScheduleWakeUpArguments({required this.label, required this.prompt, required this.when, @JsonKey(name: "time_zone") required this.timeZone, required this.command});
   factory _ScheduleWakeUpArguments.fromJson(Map<String, dynamic> json) => _$ScheduleWakeUpArgumentsFromJson(json);
 
 @override final  String label;
@@ -658,6 +659,8 @@ class _ScheduleWakeUpArguments implements ScheduleWakeUpArguments {
 @override final  WakeUpWhenArgument when;
 /// Null for the bridge computer's zone.
 @override@JsonKey(name: "time_zone") final  String? timeZone;
+/// A shell command run right before the prompt is sent.
+@override final  String? command;
 
 
 
@@ -666,7 +669,7 @@ class _ScheduleWakeUpArguments implements ScheduleWakeUpArguments {
 
 @override
 String toString() {
-    return 'ScheduleWakeUpArguments(label: $label, prompt: $prompt, when: $when, timeZone: $timeZone)';
+    return 'ScheduleWakeUpArguments(label: $label, prompt: $prompt, when: $when, timeZone: $timeZone, command: $command)';
 }
 
 
