@@ -62,6 +62,7 @@ import "../../services/session_interaction_calculator.dart";
 import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
+import "../../services/session_wake_up_service.dart";
 import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
@@ -123,6 +124,7 @@ class SessionDetailCubit(
   required final SessionInteractionCalculator _interactionCalculator,
   required final SessionAbortService _sessionAbortService,
   required final SessionAutoContinuationService _autoContinuationService,
+  required final SessionWakeUpService _wakeUpService,
   required final SessionApprovalService _approvalService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
@@ -2166,6 +2168,23 @@ class SessionDetailCubit(
       if (!isClosed) _noticeStream.add(const SessionDetailAutoContinuationUpdateFailed());
     } finally {
       _setAutoContinuationProgress(pending: false);
+    }
+  }
+
+  /// Cancels one of the session's wake-ups. The session the bridge answers
+  /// with drops it; a failure keeps it and says why.
+  Future<void> cancelWakeUp({required String wakeUpId}) async {
+    if (isClosed) return;
+    try {
+      final updated = await _wakeUpService.cancel(sessionId: _sessionId, wakeUpId: wakeUpId);
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+    } on SessionWakeUpCancelUnavailableException catch (error, stackTrace) {
+      loge("Wake-up cancel unavailable for session $_sessionId", error.innerError, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailWakeUpCancelUnavailable());
+    } on Object catch (error, stackTrace) {
+      loge("Failed to cancel wake-up $wakeUpId of session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailWakeUpCancelFailed());
     }
   }
 

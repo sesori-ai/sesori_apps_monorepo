@@ -46,6 +46,7 @@ import "package:sesori_dart_core/src/services/session_auto_continuation_service.
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_wake_up_service.dart";
 import "package:sesori_dart_core/src/services/session_window_service.dart";
 import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -173,6 +174,7 @@ void main() {
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
       autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+      wakeUpService: SessionWakeUpService(repository: promptDispatcher),
       approvalService: SessionApprovalService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
@@ -656,8 +658,55 @@ void main() {
       });
     });
 
+    group("wake-ups", () {
+      const wakeUp = SessionWakeUp(id: "w-1", nextDueAt: 220000, label: "Check CI", repeats: true, runsCommand: false);
+
+      Future<SessionDetailCubit> loadedCubit() async {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(wakeUps: const [wakeUp]),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      test("cancel applies the session the bridge answers with", () async {
+        when(() => mockSessionRepository.cancelWakeUp(sessionId: sessionId, wakeUpId: "w-1"))
+            .thenAnswer((_) async => ApiResponse.success(testSession(id: sessionId)));
+        final cubit = await loadedCubit();
+        expect(cubit.state.hydratedSession?.wakeUps, [wakeUp]);
+        await cubit.cancelWakeUp(wakeUpId: "w-1");
+        expect(cubit.state.hydratedSession?.wakeUps, isEmpty);
+      });
+
+      test("a failed cancel keeps the wake-up and says so", () async {
+        when(() => mockSessionRepository.cancelWakeUp(sessionId: sessionId, wakeUpId: "w-1"))
+            .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit();
+        final notice = cubit.noticeStream.first;
+        await cubit.cancelWakeUp(wakeUpId: "w-1");
+        expect(await notice, isA<SessionDetailWakeUpCancelFailed>());
+        expect(cubit.state.hydratedSession?.wakeUps, [wakeUp]);
+      });
+
+      test("an older bridge without the route reports it cannot cancel", () async {
+        when(() => mockSessionRepository.cancelWakeUp(sessionId: sessionId, wakeUpId: "w-1")).thenAnswer(
+          (_) async => ApiResponse.error(
+            ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/wake-up/cancel"),
+          ),
+        );
+        final cubit = await loadedCubit();
+        final notice = cubit.noticeStream.first;
+        await cubit.cancelWakeUp(wakeUpId: "w-1");
+        expect(await notice, isA<SessionDetailWakeUpCancelUnavailable>());
+      });
+    });
+
     group("fast mode", () {
-      const fastModel = AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
+      const fastModel =AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
       // testSession's last update, which stands in for model activity because
       // the default transcript's assistant message carries no timestamps.
       final lastActivity = DateTime.fromMillisecondsSinceEpoch(1700000000000);
@@ -2905,6 +2954,7 @@ void main() {
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: promptDispatcher),
         autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+        wakeUpService: SessionWakeUpService(repository: promptDispatcher),
         approvalService: SessionApprovalService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,

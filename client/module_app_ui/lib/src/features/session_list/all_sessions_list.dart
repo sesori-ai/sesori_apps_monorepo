@@ -1126,6 +1126,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       isInterrupted: row.isInterrupted,
       backgroundTaskCount: row.backgroundTaskCount,
       sending: row.sending,
+      scheduledMark: row.scheduledMark,
       onTap: () => list.onSessionTap(row: row),
       menuEntries: () => dispatcher.sessionMenuEntries(
         context: context,

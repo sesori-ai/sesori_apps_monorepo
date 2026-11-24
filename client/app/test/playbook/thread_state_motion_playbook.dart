@@ -2,6 +2,7 @@ import "dart:ui";
 
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show SessionScheduledMark;
 import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -206,6 +207,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
 
   Widget _thread({required String id, required String title, required bool working}) => SessionTile(
     sending: null,
+    scheduledMark: const SessionScheduledMark.none(),
     key: ValueKey(id),
     session: testSession(id: id, title: title, branchName: "main", pluginId: "codex"),
     projectLabel: null,

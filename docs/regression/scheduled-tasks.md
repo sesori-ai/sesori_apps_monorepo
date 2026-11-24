@@ -102,11 +102,14 @@ them or can't start. Same-session tasks can compact their session between runs (
 - Approvals: **Ask me** or **Approve everything**, defaulting to the computer's current YOLO setting. The mode is
   stored as the run session's explicit approval override, and a same-session run sets it again before each prompt.
   Questions are never auto-answered.
-- Run rows carry the task in the session row's meta line, after the state and before the project: a repeat glyph for
-  a recurring task, a clock for a one-off or a calendar for a kind this app doesn't know, then its name, on one line
-  that ellipsizes. Screen readers hear "Run of recurring task <name>", "Run of one-time task <name>" or "Run of
-  scheduled task <name>". The mark comes from the session, so it survives history trimming, and deleting the task
-  removes it.
+- Session rows carry a scheduled mark in the meta line, after the state and before the project, on one line that
+  ellipsizes. A session that something will wake again (its soonest wake-up or the next run of a same-session task,
+  whichever comes first) shows an accent repeat glyph and "<name> · next <time>" in local time; screen readers hear
+  "Wakes again for <name> at <date and time>". A task's run session that nothing will wake again shows a plain grey
+  "from <task>". With an older bridge that reports no arming, run rows keep the earlier mark: a repeat glyph for a
+  recurring task, a clock for a one-off or a calendar for a kind this app doesn't know, then its name, heard as "Run
+  of recurring task <name>", "Run of one-time task <name>" or "Run of scheduled task <name>". The mark comes from the
+  session, so it survives history trimming, and deleting the task removes it. A changing mark cross-fades in place.
 - After a new-session run starts, the task's finished run sessions beyond the newest 5 are archived through the normal
   archive flow, removing their worktrees. Pinned sessions are neither archived nor counted; a session working, waiting
   on the user or reading unknown stays; a worktree the cleanup checks refuse (uncommitted work) keeps its session, and

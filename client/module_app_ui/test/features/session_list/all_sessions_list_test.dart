@@ -59,6 +59,7 @@ void main() {
     required bool isRunning,
   }) => AllSessionsRow(
     sending: null,
+    scheduledMark: const SessionScheduledMark.none(),
     session: testSession(
       id: title,
       title: title,
@@ -446,6 +447,7 @@ void main() {
           row(title: "Tidy the docs", updatedAt: today, archivedAt: null, isRunning: false),
           AllSessionsRow(
             sending: null,
+            scheduledMark: const SessionScheduledMark.none(),
             session: testSession(
               id: "answer",
               title: "Answer the question",
@@ -506,6 +508,7 @@ void main() {
     final now = DateTime.now();
     final jot = AllSessionsRow(
       sending: null,
+      scheduledMark: const SessionScheduledMark.none(),
       session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
       project: scratch,
       isRunning: false,
@@ -2375,6 +2378,7 @@ void main() {
         final renamed = onScreen[onScreen.length ~/ 2];
         final renamedRow = AllSessionsRow(
           sending: null,
+          scheduledMark: const SessionScheduledMark.none(),
           // A pin keeps the session's time; a rename makes it the newest.
           session: pinned
               ? testSession(
@@ -2437,6 +2441,7 @@ void main() {
       final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
       return AllSessionsRow(
         sending: null,
+        scheduledMark: const SessionScheduledMark.none(),
         session: listed.session.copyWith(pinOrder: 1),
         project: project,
         isRunning: isRunning,
@@ -2523,6 +2528,7 @@ void main() {
       final listed = row(title: title, updatedAt: today, archivedAt: null, isRunning: false);
       return AllSessionsRow(
         sending: null,
+        scheduledMark: const SessionScheduledMark.none(),
         session: listed.session.copyWith(pinOrder: pinOrder),
         project: project,
         isRunning: false,

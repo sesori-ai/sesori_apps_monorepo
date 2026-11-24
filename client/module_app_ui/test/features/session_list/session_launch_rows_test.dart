@@ -39,6 +39,7 @@ void main() {
       for (final session in sessions)
         AllSessionsRow(
           sending: null,
+          scheduledMark: const SessionScheduledMark.none(),
           session: session,
           project: project,
           isRunning: running,

@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../services/models/session_list_quick_filter.dart";
+import "../../services/models/session_scheduled_mark.dart";
 import "../../services/models/session_sending.dart";
 import "../../services/models/session_window_state.dart";
 
@@ -28,6 +29,9 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     /// A send of the session into another, while it lasts: this app's own,
     /// or one the bridge reports from any device.
     required SessionSending? sending,
+
+    /// What the row says about Sesori waking the session again by itself.
+    required SessionScheduledMark scheduledMark,
   }) = _AllSessionsRow;
 }
 

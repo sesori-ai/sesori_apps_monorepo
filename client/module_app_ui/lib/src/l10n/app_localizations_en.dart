@@ -2592,6 +2592,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionListArmed(String name, String time) {
+    return '$name · next $time';
+  }
+
+  @override
+  String sessionListArmedDescription(String name, String time) {
+    return 'Wakes again for $name at $time';
+  }
+
+  @override
+  String sessionListFromTask(String name) {
+    return 'from $name';
+  }
+
+  @override
   String sessionListOnceTaskRun(String name) {
     return 'Run of one-time task $name';
   }
@@ -3751,6 +3766,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionAutoContinuationUpdateFailed =>
       'Could not confirm the change. Reconnect and check auto continuation before trying again.';
+
+  @override
+  String sessionWakeUpChip(String time) {
+    return 'Wakes $time';
+  }
+
+  @override
+  String get sessionWakeUpsTitle => 'Wake-ups';
+
+  @override
+  String get sessionWakeUpCancel => 'Cancel';
+
+  @override
+  String get sessionWakeUpRepeats => 'Repeats';
+
+  @override
+  String get sessionWakeUpRunsCommand => 'Runs a command';
+
+  @override
+  String get sessionWakeUpCancelFailed => 'Could not cancel the wake-up. It may still run. Reconnect and try again.';
+
+  @override
+  String get sessionWakeUpCancelUnavailable => 'This bridge cannot cancel wake-ups. Update your bridge.';
 
   @override
   String get sessionAutoContinuationAlreadySubmitted =>

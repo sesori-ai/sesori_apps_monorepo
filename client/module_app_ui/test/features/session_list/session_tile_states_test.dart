@@ -40,6 +40,7 @@ void main() {
   }) {
     return SessionTile(
       sending: sending,
+      scheduledMark: const SessionScheduledMarkCalculator().mark(session: session),
       session: session,
       projectLabel: projectLabel,
       isArchived: isArchived,
@@ -650,6 +651,51 @@ void main() {
     expect(tester.getTopRight(task).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
     semantics.dispose();
+  });
+
+  group("wake-up arming", () {
+    const task = SessionScheduledTaskMark(taskId: "stk_1", name: "Nightly triage", kind: ScheduledTaskKind.recurring);
+
+    testWidgets("an armed row names what wakes it and when, in the accent", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session").copyWith(
+            scheduledTask: task,
+            arming: SessionArming.armed(name: "Nightly triage", nextAt: now + 3600000),
+          ),
+        ),
+      );
+
+      final mark = find.textContaining("Nightly triage · next");
+      expect(mark, findsOneWidget);
+      final style = tester.widget<Text>(mark).style;
+      expect(style?.color, colors.textBrandSecondary);
+      expect(style?.fontWeight, FontWeight.w500);
+      expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp("Wakes again for Nightly triage at")), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+      semantics.dispose();
+    });
+
+    testWidgets("a task's row that nothing wakes again says where it came from, in grey with no glyph", (
+      tester,
+    ) async {
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session").copyWith(
+            scheduledTask: task,
+            arming: const SessionArming.notArmed(),
+          ),
+        ),
+      );
+
+      expect(find.text("from Nightly triage"), findsOneWidget);
+      expect(tester.widget<Text>(find.text("from Nightly triage")).style?.color, isNot(colors.textBrandSecondary));
+      expect(find.byIcon(TablerRegular.repeat), findsNothing);
+    });
   });
 
   testWidgets("retrying leads the meta line in its colour", (tester) async {
