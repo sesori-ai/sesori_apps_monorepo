@@ -9,6 +9,8 @@ environment:
 
 dependencies:
   json_annotation: ^4.12.0
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
 
 dev_dependencies:
   test: ^1.33.0

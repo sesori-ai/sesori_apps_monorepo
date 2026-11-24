@@ -24,8 +24,9 @@ class AgentApprovalRepository({required final Random _random}) {
   /// Every request asked and settled, already in the shared permission shape.
   Stream<AgentApprovalEvent> get events => _events.stream;
 
-  /// Asks for [change] on [sessionId], beside any request already waiting.
-  void add({
+  /// Asks for [change] on [sessionId], beside any request already waiting,
+  /// and returns the request's id.
+  String add({
     required String sessionId,
     required String? displaySessionId,
     required AgentApprovalChange change,
@@ -40,6 +41,7 @@ class AgentApprovalRepository({required final Random _random}) {
     );
     _byRequest[approval.requestId] = approval;
     _emit(AgentApprovalAsked(permission: approval.toPendingPermission()));
+    return approval.requestId;
   }
 
   /// Removes and returns the approval [requestId] names, announcing [reply];

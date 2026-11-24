@@ -1,4 +1,5 @@
 import "package:sesori_shared/sesori_shared.dart" show ScheduledTaskDefinition;
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroupId;
 
 import "session_wake_up.dart";
 import "task_command_edit.dart";
@@ -81,3 +82,8 @@ final class const ConfirmByModeCommand({
   /// When the occurrence waiting for this answer fired.
   required final DateTime firedAt,
 }) extends WakeUpCommandChange;
+
+/// A change a Sesori tool group asked for on its agent's behalf. The group
+/// applies it once allowed; [title] names the request on the user's card.
+final class const ToolGroupAgentChange({required final SesoriToolGroupId groupId, required final String title})
+    extends AgentApprovalChange;

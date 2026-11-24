@@ -31,7 +31,7 @@ lib/src/
 
 bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_interface/   Plugin contract — BridgePlugin, BridgePluginDescriptor, PluginHost
-├── sesori_tool_interface/     Sesori MCP tool-group contract — SesoriToolGroup, SesoriToolDefinition
+├── sesori_tool_interface/     Sesori MCP tool-group contract — SesoriToolGroup, SesoriToolDefinition, SesoriToolHost
 ├── sesori_bridge_foundation/  Bridge/plugin shared pure-Dart primitives
 ├── sesori_plugin_runtime/     Managed backend-process supervision for plugins
 ├── sesori_plugin_opencode/    OpenCode implementation

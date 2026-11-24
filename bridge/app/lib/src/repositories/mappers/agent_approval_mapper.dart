@@ -19,6 +19,7 @@ extension AgentApprovalMapper on AgentApproval {
         RunTaskNowChange() => "Sesori: run task now",
         ScheduleCommandWakeUp() => "Sesori: wake-up command",
         ConfirmByModeCommand() => "Sesori: run wake-up command",
+        ToolGroupAgentChange(:final title) => title,
       },
       description: description,
       allowAlways: false,

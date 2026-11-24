@@ -51,4 +51,6 @@ enum SessionOperation() {
   sendPage,
   deliverNotice,
   manageWakeUps,
+  lookUpToolSessions,
+  requestToolApproval,
 }

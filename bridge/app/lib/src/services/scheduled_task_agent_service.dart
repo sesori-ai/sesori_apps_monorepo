@@ -21,6 +21,7 @@ import "scheduled_task_run_service.dart";
 import "scheduled_task_service.dart";
 import "session_notice_service.dart";
 import "session_wake_up_service.dart";
+import "tool_group_approval_service.dart";
 
 /// What agents may do with scheduled tasks, through the same services the
 /// app's task routes call. Reads cover every task on this computer.
@@ -40,6 +41,7 @@ class ScheduledTaskAgentService({
   required final ScheduledTaskChangeDescriptionBuilder _descriptions,
   required final SessionNoticeService _notices,
   required final SessionWakeUpService _wakeUps,
+  required final ToolGroupApprovalService _toolGroupApprovals,
 }) {
   /// Messages read to find a run's final reply. The reply closes the turn,
   /// so it is among the newest few, even after a short notice turn.
@@ -247,7 +249,8 @@ class ScheduledTaskAgentService({
   }
 
   /// Answers [requestId] when it is an agent approval. A wake-up command
-  /// goes to the wake-up service. Allow applies a task change through the
+  /// goes to the wake-up service, and a tool group's change to the group
+  /// waiting on it. Allow applies a task change through the
   /// app's own service calls, unless what it was described
   /// against has changed since (see [StoredTaskChange]): an earlier edit, the
   /// user's own or another allowed request, wins.
@@ -262,6 +265,9 @@ class ScheduledTaskAgentService({
       case final WakeUpCommandChange wakeUpChange:
         await _wakeUps.applyCommandApproval(change: wakeUpChange, reply: reply);
         return const WakeUpCommandAnswered();
+      case ToolGroupAgentChange():
+        _toolGroupApprovals.settle(requestId: requestId, reply: reply);
+        return const ToolGroupChangeAnswered();
       case final ScheduledTaskAgentChange taskChange:
         change = taskChange;
     }
@@ -652,3 +658,7 @@ final class const AgentApprovalAnswered({required final AgentApprovalOutcome out
 /// A wake-up command request was answered; the wake-up service told the
 /// session.
 final class const WakeUpCommandAnswered() extends AgentApprovalSettlement;
+
+/// A tool group's request was answered; the group applies the change and
+/// tells the session.
+final class const ToolGroupChangeAnswered() extends AgentApprovalSettlement;
