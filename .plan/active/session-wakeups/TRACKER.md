@@ -5,9 +5,9 @@
 | 1 | 🌱 Plan session wake-ups and scheduled commands | Merged | #2885 |
 | 2 | 🚧 Bridge wake-ups, one-shot and repeating | Merged | #2887 |
 | 3 | 🚧 Wake-up commands | Merged | #2889 |
-| 4 | ⚙️ Scheduled-task commands | Not started | |
+| 4 | ⚙️ Scheduled-task commands | In this PR | |
 | 5 | ⚙️ Bridge projection of wake-ups and arming | Merged | #2888 |
-| 6 | ⚙️ App: wake-up chip, cancel and armed marks | In this PR | |
+| 6 | ⚙️ App: wake-up chip, cancel and armed marks | Merged | #2891 |
 | 7 | 🌱 Reconcile regression docs | Not started | |
 | 8 | 🌿 Verify and retire | Not started | |
 
@@ -26,16 +26,15 @@
   `agent_approval_change.dart`, under a sealed `AgentApprovalChange` whose
   `WakeUpCommandChange` family `ScheduledTaskAgentService.settle` hands to
   `SessionWakeUpService.applyCommandApproval`.
-- Known gaps from step 3: a timeout or shutdown kills the shell, not the
-  processes it started, so a foreground build or script it was running keeps
-  going (Codex on #2889). Step 4 runs task commands through the same runner,
-  so fix it there: kill the descendants before the shell, for example with
-  `SystemProcessApi.listDescendants` on POSIX and `taskkill /T` on Windows.
-  Also in step 4: `ScheduledCommandRepository` opens and writes its output
-  files with `dart:io` directly; move that behind a `FilesystemApi` write
-  operation, as `PromptUploadRepository` does for its folders. A command a
-  shutdown kills loses that time's notice; Windows `cmd.exe` quoting is
-  untested.
+- Step 4 (for step 7): a stop now kills the whole process tree (SIGSTOP the
+  shell, SIGKILL its `ps` descendants, then the shell; `taskkill /T /F` on
+  Windows). A child forked between the `ps` listing and the kill can survive.
+  Output files open through `FilesystemApi.openOwnerOnlyFileForWriting`. A
+  task command runs before each run's prompt, outside the fire lock, and its
+  result reaches the agent as a hidden system-context note; a dedicated-worktree
+  new-session run runs it in the project folder. Still open: a command a
+  shutdown kills loses that notice (for a task, the run stays started with no
+  session), and Windows `cmd.exe` quoting and `taskkill /T` are untested.
 - Step 2's `dropped` outcome keeps a one-shot whose claim never ran, so a
   delivery cut by shutdown or a lane error fires again at the next tick.
   A one-shot dropped after its claim, by a failed send, is gone.

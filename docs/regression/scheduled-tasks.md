@@ -24,6 +24,9 @@ them or can't start. Same-session tasks can compact their session between runs (
 - A task saves its prompt (text or slash command, no attachments), project, harness, agent, model, effort, fast mode,
   worktree switch, schedule, the device's IANA zone, missed-run policy, run mode and approval mode. Its name is the
   prompt's first line (80 characters at most); renaming is on the task page, and an edit keeps a name the user chose.
+- A task can also run a shell command before each run's prompt, set only by an agent request the user allowed (see
+  [Sesori MCP](sesori-mcp.md)). The task page shows it read-only in a "Runs first" row; a task without one has no row.
+  An app edit keeps it, except that switching the prompt to a slash command drops it.
 - An edit replaces the definition and changes future runs only. A paused task stays paused. Changing a same-session
   task's project, harness or worktree switch, or moving it to New session, clears its session, so the next run starts
   fresh. An edit keeps the task's zone.
