@@ -221,11 +221,17 @@ void main() {
     );
 
     testWidgets("the command a task runs first shows read-only, and a task without one has no row", (tester) async {
-      await pumpTask(tester: tester, task: scheduledTaskFixture(id: "with", command: "git fetch --prune"));
+      await pumpTask(
+        tester: tester,
+        task: scheduledTaskFixture(id: "with", command: "git fetch --prune"),
+      );
       expect(find.text("Runs first"), findsOneWidget);
       expect(find.text("git fetch --prune"), findsOneWidget);
 
-      await pumpTask(tester: tester, task: scheduledTaskFixture(id: "without"));
+      await pumpTask(
+        tester: tester,
+        task: scheduledTaskFixture(id: "without"),
+      );
       expect(find.text("Runs first"), findsNothing);
     });
 
