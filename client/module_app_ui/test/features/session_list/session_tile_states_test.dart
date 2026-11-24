@@ -705,6 +705,30 @@ void main() {
       });
     }
 
+    testWidgets("a first wake-up cross-fades the meta line rather than snapping the project over", (tester) async {
+      final session = testSession(title: "My Session").copyWith(arming: const SessionArming.notArmed());
+      await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
+      final project = find.text("demo-app");
+      final before = tester.getTopLeft(project).dx;
+
+      await pumpTile(
+        tester,
+        tile(
+          session: session.copyWith(
+            arming: SessionArming.armed(name: "Check CI", nextAt: now + 3600000),
+          ),
+          projectLabel: "demo-app",
+        ),
+      );
+      // Mid-fade, the old line still holds the project where it was.
+      expect(project, findsNWidgets(2));
+      expect(tester.getTopLeft(project.first).dx, before);
+
+      await tester.pumpAndSettle();
+      expect(project, findsOneWidget);
+      expect(tester.getTopLeft(project).dx, greaterThan(before));
+    });
+
     testWidgets("a task's row that nothing wakes again says where it came from, in grey with no glyph", (
       tester,
     ) async {

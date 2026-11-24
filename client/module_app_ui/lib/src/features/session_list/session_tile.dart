@@ -723,7 +723,12 @@ class const SessionTile({
       layoutBuilder: (current, previous) =>
           _currentSemanticsOnly(current: current, previous: previous, alignment: AlignmentDirectional.centerStart),
       child: switch (sending) {
-        null => KeyedSubtree(key: const ValueKey("details"), child: details),
+        // A scheduled mark arriving or leaving moves the words after it, so
+        // the line cross-fades; a mark changing kind cross-fades in place.
+        null => KeyedSubtree(
+          key: ValueKey(("details", scheduledMark is SessionScheduledMarkNone)),
+          child: details,
+        ),
         final sending => ExcludeSemantics(
           key: const ValueKey("sending"),
           child: Text(

@@ -21,7 +21,6 @@ import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
-import "package:sesori_dart_core/src/services/session_wake_up_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -975,7 +974,6 @@ SessionDetailCubit _buildCubit({
     loadService: loadService,
     sessionAbortService: SessionAbortService(repository: promptDispatcher),
     autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
-    wakeUpService: SessionWakeUpService(repository: promptDispatcher),
     approvalService: SessionApprovalService(repository: promptDispatcher),
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,

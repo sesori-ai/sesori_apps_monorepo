@@ -62,7 +62,6 @@ import "../../services/session_interaction_calculator.dart";
 import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
-import "../../services/session_wake_up_service.dart";
 import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
@@ -124,7 +123,6 @@ class SessionDetailCubit(
   required final SessionInteractionCalculator _interactionCalculator,
   required final SessionAbortService _sessionAbortService,
   required final SessionAutoContinuationService _autoContinuationService,
-  required final SessionWakeUpService _wakeUpService,
   required final SessionApprovalService _approvalService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
@@ -2176,7 +2174,10 @@ class SessionDetailCubit(
   Future<void> cancelWakeUp({required String wakeUpId}) async {
     if (isClosed) return;
     try {
-      final updated = await _wakeUpService.cancel(sessionId: _sessionId, wakeUpId: wakeUpId);
+      final updated = switch (await _sessionRepository.cancelWakeUp(sessionId: _sessionId, wakeUpId: wakeUpId)) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
       if (isClosed) return;
       _handleEvent(SesoriSessionUpdated(info: updated));
     } on Object catch (error, stackTrace) {

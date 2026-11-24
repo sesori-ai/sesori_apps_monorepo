@@ -299,8 +299,6 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
     as _i28;
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
-import 'package:sesori_dart_core/src/services/session_wake_up_service.dart'
-    as _i554;
 import 'package:sesori_dart_core/src/services/session_window_service.dart'
     as _i206;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
@@ -877,9 +875,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i883.SessionExternalActionService(
         repository: gh<_i7.SessionRepository>(),
       ),
-    );
-    gh.lazySingleton<_i554.SessionWakeUpService>(
-      () => _i554.SessionWakeUpService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i18.SessionViewingService>(
       () => _i18.SessionViewingService(

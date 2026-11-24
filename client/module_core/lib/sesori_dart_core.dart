@@ -393,7 +393,6 @@ export "src/services/session_selection_calculator.dart";
 export "src/services/session_send_tracker.dart";
 export "src/services/session_unseen_tracker.dart";
 export "src/services/session_viewing_service.dart";
-export "src/services/session_wake_up_service.dart";
 export "src/services/session_window_service.dart";
 export "src/services/sse_event_tracker.dart";
 export "src/services/voice_transcription_service.dart";
