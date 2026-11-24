@@ -29,6 +29,7 @@ final class const AcpUnsupportedElicitationForm({
 
 /// Finds the free-text property an agent pairs with the choice property
 /// [choiceKey] for an answer outside the listed choices, or null when none.
+/// Returning [choiceKey] itself sends that answer as the choice's own value.
 typedef AcpCustomAnswerKeyResolver = String? Function({required String choiceKey, required Set<String> propertyKeys});
 
 sealed class const AcpElicitationField({required final String key, required final bool required}) {
@@ -91,7 +92,8 @@ final class const _BooleanField({required super.key, required super.required}) e
 }
 
 /// A single or multiple choice. With a [customKey], an answer that is not one
-/// of the choices is sent as that free-text property instead.
+/// of the choices is sent as that free-text property instead; when
+/// [customKey] is this field's own [key], it is sent as this field's value.
 final class const _ChoiceField({
   required super.key,
   required super.required,
@@ -114,6 +116,11 @@ final class const _ChoiceField({
     final customKey = this.customKey;
     if (customAnswers.isNotEmpty && customKey == null) return const {};
     final customText = customAnswers.join(", ").trim();
+    if (customKey == key) {
+      final answers = [...values, if (customText.isNotEmpty) customText];
+      if (answers.isEmpty) return const {};
+      return {key: multiple ? answers : answers.first};
+    }
     return {
       if (values.isNotEmpty) key: multiple ? values : values.first,
       if (customKey != null && customText.isNotEmpty) customKey: customText,
@@ -155,7 +162,10 @@ class const AcpElicitationMapper({required final AcpCustomAnswerKeyResolver? cus
     final requestMessage = _bounded(_string(params["message"]) ?? "Input requested");
     final schemaTitle = _bounded(_string(schema["title"]) ?? requestMessage);
     final customKeys = _customAnswerKeys(properties: properties);
-    final pairedKeys = customKeys.values.toSet();
+    final pairedKeys = {
+      for (final MapEntry(key: choiceKey, value: customKey) in customKeys.entries)
+        if (customKey != choiceKey) customKey,
+    };
     final questions = <PluginQuestionInfo>[];
     final fields = <AcpElicitationField>[];
     for (final entry in properties.entries) {
@@ -183,7 +193,8 @@ class const AcpElicitationMapper({required final AcpCustomAnswerKeyResolver? cus
     return AcpSupportedElicitationForm(questions: questions, fields: fields);
   }
 
-  /// Choice property key -> the free-text property paired with it. A pairing
+  /// Choice property key -> the free-text property paired with it, or the
+  /// choice's own key when it takes free text itself. A separate pairing
   /// counts only when both sides are well-formed: a choice list and a plain
   /// string, so a malformed pair still maps as two separate questions.
   Map<String, String> _customAnswerKeys({required Map<String, dynamic> properties}) {
@@ -194,7 +205,11 @@ class const AcpElicitationMapper({required final AcpCustomAnswerKeyResolver? cus
       final property = _map(entry.value);
       if (property == null || !_isChoice(property)) continue;
       final customKey = resolve(choiceKey: entry.key, propertyKeys: properties.keys.toSet());
-      if (customKey == null || customKey == entry.key || pairs.containsValue(customKey)) continue;
+      if (customKey == entry.key) {
+        pairs[entry.key] = entry.key;
+        continue;
+      }
+      if (customKey == null || pairs.containsValue(customKey)) continue;
       final custom = _map(properties[customKey]);
       if (custom == null || custom["type"] != "string" || custom.containsKey("enum") || custom.containsKey("oneOf")) {
         continue;
@@ -225,9 +240,15 @@ class const AcpElicitationMapper({required final AcpCustomAnswerKeyResolver? cus
     final defaultValue = property["default"];
     switch (property["type"]) {
       case "array":
-        final alternatives = _map(property["items"])?["anyOf"];
-        if (alternatives is! List) return null;
-        final choices = _constChoices(alternatives: alternatives);
+        final items = _map(property["items"]);
+        if (items == null) return null;
+        final alternatives = items["anyOf"];
+        // Titled `items.anyOf`, or untitled `items.enum` of strings.
+        final choices = alternatives is List
+            ? _constChoices(alternatives: alternatives)
+            : items["type"] == "string" && !items.containsKey("oneOf")
+            ? _enumChoices(items)
+            : null;
         if (choices == null) return null;
         final defaults = defaultValue is List ? defaultValue.whereType<String>().toSet() : const <String>{};
         return _choiceQuestion(

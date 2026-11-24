@@ -3,6 +3,7 @@ import "package:codex_plugin/src/api/models/codex_thread_sample_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_side_answer_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_agent_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -88,6 +89,17 @@ void main() {
         _repository(transport: transport).sampleThread(threadId: "thread-1", expectedTurnId: "turn-1", prompt: "Why?"),
         throwsA(isA<CodexThreadRequestException>().having((error) => error.message, "message", "sample timed out")),
       );
+    });
+
+    test("the sample prompt is capped at 4,000 bytes until Codex 0.172.0", () {
+      CodexThreadRepository withVersion({required String? userAgent}) => CodexThreadRepository(
+        appServerApi: CodexAppServerApi(client: _Transport(responses: const [])),
+        codexVersion: const CodexUserAgentMapper().codexVersion(userAgent: userAgent),
+      );
+
+      expect(withVersion(userAgent: null).samplePromptMaxBytes, 4000);
+      expect(withVersion(userAgent: "codex_cli_rs/0.171.0 (Mac OS 26.1.0; arm64)").samplePromptMaxBytes, 4000);
+      expect(withVersion(userAgent: "codex_cli_rs/0.172.0 (Mac OS 26.1.0; arm64)").samplePromptMaxBytes, isNull);
     });
 
     test("latestTurnId reads one turn, newest first, without items", () async {

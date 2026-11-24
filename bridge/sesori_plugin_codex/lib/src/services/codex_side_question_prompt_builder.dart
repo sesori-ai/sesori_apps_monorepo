@@ -4,19 +4,24 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 /// Builds the one `thread/sample` prompt for a side question. Codex has no
 /// history parameter, so this side chat's earlier exchanges go inside the
-/// prompt, which Codex caps at [maxBytes] UTF-8 bytes.
+/// prompt, which Codex 0.164.0 to 0.171.x cap in UTF-8 bytes (0.172.0
+/// removed the cap).
 class const CodexSideQuestionPromptBuilder() {
-  static const maxBytes = 4000;
-
   static const _historyHeader =
       "Earlier side questions about this conversation, oldest first. They are not part of the main conversation.";
   static const _shortenedMarker = "…";
 
-  /// The prompt for [question] with as much of [history] as fits, or null
-  /// when even the question alone does not fit. The oldest text goes first:
-  /// the oldest kept answer is shortened when that is enough, otherwise the
-  /// oldest exchange is dropped.
-  String? build({required String question, required List<PluginSideExchange> history}) {
+  /// The prompt for [question] with all of [history], or, under a
+  /// [maxBytes] cap, with as much of it as fits, or null when even the
+  /// question alone does not fit. The oldest text goes first: the oldest
+  /// kept answer is shortened when that is enough, otherwise the oldest
+  /// exchange is dropped.
+  String? build({
+    required String question,
+    required List<PluginSideExchange> history,
+    required int? maxBytes,
+  }) {
+    if (maxBytes == null) return _render(question: question, history: history);
     final aloneBytes = _byteLength(
       value: _render(question: question, history: const []),
     );

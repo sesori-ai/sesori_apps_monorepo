@@ -695,7 +695,11 @@ class CodexSessionService({
     final threadRepository = _connectedThreadRepository;
     final expectedTurnId = activeTurnId ?? await threadRepository.latestTurnId(threadId: threadId);
     if (expectedTurnId == null) return const PluginSideRefused(reason: PluginSideRefusal.noTurnYet);
-    final prompt = _sideQuestionPromptBuilder.build(question: question, history: history);
+    final prompt = _sideQuestionPromptBuilder.build(
+      question: question,
+      history: history,
+      maxBytes: threadRepository.samplePromptMaxBytes,
+    );
     if (prompt == null) return const PluginSideRefused(reason: PluginSideRefusal.tooLong);
     return await threadRepository.sampleThread(threadId: threadId, expectedTurnId: expectedTurnId, prompt: prompt);
   }

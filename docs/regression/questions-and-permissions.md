@@ -88,9 +88,9 @@ reaches the backend so the turn continues.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose
-  `items.anyOf` entries carry string `const` values becomes an options-only
-  checkbox question; selected display labels encode back to an array of those
-  values. Duplicate titles remain distinguishable. Unsupported array shapes,
+  `items.anyOf` entries carry string `const` values, or whose string `items`
+  list an `enum`, becomes an options-only checkbox question; selected display
+  labels encode back to an array of those values. Duplicate titles remain distinguishable. Unsupported array shapes,
   including unconstrained, nested, and non-string choices, are declined without
   exposing labels or defaults in diagnostics.
 - An ACP `number` or `integer` property becomes a custom-text question whose
@@ -110,6 +110,13 @@ reaches the backend so the turn continues.
   18.18.3 to 18.19.0) naming; shared mapping knows no
   naming convention. Other ACP plugins keep a separate string property as its
   own custom-text question.
+- GitHub Copilot 1.0.115+ sends its `ask_user` tool as a standard ACP form
+  when the plugin advertises form support. Its tool tells the model that every
+  choice field accepts a free-form answer, so the model lists no "Other"
+  choice. Every Copilot choice question (enum, `oneOf`, and both array shapes)
+  therefore takes custom text, sent as that property's own value: a string for
+  a single choice, one extra array item for a multi-select. Decline tells the
+  model the user is unavailable and it carries on.
 - An ACP schema `default` marks the matching option as the default: a
   string-choice value, the values of a choice array, `Yes`/`No` for a boolean,
   and "Use suggested text" for a string or number. OpenCode v2 form fields
@@ -120,9 +127,10 @@ reaches the backend so the turn continues.
   enforced independently: omitting a required property declines the form.
   A single-question decline still rejects the whole request. Reject returns
   `decline`; abort, process exit, and disposal return `cancel`.
-- OMP advertises form support only on its live plugin connection. Its catalog
-  and cleanup scratch connections keep form elicitation disabled. Supporting
-  arrays in the shared mapper does not enable another plugin's advertisement.
+- OMP and Copilot advertise form support only on their live plugin
+  connection. Their catalog and cleanup scratch connections keep form
+  elicitation disabled. Supporting arrays in the shared mapper does not enable
+  another plugin's advertisement.
 - Pi extension `select`, `confirm`, `input`, and `editor` dialogs map to one
   single-select, Yes/No, or custom-answer question and return the exact Pi value,
   confirmation, or cancellation shape. For select, input, and editor dialogs,
@@ -147,9 +155,7 @@ reaches the backend so the turn continues.
   call. The client always presents Once and Reject for a pending permission and
   presents Always only when the request offers `allow_always`. The registry maps
   a choice to an exact offered ACP option; if Once or Reject has no matching
-  option, it cancels rather than escalating or selecting another scope. The
-  pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
-  question capability and Sesori never invents a custom question channel.
+  option, it cancels rather than escalating or selecting another scope.
 - Claude Code offers Always only when its `can_use_tool` request does not set
   `suppress_always_allow_rule` and carries either at least one `addRules`
   suggestion with rules or a `setMode` suggestion to `acceptEdits`. Always sends
@@ -549,8 +555,8 @@ the prompt write is held, proving cancellation does not remove the later request
   a bridge restart.
 - Antigravity displays or dispatches a persistent choice, displays any warning-bearing choice, escalates Once, changes
   an opaque option ID, guesses an ambiguous label, or leaves malformed input pending after cancellation/cleanup.
-- Copilot offers a question surface or waits for a Sesori answer to an upstream
-  `ask_user` interaction that the CLI did not forward over ACP.
+- A Copilot `ask_user` form is declined unseen, loses a free-form answer to a
+  choice field, or sends a listed choice as its label instead of its value.
 - A Grok request is silently approved by launch policy, loses its session or tool
   correlation, maps to an unoffered scope, survives abort/process cleanup, or
   one session's answer resolves another session's request.
@@ -573,8 +579,10 @@ the prompt write is held, proving cancellation does not remove the later request
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.
-- GitHub Copilot CLI currently does not forward `ask_user` over ACP
-  (`github/copilot-cli#2109`); only its standard permission requests are in scope.
+- Copilot `ask_user` forms were verified live on 1.0.115 at the ACP wire
+  (titled and plain choices, both multi-select shapes, free text, off-list
+  answers, decline); no on-device roundtrip has run yet. Copilot before 1.0.115
+  does not send `ask_user` over ACP.
 - Antigravity intentionally omits persistent approvals and independently filters every non-null security-warning
   choice. This is a Sesori safety policy, not a claim that the upstream method or scope is unsupported.
 - Grok permission scopes are tool/account dependent. A scope not advertised by
