@@ -232,6 +232,10 @@ Wake-ups: every harness that gets the server can call `schedule_wakeup`,
 waits for the session's turn to end on every harness, steering ones included,
 so it never cuts into a turn. GitHub Copilot asks its own permission before
 `schedule_wakeup` and `cancel_wakeup`, as for the other non-read-only tools.
+A wake-up's or task's `command` runs on the bridge through the login shell, not
+through the harness, so it behaves the same on every harness and never meets
+the harness's own permission check; only Sesori's Allow guards it. Windows
+`cmd.exe` quoting and `taskkill /T` are untested.
 Live checks are pending (step 8 of `session-wakeups`).
 
 ## Transcript turn boundaries
