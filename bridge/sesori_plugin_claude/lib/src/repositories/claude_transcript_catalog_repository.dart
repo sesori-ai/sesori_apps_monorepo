@@ -156,6 +156,23 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     );
   }
 
+  /// The newest records of [sessionId]'s transcript that can record a
+  /// background task's outcome, oldest first: the `task-notification` origin
+  /// and command mode, and the `<task-notification>` envelope, all name it.
+  /// Null when no transcript is found. A bounded tail read, in an isolate like
+  /// the other transcript reads.
+  Future<List<ClaudeTranscriptRecord>?> readRecentTaskNotificationRecords({required String sessionId}) async {
+    final path = await findTranscriptPath(sessionId: sessionId);
+    if (path == null) return null;
+    final transcriptApi = _transcriptApi;
+    return await Isolate.run(
+      () => transcriptApi
+          .readTailRecordsContaining(transcriptPath: path, text: "task-notification")
+          .map(_mapTranscriptRecord)
+          .toList(growable: false),
+    );
+  }
+
   /// Where a rewind that removes the user prompt [messageId] and everything
   /// after it resumes [sessionId]: the prompt's parent on the active branch.
   Future<ClaudeRewindPoint> rewindPointBefore({required String sessionId, required String messageId}) async {

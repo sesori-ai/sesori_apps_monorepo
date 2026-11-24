@@ -613,8 +613,13 @@ defaults and queued client sends coherent.
   tool-use id) it renders as one completed Automation step labelled by the
   summary, with the result as output, or failed with the summary as error.
   An unparseable envelope renders as Automation text. Live and replay produce
-  the same message id, sender and parts. A prompt that merely quotes an
-  envelope stays user input.
+  the same message id, sender and parts. An unclaimed notification delivered
+  while the session is idle has no echoed user frame: its Automation row is
+  built from the transcript record as soon as the CLI writes it, so the card
+  shows live, before the reply it wakes, and a re-import adds no duplicate.
+  Failure signal: the card appears only after leaving and reopening the
+  session, or shows twice. A prompt that merely quotes an envelope stays user
+  input.
 - An OpenCode 2.3.0 background sub-agent's report (a synthetic parent
   message with `metadata.source: subagent`) renders as an Automation row
   holding one finished sub-agent step: agent and description, a link to the

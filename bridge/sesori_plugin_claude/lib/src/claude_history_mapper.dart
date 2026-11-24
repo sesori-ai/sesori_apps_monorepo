@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "models/claude_agent_selection.dart";
 import "models/claude_compact_metadata.dart";
 import "models/claude_message_origin_kind.dart";
+import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
@@ -42,7 +43,7 @@ final class const ClaudeHistoryMapper({
   }) {
     String? modelId(String? model) => model == null ? null : catalogModelId?.call(apiModel: model) ?? model;
     bool skip(ClaudeTranscriptAttributedRecord record) => switch (agentId) {
-      null => (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId),
+      null => _isForeignToRoot(record: record, sessionId: sessionId),
       final agentId => record.agentId != agentId,
     };
     final entries = <_ClaudeHistoryEntry>[];
@@ -209,7 +210,7 @@ final class const ClaudeHistoryMapper({
             content: record.content,
             blocks: blocks,
             originKind: record.originKind,
-            tasks: tasks,
+            claims: ({required notification}) => tasks.envelopeNotified(notification: notification) != null,
           );
           if (message != null) entries.add(_MappedHistoryMessage(message: message));
         case ClaudeTranscriptQueuedCommandRecord():
@@ -229,7 +230,7 @@ final class const ClaudeHistoryMapper({
             content: record.prompt,
             blocks: blocks,
             originKind: record.originKind,
-            tasks: tasks,
+            claims: ({required notification}) => tasks.envelopeNotified(notification: notification) != null,
           );
           if (message != null) entries.add(_MappedHistoryMessage(message: message));
         case ClaudeTranscriptContextRecord() ||
@@ -297,8 +298,83 @@ final class const ClaudeHistoryMapper({
     );
   }
 
+  /// The row [map] shows for [record] when it is the turn that delivered the
+  /// outcome of task [taskId], launched or resumed by [toolUseId], to the
+  /// model; null for any other record, or when history shows nothing for it.
+  ///
+  /// The live path builds its row from this record: a task that finishes
+  /// while Claude is idle starts a turn of its own, and the stream carries
+  /// only the typed `task_notification` frame, never that turn's user frame.
+  /// [isKnownTask] stands in for the replay's task map: an envelope naming a
+  /// launch it knows is absorbed into that launch's tile, as in [map].
+  PluginMessageWithParts? recordedTaskNotificationTurn({
+    required String sessionId,
+    required ClaudeTranscriptRecord record,
+    required String taskId,
+    required String? toolUseId,
+    required bool Function({required String toolUseId}) isKnownTask,
+  }) {
+    final ({String id, DateTime? timestamp, Object? content, bool isMeta, ClaudeMessageOriginKind originKind}) turn;
+    switch (record) {
+      case ClaudeTranscriptUserRecord(isCompactSummary: false, isVisibleInTranscriptOnly: false)
+          when !_isForeignToRoot(record: record, sessionId: sessionId):
+        turn = (
+          id: record.id,
+          timestamp: record.timestamp,
+          content: record.content,
+          isMeta: record.isMeta,
+          originKind: record.originKind,
+        );
+      case ClaudeTranscriptQueuedCommandRecord() when !_isForeignToRoot(record: record, sessionId: sessionId):
+        turn = (
+          id: record.id,
+          timestamp: record.timestamp,
+          content: record.prompt,
+          isMeta: record.isMeta,
+          originKind: record.originKind,
+        );
+      default:
+        return null;
+    }
+    if (_content.hidesHarnessGeneratedUserTurn(isHarnessGenerated: turn.isMeta, originKind: turn.originKind)) {
+      return null;
+    }
+    final blocks = _content.map(content: turn.content);
+    if (_content.containsInternalCommandOutput(blocks: blocks) ||
+        !_content.isTaskNotification(blocks: blocks, originKind: turn.originKind)) {
+      return null;
+    }
+    final namesTask = blocks.any(
+      (block) =>
+          block is ClaudeMappedTaskNotificationContentBlock &&
+          block.notification.taskId == taskId &&
+          block.notification.toolUseId == toolUseId,
+    );
+    if (!namesTask) return null;
+    return _userTurn(
+      sessionId: sessionId,
+      messageId: turn.id,
+      timestamp: turn.timestamp,
+      content: turn.content,
+      blocks: blocks,
+      originKind: turn.originKind,
+      claims: ({required notification}) => switch (notification.toolUseId) {
+        final toolUseId? => isKnownTask(toolUseId: toolUseId),
+        null => false,
+      },
+    );
+  }
+
+  /// Whether root [sessionId]'s history leaves [record] out: a sub-agent's
+  /// sidechain record, or another session's.
+  static bool _isForeignToRoot({required ClaudeTranscriptAttributedRecord record, required String sessionId}) =>
+      (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId);
+
   /// A user-role turn, mapped as the live path maps its frame. Null when
   /// nothing is shown.
+  ///
+  /// [claims] says whether a known task absorbs a `<task-notification>`
+  /// envelope into its tile.
   PluginMessageWithParts? _userTurn({
     required String sessionId,
     required String messageId,
@@ -306,7 +382,7 @@ final class const ClaudeHistoryMapper({
     required Object? content,
     required List<ClaudeMappedContentBlock> blocks,
     required ClaudeMessageOriginKind originKind,
-    required ClaudeToolTracker tasks,
+    required bool Function({required ClaudeTaskNotification notification}) claims,
   }) {
     // The CLI's own delivery of a task outcome to the model, never a
     // user-authored message: a known task absorbs it, anything else
@@ -318,7 +394,7 @@ final class const ClaudeHistoryMapper({
       ];
       final unclaimed = [
         for (final notification in notifications)
-          if (tasks.envelopeNotified(notification: notification) == null) notification,
+          if (!claims(notification: notification)) notification,
       ];
       if (notifications.isNotEmpty && unclaimed.isEmpty) return null;
       return _content.taskNotificationMessage(

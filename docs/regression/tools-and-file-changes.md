@@ -331,7 +331,8 @@ sub-agent parts, plus the signal that a tool changed files.
   to busy until the resumed run's own notification. A `SendMessage` resume
   names the `SendMessage` call in its typed task frames, so they match the
   part by the sub-agent's task id; its `<task-notification>` envelope still
-  renders as its own Automation step. A resume after the launching process
+  renders as its own Automation step, live even when the session was idle. A
+  resume after the launching process
   exited (idle shutdown, stop, respawn or bridge restart) has no part to
   reopen: the old tile keeps its outcome and only the child session runs,
   announced after a bridge restart with the sub-agent's description as its
