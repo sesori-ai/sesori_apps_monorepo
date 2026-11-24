@@ -507,6 +507,107 @@ void main() {
       expect(repository.fetchCount, 2);
     });
 
+    test("a turn that starts during the import's fetch keeps one copy of its rows", () async {
+      final firstTurn = [
+        replayed(
+          id: "ses_a-h1-user",
+          info: _message(id: "ses_a-h1-user"),
+          text: "Say ALPHA",
+        ),
+        replayed(
+          id: "ses_a-h2-assistant",
+          info: _assistant(id: "ses_a-h2-assistant"),
+          text: "ALPHA",
+        ),
+      ];
+      final prompt = replayed(
+        id: "ses_a-h3-user",
+        info: _message(id: "ses_a-h3-user"),
+        text: "Say BETA",
+      );
+      final repository = _FakeSessionRepository(transcript: firstTurn)..replaysDuringTurn = false;
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      await history.service.observeBackendActivity(
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
+      );
+      repository.status = const SessionStatus.busy(since: null);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      // The turn ends and the next prompt goes out while the re-read fetches,
+      // so the snapshot holds it and its live rows queue behind the import.
+      final liveCaptures = <Future<void>>[];
+      repository
+        ..status = const SessionStatus.idle()
+        ..transcript = [...firstTurn, prompt]
+        ..onFetch = () {
+          repository.status = const SessionStatus.busy(since: null);
+          liveCaptures.addAll([
+            history.service.captureMessage(
+              sessionId: "ses_a",
+              message: _message(id: "prm_b-user"),
+            ),
+            history.service.capturePart(
+              sessionId: "ses_a",
+              part: const MessagePart.text(
+                id: "prm_b-user-p1",
+                sessionID: "ses_a",
+                messageID: "prm_b-user",
+                text: "Say BETA",
+              ),
+            ),
+          ]);
+        };
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      await history.service.drain();
+      await Future.wait(liveCaptures);
+
+      final midTurn = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+      expect(midTurn.messages.map((message) => message.info.id), const [
+        "ses_a-h1-user",
+        "ses_a-h2-assistant",
+        "prm_b-user",
+      ]);
+
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _assistant(id: "prm_b-user-assistant-a0"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: const MessagePart.text(
+          id: "prm_b-user-assistant-a0-p1",
+          sessionID: "ses_a",
+          messageID: "prm_b-user-assistant-a0",
+          text: "BETA",
+        ),
+      );
+      repository
+        ..onFetch = null
+        ..status = const SessionStatus.idle()
+        ..transcript = [
+          ...firstTurn,
+          prompt,
+          replayed(
+            id: "ses_a-h4-assistant",
+            info: _assistant(id: "ses_a-h4-assistant"),
+            text: "BETA",
+          ),
+        ];
+      final refreshed = history.service.historyRefreshes.first;
+      history.service.reimportAfterTurn(sessionId: "ses_a");
+      await refreshed;
+
+      final afterTurn = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+      expect(afterTurn.messages.map((message) => message.info.id), const [
+        "ses_a-h1-user",
+        "ses_a-h2-assistant",
+        "ses_a-h3-user",
+        "ses_a-h4-assistant",
+      ]);
+    });
+
     test("an ended turn re-reads nothing when no import waited for it", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])..replaysDuringTurn = false;
       final history = createTestChatHistory(sessionRepository: repository);
