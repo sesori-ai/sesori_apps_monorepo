@@ -7,6 +7,7 @@ import "scheduled_task.dart";
 import "session_approval_override.dart";
 import "session_auto_continuation.dart";
 import "session_interruption.dart";
+import "session_wake_up.dart";
 
 part "session.freezed.dart";
 
@@ -86,6 +87,11 @@ sealed class const Session._() with _$Session {
     // Where this session was forked from, or null when it is not a fork.
     // Bridges before forking omit it, which reads as null: they made no forks.
     required SessionForkOrigin? forkedFrom,
+    // The wake-ups agents set for this root session, soonest first.
+    // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before wake-ups omit the list, which honestly means none. Remove the default once the minimum supported bridge always sends it.
+    @Default(<SessionWakeUp>[]) List<SessionWakeUp> wakeUps,
+    // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before arming omit it, so the app keeps the plain task mark. Remove the default and the unreported variant once the minimum supported bridge always sends it.
+    @Default(SessionArming.unreported()) SessionArming arming,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

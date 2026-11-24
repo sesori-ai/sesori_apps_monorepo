@@ -134,6 +134,22 @@ class ScheduledTaskDao({required AppDatabase database})
         .get();
   }
 
+  /// Enabled same-session tasks not yet done whose next run continues in one
+  /// of [sessionIds], soonest first.
+  Future<List<ScheduledTaskDto>> listUpcomingTasksInSessions({required Set<String> sessionIds}) {
+    return (select(scheduledTasksTable)
+          ..where(
+            (row) =>
+                row.targetSessionId.isIn(sessionIds) &
+                row.runMode.equalsValue(ScheduledTaskRunModeKind.sameSession) &
+                row.enabled.equals(true) &
+                row.completedAt.isNull() &
+                row.nextDueAt.isNotNull(),
+          )
+          ..orderBy([(row) => OrderingTerm.asc(row.nextDueAt), (row) => OrderingTerm.asc(row.id)]))
+        .get();
+  }
+
   /// In one transaction, and only while the task's update time is still
   /// [expectedUpdatedAt]: writes its next due time and completion time, then
   /// inserts [run] as [insertRunAndTrim] does. Returns whether it wrote.

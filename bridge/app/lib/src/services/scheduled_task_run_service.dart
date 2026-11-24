@@ -19,6 +19,7 @@ import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_failure.dart";
 import "session_creation_service.dart";
 import "session_lifecycle_service.dart";
+import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
 import "session_prompt_service.dart";
@@ -32,7 +33,9 @@ import "yolo_settings_service.dart";
 /// never start one twice. A new-session run creates a session; a same-session
 /// run continues in the task's target session, creating and targeting one
 /// when there is none. Every history row written is announced on [changes],
-/// and every scheduled run that could not start on [failures]. A Run now that
+/// and every scheduled run that could not start on [failures]. A fire that
+/// moves a same-session task's next run, or gives it a new target session, is
+/// announced as that session's arming. A Run now that
 /// cannot start answers its caller instead.
 ///
 /// A same-session task with auto-compact on has [ScheduledTaskCompactionService]
@@ -51,6 +54,7 @@ class ScheduledTaskRunService({
   required final SessionCreationService _sessionCreation,
   required final SessionPromptService _prompts,
   required final SessionOperationDispatcher _operations,
+  required final SessionMutationDispatcher _mutations,
   required final YoloSettingsService _yoloSettings,
   required final SessionRepository _sessions,
   required final BridgeSettingsRepository _bridgeSettings,
@@ -139,6 +143,7 @@ class ScheduledTaskRunService({
       Log.i("Scheduled task ${task.id} changed while it was firing; the next pass reads it again");
       return;
     }
+    if (task.targetSessionId case final targetId?) await _mutations.armingUpdated(sessionId: targetId);
     await _afterReserved(task: task, run: run, scheduled: true);
   }
 
@@ -338,7 +343,9 @@ class ScheduledTaskRunService({
           return targetId;
         }
         final session = await _createSession(task: task);
-        if (!await _repository.setTargetSession(task: task, sessionId: session.id)) {
+        if (await _repository.setTargetSession(task: task, sessionId: session.id)) {
+          await _mutations.armingUpdated(sessionId: session.id);
+        } else {
           Log.i(
             "Scheduled task ${task.id} changed while its run started session ${session.id}; the change keeps its target",
           );

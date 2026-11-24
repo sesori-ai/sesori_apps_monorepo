@@ -10,6 +10,7 @@ import "../repositories/models/session_wake_up.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/session_wake_up_repository.dart";
 import "scheduled_task_occurrence_calculator.dart";
+import "session_mutation_dispatcher.dart";
 import "session_notice_service.dart";
 import "session_wake_up_description_builder.dart";
 
@@ -23,12 +24,16 @@ import "session_wake_up_description_builder.dart";
 /// the rule is the tasks' "lose, never duplicate": a one-shot is removed by
 /// the claim right before its send, and a repeating one moves to its next
 /// time before it is sent. Logs carry ids, never labels or prompts.
+///
+/// Every change to a session's wake-ups is announced on
+/// [SessionMutationDispatcher.armingUpdated], so the app's marks follow it.
 class SessionWakeUpService({
   required final SessionWakeUpRepository _wakeUps,
   required final SessionRepository _sessions,
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final SessionNoticeService _notices,
   required final SessionWakeUpDescriptionBuilder _descriptions,
+  required final SessionMutationDispatcher _mutations,
 
   /// The IANA name of the bridge computer's zone, or null when it cannot be
   /// told. Read at each request, so a changed zone applies to the next one.
@@ -53,7 +58,7 @@ class SessionWakeUpService({
     required WakeUpRequestedTime when,
     required String? timeZone,
   }) async {
-    final rootSessionId = await _rootOf(caller: caller);
+    final rootSessionId = await _rootOf(sessionId: caller.sessionId);
     if (rootSessionId == null) return const WakeUpRefused(reason: WakeUpRefusal.callerGone);
     // The label is one line on the user's screen.
     final oneLine = label.replaceAll(RegExp(r"\s+"), " ").trim();
@@ -97,23 +102,26 @@ class SessionWakeUpService({
       createdAt: now,
     );
     Log.i("Session ${caller.sessionId} set wake-up ${wakeUp.id} for session $rootSessionId");
+    await _mutations.armingUpdated(sessionId: rootSessionId);
     return WakeUpScheduled(wakeUp: wakeUp);
   }
 
   /// The wake-ups of [caller]'s root session, soonest first.
   Future<WakeUpListLookup> list({required SesoriMcpCaller caller}) async {
-    final rootSessionId = await _rootOf(caller: caller);
+    final rootSessionId = await _rootOf(sessionId: caller.sessionId);
     if (rootSessionId == null) return const WakeUpListCallerGone();
     return WakeUpList(wakeUps: await _wakeUps.forSession(sessionId: rootSessionId));
   }
 
-  /// Cancels [wakeUpId] when it belongs to [caller]'s root session. A
-  /// delivery still waiting for the session's turn to end sends nothing.
-  Future<WakeUpCancelResult> cancel({required SesoriMcpCaller caller, required String wakeUpId}) async {
-    final rootSessionId = await _rootOf(caller: caller);
+  /// Cancels [wakeUpId] when it belongs to [sessionId]'s root session, for
+  /// the agent in [sessionId] or the user in the app. A delivery still waiting
+  /// for the session's turn to end sends nothing.
+  Future<WakeUpCancelResult> cancel({required String sessionId, required String wakeUpId}) async {
+    final rootSessionId = await _rootOf(sessionId: sessionId);
     if (rootSessionId == null) return WakeUpCancelResult.callerGone;
     if (!await _wakeUps.removeFromSession(id: wakeUpId, sessionId: rootSessionId)) return WakeUpCancelResult.notFound;
-    Log.i("Session ${caller.sessionId} cancelled wake-up $wakeUpId");
+    Log.i("Cancelled wake-up $wakeUpId of session $rootSessionId, asked from session $sessionId");
+    await _mutations.armingUpdated(sessionId: rootSessionId);
     return WakeUpCancelResult.cancelled;
   }
 
@@ -125,7 +133,10 @@ class SessionWakeUpService({
     for (final wakeUp in await _wakeUps.due(now: now)) {
       try {
         final next = _nextAfter(wakeUp: wakeUp, now: now);
-        if (next != null) await _wakeUps.setNextDueAt(id: wakeUp.id, nextDueAt: next);
+        if (next != null) {
+          await _wakeUps.setNextDueAt(id: wakeUp.id, nextDueAt: next);
+          await _mutations.armingUpdated(sessionId: wakeUp.sessionId);
+        }
         if (!_inFlight.add(wakeUp.id)) {
           if (next != null) Log.i("Skipped an occurrence of wake-up ${wakeUp.id}: the previous one is still waiting");
           continue;
@@ -159,6 +170,7 @@ class SessionWakeUpService({
           // is gone; one dropped before it, and a repeating one, fire again.
           break;
       }
+      await _mutations.armingUpdated(sessionId: wakeUp.sessionId);
     } on Object catch (error, stackTrace) {
       Log.w("Wake-up ${wakeUp.id} failed after its delivery", error, stackTrace);
     } finally {
@@ -193,10 +205,10 @@ class SessionWakeUpService({
     }
   }
 
-  Future<String?> _rootOf({required SesoriMcpCaller caller}) async {
+  Future<String?> _rootOf({required String sessionId}) async {
     try {
       return (await _sessions.resolveSessionFamily(
-        sessionId: caller.sessionId,
+        sessionId: sessionId,
         operation: SessionOperation.manageWakeUps,
       )).rootSessionId;
     } on PluginOperationException {

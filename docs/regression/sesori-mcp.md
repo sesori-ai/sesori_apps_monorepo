@@ -148,6 +148,13 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   before it is sent, so missed times never pile up, and an occurrence that comes due while the previous one still
   waits is skipped. Archiving the session removes its wake-ups when they come due, repeating ones included.
   Labels and prompts are never logged, only ids.
+- Sessions carry their wake-ups (`Session.wakeUps`: id, next time, label, whether it repeats or runs a command) and
+  their arming (`Session.arming`). A session is armed by its soonest pending wake-up or by the next run of an enabled
+  same-session task that continues in it, whichever comes first; an archived session is never armed. Every schedule,
+  cancel, fire and advance of a wake-up, and every task edit, pause, resume, delete, fire or new target, republishes
+  the affected session. Older bridges omit both fields: no wake-ups and `unreported` arming, so the app keeps its
+  plain task mark. `POST /session/wake-up/cancel` lets the user cancel any of a root session's wake-ups, repeating
+  ones included, and answers with the updated session, also when the wake-up was already gone.
 - A run's final reply (`list_task_runs`) is the agent's last text in the newest turn a user prompt started, read from
   the newest 10 messages. A turn a notice started is skipped, so the agent's answer to a notice never replaces the
   run's reply and a Sesori row is never one. A later same-session run's reply replaces it.
@@ -223,6 +230,8 @@ task to its start and compare it with the app's view of the session. Use fixture
   accepts answers, or a reference line inside a user's note links the notice to another page.
 - A wake-up fires twice for one occurrence, fires inside a running turn, reaches an archived session, or is
   cancelled by another session.
+- A session stays armed after its last wake-up is gone or its task stops continuing in it, or an older bridge's
+  session reads as not armed instead of unreported.
 - An outcome notice stops a running turn, lands while a question or permission waits on the user, reaches an
   archived session, shows as the user's own message, or moves the session's last user message time.
 
@@ -245,7 +254,8 @@ task to its start and compare it with the app's view of the session. Use fixture
   bridge database and survive it. It also drops an outcome
   notice still waiting for its session to go quiet.
 - Agents cannot delete tasks or change a task's project, harness, agent, fast mode or worktree.
-- The app does not show wake-ups yet; only the notice row appears when one fires.
+- The app does not show wake-ups or arming yet; only the notice row appears when one fires. The bridge already
+  reports both and serves the cancel route.
 - `get_task` and `list_tasks` cover tasks not yet done; a finished one-off task is not listed.
 
 ## Harness Scope
@@ -268,7 +278,8 @@ The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: C
   `SesoriMcpGrantRepository` and `BridgeSesoriMcpAccessImpl` under `bridge/app/lib/src/`, with tests under
   `bridge/app/test/bridge/sesori_mcp/`. Pages: `AgentPageService`, `AgentPageRepository`,
   `AgentPageAnswerNoticeBuilder` and the `/page` and `/page/submit` handlers. Wake-ups: `SessionWakeUpService`,
-  `SessionWakeUpRepository`, `SessionWakeUpDescriptionBuilder`, `SessionWakeUpTimerListener` and `readLocalTimeZone`;
+  `SessionWakeUpRepository`, `SessionWakeUpDescriptionBuilder`, `SessionWakeUpTimerListener`, `readLocalTimeZone`, the
+  projection in `SessionViewService` and `CancelSessionWakeUpHandler`;
   plan in [.plan/active/session-wakeups/PLAN.md](../../.plan/active/session-wakeups/PLAN.md). The app side is in
   [questions and permissions](questions-and-permissions.md#agent-question-pages).
 - Plugin contract: `SesoriMcpAccess` and `SesoriMcpLaunch` in `bridge/sesori_plugin_interface`.
