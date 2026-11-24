@@ -380,6 +380,17 @@ void main() {
       }
     });
 
+    // The exact text agents read. Set SESORI_UPDATE_GOLDENS=1 to rewrite the
+    // file after an intended change, and review its diff.
+    test("tools/list matches the golden", () async {
+      final result = (await rpc(method: "tools/list", params: null))["result"];
+      final listed = "${const JsonEncoder.withIndent("  ").convert(result)}\n";
+      final golden = File("test/bridge/sesori_mcp/goldens/tools_list.json");
+
+      if (Platform.environment["SESORI_UPDATE_GOLDENS"] == "1") golden.writeAsStringSync(listed);
+      expect(listed, golden.readAsStringSync());
+    });
+
     test("update_task asks agents to leave out the fields they are not changing", () async {
       final tools = ((await rpc(method: "tools/list", params: null))["result"] as Map<String, dynamic>)["tools"];
       Map<String, dynamic> tool(String name) =>
