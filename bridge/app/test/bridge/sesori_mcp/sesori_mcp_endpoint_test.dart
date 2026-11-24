@@ -728,7 +728,7 @@ void main() {
       expect(result.isError, isFalse, reason: result.text);
       expect(
         asked().description,
-        "Project: repo\n\n**Update “Morning summary”**\n\nPrompt changes:\n\n```diff\n-Summarize yesterday\n+Summarize the week\n```\n\n"
+        "Project: repo\n\n**Update “Morning summary”**\n\nPrompt changes:\n\n```diff words=0:10-19;1:10-18\n-Summarize yesterday\n+Summarize the week\n```\n\n"
         "Asked by a scheduled run of this task.",
       );
     });
@@ -1085,7 +1085,7 @@ void main() {
         expect(await storedCommand(), "git fetch");
 
         await call(tool: "update_task", arguments: {"task_id": taskId, "command": "git pull"});
-        expect(asked().description, contains("```diff\n-git fetch\n+git pull\n```"));
+        expect(asked().description, contains("```diff words=0:4-9;1:4-8\n-git fetch\n+git pull\n```"));
         expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
         expect(await storedCommand(), "git pull");
 

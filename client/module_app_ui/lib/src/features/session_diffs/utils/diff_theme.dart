@@ -9,6 +9,8 @@ class const DiffTheme._({required final PregoColors colors}) {
   /// A changed line is tinted, not filled, so its text stays the loudest thing.
   static const double _lineTint = 0.1;
 
+  static const double _wordTint = 0.3;
+
   // ── Lines ─────────────────────────────────────────────────────────────
 
   Color get addedBg => colors.fgSuccessPrimary.withValues(alpha: _lineTint);
@@ -16,6 +18,11 @@ class const DiffTheme._({required final PregoColors colors}) {
   Color get removedBg => colors.fgErrorPrimary.withValues(alpha: _lineTint);
 
   Color get contextBg => Colors.transparent;
+
+  /// The words a changed line changed, tinted stronger than their line.
+  Color get addedWordBg => colors.fgSuccessPrimary.withValues(alpha: _wordTint);
+
+  Color get removedWordBg => colors.fgErrorPrimary.withValues(alpha: _wordTint);
 
   /// The 2-point bar at a changed line's left edge.
   Color get addedBar => colors.fgSuccessPrimary;

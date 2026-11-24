@@ -65,7 +65,7 @@ void main() {
         "**Update “Nightly”**",
         "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
         "Prompt changes:",
-        "```diff\n-Check the build\n+Check the build and the tests\n```",
+        "```diff words=1:15-29\n-Check the build\n+Check the build and the tests\n```",
         "Asked by a scheduled run of this task.",
       ],
     );
@@ -109,6 +109,86 @@ void main() {
         "````",
       ].join("\n"),
     );
+  });
+
+  test("a prompt change marks the words each removed line and the added line replacing it changed", () {
+    final before = _task.copyWith(
+      prompt: const ScheduledTaskPrompt.text(text: "Check the build on main.\nPost a summary.\nKeep this\nDrop this"),
+    );
+    final after = before.copyWith(
+      prompt: const ScheduledTaskPrompt.text(
+        text: "Check the tests on main and dev.\nWrite everything down.\nKeep this",
+      ),
+    );
+
+    final lines = blocks(
+      change: UpdateTaskChange(
+        taskId: "t",
+        before: before,
+        after: after,
+        beforeCommand: null,
+        command: const TaskCommandUnchanged(),
+      ),
+    );
+
+    // The second pair shares only spaces and a full stop, so it stays plain,
+    // and the last removed line has no added line to pair with.
+    expect(
+      lines[lines.length - 2],
+      [
+        "```diff words=0:10-15;2:10-15,23-31",
+        "-Check the build on main.",
+        "-Post a summary.",
+        "+Check the tests on main and dev.",
+        "+Write everything down.",
+        " Keep this",
+        "-Drop this",
+        "```",
+      ].join("\n"),
+    );
+  });
+
+  test("a one-word change in a long line still marks its word, and a long reworded line shows unmarked", () {
+    String diffFence({required String before, required String after}) {
+      final lines = blocks(
+        change: UpdateTaskChange(
+          taskId: "t",
+          before: _task.copyWith(prompt: ScheduledTaskPrompt.text(text: before)),
+          after: _task.copyWith(prompt: ScheduledTaskPrompt.text(text: after)),
+          beforeCommand: null,
+          command: const TaskCommandUnchanged(),
+        ),
+      );
+      return lines[lines.length - 2].split("\n").first;
+    }
+
+    final long = List.generate(5000, (i) => "w$i").join(" ");
+    final start = long.indexOf(" w2500 ") + 1;
+    expect(
+      diffFence(before: long, after: long.replaceFirst(" w2500 ", " changed ")),
+      "```diff words=0:$start-${start + 5};1:$start-${start + 7}",
+    );
+
+    // Only the shared end matches, and the rest is too long to compare.
+    expect(
+      diffFence(
+        before: "${List.generate(600, (i) => "a$i").join(" ")} shared",
+        after: "${List.generate(600, (i) => "b$i").join(" ")} shared",
+      ),
+      "```diff",
+    );
+
+    // The pairs of one block share the budget: the first ones get marks, and
+    // once it runs out the rest show unmarked.
+    String lines({required String word}) => [
+      for (var line = 0; line < 20; line++) "${List.generate(150, (i) => "$word${line}_$i").join(" ")} shared",
+    ].join("\n");
+    final fence = diffFence(
+      before: lines(word: "a"),
+      after: lines(word: "b"),
+    );
+    expect(fence, startsWith("```diff words=0:"));
+    expect(fence, isNot(contains(";39:")));
   });
 
   test("a prompt whose text stays the same but whose kind changes shows the new prompt", () {
@@ -243,7 +323,7 @@ void main() {
         ),
         [
           "Command changes:",
-          "```diff\n make\n-make test\n+make lint\n```",
+          "```diff words=1:5-9;2:5-9\n make\n-make test\n+make lint\n```",
         ],
       );
       expect(update(before: "make", command: const TaskCommandRemoved()), [

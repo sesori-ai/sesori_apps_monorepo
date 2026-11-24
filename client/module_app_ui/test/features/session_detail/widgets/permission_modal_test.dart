@@ -252,14 +252,13 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("tints a diff block's removed and added lines and strikes old values", (tester) async {
+  testWidgets("tints a diff block's removed and added lines, and their changed words more strongly", (tester) async {
     final router = _createRouter(
       permission: _permission.copyWith(
         tool: "Sesori: update task",
         description: [
-          "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
           "Prompt changes:",
-          "```diff\n@@ 2 unchanged lines @@\n Keep\n-Old line\n+New line\n```",
+          "```diff words=2:0-3;3:0-3\n@@ 2 unchanged lines @@\n Keep\n-Old line\n+New line\n```",
         ].join("\n\n"),
       ),
       capture: _ReplyCapture(),
@@ -273,27 +272,53 @@ void main() {
         .whereType<BoxDecoration>()
         .first
         .color;
+    Map<String, Color?> wordTintsOf(String text) {
+      final tints = <String, Color?>{};
+      tester.widget<Text>(find.text(text)).textSpan?.visitChildren((span) {
+        if (span is TextSpan && span.text != null) tints[span.text ?? ""] = span.style?.backgroundColor;
+        return true;
+      });
+      return tints;
+    }
+
     final prego = PregoDesignSystem.light.colors;
     expect(tintOf("Old line"), prego.fgErrorPrimary.withValues(alpha: 0.1));
     expect(tintOf("New line"), prego.fgSuccessPrimary.withValues(alpha: 0.1));
     expect(tintOf("Keep"), Colors.transparent);
     expect(find.text("@@ 2 unchanged lines @@"), findsOneWidget);
+    expect(wordTintsOf("Old line"), {"Old": prego.fgErrorPrimary.withValues(alpha: 0.3), " line": null});
+    expect(wordTintsOf("New line"), {"New": prego.fgSuccessPrimary.withValues(alpha: 0.3), " line": null});
+    expect(tester.takeException(), isNull);
+  });
 
-    // Markdown paragraphs are selectable, so their spans live in the editable text.
-    final schedule = find.textContaining("Schedule", findRichText: true);
-    final spans = <TextSpan>[];
-    tester
-        .widget<EditableText>(schedule)
-        .controller
-        .buildTextSpan(context: tester.element(schedule), withComposing: false)
-        .visitChildren((span) {
-          if (span is TextSpan) spans.add(span);
-          return true;
-        });
-    expect(
-      spans.singleWhere((span) => span.text == "daily at 02:00 (UTC)").style?.decoration,
-      TextDecoration.lineThrough,
+  testWidgets("shows a changed field as a labelled row with its old value struck through above the new", (
+    tester,
+  ) async {
+    final router = _createRouter(
+      permission: _permission.copyWith(
+        tool: "Sesori: update task",
+        description: [
+          "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
+          r"Agent: ~~Harness default~~ → plan\_mode",
+        ].join("\n\n"),
+      ),
+      capture: _ReplyCapture(),
     );
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    final prego = PregoDesignSystem.light.colors;
+    final old = tester.widget<Text>(find.text("daily at 02:00 (UTC)")).style;
+    expect(old?.decoration, TextDecoration.lineThrough);
+    expect(old?.decorationColor, prego.fgErrorPrimary);
+    expect(find.text("Schedule"), findsOneWidget);
+    expect(find.text("Monday to Friday at 08:30 (UTC)"), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Monday to Friday at 08:30 (UTC)")).dy,
+      greaterThan(tester.getTopLeft(find.text("daily at 02:00 (UTC)")).dy),
+    );
+    // Escaped values show as written.
+    expect(find.text("plan_mode"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
