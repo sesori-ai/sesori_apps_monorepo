@@ -15,6 +15,7 @@ import "models/claude_subagent_session_id.dart";
 import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/claude_session_process_repository.dart";
 import "repositories/claude_transcript_catalog_repository.dart";
+import "repositories/models/claude_transcript_record.dart";
 import "services/claude_catalog_service.dart";
 import "services/claude_mcp_authentication_service.dart";
 import "services/claude_session_service.dart";
@@ -1046,6 +1047,57 @@ final class ClaudePlugin({
     if (events.any((event) => event is BridgeSseSessionStatus)) _eventBuffer.add(const BridgeSseProjectUpdated());
   }
 
+  /// How often, and how many times, [_emitRecordedTaskNotification] reads the
+  /// transcript for the turn the CLI records. An idle CLI writes it within
+  /// milliseconds of the frame, before it asks the model for the reply.
+  static const Duration _recordedNotificationPollInterval = Duration(milliseconds: 100);
+  static const int _recordedNotificationAttempts = 50;
+
+  /// Shows the Automation row of task [taskId]'s outcome, delivered by the
+  /// typed `task_notification` frame alone.
+  ///
+  /// A task that finishes while Claude is idle starts a turn of its own: the
+  /// CLI records the `<task-notification>` turn in the transcript but streams
+  /// no user frame for it. Without this the row would only appear once a
+  /// re-import read the transcript. It is built from that record, exactly as
+  /// history builds it, so the import later finds the same row. Not finding
+  /// the record, as for a sub-agent's own task or an outcome queued until
+  /// the running turn's end, whose user frame the stream does deliver, leaves
+  /// the row to that frame or the import.
+  Future<void> _emitRecordedTaskNotification({
+    required String sessionId,
+    required String taskId,
+    required String? toolUseId,
+  }) async {
+    for (var attempt = 0; attempt < _recordedNotificationAttempts; attempt++) {
+      if (attempt > 0) await _clock.delay(duration: _recordedNotificationPollInterval);
+      if (_disposeFuture != null) return;
+      final List<ClaudeTranscriptRecord>? records;
+      try {
+        records = await _transcripts.readRecentTaskNotificationRecords(sessionId: sessionId);
+      } on Object catch (error, stack) {
+        Log.w("[claude] reading the recorded outcome of task $taskId failed", error, stack);
+        return;
+      }
+      if (records == null || _disposeFuture != null) return;
+      for (final record in records.reversed) {
+        final row = _history.recordedTaskNotificationTurn(
+          sessionId: sessionId,
+          record: record,
+          taskId: taskId,
+          toolUseId: toolUseId,
+          isKnownTask: _eventDispatcher.isKnownTask,
+        );
+        if (row == null) continue;
+        _addMapped([
+          BridgeSseMessageUpdated(info: row.info),
+          for (final part in row.parts) BridgeSseMessagePartUpdated(part: part),
+        ]);
+        return;
+      }
+    }
+  }
+
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     if (event is ClaudeSessionProcessExited) {
       // Sub-agents live only inside the resident process.
@@ -1096,6 +1148,12 @@ final class ClaudePlugin({
       }
       _addMapped(_eventDispatcher.map(message: message, now: null));
       if (message is ClaudeResultMessage) _eventDispatcher.completeTurn(sessionId: event.sessionId);
+      // A known launch's tile absorbs its outcome; any other outcome is an
+      // Automation row the stream never delivers as a user frame.
+      if (message case ClaudeTaskNotificationMessage(taskId: final taskId?, :final toolUseId)
+          when toolUseId == null || !_eventDispatcher.isKnownTask(toolUseId: toolUseId)) {
+        unawaited(_emitRecordedTaskNotification(sessionId: event.sessionId, taskId: taskId, toolUseId: toolUseId));
+      }
       // `claude auth status` still reports logged in when the stored OAuth
       // session can no longer refresh; only the turn reveals it.
       if (message case ClaudeAssistantMessage(error: ClaudeAssistantError.authenticationFailed)) {
