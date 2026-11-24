@@ -14,8 +14,6 @@ class ScheduledTaskToolGroup({
   required final ScheduledTaskAgentService _agent,
   required final ScheduledTaskToolResultFormatter _formatter,
 }) implements SesoriToolGroup {
-  static const SesoriToolGroupId groupId = SesoriToolGroupId("tasks");
-
   /// Messages read for one transcript page before trimming it to size.
   static const int _transcriptMessages = 20;
 
@@ -40,9 +38,6 @@ class ScheduledTaskToolGroup({
       "Sent to the user for approval. If they allow it, it applies to the next run. $answerFollowsText";
   static const String _appliesOnAllow =
       "Sent to the user for approval. Nothing happens unless they allow it. $answerFollowsText";
-
-  @override
-  SesoriToolGroupId get id => groupId;
 
   @override
   String get instructions =>

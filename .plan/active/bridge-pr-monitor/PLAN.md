@@ -630,8 +630,9 @@ count additions plus deletions, excluding generated files unless noted.
    - No behaviour change: `tools/list` stays byte-identical, and the
      `initialize` instructions are reassembled from the groups' sentences.
      A golden test proves it.
-   - As built: the interface holds only what step 2 uses (`id`,
-     `instructions`, `tools`, `call`). `title` and `summary` land in step 3,
+   - As built: the interface holds only what step 2 uses (`instructions`,
+     `tools`, `call`). `id` (with `SesoriToolGroupId`), `title` and
+     `summary` land in step 3,
      `start`, `dispose` and the host in step 4 (with the
      `sesori_plugin_interface` dependency for `Log`), and `guide` in step 10.
      `SesoriToolCaller` replaced the app's `SesoriMcpCaller`. The in-app

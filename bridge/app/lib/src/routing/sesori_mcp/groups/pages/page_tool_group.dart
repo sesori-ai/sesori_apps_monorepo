@@ -8,8 +8,6 @@ import "page_tool.dart";
 
 /// `send_page`: asking the user on a page in the Sesori app.
 class PageToolGroup({required final AgentPageService _pages}) implements SesoriToolGroup {
-  static const SesoriToolGroupId groupId = SesoriToolGroupId("pages");
-
   static const int _mebibyte = 1024 * 1024;
 
   /// Where each nested page argument sits, keyed by the class checked
@@ -24,9 +22,6 @@ class PageToolGroup({required final AgentPageService _pages}) implements SesoriT
     },
     kindFields: const {},
   );
-
-  @override
-  SesoriToolGroupId get id => groupId;
 
   @override
   String get instructions =>

@@ -32,8 +32,8 @@
   including sessions started in OpenCode's own app — gets a token bound to
   its `_meta` session id on first call, so the tools work for all sessions
   with no "is this a Sesori session" detection.
-- Step 2 kept the interface to what it uses. Step 3 adds `title` and
-  `summary`, step 4 `start`, `dispose`, the host and the
+- Step 2 kept the interface to what it uses. Step 3 adds `id` (with
+  `SesoriToolGroupId` and a named constant per group), `title` and `summary`, step 4 `start`, `dispose`, the host and the
   `sesori_plugin_interface` dependency (update `bridge/AGENTS.md`'s module
   order line, which says "no internal deps"), and step 10 `guide`.
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`. Step 3's

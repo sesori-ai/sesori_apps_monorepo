@@ -11,8 +11,6 @@ import "wake_up_tool.dart";
 /// `schedule_wakeup` and its list and cancel: prompts Sesori sends this
 /// session later.
 class WakeUpToolGroup({required final SessionWakeUpService _wakeUps}) implements SesoriToolGroup {
-  static const SesoriToolGroupId groupId = SesoriToolGroupId("wake_ups");
-
   static const SesoriToolArgumentParser _arguments = SesoriToolArgumentParser(
     nestedPlaces: {},
     kindFields: {
@@ -30,9 +28,6 @@ class WakeUpToolGroup({required final SessionWakeUpService _wakeUps}) implements
   static const SessionWakeUpDescriptionBuilder _wakeUpWords = SessionWakeUpDescriptionBuilder();
 
   static final RegExp _clockTimePattern = RegExp(r"^([01]?\d|2[0-3]):([0-5]\d)$");
-
-  @override
-  SesoriToolGroupId get id => groupId;
 
   @override
   String get instructions =>

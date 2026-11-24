@@ -3,17 +3,11 @@ import "sesori_tool_caller.dart";
 import "sesori_tool_definition.dart";
 import "sesori_tool_result.dart";
 
-/// Names a tool group on the wire and in settings. Ids are open, as plugin
-/// ids are, because future groups name their own.
-extension type const SesoriToolGroupId(String value);
-
 /// A set of tools with one purpose, served on Sesori's MCP server.
 ///
 /// The bridge lists [tools] and routes each call of one of them to [call].
 /// Dependencies arrive through the group's constructor.
 abstract interface class SesoriToolGroup() {
-  SesoriToolGroupId get id;
-
   /// What the group is for and when to reach for it, in a sentence or two.
   /// The server's MCP `instructions` join every group's.
   String get instructions;
