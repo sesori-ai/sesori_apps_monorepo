@@ -12,6 +12,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroup;
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
@@ -269,6 +270,7 @@ import "services/session_view_tracker.dart";
 import "services/session_wake_up_description_builder.dart";
 import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
+import "services/tool_group_settings_service.dart";
 import "services/wake_up_command_description_builder.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
@@ -929,13 +931,16 @@ class Orchestrator({
       wakeUps: sessionWakeUpService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
+    // In the order of SesoriToolGroupIds.all, which tools/list follows.
+    final toolGroups = <SesoriToolGroup>[
+      ScheduledTaskToolGroup(agent: scheduledTaskAgentService, formatter: const ScheduledTaskToolResultFormatter()),
+      PageToolGroup(pages: agentPageService),
+      WakeUpToolGroup(wakeUps: sessionWakeUpService),
+    ];
+    final toolGroupSettingsService = ToolGroupSettingsService(settings: _bridgeSettingsRepository, groups: toolGroups);
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
-      groups: [
-        ScheduledTaskToolGroup(agent: scheduledTaskAgentService, formatter: const ScheduledTaskToolResultFormatter()),
-        PageToolGroup(pages: agentPageService),
-        WakeUpToolGroup(wakeUps: sessionWakeUpService),
-      ],
+      groups: toolGroups,
     );
     final normalizedPluginEvents = sessionEventDispatcher.events;
     final router = RequestRouter(
@@ -947,12 +952,16 @@ class Orchestrator({
         PostPluginAuthenticationCodeHandler(lifecycleService: _pluginLifecycleService),
         DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
-        GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
+        GetBridgeSettingsHandler(
+          settingsRepository: _bridgeSettingsRepository,
+          toolGroupSettingsService: toolGroupSettingsService,
+        ),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PatchBridgeSettingsHandler(
           pullRequestRefreshSettingsService: pullRequestRefreshSettingsService,
           yoloSettingsService: yoloSettingsService,
           pluginWarmupSettingsService: pluginWarmupSettingsService,
+          toolGroupSettingsService: toolGroupSettingsService,
         ),
         PostMcpInventoryHandler(mcpRepository: mcpRepository),
         PostMcpEntryActionHandler(mcpService: mcpService),

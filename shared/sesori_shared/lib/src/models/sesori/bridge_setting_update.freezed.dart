@@ -28,6 +28,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return WarmUpPluginsOnSessionOpenSettingUpdate.fromJson(
             json
           );
+                case 'toolGroup':
+          return ToolGroupSettingUpdate.fromJson(
+            json
+          );
         
           default:
             return UnknownBridgeSettingUpdate.fromJson(
@@ -182,6 +186,48 @@ int get hashCode {
 @override
 String toString() {
     return 'BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: $enabled)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class ToolGroupSettingUpdate implements BridgeSettingUpdate {
+  const ToolGroupSettingUpdate({required this.id, required this.enabled,  String? $type}): $type = $type ?? 'toolGroup';
+  factory ToolGroupSettingUpdate.fromJson(Map<String, dynamic> json) => _$ToolGroupSettingUpdateFromJson(json);
+
+ final  String id;
+ final  bool enabled;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ToolGroupSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolGroupSettingUpdate&&(identical(other.id, id) || other.id == id)&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,enabled);
+}
+
+@override
+String toString() {
+    return 'BridgeSettingUpdate.toolGroup(id: $id, enabled: $enabled)';
 }
 
 

@@ -109,7 +109,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     settingsChanges: const Stream<Object?>.empty(),
     sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
     sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-    agentToolsEnabled: () => false,
+    enabledToolGroups: () => const {},
   );
   final runtime =
       PluginRuntime(

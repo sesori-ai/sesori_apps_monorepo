@@ -35,6 +35,7 @@ export "src/models/sesori/agent_mode.dart";
 export "src/models/sesori/base_branch_response.dart";
 export "src/models/sesori/bridge_setting_update.dart";
 export "src/models/sesori/bridge_settings_response.dart";
+export "src/models/sesori/bridge_tool_group_setting.dart";
 export "src/models/sesori/cancel_session_wake_up_request.dart";
 export "src/models/sesori/catalog_import_progress.dart";
 export "src/models/sesori/catalog_import_request.dart";

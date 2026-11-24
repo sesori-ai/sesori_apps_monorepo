@@ -5,6 +5,7 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart' show Par
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart'
     show BridgeSettingsResponse, PullRequestRefreshSettingsResponse, YoloSettingsResponse, jsonDecodeMap;
+import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 
 import '../api/bridge_settings_api.dart';
 import '../api/default_editor_api.dart';
@@ -129,6 +130,14 @@ class BridgeSettingsRepository({
 
   Future<void> updateAgentTools({required bool enabled}) async {
     await mutateSettings(mutation: ({required current}) => current.copyWith(agentTools: enabled));
+  }
+
+  Future<BridgeSettings> updateToolGroup({required SesoriToolGroupId id, required bool enabled}) {
+    return mutateSettings(
+      mutation: ({required current}) => current.copyWith(
+        agentToolGroups: current.agentToolGroups.withGroupEnabled(id: id, enabled: enabled),
+      ),
+    );
   }
 
   Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {

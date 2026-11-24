@@ -400,11 +400,11 @@
             "required": [
               "kind"
             ],
-            "description": "One of {\"kind\":\"once\",\"at\":DATE_TIME}, {\"kind\":\"daily\",\"time\":TIME}, {\"kind\":\"weekdays\",\"time\":TIME} (Monday to Friday), {\"kind\":\"weekly\",\"days\":[\"monday\",...],\"time\":TIME} or {\"kind\":\"everyHours\",\"hours\":1-12,\"start\":DATE_TIME}. TIME is {\"hour\":0-23,\"minute\":0-59}; DATE_TIME is {\"year\",\"month\",\"day\",\"hour\",\"minute\"}; both are wall-clock time in time_zone. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task."
           },
           "time_zone": {
             "type": "string",
-            "description": "An IANA time zone, such as Europe/Bucharest. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task."
           },
           "missed_run_policy": {
             "type": "string",
@@ -412,7 +412,7 @@
               "runWhenBack",
               "waitForNext"
             ],
-            "description": "When the computer was off at a run's time: run once when back (the default), or wait for the next. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task."
           },
           "run_mode": {
             "type": "object",
@@ -431,15 +431,15 @@
             "required": [
               "kind"
             ],
-            "description": "{\"kind\":\"newSession\"} starts a session per run (the default); {\"kind\":\"sameSession\",\"autoCompact\":true} continues one session, compacting it before each run when autoCompact is true. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task."
           },
           "model": {
             "type": "string",
-            "description": "provider/model, as this harness names it. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "provider/model, as this harness names it."
           },
           "effort": {
             "type": "string",
-            "description": "The harness's effort (variant) id. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "The harness's effort (variant) id."
           },
           "approval_mode": {
             "type": "string",
@@ -447,11 +447,11 @@
               "ask",
               "approveAll"
             ],
-            "description": "ask (the default) waits for the user on every permission; approveAll lets runs act without asking. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task."
           },
           "command": {
             "type": "string",
-            "description": "A shell command Sesori runs before each run's prompt, through a login shell in the task's project folder (a same-session task's session folder once it has one), stopped after 10 minutes. The prompt then carries the exit code, stdout and stderr; a stream over 500 words comes as its file's path and its last 20 lines. Not for a task that runs a slash command. Leave out every field you are not changing; left-out fields keep their value."
+            "description": "Same as create_task, but not for a task that runs a slash command."
           },
           "remove_command": {
             "type": "boolean",

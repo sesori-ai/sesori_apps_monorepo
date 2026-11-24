@@ -24,6 +24,10 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
   @FreezedUnionValue("warmUpPluginsOnSessionOpen")
   const factory warmUpPluginsOnSessionOpen({required bool enabled}) = WarmUpPluginsOnSessionOpenSettingUpdate;
 
+  /// Turns the tool group [id] (a `BridgeToolGroupSetting.id`) on or off.
+  @FreezedUnionValue("toolGroup")
+  const factory toolGroup({required String id, required bool enabled}) = ToolGroupSettingUpdate;
+
   const factory unknown() = UnknownBridgeSettingUpdate;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);

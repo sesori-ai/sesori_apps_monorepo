@@ -3,6 +3,7 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
@@ -290,6 +291,17 @@ void main() {
 
     test("no note when the agent-tools setting is off", () async {
       bridgeSettings.settings = const BridgeSettings(agentTools: false);
+      await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(creation.runContexts, [null]);
+    });
+
+    test("no note when the scheduled-tasks tool group is off", () async {
+      bridgeSettings.settings = BridgeSettings(
+        agentToolGroups: BridgeAgentToolGroupSettings(disabledIds: {SesoriToolGroupIds.tasks.value}),
+      );
       await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
 
       await service.runDue();

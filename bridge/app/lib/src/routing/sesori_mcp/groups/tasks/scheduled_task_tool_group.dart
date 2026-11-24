@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show PromptModel, ScheduledTaskErrorCode, SessionVariant;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
+import "../../../../foundation/sesori_tool_group_ids.dart";
 import "../../../../repositories/models/task_command_edit.dart";
 import "../../../../services/scheduled_task_agent_service.dart";
 import "../../models/sesori_mcp_tool_arguments.dart";
@@ -38,6 +39,15 @@ class ScheduledTaskToolGroup({
       "Sent to the user for approval. If they allow it, it applies to the next run. $answerFollowsText";
   static const String _appliesOnAllow =
       "Sent to the user for approval. Nothing happens unless they allow it. $answerFollowsText";
+
+  @override
+  SesoriToolGroupId get id => SesoriToolGroupIds.tasks;
+
+  @override
+  String get title => "Scheduled tasks";
+
+  @override
+  String get summary => "Agents can read your scheduled tasks and their runs, and ask you to change them.";
 
   @override
   String get instructions =>

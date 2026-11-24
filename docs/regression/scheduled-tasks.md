@@ -68,7 +68,7 @@ them or can't start. Same-session tasks can compact their session between runs (
 - Before firing, the task's model is checked against the harness's option list when one is readable; a model no longer
   offered fails the run ("its model isn't offered anymore") instead of falling back. An unreadable list lets the run go
   ahead. Stale agent, effort or fast mode is corrected once against the rediscovered catalog.
-- On a harness that gives sessions Sesori's MCP server, with `agent-tools` on, a text run's prompt opens with a
+- On a harness that gives sessions Sesori's MCP server, with `agent-tools` and its `tasks` tool group on, a text run's prompt opens with a
   bridge-owned note that names the task and invites the agent to propose one improvement through `update_task`. The
   run's user message shows only the task's prompt, live and after reload. Agents can also read tasks, runs and run
   transcripts and propose task changes, each of which waits for the user's Allow; see

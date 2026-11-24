@@ -66,6 +66,13 @@ void main() {
       );
     });
 
+    test("tool group variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.toolGroup(id: "tasks", enabled: false);
+
+      expect(update.toJson(), {"type": "toolGroup", "id": "tasks", "enabled": false});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

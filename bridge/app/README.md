@@ -104,6 +104,7 @@ In addition to flags, the bridge supports subcommands:
 | `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
 | `config warmup [on\|off]` | Show or set plugin warm-up when a session screen opens. With no argument, prints the current mode. |
 | `config agent-tools [on\|off]` | Show or set whether harness sessions get Sesori's own tools for agents. With no argument, prints the current mode. |
+| `config tool-group [<id> [on\|off]]` | Show or set one group of Sesori's agent tools (`tasks`, `pages`, `wake_ups`). With no id, lists every group's state. |
 | `config plugins` | List known plugin eligibility and preserved unknown disabled IDs. |
 | `config plugins enable <id>` | Remove a known plugin from the denylist. Restart the bridge to apply. |
 | `config plugins disable <id>` | Add a known plugin to the denylist. Restart the bridge to apply. |
@@ -139,6 +140,12 @@ MCP tools, such as reading scheduled tasks and their runs, to agents in harness
 sessions it launches, over a loopback-only endpoint with a per-launch token.
 Use `sesori-bridge config agent-tools off` to stop offering them; restart a
 running bridge after a CLI change.
+
+While `agentTools` is on, each tool group can be turned off on its own with
+`sesori-bridge config tool-group <id> off` or from the app's bridge settings,
+which stores it in `"agentToolGroups": {"disabled": ["<id>"]}`. Unknown ids are
+kept and ignored. A session's tools are fixed when its harness launches, so a
+change applies to sessions started or resumed afterwards.
 
 To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 

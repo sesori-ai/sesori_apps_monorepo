@@ -1,3 +1,5 @@
+import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
+
 import '../updater/foundation/release_track.dart';
 
 const int defaultPluginIdleTimeoutMins = 45;
@@ -169,6 +171,33 @@ class const BridgePluginSettings({
   }
 }
 
+/// Which Sesori tool groups are off. A group is on unless it is listed;
+/// unknown ids are kept and ignored, as for `plugins.disabled`.
+class const BridgeAgentToolGroupSettings({final Set<String> disabledIds = const {}}) {
+  factory fromJson({required Object? rawValue}) {
+    return switch (rawValue) {
+      {'disabled': final List<Object?> ids} => BridgeAgentToolGroupSettings(
+        disabledIds: Set<String>.unmodifiable(ids.whereType<String>()),
+      ),
+      _ => const BridgeAgentToolGroupSettings(),
+    };
+  }
+
+  bool isEnabled({required SesoriToolGroupId id}) => !disabledIds.contains(id.value);
+
+  Map<String, dynamic> toJson() => {'disabled': disabledIds.toList()..sort()};
+
+  BridgeAgentToolGroupSettings withGroupEnabled({required SesoriToolGroupId id, required bool enabled}) {
+    final updated = Set<String>.of(disabledIds);
+    if (enabled) {
+      updated.remove(id.value);
+    } else {
+      updated.add(id.value);
+    }
+    return BridgeAgentToolGroupSettings(disabledIds: Set<String>.unmodifiable(updated));
+  }
+}
+
 class const BridgeSettings({
   final SleepPreventionMode sleepPrevention = SleepPreventionMode.always,
 
@@ -192,6 +221,9 @@ class const BridgeSettings({
 
   /// Whether harness sessions get Sesori's own MCP tools. Read at each launch.
   final bool agentTools = true,
+
+  /// Which of Sesori's tool groups sessions get while [agentTools] is on.
+  final BridgeAgentToolGroupSettings agentToolGroups = const BridgeAgentToolGroupSettings(),
 }) {
   factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
@@ -210,6 +242,7 @@ class const BridgeSettings({
         rawValue: json['warmUpPluginsOnSessionOpen'],
       ),
       agentTools: json['agentTools'] != false,
+      agentToolGroups: BridgeAgentToolGroupSettings.fromJson(rawValue: json['agentToolGroups']),
     );
   }
 
@@ -224,6 +257,7 @@ class const BridgeSettings({
       'pullRequestRefreshIntervalSeconds': pullRequestRefreshIntervalSeconds,
       'warmUpPluginsOnSessionOpen': warmUpPluginsOnSessionOpen,
       'agentTools': agentTools,
+      if (agentToolGroups.disabledIds.isNotEmpty) 'agentToolGroups': agentToolGroups.toJson(),
       if (!plugins.isEmpty) 'plugins': plugins.toJson(),
     };
   }
@@ -237,6 +271,7 @@ class const BridgeSettings({
     int? pullRequestRefreshIntervalSeconds,
     bool? warmUpPluginsOnSessionOpen,
     bool? agentTools,
+    BridgeAgentToolGroupSettings? agentToolGroups,
   }) {
     return BridgeSettings(
       sleepPrevention: sleepPrevention ?? this.sleepPrevention,
@@ -246,8 +281,13 @@ class const BridgeSettings({
       pullRequestRefreshIntervalSeconds: pullRequestRefreshIntervalSeconds ?? this.pullRequestRefreshIntervalSeconds,
       warmUpPluginsOnSessionOpen: warmUpPluginsOnSessionOpen ?? this.warmUpPluginsOnSessionOpen,
       agentTools: agentTools ?? this.agentTools,
+      agentToolGroups: agentToolGroups ?? this.agentToolGroups,
     );
   }
+
+  /// Whether sessions launched now get the tool group [id]: [agentTools] is
+  /// the master switch over every group.
+  bool toolGroupEnabled({required SesoriToolGroupId id}) => agentTools && agentToolGroups.isEnabled(id: id);
 
   static SleepPreventionMode _parseSleepPrevention(Object? rawValue) {
     return switch (rawValue) {

@@ -113,19 +113,16 @@ enum ScheduledTaskTool({
           "type": "string",
           "description": "New arguments for a task that runs a command; the command stays.",
         },
-        "schedule": {..._scheduleSchema, "description": "$_scheduleDescription $_leaveOutUnchanged"},
-        "time_zone": {"type": "string", "description": "$_timeZoneDescription $_leaveOutUnchanged"},
-        "missed_run_policy": {
-          ..._missedRunPolicySchema,
-          "description": "$_missedRunPolicyDescription $_leaveOutUnchanged",
-        },
-        "run_mode": {..._runModeSchema, "description": "$_runModeDescription $_leaveOutUnchanged"},
-        "model": {"type": "string", "description": "$_modelDescription $_leaveOutUnchanged"},
-        "effort": {"type": "string", "description": "$_effortDescription $_leaveOutUnchanged"},
-        "approval_mode": {..._approvalModeSchema, "description": "$_approvalModeDescription $_leaveOutUnchanged"},
+        "schedule": {..._scheduleSchema, "description": _sameAsCreateTask},
+        "time_zone": {"type": "string", "description": _sameAsCreateTask},
+        "missed_run_policy": {..._missedRunPolicySchema, "description": _sameAsCreateTask},
+        "run_mode": {..._runModeSchema, "description": _sameAsCreateTask},
+        "model": {"type": "string", "description": _modelDescription},
+        "effort": {"type": "string", "description": _effortDescription},
+        "approval_mode": {..._approvalModeSchema, "description": _sameAsCreateTask},
         "command": {
           "type": "string",
-          "description": "$_taskCommandDescription Not for a task that runs a slash command. $_leaveOutUnchanged",
+          "description": "Same as create_task, but not for a task that runs a slash command.",
         },
         "remove_command": {"type": "boolean", "description": "true stops the task's runs from running its command."},
       },
@@ -168,22 +165,26 @@ const Map<String, Object?> _taskIdSchema = {
   "additionalProperties": false,
 };
 
-/// Ends update_task's description and each of its setting descriptions: a
-/// model that fills every field would otherwise propose changes nobody asked
-/// for, such as a new schedule when only the prompt should change.
 const String _taskCommandDescription =
     "A shell command Sesori runs before each run's prompt, through a login shell in the task's project folder (a "
     "same-session task's session folder once it has one), stopped after 10 minutes. The prompt then carries the "
     "exit code, stdout and stderr; a stream over 500 words comes as its file's path and its last 20 lines.";
 
+/// Said once, in update_task's description: a model that fills every field
+/// would otherwise propose changes nobody asked for, such as a new schedule
+/// when only the prompt should change.
 const String _leaveOutUnchanged = "Leave out every field you are not changing; left-out fields keep their value.";
 
 const String _answeredOnItsOwn =
     "Each request is answered on its own; Sesori messages this session with the user's answer, so don't poll "
     "get_task for it.";
 
-// The setting schemas below leave out their description: create_task and
-// update_task each add their own, built from these texts.
+/// update_task's settings point at create_task's descriptions instead of
+/// repeating them.
+const String _sameAsCreateTask = "Same as create_task.";
+
+// The setting schemas below leave out their description: create_task adds
+// these texts, and update_task points at them.
 
 const String _scheduleDescription =
     'One of {"kind":"once","at":DATE_TIME}, {"kind":"daily","time":TIME}, {"kind":"weekdays","time":TIME} '

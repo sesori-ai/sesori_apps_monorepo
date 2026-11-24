@@ -60,6 +60,7 @@ import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
 import "../foundation/sesori_mcp_server.dart";
+import "../foundation/sesori_tool_group_ids.dart";
 import "../listeners/catalog_import_console_listener.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
@@ -642,7 +643,13 @@ class const BridgeRuntimeRunner._() {
         settingsChanges: bridgeSettingsRepository.settingsChanges,
         sesoriMcpUrl: sesoriMcpServer.url,
         sesoriMcpGrants: sesoriMcpGrants,
-        agentToolsEnabled: () => bridgeSettingsRepository.currentSettings.agentTools,
+        enabledToolGroups: () {
+          final settings = bridgeSettingsRepository.currentSettings;
+          return {
+            for (final id in SesoriToolGroupIds.all)
+              if (settings.toolGroupEnabled(id: id)) id,
+          };
+        },
       );
       final activePluginRuntime = PluginRuntime(
         registrations: pluginRuntimeRegistrations,

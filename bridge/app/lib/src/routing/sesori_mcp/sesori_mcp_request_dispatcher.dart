@@ -17,8 +17,8 @@ import "models/sesori_mcp_rpc_request.dart";
 /// long-lived stream per client and has no HTTP transport; here every POST is
 /// independent and carries its caller's token.
 ///
-/// Each tool belongs to one [SesoriToolGroup]; the dispatcher lists the
-/// groups' tools and routes each call to its group.
+/// Each tool belongs to one [SesoriToolGroup]; the dispatcher lists the tools
+/// of the groups the caller's grant holds and routes each call to its group.
 class SesoriMcpRequestDispatcher({
   required final SesoriMcpAccessService _access,
   required final List<SesoriToolGroup> _groups,
@@ -64,7 +64,12 @@ class SesoriMcpRequestDispatcher({
   Future<void> drain() => _inFlight.drain();
 
   Future<SesoriMcpReply> _dispatch({required String token, required String body}) async {
-    if (!_access.isMinted(token: token)) return const SesoriMcpUnauthorizedReply();
+    final granted = _access.grantedGroups(token: token);
+    if (granted == null) return const SesoriMcpUnauthorizedReply();
+    final groups = [
+      for (final group in _groups)
+        if (granted.contains(group.id)) group,
+    ];
 
     final Object? decoded;
     try {
@@ -88,12 +93,15 @@ class SesoriMcpRequestDispatcher({
       case "initialize":
         return _result(
           id: id,
-          result: _initialize(params: request.params),
+          result: _initialize(params: request.params, groups: groups),
         );
       case "ping":
         return _result(id: id, result: const <String, Object?>{});
       case "tools/list":
-        return _result(id: id, result: _toolList());
+        return _result(
+          id: id,
+          result: _toolList(groups: groups),
+        );
       case "tools/call":
         final SesoriMcpToolCall call;
         try {
@@ -101,8 +109,11 @@ class SesoriMcpRequestDispatcher({
         } on Object {
           return _error(id: id, code: _invalidParams, message: "tools/call needs a tool name.");
         }
+        // A tool of a group outside the grant reads as one that does not exist.
         final group = _owners[call.name];
-        if (group == null) return _error(id: id, code: _invalidParams, message: "Unknown tool: ${call.name}");
+        if (group == null || !granted.contains(group.id)) {
+          return _error(id: id, code: _invalidParams, message: "Unknown tool: ${call.name}");
+        }
         return _result(
           id: id,
           result: await _call(token: token, group: group, tool: call.name, arguments: call.arguments ?? const {}),
@@ -112,7 +123,10 @@ class SesoriMcpRequestDispatcher({
     }
   }
 
-  Map<String, Object?> _initialize({required Map<String, dynamic>? params}) {
+  Map<String, Object?> _initialize({
+    required Map<String, dynamic>? params,
+    required List<SesoriToolGroup> groups,
+  }) {
     String? requested;
     try {
       requested = params == null ? null : SesoriMcpInitializeParams.fromJson(params).protocolVersion;
@@ -125,14 +139,14 @@ class SesoriMcpRequestDispatcher({
         "tools": {"listChanged": false},
       },
       "serverInfo": {"name": sesoriMcpServerName, "version": bridgeVersion},
-      "instructions": [_instructionsLead, for (final group in _groups) group.instructions].join(" "),
+      "instructions": [_instructionsLead, for (final group in groups) group.instructions].join(" "),
     };
   }
 
-  Map<String, Object?> _toolList() {
+  Map<String, Object?> _toolList({required List<SesoriToolGroup> groups}) {
     return {
       "tools": [
-        for (final group in _groups)
+        for (final group in groups)
           for (final tool in group.tools)
             {
               "name": tool.name,

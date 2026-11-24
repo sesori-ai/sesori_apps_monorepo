@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dar
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
+import "package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_continuation_mapper.dart";
@@ -1059,7 +1060,7 @@ void main() {
         .any((session) => session.id == "stable-session" && session.awaitingInput);
 
     // The run has finished: the harness reports no active session.
-    final token = grants.mint(pluginId: "one");
+    final token = grants.mint(pluginId: "one", groups: SesoriToolGroupIds.all.toSet());
     grants.bind(token: token, backendSessionId: "backend-session");
     final proposal = await http.post(
       mcpServer.url,
@@ -1208,7 +1209,7 @@ void main() {
         .expand((project) => project.activeSessions)
         .any((session) => session.id == "stable-session" && session.awaitingInput);
 
-    final token = grants.mint(pluginId: "one");
+    final token = grants.mint(pluginId: "one", groups: SesoriToolGroupIds.all.toSet());
     grants.bind(token: token, backendSessionId: "backend-session");
     final sent = await http.post(
       mcpServer.url,
@@ -1295,7 +1296,7 @@ void main() {
     final subscription = harness.composition.session.localWireEvents.listen(events.add);
     addTearDown(subscription.cancel);
 
-    final token = grants.mint(pluginId: "one");
+    final token = grants.mint(pluginId: "one", groups: SesoriToolGroupIds.all.toSet());
     grants.bind(token: token, backendSessionId: "backend-session");
     await http.post(
       mcpServer.url,

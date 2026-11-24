@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 import "dart:math";
 
+import "package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
@@ -87,7 +88,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        agentToolsEnabled: () => true,
+        enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
@@ -135,7 +136,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        agentToolsEnabled: () => true,
+        enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
     }
 
@@ -424,7 +425,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        agentToolsEnabled: () => true,
+        enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       await factory.enforceBridgeOwnership();
 

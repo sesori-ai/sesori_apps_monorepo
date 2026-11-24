@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
+import "package:sesori_bridge/src/foundation/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
 import "package:sesori_bridge/src/repositories/agent_page_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
@@ -224,7 +225,7 @@ void main() {
     );
     runId = run.id;
 
-    token = grants.mint(pluginId: plugin.id);
+    token = grants.mint(pluginId: plugin.id, groups: SesoriToolGroupIds.all.toSet());
     grants.bind(token: token, backendSessionId: "backend-s1");
   });
 
@@ -408,7 +409,7 @@ void main() {
       );
     });
 
-    test("update_task asks agents to leave out the fields they are not changing", () async {
+    test("update_task says once to leave out the fields an agent is not changing", () async {
       final tools = ((await rpc(method: "tools/list", params: null))["result"] as Map<String, dynamic>)["tools"];
       Map<String, dynamic> tool(String name) =>
           (tools as List<dynamic>).cast<Map<String, dynamic>>().singleWhere((tool) => tool["name"] == name);
@@ -419,9 +420,22 @@ void main() {
 
       expect(tool("update_task")["description"], contains(hint));
       for (final setting in settings) {
-        expect((properties("update_task")[setting] as Map<String, dynamic>)["description"], endsWith(hint));
+        expect((properties("update_task")[setting] as Map<String, dynamic>)["description"], isNot(contains(hint)));
         expect((properties("create_task")[setting] as Map<String, dynamic>)["description"], isNot(contains(hint)));
       }
+      expect((properties("update_task")["schedule"] as Map<String, dynamic>)["description"], "Same as create_task.");
+    });
+
+    test("a grant lists, describes and answers only the tool groups it was minted with", () async {
+      final pagesOnly = grants.mint(pluginId: "fake", groups: {SesoriToolGroupIds.pages});
+      grants.bind(token: pagesOnly, backendSessionId: "backend-s1");
+
+      final tools = ((await rpc(method: "tools/list", params: null, bearer: pagesOnly))["result"] as Map)["tools"];
+      expect([for (final tool in tools as List<dynamic>) (tool as Map<String, dynamic>)["name"]], ["send_page"]);
+      final initialized = (await rpc(method: "initialize", params: {}, bearer: pagesOnly))["result"] as Map;
+      expect(initialized["instructions"], allOf(contains("send_page"), isNot(contains("list_tasks"))));
+      final outside = await rpc(method: "tools/call", params: {"name": "list_tasks"}, bearer: pagesOnly);
+      expect(outside["error"], {"code": -32602, "message": "Unknown tool: list_tasks"});
     });
 
     test("malformed JSON, unknown methods and unknown tools are JSON-RPC errors", () async {
@@ -453,7 +467,7 @@ void main() {
 
     test("a token from before a restart gets 401", () async {
       final oldBridge = SesoriMcpGrantRepository(random: Random.secure());
-      final stale = oldBridge.mint(pluginId: "fake");
+      final stale = oldBridge.mint(pluginId: "fake", groups: SesoriToolGroupIds.all.toSet());
       oldBridge.bind(token: stale, backendSessionId: "backend-s1");
 
       final response = await post(bearer: stale, message: {"jsonrpc": "2.0", "id": 1, "method": "tools/list"});
@@ -462,7 +476,7 @@ void main() {
     });
 
     test("a launch not yet bound can connect but no tool answers it", () async {
-      final unbound = grants.mint(pluginId: "fake");
+      final unbound = grants.mint(pluginId: "fake", groups: SesoriToolGroupIds.all.toSet());
 
       expect((await rpc(method: "initialize", params: {}, bearer: unbound))["result"], isNotNull);
       expect((await rpc(method: "tools/list", params: null, bearer: unbound))["result"], isNotNull);
@@ -1237,7 +1251,7 @@ void main() {
           child,
         ]);
       }
-      final grandchild = grants.mint(pluginId: "fake");
+      final grandchild = grants.mint(pluginId: "fake", groups: SesoriToolGroupIds.all.toSet());
       grants.bind(token: grandchild, backendSessionId: "backend-s3");
 
       await call(tool: "pause_task", arguments: {"task_id": taskId}, bearer: grandchild);
@@ -1673,7 +1687,7 @@ void main() {
     }
 
     String tokenFor({required String sessionId}) {
-      final minted = grants.mint(pluginId: "fake");
+      final minted = grants.mint(pluginId: "fake", groups: SesoriToolGroupIds.all.toSet());
       grants.bind(token: minted, backendSessionId: "backend-$sessionId");
       return minted;
     }
