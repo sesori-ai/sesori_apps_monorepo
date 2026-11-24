@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:meta/meta.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
@@ -196,15 +197,14 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     required Duration archiveCommandTimeout,
   }) async {
     // Expand-Archive uses .NET's ZipFile, which rejects path-traversal members.
-    final String psArchive = archivePath.replaceAll("'", "''");
-    final String psStaging = stagingPath.replaceAll("'", "''");
+    final command = windowsZipCommand(
+      archivePath: archivePath,
+      stagingPath: stagingPath,
+      systemRoot: Platform.environment["SystemRoot"],
+    );
     final CommandResult result = await _commandExecutor.run(
-      executable: "powershell",
-      arguments: [
-        "-NoProfile",
-        "-Command",
-        "\$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
-      ],
+      executable: command.executable,
+      arguments: command.arguments,
       workingDirectory: null,
       environment: null,
       timeout: archiveCommandTimeout,
@@ -215,6 +215,40 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
       );
     }
     return const ArchiveExtractionResult.success();
+  }
+
+  /// The Windows PowerShell 5.1 invocation that expands [archivePath] into
+  /// [stagingPath].
+  ///
+  /// A bridge started from PowerShell 7 hands its `PSModulePath` to this child,
+  /// which lists PowerShell 7's module folders first, so 5.1 would auto-load
+  /// PowerShell 7's incompatible Archive module. The script therefore points
+  /// module discovery at 5.1's own `$PSHOME\Modules` before calling
+  /// Expand-Archive. `$ErrorActionPreference = 'Stop'` turns any cmdlet error
+  /// into a non-zero exit, so a failed expansion reports its stderr instead of
+  /// exiting 0 with an empty staging directory.
+  @visibleForTesting
+  static ({String executable, List<String> arguments}) windowsZipCommand({
+    required String archivePath,
+    required String stagingPath,
+    required String? systemRoot,
+  }) {
+    final String psArchive = archivePath.replaceAll("'", "''");
+    final String psStaging = stagingPath.replaceAll("'", "''");
+    const String preamble =
+        r"$ErrorActionPreference = 'Stop'; "
+        r"$ProgressPreference = 'SilentlyContinue'; "
+        r"$env:PSModulePath = Join-Path $PSHOME 'Modules'; ";
+    return (
+      executable: systemRoot == null
+          ? "powershell"
+          : p.windows.join(systemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+      arguments: [
+        "-NoProfile",
+        "-Command",
+        "${preamble}Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
+      ],
+    );
   }
 
   /// A one-line description of a failed helper command, including its exit code
