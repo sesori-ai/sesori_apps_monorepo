@@ -1742,71 +1742,58 @@ $GhRequestedReviewerDtoCopyWith<$Res>? get requestedReviewer {
 }
 }
 
+GhRequestedReviewerDto _$GhRequestedReviewerDtoFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['__typename']) {
+                  case 'User':
+          return GhRequestedUserDto.fromJson(
+            json
+          );
+                case 'Bot':
+          return GhRequestedBotDto.fromJson(
+            json
+          );
+                case 'Team':
+          return GhRequestedTeamDto.fromJson(
+            json
+          );
+        
+          default:
+            return GhUnknownRequestedReviewerDto.fromJson(
+  json
+);
+        }
+      
+}
 
 /// @nodoc
 mixin _$GhRequestedReviewerDto {
 
- String? get login; String? get slug;
-/// Create a copy of GhRequestedReviewerDto
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$GhRequestedReviewerDtoCopyWith<GhRequestedReviewerDto> get copyWith => _$GhRequestedReviewerDtoCopyWithImpl<GhRequestedReviewerDto>(this as GhRequestedReviewerDto, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-  final _this = this as GhRequestedReviewerDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhRequestedReviewerDto&&(identical(other.login, _this.login) || other.login == _this.login)&&(identical(other.slug, _this.slug) || other.slug == _this.slug));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GhRequestedReviewerDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode {
-  final _this = this as GhRequestedReviewerDto;
-  return Object.hash(runtimeType,_this.login,_this.slug);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  final _this = this as GhRequestedReviewerDto;
-  return 'GhRequestedReviewerDto(login: ${_this.login}, slug: ${_this.slug})';
+    return 'GhRequestedReviewerDto()';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $GhRequestedReviewerDtoCopyWith<$Res>  {
-  factory $GhRequestedReviewerDtoCopyWith(GhRequestedReviewerDto value, $Res Function(GhRequestedReviewerDto) _then) = _$GhRequestedReviewerDtoCopyWithImpl;
-@useResult
-$Res call({
- String? login, String? slug
-});
-
-
-
-
-}
-/// @nodoc
-class _$GhRequestedReviewerDtoCopyWithImpl<$Res>
-    implements $GhRequestedReviewerDtoCopyWith<$Res> {
-  _$GhRequestedReviewerDtoCopyWithImpl(this._self, this._then);
-
-  final GhRequestedReviewerDto _self;
-  final $Res Function(GhRequestedReviewerDto) _then;
-
-/// Create a copy of GhRequestedReviewerDto
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? login = freezed,Object? slug = freezed,}) {
-  return _then(GhRequestedReviewerDto(
-login: freezed == login ? _self.login : login // ignore: cast_nullable_to_non_nullable
-as String?,slug: freezed == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String?,
-  ));
-}
-
+class $GhRequestedReviewerDtoCopyWith<$Res>  {
+$GhRequestedReviewerDtoCopyWith(GhRequestedReviewerDto _, $Res Function(GhRequestedReviewerDto) __);
 }
 
 
@@ -1814,46 +1801,49 @@ as String?,
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
-class _GhRequestedReviewerDto implements GhRequestedReviewerDto {
-  const _GhRequestedReviewerDto({required this.login, required this.slug});
-  factory _GhRequestedReviewerDto.fromJson(Map<String, dynamic> json) => _$GhRequestedReviewerDtoFromJson(json);
+class GhRequestedUserDto implements GhRequestedReviewerDto {
+  const GhRequestedUserDto({required this.login,  String? $type}): $type = $type ?? 'User';
+  factory GhRequestedUserDto.fromJson(Map<String, dynamic> json) => _$GhRequestedUserDtoFromJson(json);
 
-@override final  String? login;
-@override final  String? slug;
+ final  String login;
+
+@JsonKey(name: '__typename')
+final String $type;
+
 
 /// Create a copy of GhRequestedReviewerDto
 /// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
+@JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$GhRequestedReviewerDtoCopyWith<_GhRequestedReviewerDto> get copyWith => __$GhRequestedReviewerDtoCopyWithImpl<_GhRequestedReviewerDto>(this, _$identity);
+$GhRequestedUserDtoCopyWith<GhRequestedUserDto> get copyWith => _$GhRequestedUserDtoCopyWithImpl<GhRequestedUserDto>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhRequestedReviewerDto&&(identical(other.login, login) || other.login == login)&&(identical(other.slug, slug) || other.slug == slug));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GhRequestedUserDto&&(identical(other.login, login) || other.login == login));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,login,slug);
+    return Object.hash(runtimeType,login);
 }
 
 @override
 String toString() {
-    return 'GhRequestedReviewerDto(login: $login, slug: $slug)';
+    return 'GhRequestedReviewerDto.user(login: $login)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$GhRequestedReviewerDtoCopyWith<$Res> implements $GhRequestedReviewerDtoCopyWith<$Res> {
-  factory _$GhRequestedReviewerDtoCopyWith(_GhRequestedReviewerDto value, $Res Function(_GhRequestedReviewerDto) _then) = __$GhRequestedReviewerDtoCopyWithImpl;
-@override @useResult
+abstract mixin class $GhRequestedUserDtoCopyWith<$Res> implements $GhRequestedReviewerDtoCopyWith<$Res> {
+  factory $GhRequestedUserDtoCopyWith(GhRequestedUserDto value, $Res Function(GhRequestedUserDto) _then) = _$GhRequestedUserDtoCopyWithImpl;
+@useResult
 $Res call({
- String? login, String? slug
+ String login
 });
 
 
@@ -1861,25 +1851,204 @@ $Res call({
 
 }
 /// @nodoc
-class __$GhRequestedReviewerDtoCopyWithImpl<$Res>
-    implements _$GhRequestedReviewerDtoCopyWith<$Res> {
-  __$GhRequestedReviewerDtoCopyWithImpl(this._self, this._then);
+class _$GhRequestedUserDtoCopyWithImpl<$Res>
+    implements $GhRequestedUserDtoCopyWith<$Res> {
+  _$GhRequestedUserDtoCopyWithImpl(this._self, this._then);
 
-  final _GhRequestedReviewerDto _self;
-  final $Res Function(_GhRequestedReviewerDto) _then;
+  final GhRequestedUserDto _self;
+  final $Res Function(GhRequestedUserDto) _then;
 
 /// Create a copy of GhRequestedReviewerDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? login = freezed,Object? slug = freezed,}) {
-  return _then(_GhRequestedReviewerDto(
-login: freezed == login ? _self.login : login // ignore: cast_nullable_to_non_nullable
-as String?,slug: freezed == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
-as String?,
+@pragma('vm:prefer-inline') $Res call({Object? login = null,}) {
+  return _then(GhRequestedUserDto(
+login: null == login ? _self.login : login // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
 
 }
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GhRequestedBotDto implements GhRequestedReviewerDto {
+  const GhRequestedBotDto({required this.login,  String? $type}): $type = $type ?? 'Bot';
+  factory GhRequestedBotDto.fromJson(Map<String, dynamic> json) => _$GhRequestedBotDtoFromJson(json);
+
+ final  String login;
+
+@JsonKey(name: '__typename')
+final String $type;
+
+
+/// Create a copy of GhRequestedReviewerDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GhRequestedBotDtoCopyWith<GhRequestedBotDto> get copyWith => _$GhRequestedBotDtoCopyWithImpl<GhRequestedBotDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GhRequestedBotDto&&(identical(other.login, login) || other.login == login));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,login);
+}
+
+@override
+String toString() {
+    return 'GhRequestedReviewerDto.bot(login: $login)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GhRequestedBotDtoCopyWith<$Res> implements $GhRequestedReviewerDtoCopyWith<$Res> {
+  factory $GhRequestedBotDtoCopyWith(GhRequestedBotDto value, $Res Function(GhRequestedBotDto) _then) = _$GhRequestedBotDtoCopyWithImpl;
+@useResult
+$Res call({
+ String login
+});
+
+
+
+
+}
+/// @nodoc
+class _$GhRequestedBotDtoCopyWithImpl<$Res>
+    implements $GhRequestedBotDtoCopyWith<$Res> {
+  _$GhRequestedBotDtoCopyWithImpl(this._self, this._then);
+
+  final GhRequestedBotDto _self;
+  final $Res Function(GhRequestedBotDto) _then;
+
+/// Create a copy of GhRequestedReviewerDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? login = null,}) {
+  return _then(GhRequestedBotDto(
+login: null == login ? _self.login : login // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GhRequestedTeamDto implements GhRequestedReviewerDto {
+  const GhRequestedTeamDto({required this.slug,  String? $type}): $type = $type ?? 'Team';
+  factory GhRequestedTeamDto.fromJson(Map<String, dynamic> json) => _$GhRequestedTeamDtoFromJson(json);
+
+ final  String slug;
+
+@JsonKey(name: '__typename')
+final String $type;
+
+
+/// Create a copy of GhRequestedReviewerDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GhRequestedTeamDtoCopyWith<GhRequestedTeamDto> get copyWith => _$GhRequestedTeamDtoCopyWithImpl<GhRequestedTeamDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GhRequestedTeamDto&&(identical(other.slug, slug) || other.slug == slug));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,slug);
+}
+
+@override
+String toString() {
+    return 'GhRequestedReviewerDto.team(slug: $slug)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GhRequestedTeamDtoCopyWith<$Res> implements $GhRequestedReviewerDtoCopyWith<$Res> {
+  factory $GhRequestedTeamDtoCopyWith(GhRequestedTeamDto value, $Res Function(GhRequestedTeamDto) _then) = _$GhRequestedTeamDtoCopyWithImpl;
+@useResult
+$Res call({
+ String slug
+});
+
+
+
+
+}
+/// @nodoc
+class _$GhRequestedTeamDtoCopyWithImpl<$Res>
+    implements $GhRequestedTeamDtoCopyWith<$Res> {
+  _$GhRequestedTeamDtoCopyWithImpl(this._self, this._then);
+
+  final GhRequestedTeamDto _self;
+  final $Res Function(GhRequestedTeamDto) _then;
+
+/// Create a copy of GhRequestedReviewerDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? slug = null,}) {
+  return _then(GhRequestedTeamDto(
+slug: null == slug ? _self.slug : slug // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GhUnknownRequestedReviewerDto implements GhRequestedReviewerDto {
+  const GhUnknownRequestedReviewerDto({ String? $type}): $type = $type ?? 'unknown';
+  factory GhUnknownRequestedReviewerDto.fromJson(Map<String, dynamic> json) => _$GhUnknownRequestedReviewerDtoFromJson(json);
+
+
+
+@JsonKey(name: '__typename')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GhUnknownRequestedReviewerDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'GhRequestedReviewerDto.unknown()';
+}
+
+
+}
+
+
+
 
 
 /// @nodoc

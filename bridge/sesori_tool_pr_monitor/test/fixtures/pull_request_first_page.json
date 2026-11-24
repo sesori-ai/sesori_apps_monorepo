@@ -30,9 +30,10 @@
         },
         "reviewRequests": {
           "nodes": [
-            { "requestedReviewer": { "login": "reviewer-a" } },
-            { "requestedReviewer": { "slug": "core-team" } },
-            { "requestedReviewer": {} },
+            { "requestedReviewer": { "__typename": "User", "login": "reviewer-a" } },
+            { "requestedReviewer": { "__typename": "Team", "slug": "core-team" } },
+            { "requestedReviewer": { "__typename": "Bot", "login": "review-bot" } },
+            { "requestedReviewer": { "__typename": "Mannequin" } },
             { "requestedReviewer": null }
           ]
         },

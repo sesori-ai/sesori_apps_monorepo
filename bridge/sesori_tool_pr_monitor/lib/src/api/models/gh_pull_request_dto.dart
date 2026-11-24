@@ -23,6 +23,11 @@ enum GhMergeableStateDto() {
 
 @JsonEnum(fieldRename: FieldRename.screamingSnake)
 enum GhCheckStatusDto() {
+  requested,
+  queued,
+  inProgress,
+  waiting,
+  pending,
   completed,
   unknown,
 }
@@ -32,6 +37,12 @@ enum GhCheckConclusionDto() {
   success,
   neutral,
   skipped,
+  failure,
+  cancelled,
+  timedOut,
+  actionRequired,
+  startupFailure,
+  stale,
   unknown,
 }
 
@@ -40,6 +51,8 @@ enum GhStatusStateDto() {
   success,
   pending,
   expected,
+  error,
+  failure,
   unknown,
 }
 
@@ -160,11 +173,19 @@ sealed class GhReviewRequestDto with _$GhReviewRequestDto {
   factory fromJson(Map<String, dynamic> json) => _$GhReviewRequestDtoFromJson(json);
 }
 
-/// A user or bot carries `login`, a team carries `slug`, and other reviewer
-/// kinds carry neither.
-@Freezed(fromJson: true, toJson: false)
+@Freezed(unionKey: "__typename", fallbackUnion: "unknown", fromJson: true, toJson: false)
 sealed class GhRequestedReviewerDto with _$GhRequestedReviewerDto {
-  const factory({required String? login, required String? slug}) = _GhRequestedReviewerDto;
+  @FreezedUnionValue("User")
+  const factory user({required String login}) = GhRequestedUserDto;
+
+  @FreezedUnionValue("Bot")
+  const factory bot({required String login}) = GhRequestedBotDto;
+
+  @FreezedUnionValue("Team")
+  const factory team({required String slug}) = GhRequestedTeamDto;
+
+  /// A mannequin or a reviewer kind GitHub adds later.
+  const factory unknown() = GhUnknownRequestedReviewerDto;
 
   factory fromJson(Map<String, dynamic> json) => _$GhRequestedReviewerDtoFromJson(json);
 }

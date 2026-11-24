@@ -1,6 +1,10 @@
 import "dart:convert";
 
-import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
+import "package:sesori_tool_pr_monitor/src/api/gh_cli_api.dart";
+import "package:sesori_tool_pr_monitor/src/api/gh_cli_exception.dart";
+import "package:sesori_tool_pr_monitor/src/models/pull_request_target.dart";
+import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
+import "package:sesori_tool_pr_monitor/src/repositories/pull_request_snapshot_repository.dart";
 import "package:test/test.dart";
 
 import "../support/fake_command_executor.dart";
@@ -57,7 +61,7 @@ void main() {
       expect(snapshot.mergeable, PullRequestMergeable.mergeable);
       expect(snapshot.headSha, "0123456789abcdef0123456789abcdef01234567");
       expect(snapshot.labels, ["agent-ready", "Needs-Review"]);
-      expect(snapshot.pendingReviewers, ["reviewer-a", "core-team"]);
+      expect(snapshot.pendingReviewers, ["reviewer-a", "core-team", "review-bot"]);
     });
 
     test("maps CheckRun and StatusContext outcomes and drops unknown context kinds", () async {
@@ -122,7 +126,7 @@ void main() {
       expect((second.id, second.isResolved, second.path, second.line), ("T_two", true, "lib/sizing.dart", 7));
       expect(first.comments.first.reviewState, PullRequestReviewState.changesRequested);
       expect(second.comments.single.author, "ghost");
-      expect(second.comments.single.isLocal, isFalse);
+      expect(second.comments.single.origin, PullRequestCommentOrigin.other);
     });
 
     test("classifies local comments and agent replies case-insensitively", () async {
@@ -131,14 +135,14 @@ void main() {
       final snapshot = await fetch();
 
       final threadReply = snapshot.reviewThreads.first.comments.last;
-      expect((threadReply.isLocal, threadReply.isAgentReply), (true, true));
+      expect(threadReply.origin, PullRequestCommentOrigin.agentReply);
       expect(
-        {for (final comment in snapshot.issueComments) comment.id: (comment.isLocal, comment.isAgentReply)},
+        {for (final comment in snapshot.issueComments) comment.id: comment.origin},
         {
-          "IC_reviewer": (false, false),
-          "IC_reply": (true, true),
-          "IC_unprefixed": (true, false),
-          "IC_spoof": (false, false),
+          "IC_reviewer": PullRequestCommentOrigin.other,
+          "IC_reply": PullRequestCommentOrigin.agentReply,
+          "IC_unprefixed": PullRequestCommentOrigin.local,
+          "IC_spoof": PullRequestCommentOrigin.other,
         },
       );
     });

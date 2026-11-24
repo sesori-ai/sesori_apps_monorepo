@@ -240,6 +240,7 @@ $_checkContextNodes
         }
       } } } }
       reviewRequests(first: 50) { nodes { requestedReviewer {
+        __typename
         ... on User { login }
         ... on Team { slug }
         ... on Bot { login }

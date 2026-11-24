@@ -1,4 +1,4 @@
-import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
+import "package:sesori_tool_pr_monitor/src/models/pull_request_target.dart";
 import "package:test/test.dart";
 
 void main() {

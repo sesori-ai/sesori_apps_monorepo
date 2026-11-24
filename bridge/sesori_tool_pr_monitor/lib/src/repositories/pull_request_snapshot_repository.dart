@@ -131,7 +131,7 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
     required List<GhLabelDto> labels,
     required String selfLogin,
   }) {
-    final classifier = _CommentClassifier(selfLogin: selfLogin);
+    final commentMapper = _PullRequestCommentMapper(selfLogin: selfLogin);
     // GitHub sets submittedAt on every submitted review, so a review without
     // one is still pending and is left out with the PENDING ones.
     final submittedReviews = [
@@ -141,9 +141,11 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
           (review: review, author: author, submittedAt: submittedAt),
     ];
     final issueComments = [
-      for (final comment in pullRequest.comments.nodes) classifier.classify(comment: comment),
+      for (final comment in pullRequest.comments.nodes) commentMapper.mapComment(comment: comment),
     ];
-    final agentReplyCount = issueComments.where((comment) => comment.isAgentReply).length;
+    final agentReplyCount = issueComments
+        .where((comment) => comment.origin == PullRequestCommentOrigin.agentReply)
+        .length;
     final issueCommentsTotal = pullRequest.comments.totalCount - agentReplyCount;
 
     return PullRequestSnapshot(
@@ -176,7 +178,7 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
         for (final (:review, :author, :submittedAt) in submittedReviews)
           if (review.body.trim().isNotEmpty ||
               (review.state == GhReviewStateDto.changesRequested && review.comments.totalCount == 0))
-            classifier.build(
+            commentMapper.map(
               id: review.id,
               author: author,
               body: review.body,
@@ -186,7 +188,13 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
       ],
       pendingReviewers: [
         for (final request in pullRequest.reviewRequests.nodes)
-          if (request.requestedReviewer?.login ?? request.requestedReviewer?.slug case final String name) name,
+          if (switch (request.requestedReviewer) {
+                GhRequestedUserDto(:final login) || GhRequestedBotDto(:final login) => login,
+                GhRequestedTeamDto(:final slug) => slug,
+                GhUnknownRequestedReviewerDto() || null => null,
+              }
+              case final String name)
+            name,
       ],
       reviewThreads: [
         for (final thread in threads)
@@ -195,7 +203,7 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
             isResolved: thread.isResolved,
             path: thread.path,
             line: thread.line ?? thread.originalLine,
-            comments: [for (final comment in thread.comments.nodes) classifier.classify(comment: comment)],
+            comments: [for (final comment in thread.comments.nodes) commentMapper.mapComment(comment: comment)],
           ),
       ],
       issueCommentsTotal: issueCommentsTotal < 0 ? 0 : issueCommentsTotal,
@@ -208,14 +216,27 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
     GhCheckRunDto(:final id, :final name, :final status, :final conclusion) => PullRequestCheck(
       id: id,
       name: name,
-      outcome: status != GhCheckStatusDto.completed
-          ? PullRequestCheckOutcome.pending
-          : switch (conclusion) {
-              GhCheckConclusionDto.success ||
-              GhCheckConclusionDto.neutral ||
-              GhCheckConclusionDto.skipped => PullRequestCheckOutcome.success,
-              GhCheckConclusionDto.unknown || null => PullRequestCheckOutcome.failure,
-            },
+      outcome: switch (status) {
+        GhCheckStatusDto.completed => switch (conclusion) {
+          GhCheckConclusionDto.success ||
+          GhCheckConclusionDto.neutral ||
+          GhCheckConclusionDto.skipped => PullRequestCheckOutcome.success,
+          GhCheckConclusionDto.failure ||
+          GhCheckConclusionDto.cancelled ||
+          GhCheckConclusionDto.timedOut ||
+          GhCheckConclusionDto.actionRequired ||
+          GhCheckConclusionDto.startupFailure ||
+          GhCheckConclusionDto.stale ||
+          GhCheckConclusionDto.unknown ||
+          null => PullRequestCheckOutcome.failure,
+        },
+        GhCheckStatusDto.requested ||
+        GhCheckStatusDto.queued ||
+        GhCheckStatusDto.inProgress ||
+        GhCheckStatusDto.waiting ||
+        GhCheckStatusDto.pending ||
+        GhCheckStatusDto.unknown => PullRequestCheckOutcome.pending,
+      },
     ),
     GhStatusContextDto(:final context, :final state, :final createdAt) => PullRequestCheck(
       id: "status:$context:${createdAt.toUtc().toIso8601String()}",
@@ -223,6 +244,8 @@ class PullRequestSnapshotRepository({required final GhCliApi _api}) {
       outcome: switch (state) {
         GhStatusStateDto.success => PullRequestCheckOutcome.success,
         GhStatusStateDto.pending || GhStatusStateDto.expected => PullRequestCheckOutcome.pending,
+        GhStatusStateDto.error ||
+        GhStatusStateDto.failure ||
         GhStatusStateDto.unknown => PullRequestCheckOutcome.failure,
       },
     ),
@@ -239,10 +262,10 @@ PullRequestReviewState _reviewState({required GhReviewStateDto state}) => switch
   GhReviewStateDto.unknown => PullRequestReviewState.unknown,
 };
 
-class _CommentClassifier({required final String _selfLogin}) {
+class _PullRequestCommentMapper({required final String _selfLogin}) {
   static const String _ghostLogin = "ghost";
 
-  PullRequestComment classify({required GhCommentDto comment}) => build(
+  PullRequestComment mapComment({required GhCommentDto comment}) => map(
     id: comment.id,
     author: comment.author,
     body: comment.body,
@@ -253,7 +276,7 @@ class _CommentClassifier({required final String _selfLogin}) {
     },
   );
 
-  PullRequestComment build({
+  PullRequestComment map({
     required String id,
     required GhActorDto? author,
     required String body,
@@ -267,8 +290,11 @@ class _CommentClassifier({required final String _selfLogin}) {
       author: login,
       isBot: author?.kind == GhActorKindDto.bot,
       createdAt: createdAt,
-      isLocal: isLocal,
-      isAgentReply: isLocal && body.startsWith(sesoriReplyPrefix),
+      origin: switch ((isLocal, body.startsWith(sesoriReplyPrefix))) {
+        (false, _) => PullRequestCommentOrigin.other,
+        (true, false) => PullRequestCommentOrigin.local,
+        (true, true) => PullRequestCommentOrigin.agentReply,
+      },
       reviewState: reviewState,
     );
   }

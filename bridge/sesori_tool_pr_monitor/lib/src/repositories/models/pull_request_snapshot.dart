@@ -25,6 +25,19 @@ enum PullRequestCheckOutcome() {
   failure,
 }
 
+/// Who wrote a comment, as far as the monitor's rules care.
+enum PullRequestCommentOrigin() {
+  /// Anyone but the GitHub account `gh` is signed in as.
+  other,
+
+  /// The signed-in account, without the reply prefix: the user or an agent
+  /// that forgot it.
+  local,
+
+  /// The signed-in account, starting with [sesoriReplyPrefix].
+  agentReply,
+}
+
 enum PullRequestReviewState() {
   pending,
   commented,
@@ -101,11 +114,7 @@ sealed class PullRequestComment with _$PullRequestComment {
     required bool isBot,
     required DateTime createdAt,
 
-    /// Written by the GitHub account `gh` is signed in as.
-    required bool isLocal,
-
-    /// Local and starting with [sesoriReplyPrefix].
-    required bool isAgentReply,
+    required PullRequestCommentOrigin origin,
 
     /// The state of the review a thread comment belongs to; null for issue
     /// comments and review summaries.

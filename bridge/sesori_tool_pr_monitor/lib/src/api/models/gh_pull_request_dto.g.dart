@@ -109,6 +109,11 @@ GhCheckRunDto _$GhCheckRunDtoFromJson(Map json) => GhCheckRunDto(
 );
 
 const _$GhCheckStatusDtoEnumMap = {
+  GhCheckStatusDto.requested: 'REQUESTED',
+  GhCheckStatusDto.queued: 'QUEUED',
+  GhCheckStatusDto.inProgress: 'IN_PROGRESS',
+  GhCheckStatusDto.waiting: 'WAITING',
+  GhCheckStatusDto.pending: 'PENDING',
   GhCheckStatusDto.completed: 'COMPLETED',
   GhCheckStatusDto.unknown: 'UNKNOWN',
 };
@@ -117,6 +122,12 @@ const _$GhCheckConclusionDtoEnumMap = {
   GhCheckConclusionDto.success: 'SUCCESS',
   GhCheckConclusionDto.neutral: 'NEUTRAL',
   GhCheckConclusionDto.skipped: 'SKIPPED',
+  GhCheckConclusionDto.failure: 'FAILURE',
+  GhCheckConclusionDto.cancelled: 'CANCELLED',
+  GhCheckConclusionDto.timedOut: 'TIMED_OUT',
+  GhCheckConclusionDto.actionRequired: 'ACTION_REQUIRED',
+  GhCheckConclusionDto.startupFailure: 'STARTUP_FAILURE',
+  GhCheckConclusionDto.stale: 'STALE',
   GhCheckConclusionDto.unknown: 'UNKNOWN',
 };
 
@@ -135,6 +146,8 @@ const _$GhStatusStateDtoEnumMap = {
   GhStatusStateDto.success: 'SUCCESS',
   GhStatusStateDto.pending: 'PENDING',
   GhStatusStateDto.expected: 'EXPECTED',
+  GhStatusStateDto.error: 'ERROR',
+  GhStatusStateDto.failure: 'FAILURE',
   GhStatusStateDto.unknown: 'UNKNOWN',
 };
 
@@ -159,10 +172,24 @@ _GhReviewRequestDto _$GhReviewRequestDtoFromJson(Map json) => _GhReviewRequestDt
         ),
 );
 
-_GhRequestedReviewerDto _$GhRequestedReviewerDtoFromJson(Map json) => _GhRequestedReviewerDto(
-  login: json['login'] as String?,
-  slug: json['slug'] as String?,
+GhRequestedUserDto _$GhRequestedUserDtoFromJson(Map json) => GhRequestedUserDto(
+  login: json['login'] as String,
+  $type: json['__typename'] as String?,
 );
+
+GhRequestedBotDto _$GhRequestedBotDtoFromJson(Map json) => GhRequestedBotDto(
+  login: json['login'] as String,
+  $type: json['__typename'] as String?,
+);
+
+GhRequestedTeamDto _$GhRequestedTeamDtoFromJson(Map json) => GhRequestedTeamDto(
+  slug: json['slug'] as String,
+  $type: json['__typename'] as String?,
+);
+
+GhUnknownRequestedReviewerDto _$GhUnknownRequestedReviewerDtoFromJson(
+  Map json,
+) => GhUnknownRequestedReviewerDto($type: json['__typename'] as String?);
 
 _GhReviewConnectionDto _$GhReviewConnectionDtoFromJson(Map json) => _GhReviewConnectionDto(
   pageInfo: GhPageInfoDto.fromJson(
