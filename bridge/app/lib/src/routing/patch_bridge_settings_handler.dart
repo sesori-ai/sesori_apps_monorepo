@@ -1,7 +1,9 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/sesori_tool_group_ids.dart";
 import "../services/plugin_warmup_settings_service.dart";
 import "../services/pull_request_refresh_settings_service.dart";
+import "../services/tool_group_settings_service.dart";
 import "../services/yolo_settings_service.dart";
 import "request_handler.dart";
 
@@ -9,6 +11,7 @@ class PatchBridgeSettingsHandler({
   required final PullRequestRefreshSettingsService _pullRequestRefreshSettingsService,
   required final YoloSettingsService _yoloSettingsService,
   required final PluginWarmupSettingsService _pluginWarmupSettingsService,
+  required final ToolGroupSettingsService _toolGroupSettingsService,
 }) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
   this
     : super(
@@ -49,6 +52,17 @@ class PatchBridgeSettingsHandler({
       case WarmUpPluginsOnSessionOpenSettingUpdate(:final enabled):
         final committed = await _pluginWarmupSettingsService.update(enabled: enabled);
         return BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: committed);
+      case ToolGroupSettingUpdate(:final id, :final enabled):
+        final groupId = SesoriToolGroupIds.parse(value: id);
+        if (groupId == null) {
+          throw buildJsonErrorResponse(
+            request: request,
+            status: 400,
+            body: const BridgeSettingUpdateRejection.unknown().toJson(),
+          );
+        }
+        final committed = await _toolGroupSettingsService.update(id: groupId, enabled: enabled);
+        return BridgeSettingUpdate.toolGroup(id: id, enabled: committed);
       case UnknownBridgeSettingUpdate():
         throw buildJsonErrorResponse(
           request: request,

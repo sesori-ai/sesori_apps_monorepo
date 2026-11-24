@@ -1,14 +1,17 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
+import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/routing/get_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/tool_group_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:test/test.dart";
 
 import "../bridge/routing/routing_test_helpers.dart";
@@ -19,6 +22,7 @@ void main() {
     late InMemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
+    late ToolGroupSettingsService toolGroups;
     late PatchBridgeSettingsHandler patchHandler;
 
     setUp(() async {
@@ -30,6 +34,7 @@ void main() {
         permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
         sessionMutationDispatcher: _FakeSessionMutationDispatcher(),
       );
+      toolGroups = ToolGroupSettingsService(settings: repository, groups: [_FakeToolGroup()]);
       patchHandler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: PullRequestRefreshSettingsService(
           bridgeSettingsRepository: repository,
@@ -38,15 +43,20 @@ void main() {
         pluginWarmupSettingsService: PluginWarmupSettingsService(
           bridgeSettingsRepository: repository,
         ),
+        toolGroupSettingsService: toolGroups,
       );
     });
 
     tearDown(() => repository.dispose());
 
     test("GET still serves the inert PR interval with the other settings from one committed snapshot", () async {
-      final response = await GetBridgeSettingsHandler(settingsRepository: repository).routeForTest(
-        makeRequest("GET", "/settings"),
-      );
+      final response =
+          await GetBridgeSettingsHandler(
+            settingsRepository: repository,
+            toolGroupSettingsService: toolGroups,
+          ).routeForTest(
+            makeRequest("GET", "/settings"),
+          );
 
       expect(response.status, 200);
       expect(
@@ -55,6 +65,9 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
           warmUpPluginsOnSessionOpen: true,
+          toolGroups: [
+            BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: true),
+          ],
         ),
       );
     });
@@ -98,7 +111,60 @@ void main() {
       expect(changes, [false]);
       await subscription.cancel();
     });
+
+    test("PATCH turns a tool group off and GET then lists it off", () async {
+      final response = await patchHandler.routeForTest(
+        makeRequest(
+          "PATCH",
+          "/settings",
+          body: jsonEncode(const BridgeSettingUpdate.toolGroup(id: "tasks", enabled: false).toJson()),
+        ),
+      );
+
+      expect(response.status, 200);
+      expect(
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
+        const BridgeSettingUpdate.toolGroup(id: "tasks", enabled: false),
+      );
+      expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["agentToolGroups"], {
+        "disabled": ["tasks"],
+      });
+      expect(await toolGroups.list(), [
+        const BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: false),
+      ]);
+    });
+
+    test("PATCH refuses a tool group this bridge does not serve and stores nothing", () async {
+      final response = await patchHandler.routeForTest(
+        makeRequest(
+          "PATCH",
+          "/settings",
+          body: jsonEncode(const BridgeSettingUpdate.toolGroup(id: "from_a_future_bridge", enabled: false).toJson()),
+        ),
+      );
+
+      expect(response.status, 400);
+      expect(
+        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
+        const BridgeSettingUpdateRejection.unknown(),
+      );
+      expect(repository.currentSettings.agentToolGroups.disabledIds, isEmpty);
+    });
   });
+}
+
+class _FakeToolGroup() implements SesoriToolGroup {
+  @override
+  SesoriToolGroupId get id => SesoriToolGroupIds.tasks;
+
+  @override
+  String get title => "Fake";
+
+  @override
+  String get summary => "Agents can fake.";
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalService {

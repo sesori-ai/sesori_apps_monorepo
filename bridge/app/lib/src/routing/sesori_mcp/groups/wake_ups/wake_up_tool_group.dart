@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show TaskSchedule, TaskTimeOfDay;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
+import "../../../../repositories/models/sesori_tool_group_ids.dart";
 import "../../../../repositories/models/session_wake_up.dart";
 import "../../../../services/session_wake_up_description_builder.dart";
 import "../../../../services/session_wake_up_service.dart";
@@ -28,6 +29,15 @@ class WakeUpToolGroup({required final SessionWakeUpService _wakeUps}) implements
   static const SessionWakeUpDescriptionBuilder _wakeUpWords = SessionWakeUpDescriptionBuilder();
 
   static final RegExp _clockTimePattern = RegExp(r"^([01]?\d|2[0-3]):([0-5]\d)$");
+
+  @override
+  SesoriToolGroupId get id => SesoriToolGroupIds.wakeUps;
+
+  @override
+  String get title => "Wake-ups";
+
+  @override
+  String get summary => "Agents can schedule a prompt back to their own session for later.";
 
   @override
   String get instructions =>

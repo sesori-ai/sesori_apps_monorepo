@@ -1,5 +1,7 @@
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
+import 'package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
+import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 import 'package:test/test.dart';
 
 void main() {
@@ -41,6 +43,31 @@ void main() {
       expect(settings.pullRequestRefreshIntervalSeconds, 45);
       expect(settings.warmUpPluginsOnSessionOpen, isFalse);
       expect(settings.agentTools, isFalse);
+    });
+
+    test('keeps unknown disabled tool groups and gates every group on agent tools', () {
+      const tasks = SesoriToolGroupId('tasks');
+      final settings = BridgeSettings.fromJson({
+        'agentToolGroups': {
+          'disabled': ['tasks', 'from_a_future_bridge'],
+        },
+      });
+
+      expect(settings.toolGroupEnabled(id: tasks), isFalse);
+      expect(settings.toolGroupEnabled(id: const SesoriToolGroupId('pages')), isTrue);
+      expect(settings.enabledToolGroups, {SesoriToolGroupIds.pages, SesoriToolGroupIds.wakeUps});
+      expect(settings.copyWith(agentTools: false).enabledToolGroups, isEmpty);
+      expect(settings.toJson()['agentToolGroups'], {
+        'disabled': ['tasks', 'from_a_future_bridge'],
+      });
+
+      final reenabled = settings.copyWith(
+        agentToolGroups: settings.agentToolGroups.withGroupEnabled(id: tasks, enabled: true),
+      );
+      expect(reenabled.toolGroupEnabled(id: tasks), isTrue);
+      expect(reenabled.toJson()['agentToolGroups'], {
+        'disabled': ['from_a_future_bridge'],
+      });
     });
 
     test('uses the default for a missing PR refresh interval', () {

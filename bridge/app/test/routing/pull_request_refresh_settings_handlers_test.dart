@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/services/permission_auto_approval_service.dart
 import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/tool_group_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -22,6 +23,7 @@ void main() {
     late PullRequestRefreshSettingsService service;
     late YoloSettingsService yoloService;
     late PluginWarmupSettingsService pluginWarmupSettingsService;
+    late ToolGroupSettingsService toolGroupSettingsService;
 
     setUp(() async {
       api = InMemoryBridgeSettingsApi(
@@ -35,6 +37,7 @@ void main() {
         permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
         sessionMutationDispatcher: _FakeSessionMutationDispatcher(),
       );
+      toolGroupSettingsService = ToolGroupSettingsService(settings: repository, groups: const []);
       pluginWarmupSettingsService = PluginWarmupSettingsService(
         bridgeSettingsRepository: repository,
       );
@@ -59,6 +62,7 @@ void main() {
         pullRequestRefreshSettingsService: service,
         yoloSettingsService: yoloService,
         pluginWarmupSettingsService: pluginWarmupSettingsService,
+        toolGroupSettingsService: toolGroupSettingsService,
       );
 
       expect(handler.method, HttpMethod.patch);
@@ -78,6 +82,7 @@ void main() {
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
             pluginWarmupSettingsService: pluginWarmupSettingsService,
+            toolGroupSettingsService: toolGroupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -105,6 +110,7 @@ void main() {
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
             pluginWarmupSettingsService: pluginWarmupSettingsService,
+            toolGroupSettingsService: toolGroupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -133,6 +139,7 @@ void main() {
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
             pluginWarmupSettingsService: pluginWarmupSettingsService,
+            toolGroupSettingsService: toolGroupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -154,6 +161,7 @@ void main() {
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
             pluginWarmupSettingsService: pluginWarmupSettingsService,
+            toolGroupSettingsService: toolGroupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",

@@ -3,8 +3,8 @@
 | Step | Title | Status | PR |
 |---|---|---|---|
 | 1 | 🌱 Raise the plan | Done | #2908 |
-| 2 | ⚙️ Tool-group interface and grouped MCP server | In review | #2909 |
-| 3 | 🌿 Per-group toggles and leaner task text | Not started | |
+| 2 | ⚙️ Tool-group interface and grouped MCP server | Done | #2909 |
+| 3 | 🌿 Per-group toggles and leaner task text | In review | |
 | 4 | 🚧 Tool host: records, notices and approvals | Not started | |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | In review | |
 | 6 | ⚙️ PR monitor rules | Not started | |
@@ -32,12 +32,18 @@
   including sessions started in OpenCode's own app — gets a token bound to
   its `_meta` session id on first call, so the tools work for all sessions
   with no "is this a Sesori session" detection.
-- Step 2 kept the interface to what it uses. Step 3 adds `id` (with
-  `SesoriToolGroupId` and a named constant per group), `title` and `summary`, step 4 `start`, `dispose`, the host and the
-  `sesori_plugin_interface` dependency (update `bridge/AGENTS.md`'s module
-  order line, which says "no internal deps"), and step 10 `guide`.
-- `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`. Step 3's
-  `update_task` dedupe regenerates it with `SESORI_UPDATE_GOLDENS=1`; its diff
-  and size (29,306 bytes pretty-printed before) go in the PR.
+- Step 4 adds `start`, `dispose`, the host and the `sesori_plugin_interface`
+  dependency to the interface (update `bridge/AGENTS.md`'s module order line,
+  which says "no internal deps"), and step 10 adds `guide`.
+- Group ids live in `bridge/app/lib/src/repositories/models/sesori_tool_group_ids.dart`
+  (`SesoriToolGroupIds.all`), because launches, the CLI and scheduled runs
+  read them before the groups are built. Step 7 adds the PR monitor's id there,
+  in `tools/list` order, beside adding its group to the orchestrator's list;
+  the orchestrator asserts the two match.
+- Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
+  summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
+  An older bridge omits the list and answers the update with 400 `unknown`.
+- `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
+  it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The
   verification matrix includes it once that PR lands.

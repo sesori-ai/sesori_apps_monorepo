@@ -3,6 +3,7 @@ import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_shared/sesori_shared.dart';
+import 'package:sesori_tool_interface/sesori_tool_interface.dart' show SesoriToolGroupId;
 import 'package:test/test.dart';
 
 void main() {
@@ -118,6 +119,13 @@ class _FakeBridgeSettingsRepository({
 
   @override
   Future<void> updateAgentTools({required bool enabled}) async {}
+
+  @override
+  Future<BridgeSettings> updateToolGroup({required SesoriToolGroupId id, required bool enabled}) async {
+    return settings = settings.copyWith(
+      agentToolGroups: settings.agentToolGroups.withGroupEnabled(id: id, enabled: enabled),
+    );
+  }
 
   @override
   Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {

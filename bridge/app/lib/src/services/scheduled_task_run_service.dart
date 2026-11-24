@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/models/project_not_found_exception.dart";
 import "../repositories/models/scheduled_task_record.dart";
+import "../repositories/models/sesori_tool_group_ids.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_quietness.dart";
 import "../repositories/project_repository.dart";
@@ -527,7 +528,8 @@ class ScheduledTaskRunService({
     final definition = task.definition;
     if (definition.prompt is! ScheduledTaskPromptText) return null;
     final notes = [
-      if (_bridgeSettings.currentSettings.agentTools && _sessions.sesoriToolsSupported(pluginId: definition.pluginId))
+      if (_bridgeSettings.currentSettings.toolGroupEnabled(id: SesoriToolGroupIds.tasks) &&
+          _sessions.sesoriToolsSupported(pluginId: definition.pluginId))
         buildScheduledRunContext(taskName: definition.name, taskId: task.id),
       ?commandNote,
     ];

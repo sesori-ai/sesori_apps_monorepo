@@ -44,6 +44,12 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   at each call. A token never resolves to another plugin's session with the same backend id.
 - With `agent-tools` off, `SesoriMcpAccess.mint()` returns null, so no launch gets a token. The setting is read at each
   launch; a CLI change needs a bridge restart.
+- The tools come in groups (`tasks`, `pages`, `wake_ups`), each on unless listed in `agentToolGroups.disabled`, set
+  with `sesori-bridge config tool-group <id> on|off` or the settings route (`GET /settings` lists `toolGroups` with
+  each id, title, summary and state; `PATCH /settings` takes a `toolGroup` update). A token holds the groups that were
+  on when it was minted, and `mint()` returns null when none is. `tools/list` and the `initialize` instructions cover
+  only those groups, and a call to another group's tool is the same -32602 "Unknown tool" as a name that does not
+  exist. A change applies to launches after it. With the `tasks` group off, scheduled runs get no improvement note.
 - `initialize` echoes a supported protocol version (`2024-11-05` through `2025-11-25`) and otherwise offers the newest.
   Notifications get 202 with no body. Malformed JSON is -32700, an unknown method -32601, an unknown tool -32602.
 - Tool failures an agent can act on (bad arguments, an unknown task or run, a run without a session) come back as
@@ -204,7 +210,7 @@ checks run headlessly against the endpoint. Per-harness status is in [harness ca
   tool results are cut to a short excerpt.
 - Transcript content, prompts and tool arguments are never logged.
 - A scheduled run's text prompt opens with a bridge-owned note naming the task and asking the agent to propose
-  improvements through `update_task`, at most one per run. The note is added only while `agent-tools` is on and the
+  improvements through `update_task`, at most one per run. The note is added only while `agent-tools` and the `tasks` tool group are on and the
   task's harness declares that it injects the server (`BridgePluginDescriptor.injectsSesoriTools`); every plugin
   declares false until its injection step (Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot declare true). A command task gets no note. The note goes to the harness only: the run's
   user message shows the task's prompt, live and after reload, and a first prompt that also carries the worktree note

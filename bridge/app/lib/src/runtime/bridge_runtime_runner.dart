@@ -642,7 +642,7 @@ class const BridgeRuntimeRunner._() {
         settingsChanges: bridgeSettingsRepository.settingsChanges,
         sesoriMcpUrl: sesoriMcpServer.url,
         sesoriMcpGrants: sesoriMcpGrants,
-        agentToolsEnabled: () => bridgeSettingsRepository.currentSettings.agentTools,
+        enabledToolGroups: () => bridgeSettingsRepository.currentSettings.enabledToolGroups,
       );
       final activePluginRuntime = PluginRuntime(
         registrations: pluginRuntimeRegistrations,

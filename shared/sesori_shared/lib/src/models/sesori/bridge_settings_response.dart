@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "bridge_tool_group_setting.dart";
 import "pull_request_refresh_settings.dart";
 import "yolo_settings.dart";
 
@@ -17,6 +18,12 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
     // COMPATIBILITY 2026-09-03 (v1.8.3): Public v1.8.2 bridges omit this setting; remove null handling
     // once those bridges are no longer supported.
     required bool? warmUpPluginsOnSessionOpen,
+
+    /// The bridge's Sesori tool groups, in the order it serves them. A new
+    /// session or resume picks up a change.
+    // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before tool groups omit this list, and the app hides the section
+    // when it is empty. Remove @Default and require the field once the minimum supported bridge always sends it.
+    @Default(<BridgeToolGroupSetting>[]) List<BridgeToolGroupSetting> toolGroups,
   }) = _BridgeSettingsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);

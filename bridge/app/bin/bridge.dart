@@ -27,6 +27,7 @@ import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dar
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
+import 'package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
@@ -437,6 +438,7 @@ class ConfigCommand() extends cli.Command<void> {
         enabledWarning: null,
       ),
     );
+    addSubcommand(ConfigToolGroupCommand());
     addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }
@@ -462,6 +464,49 @@ class ConfigEditCommand() extends cli.Command<void> {
 
     final configFilePath = await configService.openConfigFile();
     Console.message('Opening config file at $configFilePath');
+  }
+}
+
+class ConfigToolGroupCommand() extends cli.Command<void> {
+  @override
+  final name = 'tool-group';
+
+  @override
+  final description = "Show or set one group of Sesori's agent tools: tool-group [<id> [on|off]]";
+
+  @override
+  Future<void> run() async {
+    final results = argResults ?? usageException('Unable to read command arguments.');
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
+
+    final (String? idText, bool? enabled) = switch (results.rest) {
+      [] => (null, null),
+      [final id] => (id, null),
+      [final id, 'on'] => (id, true),
+      [final id, 'off'] => (id, false),
+      _ => usageException('Expected: config tool-group [<id> [on|off]].'),
+    };
+    if (idText == null) {
+      final settings = await repository.loadSettings();
+      for (final id in SesoriToolGroupIds.all) {
+        stdout.writeln('${id.value}: ${settings.agentToolGroups.isEnabled(id: id) ? 'on' : 'off'}');
+      }
+      if (!settings.agentTools) stdout.writeln('Agent tools are off, so no group is served.');
+      return;
+    }
+    final id =
+        SesoriToolGroupIds.parse(value: idText) ??
+        usageException(
+          'Unknown tool group "$idText". Known groups: ${SesoriToolGroupIds.all.map((id) => id.value).join(', ')}.',
+        );
+    if (enabled == null) {
+      final settings = await repository.loadSettings();
+      stdout.writeln('$idText: ${settings.agentToolGroups.isEnabled(id: id) ? 'on' : 'off'}');
+      return;
+    }
+    await repository.updateToolGroup(id: id, enabled: enabled);
+    stdout.writeln('Tool group $idText set to ${enabled ? 'on' : 'off'}.');
+    stdout.writeln('Restart sesori-bridge to apply.');
   }
 }
 

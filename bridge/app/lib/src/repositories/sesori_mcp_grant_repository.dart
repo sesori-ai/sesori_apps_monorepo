@@ -1,6 +1,8 @@
 import "dart:convert";
 import "dart:math";
 
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroupId;
+
 import "models/sesori_mcp_grant.dart";
 
 /// The in-memory map from each Sesori MCP token to the launch it was minted
@@ -14,11 +16,12 @@ class SesoriMcpGrantRepository({required final Random _random}) {
 
   final Map<String, SesoriMcpGrant> _grants = <String, SesoriMcpGrant>{};
 
-  /// A fresh 256-bit token for one launch of [pluginId]'s harness.
-  String mint({required String pluginId}) {
+  /// A fresh 256-bit token for one launch of [pluginId]'s harness, serving
+  /// the tool [groups].
+  String mint({required String pluginId, required Set<SesoriToolGroupId> groups}) {
     final bytes = List<int>.generate(_tokenBytes, (_) => _random.nextInt(256));
     final token = base64Url.encode(bytes).replaceAll("=", "");
-    _grants[token] = SesoriMcpGrantUnbound(pluginId: pluginId);
+    _grants[token] = SesoriMcpGrantUnbound(pluginId: pluginId, groups: groups);
     return token;
   }
 
@@ -26,7 +29,11 @@ class SesoriMcpGrantRepository({required final Random _random}) {
   void bind({required String token, required String backendSessionId}) {
     final grant = _grants[token];
     if (grant == null) throw StateError("A Sesori MCP launch was bound before it was minted.");
-    _grants[token] = SesoriMcpGrantBound(pluginId: grant.pluginId, backendSessionId: backendSessionId);
+    _grants[token] = SesoriMcpGrantBound(
+      pluginId: grant.pluginId,
+      groups: grant.groups,
+      backendSessionId: backendSessionId,
+    );
   }
 
   SesoriMcpGrant? lookup({required String token}) => _grants[token];

@@ -1,14 +1,18 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/bridge_settings_repository.dart";
+import "../services/tool_group_settings_service.dart";
 import "request_handler.dart";
 
-class GetBridgeSettingsHandler({required final BridgeSettingsRepository _settingsRepository})
-    extends GetRequestHandler<BridgeSettingsResponse> {
+class GetBridgeSettingsHandler({
+  required final BridgeSettingsRepository _settingsRepository,
+  required final ToolGroupSettingsService _toolGroupSettingsService,
+}) extends GetRequestHandler<BridgeSettingsResponse> {
   this : super(path: "/settings");
 
   @override
-  Future<BridgeSettingsResponse> handle({
-    required RelayRequest request,
-  }) => _settingsRepository.readCommittedResponse();
+  Future<BridgeSettingsResponse> handle({required RelayRequest request}) async {
+    final response = await _settingsRepository.readCommittedResponse();
+    return response.copyWith(toolGroups: await _toolGroupSettingsService.list());
+  }
 }

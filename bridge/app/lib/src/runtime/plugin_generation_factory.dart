@@ -4,6 +4,8 @@ import "dart:io" as io;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroupId;
+
 import "../repositories/sesori_mcp_grant_repository.dart";
 import "../server/api/loopback_port_api.dart";
 import "../server/host/bridge_host_info_impl.dart";
@@ -70,8 +72,8 @@ class PluginGenerationFactory({
   required final Uri _sesoriMcpUrl,
   required final SesoriMcpGrantRepository _sesoriMcpGrants,
 
-  /// The `agent-tools` setting, read at each launch.
-  required final bool Function() _agentToolsEnabled,
+  /// The tool groups on in bridge settings, read at each launch.
+  required final Set<SesoriToolGroupId> Function() _enabledToolGroups,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
@@ -303,7 +305,7 @@ class PluginGenerationFactory({
         pluginId: descriptor.id,
         url: _sesoriMcpUrl,
         grants: _sesoriMcpGrants,
-        agentToolsEnabled: _agentToolsEnabled,
+        enabledToolGroups: _enabledToolGroups,
       ),
       resolveIdleTimeout: () => _idleTimeoutForPlugin(
         pluginId: descriptor.id,

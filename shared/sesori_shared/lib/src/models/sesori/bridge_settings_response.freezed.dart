@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BridgeSettingsResponse {
 
- PullRequestRefreshSettingsResponse? get pullRequestRefresh; YoloSettingsResponse get yolo; bool? get warmUpPluginsOnSessionOpen;
+ PullRequestRefreshSettingsResponse? get pullRequestRefresh; YoloSettingsResponse get yolo; bool? get warmUpPluginsOnSessionOpen;/// The bridge's Sesori tool groups, in the order it serves them. A new
+/// session or resume picks up a change.
+ List<BridgeToolGroupSetting> get toolGroups;
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +32,20 @@ $BridgeSettingsResponseCopyWith<BridgeSettingsResponse> get copyWith => _$Bridge
 @override
 bool operator ==(Object other) {
   final _this = this as BridgeSettingsResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingsResponse&&(identical(other.pullRequestRefresh, _this.pullRequestRefresh) || other.pullRequestRefresh == _this.pullRequestRefresh)&&(identical(other.yolo, _this.yolo) || other.yolo == _this.yolo)&&(identical(other.warmUpPluginsOnSessionOpen, _this.warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == _this.warmUpPluginsOnSessionOpen));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingsResponse&&(identical(other.pullRequestRefresh, _this.pullRequestRefresh) || other.pullRequestRefresh == _this.pullRequestRefresh)&&(identical(other.yolo, _this.yolo) || other.yolo == _this.yolo)&&(identical(other.warmUpPluginsOnSessionOpen, _this.warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == _this.warmUpPluginsOnSessionOpen)&&const DeepCollectionEquality().equals(other.toolGroups, _this.toolGroups));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as BridgeSettingsResponse;
-  return Object.hash(runtimeType,_this.pullRequestRefresh,_this.yolo,_this.warmUpPluginsOnSessionOpen);
+  return Object.hash(runtimeType,_this.pullRequestRefresh,_this.yolo,_this.warmUpPluginsOnSessionOpen,const DeepCollectionEquality().hash(_this.toolGroups));
 }
 
 @override
 String toString() {
   final _this = this as BridgeSettingsResponse;
-  return 'BridgeSettingsResponse(pullRequestRefresh: ${_this.pullRequestRefresh}, yolo: ${_this.yolo}, warmUpPluginsOnSessionOpen: ${_this.warmUpPluginsOnSessionOpen})';
+  return 'BridgeSettingsResponse(pullRequestRefresh: ${_this.pullRequestRefresh}, yolo: ${_this.yolo}, warmUpPluginsOnSessionOpen: ${_this.warmUpPluginsOnSessionOpen}, toolGroups: ${_this.toolGroups})';
 }
 
 
@@ -54,7 +56,7 @@ abstract mixin class $BridgeSettingsResponseCopyWith<$Res>  {
   factory $BridgeSettingsResponseCopyWith(BridgeSettingsResponse value, $Res Function(BridgeSettingsResponse) _then) = _$BridgeSettingsResponseCopyWithImpl;
 @useResult
 $Res call({
- PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
+ PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen, List<BridgeToolGroupSetting> toolGroups
 });
 
 
@@ -71,12 +73,13 @@ class _$BridgeSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,Object? toolGroups = null,}) {
   return _then(BridgeSettingsResponse(
 pullRequestRefresh: freezed == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
 as PullRequestRefreshSettingsResponse?,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
 as YoloSettingsResponse,warmUpPluginsOnSessionOpen: freezed == warmUpPluginsOnSessionOpen ? _self.warmUpPluginsOnSessionOpen : warmUpPluginsOnSessionOpen // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,toolGroups: null == toolGroups ? _self.toolGroups : toolGroups // ignore: cast_nullable_to_non_nullable
+as List<BridgeToolGroupSetting>,
   ));
 }
 /// Create a copy of BridgeSettingsResponse
@@ -109,12 +112,23 @@ $YoloSettingsResponseCopyWith<$Res> get yolo {
 @JsonSerializable()
 
 class _BridgeSettingsResponse implements BridgeSettingsResponse {
-  const _BridgeSettingsResponse({required this.pullRequestRefresh, required this.yolo, required this.warmUpPluginsOnSessionOpen});
+  const _BridgeSettingsResponse({required this.pullRequestRefresh, required this.yolo, required this.warmUpPluginsOnSessionOpen,  List<BridgeToolGroupSetting> toolGroups = const <BridgeToolGroupSetting>[]}): _toolGroups = toolGroups;
   factory _BridgeSettingsResponse.fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);
 
 @override final  PullRequestRefreshSettingsResponse? pullRequestRefresh;
 @override final  YoloSettingsResponse yolo;
 @override final  bool? warmUpPluginsOnSessionOpen;
+/// The bridge's Sesori tool groups, in the order it serves them. A new
+/// session or resume picks up a change.
+ final  List<BridgeToolGroupSetting> _toolGroups;
+/// The bridge's Sesori tool groups, in the order it serves them. A new
+/// session or resume picks up a change.
+@override@JsonKey() List<BridgeToolGroupSetting> get toolGroups {
+  if (_toolGroups is EqualUnmodifiableListView) return _toolGroups;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_toolGroups);
+}
+
 
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -129,18 +143,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSettingsResponse&&(identical(other.pullRequestRefresh, pullRequestRefresh) || other.pullRequestRefresh == pullRequestRefresh)&&(identical(other.yolo, yolo) || other.yolo == yolo)&&(identical(other.warmUpPluginsOnSessionOpen, warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == warmUpPluginsOnSessionOpen));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSettingsResponse&&(identical(other.pullRequestRefresh, pullRequestRefresh) || other.pullRequestRefresh == pullRequestRefresh)&&(identical(other.yolo, yolo) || other.yolo == yolo)&&(identical(other.warmUpPluginsOnSessionOpen, warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == warmUpPluginsOnSessionOpen)&&const DeepCollectionEquality().equals(other.toolGroups, _toolGroups));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,pullRequestRefresh,yolo,warmUpPluginsOnSessionOpen);
+    return Object.hash(runtimeType,pullRequestRefresh,yolo,warmUpPluginsOnSessionOpen,const DeepCollectionEquality().hash(_toolGroups));
 }
 
 @override
 String toString() {
-    return 'BridgeSettingsResponse(pullRequestRefresh: $pullRequestRefresh, yolo: $yolo, warmUpPluginsOnSessionOpen: $warmUpPluginsOnSessionOpen)';
+    return 'BridgeSettingsResponse(pullRequestRefresh: $pullRequestRefresh, yolo: $yolo, warmUpPluginsOnSessionOpen: $warmUpPluginsOnSessionOpen, toolGroups: $toolGroups)';
 }
 
 
@@ -151,7 +165,7 @@ abstract mixin class _$BridgeSettingsResponseCopyWith<$Res> implements $BridgeSe
   factory _$BridgeSettingsResponseCopyWith(_BridgeSettingsResponse value, $Res Function(_BridgeSettingsResponse) _then) = __$BridgeSettingsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
+ PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen, List<BridgeToolGroupSetting> toolGroups
 });
 
 
@@ -168,12 +182,13 @@ class __$BridgeSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,Object? toolGroups = null,}) {
   return _then(_BridgeSettingsResponse(
 pullRequestRefresh: freezed == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
 as PullRequestRefreshSettingsResponse?,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
 as YoloSettingsResponse,warmUpPluginsOnSessionOpen: freezed == warmUpPluginsOnSessionOpen ? _self.warmUpPluginsOnSessionOpen : warmUpPluginsOnSessionOpen // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,toolGroups: null == toolGroups ? _self._toolGroups : toolGroups // ignore: cast_nullable_to_non_nullable
+as List<BridgeToolGroupSetting>,
   ));
 }
 

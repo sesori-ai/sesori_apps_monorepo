@@ -7,12 +7,18 @@ void main() {
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
       yolo: YoloSettingsResponse(enabled: true),
       warmUpPluginsOnSessionOpen: true,
+      toolGroups: [
+        BridgeToolGroupSetting(id: "tasks", title: "Scheduled tasks", summary: "Read tasks.", enabled: false),
+      ],
     );
 
     expect(response.toJson(), {
       "pullRequestRefresh": {"intervalSeconds": 45},
       "yolo": {"enabled": true, "supportsSessionOverride": false},
       "warmUpPluginsOnSessionOpen": true,
+      "toolGroups": [
+        {"id": "tasks", "title": "Scheduled tasks", "summary": "Read tasks.", "enabled": false},
+      ],
     });
     expect(BridgeSettingsResponse.fromJson(response.toJson()), response);
   });
@@ -24,6 +30,7 @@ void main() {
     });
 
     expect(response.warmUpPluginsOnSessionOpen, isNull);
+    expect(response.toolGroups, isEmpty);
   });
 
   test("BridgeSettingsResponse accepts a bridge that omits the pull request interval", () {
