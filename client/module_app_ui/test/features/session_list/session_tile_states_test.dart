@@ -40,6 +40,7 @@ void main() {
   }) {
     return SessionTile(
       sending: sending,
+      scheduledMark: const SessionScheduledMarkCalculator().mark(session: session),
       session: session,
       projectLabel: projectLabel,
       isArchived: isArchived,
@@ -650,6 +651,101 @@ void main() {
     expect(tester.getTopRight(task).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
     semantics.dispose();
+  });
+
+  group("wake-up arming", () {
+    const task = SessionScheduledTaskMark(taskId: "stk_1", name: "Nightly triage", kind: ScheduledTaskKind.recurring);
+
+    testWidgets("an armed row names what wakes it and when, in the accent", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session").copyWith(
+            scheduledTask: task,
+            arming: SessionArming.armed(name: "Nightly triage", nextAt: now + 3600000),
+          ),
+        ),
+      );
+
+      for (final words in [find.text("Nightly triage"), find.textContaining(" · next ")]) {
+        final style = tester.widget<Text>(words).style;
+        expect(style?.color, colors.textBrandSecondary);
+        expect(style?.fontWeight, FontWeight.w500);
+      }
+      expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp("Wakes again for Nightly triage at")), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+      semantics.dispose();
+    });
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets("a long name gives way to when it wakes in a narrow row, without overflowing, at ${scale}x text", (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        const name = "Check whether CI on the release branch went green";
+        await pumpTile(
+          tester,
+          tile(
+            session: testSession(title: "My Session").copyWith(
+              arming: SessionArming.armed(name: name, nextAt: now + 3600000),
+            ),
+            projectLabel: "demo-app",
+          ),
+        );
+
+        expect(tester.takeException(), isNull);
+        final next = find.textContaining(" · next ");
+        expect(tester.getSize(next).width, greaterThan(0));
+      });
+    }
+
+    testWidgets("a first wake-up cross-fades the meta line rather than snapping the project over", (tester) async {
+      final session = testSession(title: "My Session").copyWith(arming: const SessionArming.notArmed());
+      await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
+      final project = find.text("demo-app");
+      final before = tester.getTopLeft(project).dx;
+
+      await pumpTile(
+        tester,
+        tile(
+          session: session.copyWith(
+            arming: SessionArming.armed(name: "Check CI", nextAt: now + 3600000),
+          ),
+          projectLabel: "demo-app",
+        ),
+      );
+      // Mid-fade, the old line still holds the project where it was.
+      expect(project, findsNWidgets(2));
+      expect(tester.getTopLeft(project.first).dx, before);
+
+      await tester.pumpAndSettle();
+      expect(project, findsOneWidget);
+      expect(tester.getTopLeft(project).dx, greaterThan(before));
+    });
+
+    testWidgets("a task's row that nothing wakes again says where it came from, in grey with no glyph", (
+      tester,
+    ) async {
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session").copyWith(
+            scheduledTask: task,
+            arming: const SessionArming.notArmed(),
+          ),
+        ),
+      );
+
+      expect(find.text("from Nightly triage"), findsOneWidget);
+      expect(tester.widget<Text>(find.text("from Nightly triage")).style?.color, isNot(colors.textBrandSecondary));
+      expect(find.byIcon(TablerRegular.repeat), findsNothing);
+    });
   });
 
   testWidgets("retrying leads the meta line in its colour", (tester) async {

@@ -4,10 +4,10 @@
 | --- | --- | --- | --- |
 | 1 | 🌱 Plan session wake-ups and scheduled commands | Merged | #2885 |
 | 2 | 🚧 Bridge wake-ups, one-shot and repeating | Merged | #2887 |
-| 3 | 🚧 Wake-up commands | In this PR | |
+| 3 | 🚧 Wake-up commands | Merged | #2889 |
 | 4 | ⚙️ Scheduled-task commands | Not started | |
 | 5 | ⚙️ Bridge projection of wake-ups and arming | Merged | #2888 |
-| 6 | ⚙️ App: wake-up chip, cancel and armed marks | Not started | |
+| 6 | ⚙️ App: wake-up chip, cancel and armed marks | In this PR | |
 | 7 | 🌱 Reconcile regression docs | Not started | |
 | 8 | 🌿 Verify and retire | Not started | |
 
@@ -54,6 +54,22 @@
   - The event is `SessionMutationDispatcher.armingUpdated(sessionId)` (named for
     both wake-ups and tasks, not `wakeUpsUpdated`), which republishes the session as
     `session.updated`.
+
+- Step 6 (for step 7):
+  - The row mark is `SessionScheduledMarkCalculator` in `module_core` (`armed`, `fromTask`,
+    `legacyTask`, `none`). The plan's `resumes(at)` variant was left out: the quota
+    auto-continuation resume keeps its own place in the time column, so the two never
+    compete for one slot.
+  - The composer chip reads `session.wakeUps` directly, like the auto-continuation
+    chip reads `session.autoContinuation`; the session detail state carries no mark.
+  - Cancel needs no in-flight state: the menu closes on tap and the updated session
+    removes the row. No analytics event: cancel volume answers no product question.
+  - `SessionDetailCubit.cancelWakeUp` calls `SessionRepository.cancelWakeUp` directly.
+    The plan's app-side `SessionWakeUpService` was dropped: it had no logic of its own
+    (client/AGENTS.md feature checklist).
+  - No route-not-found message for cancel: an older bridge sends no wake-ups, so the
+    chip never shows against it. A stale tap after a downgrade gets the generic
+    "could not cancel" notice.
 
 ## Verification results
 

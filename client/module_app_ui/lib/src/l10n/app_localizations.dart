@@ -4519,6 +4519,24 @@ abstract class AppLocalizations {
   /// **'Run of scheduled task {name}'**
   String sessionListScheduledTaskRun(String name);
 
+  /// Session-row mark, after a repeat glyph and the name of the wake-up or scheduled task that will wake the session again, and a middle dot: when it next runs. The time is local, with the date only when it is not today.
+  ///
+  /// In en, this message translates to:
+  /// **'next {time}'**
+  String sessionListArmedNext(String time);
+
+  /// Screen-reader wording for the session-row mark of a session Sesori will wake again; the time includes the date.
+  ///
+  /// In en, this message translates to:
+  /// **'Wakes again for {name} at {time}'**
+  String sessionListArmedDescription(String name, String time);
+
+  /// Quiet session-row mark on a session a scheduled task started that nothing will wake again. Lowercase: it reads as part of the row's meta line.
+  ///
+  /// In en, this message translates to:
+  /// **'from {name}'**
+  String sessionListFromTask(String name);
+
   /// Screen-reader label for the session-list mark on a session a one-time scheduled task started
   ///
   /// In en, this message translates to:
@@ -6408,6 +6426,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not confirm the change. Reconnect and check auto continuation before trying again.'**
   String get sessionAutoContinuationUpdateFailed;
+
+  /// Label of the clock chip beside the session's model picker while agents have set wake-ups for the session: when the next one fires. The time is local, with the date only when it is not today. Tapping it lists the wake-ups.
+  ///
+  /// In en, this message translates to:
+  /// **'Wakes {time}'**
+  String sessionWakeUpChip(String time);
+
+  /// Heading of the menu listing the wake-ups agents set for the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake-ups'**
+  String get sessionWakeUpsTitle;
+
+  /// Button on one wake-up in the session's wake-up menu; it stops the wake-up, repeating ones included.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionWakeUpCancel;
+
+  /// Screen-reader wording for the repeat mark on a wake-up that fires again until it is cancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats'**
+  String get sessionWakeUpRepeats;
+
+  /// Screen-reader wording for the terminal mark on a wake-up that runs a shell command when it fires.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs a command'**
+  String get sessionWakeUpRunsCommand;
+
+  /// No description provided for @sessionWakeUpCancelFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not cancel the wake-up. It may still run. Reconnect and try again.'**
+  String get sessionWakeUpCancelFailed;
 
   /// No description provided for @sessionAutoContinuationAlreadySubmitted.
   ///

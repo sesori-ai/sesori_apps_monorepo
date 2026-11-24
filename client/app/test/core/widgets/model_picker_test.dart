@@ -90,6 +90,7 @@ Widget _buildApp({
               onFastModeChanged: (_) {},
               compact: mode == PregoInteractionMode.pointer,
               trailing: const [],
+              transientTrailing: null,
             ),
           ],
         ),

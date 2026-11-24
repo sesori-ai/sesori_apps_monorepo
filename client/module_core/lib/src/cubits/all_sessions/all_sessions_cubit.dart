@@ -12,6 +12,7 @@ import "../../services/models/session_list_quick_filter.dart";
 import "../../services/models/session_window_state.dart";
 import "../../services/project_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
+import "../../services/session_scheduled_mark_calculator.dart";
 import "../../services/session_send_tracker.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/session_window_service.dart";
@@ -32,6 +33,8 @@ class AllSessionsCubit({
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final SessionSendTracker _sessionSendTracker,
 }) extends Cubit<AllSessionsState> {
+  static const SessionScheduledMarkCalculator _scheduledMarks = SessionScheduledMarkCalculator();
+
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Set<String> _hiddenSessionIds = const {};
   bool _retrying = false;
@@ -166,6 +169,7 @@ class AllSessionsCubit({
               // This device's own send lasts until its answer, even while
               // the source is idle, so it wins over the bridge's.
               sending: sending[session.id] ?? activity[project.id]?[session.id]?.sending,
+              scheduledMark: _scheduledMarks.mark(session: session),
             ),
     ];
     final next = AllSessionsState(
