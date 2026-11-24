@@ -45,7 +45,7 @@ void main() {
       );
       expect(const HermesPluginDescriptor().mcpScopes, isEmpty);
       expect(HermesPluginDescriptor.minVersion, "0.20.0");
-      expect(HermesPluginDescriptor.targetVersion, "0.23.3");
+      expect(HermesPluginDescriptor.targetVersion, "0.23.4");
     });
 
     test("declares only the binary option and no install capability", () {
