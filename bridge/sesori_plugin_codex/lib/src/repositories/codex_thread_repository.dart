@@ -59,6 +59,18 @@ class CodexThreadRepository({
   final bool _forksThroughTurn =
       codexVersion != null && codexVersion.compareTo(SemanticVersion.parse(value: "0.143.0")) >= 0;
 
+  /// The UTF-8 byte cap Codex 0.164.0 to 0.171.x put on a `thread/sample`
+  /// prompt.
+  static const cappedSamplePromptBytes = 4000;
+
+  /// The most UTF-8 bytes a `thread/sample` prompt may hold here, or null
+  /// when there is no cap: 0.172.0 removed it. An app-server that names no
+  /// version keeps the cap.
+  final int? samplePromptMaxBytes =
+      codexVersion != null && codexVersion.compareTo(SemanticVersion.parse(value: "0.172.0")) >= 0
+      ? null
+      : cappedSamplePromptBytes;
+
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",

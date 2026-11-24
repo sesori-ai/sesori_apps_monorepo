@@ -370,7 +370,7 @@ leaves a running turn alone and is never written to the main transcript.
 | Harness | Native seam | Sesori availability |
 |---|---|---|
 | Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
-| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the 4,000-byte prompt, oldest text trimmed first; 0.164 to 0.171 enforce that cap and 0.172.0 removed it, so Sesori keeps it. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
+| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the prompt: whole from 0.172.0, which removed the 4,000-byte cap; 0.164 to 0.171 enforce the cap, so there, and when the app-server names no version, the oldest text is trimmed first. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
 | OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
 | Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
 | Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
@@ -424,6 +424,9 @@ Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
   added.
 - An over-budget history was trimmed to exactly 4,000 bytes and still answered
   from the newest exchange.
+- On 0.172.0 (2026-11-24, same isolated setup), the app-server's
+  `initialize` version lifted the cap: a 12,655-byte prompt carrying all 12
+  earlier exchanges was answered, and the request held every exchange.
 - A stale turn id fails with "sample source turn must be the latest turn",
   which shows as a failed ask with Retry.
 
