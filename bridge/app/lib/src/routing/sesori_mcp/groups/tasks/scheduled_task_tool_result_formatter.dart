@@ -1,14 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../repositories/models/session_wake_up.dart";
-import "../../services/scheduled_task_agent_service.dart";
-import "../../services/scheduled_task_change_description_builder.dart";
-import "../../services/session_wake_up_description_builder.dart";
+import "../../../../services/scheduled_task_agent_service.dart";
+import "../../../../services/scheduled_task_change_description_builder.dart";
 
-/// Renders tool results as the plain text agents read.
+/// Renders scheduled-task tool results as the plain text agents read.
 ///
 /// Results carry user prompts and transcripts, so nothing here is ever logged.
-class const SesoriMcpResultFormatter() {
+class const ScheduledTaskToolResultFormatter() {
   /// Roughly how much transcript one page holds.
   static const int transcriptPageChars = 20000;
   static const int _replyExcerptChars = 500;
@@ -16,9 +14,6 @@ class const SesoriMcpResultFormatter() {
 
   /// Schedules read the same in results as in approval requests.
   static const ScheduledTaskChangeDescriptionBuilder _descriptions = ScheduledTaskChangeDescriptionBuilder();
-
-  /// Wake-ups read the same in results as in the notice they send.
-  static const SessionWakeUpDescriptionBuilder _wakeUpWords = SessionWakeUpDescriptionBuilder();
 
   String taskList({required AgentTaskList list}) {
     if (list.tasks.isEmpty) return "No scheduled tasks.";
@@ -79,30 +74,6 @@ class const SesoriMcpResultFormatter() {
         ScheduledTaskPromptCommand(:final name, :final arguments) => "/$name${arguments == null ? "" : " $arguments"}",
         ScheduledTaskPromptUnknown() => "(a prompt kind this bridge does not know)",
       },
-    ].join("\n");
-  }
-
-  String wakeUpScheduled({required StoredSessionWakeUp wakeUp}) {
-    final repeats = _wakeUpWords.repeats(schedule: wakeUp.schedule);
-    return [
-      "Wake-up ${wakeUp.id} is set for ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}.",
-      "Sesori sends this session its prompt then, once the session's turn has ended.",
-      if (wakeUp.command != null) "Right before, it runs the command and adds its result to the prompt.",
-      if (repeats != null) "It repeats $repeats until you call cancel_wakeup.",
-      "End your turn now; don't wait or poll.",
-    ].join(" ");
-  }
-
-  String wakeUpList({required List<StoredSessionWakeUp> wakeUps}) {
-    if (wakeUps.isEmpty) return "This session has no wake-ups.";
-    return [
-      for (final wakeUp in wakeUps)
-        [
-          "- ${wakeUp.label} (id: ${wakeUp.id})",
-          "  next: ${_wakeUpWords.instant(at: wakeUp.nextDueAt)}",
-          "  repeats: ${_wakeUpWords.repeats(schedule: wakeUp.schedule) ?? "no"}",
-          if (wakeUp.command != null) "  runs a command first",
-        ].join("\n"),
     ].join("\n");
   }
 

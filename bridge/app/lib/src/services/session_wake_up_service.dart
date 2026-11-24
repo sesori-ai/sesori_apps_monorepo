@@ -3,10 +3,10 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart" show PermissionReply, TaskScheduleWeekly;
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
 
 import "../repositories/agent_approval_repository.dart";
 import "../repositories/models/agent_approval_change.dart";
-import "../repositories/models/sesori_mcp_caller.dart";
 import "../repositories/models/session_notice.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_wake_up.dart";
@@ -72,7 +72,7 @@ class SessionWakeUpService({
   /// calendar schedule; null means the bridge computer's. A [command] outside
   /// Approve everything is only asked for: the user's Allow stores it.
   Future<WakeUpScheduleResult> schedule({
-    required SesoriMcpCaller caller,
+    required SesoriToolCaller caller,
     required String label,
     required String prompt,
     required WakeUpRequestedTime when,
@@ -140,7 +140,7 @@ class SessionWakeUpService({
   }
 
   /// The wake-ups of [caller]'s root session, soonest first.
-  Future<WakeUpListLookup> list({required SesoriMcpCaller caller}) async {
+  Future<WakeUpListLookup> list({required SesoriToolCaller caller}) async {
     final rootSessionId = await _rootOf(sessionId: caller.sessionId);
     if (rootSessionId == null) return const WakeUpListCallerGone();
     return WakeUpList(wakeUps: await _wakeUps.forSession(sessionId: rootSessionId));

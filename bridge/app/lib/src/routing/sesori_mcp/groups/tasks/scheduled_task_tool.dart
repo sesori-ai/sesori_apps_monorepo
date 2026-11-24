@@ -1,6 +1,7 @@
-/// The tools Sesori's MCP server offers. A tool not listed here does not exist
-/// for agents.
-enum SesoriMcpTool({
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolDefinition;
+
+/// The scheduled-task tools Sesori's MCP server offers.
+enum ScheduledTaskTool({
   required final String wireName,
   required final String description,
 
@@ -152,94 +153,10 @@ enum SesoriMcpTool({
     description:
         "Propose running a scheduled task once now. The user allows or rejects it on their phone. $_answeredOnItsOwn",
     inputSchema: _taskIdSchema,
-  ),
-  sendPage(
-    wireName: "send_page",
-    readOnly: true,
-    description:
-        "Ask the user on a page in the Sesori app, on whichever device they pick up: for decisions, choices "
-        "between options, or input you need from them, especially several questions at once or anything that "
-        "needs images. Also shows information that needs no answer. Returns at once; Sesori messages this "
-        "session with the user's answers, or that they closed the page, so don't wait or poll for it, and don't "
-        "ask the same thing in chat too. A page has sections, each with an optional heading, a Markdown body, "
-        "images and questions. Question kinds: single (pick one option), multiple (pick any options) or text "
-        "(free text). Sesori gives every question its own note field and ends every page with a free-text "
-        '"Anything else?" field, so do not add your own catch-all question such as "Anything else?" or '
-        '"Other comments". '
-        "Images are absolute paths to png, jpg, gif or webp files, copied when sent. Limits: title 200 "
-        "characters, 20 images (20 MiB each, 50 MiB in all), 50 questions, 12 options per question. "
-        "Question ids are unique in the page and option ids in their question.",
-    inputSchema: {
-      "type": "object",
-      "properties": {
-        "title": {"type": "string"},
-        "intro": {"type": "string", "description": "Markdown under the title."},
-        "sections": {"type": "array", "items": _pageSectionSchema},
-      },
-      "required": ["title", "sections"],
-      "additionalProperties": false,
-    },
-  ),
-  scheduleWakeUp(
-    wireName: "schedule_wakeup",
-    readOnly: false,
-    description:
-        "Ask Sesori to send this session a prompt later, once or on repeat. Use it instead of a harness timer, a "
-        "sleep or a polling loop: the user sees each wake-up in the Sesori app and can cancel it, and it survives a "
-        "bridge restart. The prompt arrives as a message once this session's turn has ended, never inside one; a "
-        "sub-agent's goes to its root session. Needs no approval unless it runs a command. A repeating wake-up "
-        "repeats until you call cancel_wakeup, so never set it again yourself.",
-    inputSchema: {
-      "type": "object",
-      "properties": {
-        "label": {"type": "string", "description": "What it is for, in up to 100 characters. The user sees it."},
-        "prompt": {"type": "string", "description": "The message Sesori sends this session when it fires."},
-        "when": {..._wakeUpWhenSchema, "description": _wakeUpWhenDescription},
-        "time_zone": {
-          "type": "string",
-          "description":
-              "An IANA time zone, such as Europe/Bucharest, for daily, weekdays and weekly. This "
-              "computer's zone by default.",
-        },
-        "command": {
-          "type": "string",
-          "description":
-              "A shell command Sesori runs right before it sends the prompt, through a login shell in this "
-              "session's folder (its worktree when it has one), stopped after 10 minutes. The prompt then ends "
-              "with the exit code, stdout and stderr; a stream over 500 words comes as its file's path and its "
-              "last 20 lines. Needs the user's Allow, once, unless this session approves everything.",
-        },
-      },
-      "required": ["label", "prompt", "when"],
-      "additionalProperties": false,
-    },
-  ),
-  listWakeUps(
-    wireName: "list_wakeups",
-    readOnly: true,
-    description: "List this session's wake-ups, soonest first: id, label, next time and how it repeats.",
-    inputSchema: {"type": "object", "properties": <String, Object?>{}, "additionalProperties": false},
-  ),
-  cancelWakeUp(
-    wireName: "cancel_wakeup",
-    readOnly: false,
-    description: "Cancel one of this session's wake-ups, repeating ones included. Find ids with list_wakeups.",
-    inputSchema: {
-      "type": "object",
-      "properties": {
-        "wakeup_id": {"type": "string"},
-      },
-      "required": ["wakeup_id"],
-      "additionalProperties": false,
-    },
   );
 
-  static SesoriMcpTool? fromWireName({required String name}) {
-    for (final tool in values) {
-      if (tool.wireName == name) return tool;
-    }
-    return null;
-  }
+  SesoriToolDefinition get definition =>
+      SesoriToolDefinition(name: wireName, description: description, readOnly: readOnly, inputSchema: inputSchema);
 }
 
 const Map<String, Object?> _taskIdSchema = {
@@ -322,37 +239,6 @@ const Map<String, Object?> _localDateTimeSchema = {
 
 const String _timeZoneDescription = "An IANA time zone, such as Europe/Bucharest.";
 
-const String _wakeUpWhenDescription =
-    '{"kind":"in","minutes":1-10080} fires once that many minutes from now; {"kind":"every","minutes":1-10080} '
-    "repeats at that interval, first one interval from now; "
-    '{"kind":"daily","time":TIME}, {"kind":"weekdays","time":TIME} (Monday to Friday) or '
-    '{"kind":"weekly","days":["monday",...],"time":TIME} repeat at that wall-clock time. TIME is "HH:MM", 24-hour, '
-    "in time_zone.";
-
-/// Lists every kind's fields, as the task schedule does: a strict-schema
-/// provider lets the model send only listed properties. A kind ignores the
-/// others.
-const Map<String, Object?> _wakeUpWhenSchema = {
-  "type": "object",
-  "properties": {
-    "kind": {
-      "type": "string",
-      "enum": ["in", "every", "daily", "weekdays", "weekly"],
-    },
-    "minutes": {"type": "integer", "description": "in and every: 1 to 10080 (a week)."},
-    "time": {"type": "string", "description": 'daily, weekdays and weekly: "HH:MM", 24-hour.'},
-    "days": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-      },
-      "description": "weekly: the days it fires.",
-    },
-  },
-  "required": ["kind"],
-};
-
 const String _missedRunPolicyDescription =
     "When the computer was off at a run's time: run once when back (the default), or wait for the next.";
 
@@ -387,66 +273,4 @@ const String _approvalModeDescription =
 const Map<String, Object?> _approvalModeSchema = {
   "type": "string",
   "enum": ["ask", "approveAll"],
-};
-
-const Map<String, Object?> _pageImageSchema = {
-  "type": "object",
-  "properties": {
-    "path": {"type": "string", "description": "Absolute path."},
-    "caption": {"type": "string"},
-  },
-  "required": ["path"],
-  "additionalProperties": false,
-};
-
-const Map<String, Object?> _pageImagesSchema = {"type": "array", "items": _pageImageSchema};
-
-const Map<String, Object?> _pageOptionSchema = {
-  "type": "object",
-  "properties": {
-    "id": {"type": "string"},
-    "label": {"type": "string"},
-    "description": {"type": "string", "description": "Markdown."},
-    "image": _pageImageSchema,
-    "recommended": {"type": "boolean", "description": "Shows a label; never preselected."},
-  },
-  "required": ["id", "label"],
-  "additionalProperties": false,
-};
-
-const Map<String, Object?> _pageQuestionSchema = {
-  "type": "object",
-  "properties": {
-    "id": {"type": "string"},
-    "title": {"type": "string"},
-    "body": {"type": "string", "description": "Markdown."},
-    "images": _pageImagesSchema,
-    "kind": {
-      "type": "string",
-      "enum": ["single", "multiple", "text"],
-    },
-    "options": {
-      "type": "array",
-      "items": _pageOptionSchema,
-      "description": "single and multiple only.",
-    },
-    "required": {"type": "boolean", "description": "Must be answered to submit; false by default."},
-  },
-  "required": ["id", "title", "kind"],
-  "additionalProperties": false,
-};
-
-const Map<String, Object?> _pageSectionSchema = {
-  "type": "object",
-  "properties": {
-    "heading": {"type": "string"},
-    "body": {"type": "string", "description": "Markdown."},
-    "images": _pageImagesSchema,
-    "questions": {
-      "type": "array",
-      "items": _pageQuestionSchema,
-      "description": 'No catch-all "Anything else?" question: the page already ends with one.',
-    },
-  },
-  "additionalProperties": false,
 };

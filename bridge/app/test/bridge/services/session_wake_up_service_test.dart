@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval_change.dart";
-import "package:sesori_bridge/src/repositories/models/sesori_mcp_caller.dart";
 import "package:sesori_bridge/src/repositories/models/session_notice.dart";
 import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -19,6 +18,7 @@ import "package:sesori_bridge/src/services/session_wake_up_description_builder.d
 import "package:sesori_bridge/src/services/session_wake_up_service.dart";
 import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
@@ -27,7 +27,7 @@ import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/fakes/wake_up_command_fakes.dart";
 import "../../helpers/test_database.dart";
 
-const _caller = SesoriMcpCaller(sessionId: "s1");
+const _caller = SesoriToolCaller(sessionId: "s1");
 
 void main() {
   late AppDatabase db;
@@ -352,7 +352,7 @@ void main() {
       final service = buildService();
 
       final result = await service.schedule(
-        caller: const SesoriMcpCaller(sessionId: "s2"),
+        caller: const SesoriToolCaller(sessionId: "s2"),
         label: "Check",
         prompt: "Look at CI",
         when: const WakeUpInMinutes(minutes: 5),

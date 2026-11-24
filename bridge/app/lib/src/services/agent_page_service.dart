@@ -4,13 +4,13 @@ import "dart:typed_data";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
 
 import "../repositories/agent_page_repository.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/filesystem_repository.dart";
 import "../repositories/mappers/agent_page_mapper.dart";
 import "../repositories/models/agent_page.dart";
-import "../repositories/models/sesori_mcp_caller.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/prompt_upload_repository.dart";
 import "../repositories/session_repository.dart";
@@ -44,7 +44,7 @@ class AgentPageService({
 
   /// Copies the page's images and shows the page to the user. Returns at
   /// once: the answer reaches the session as a notice.
-  Future<AgentPageSendResult> send({required SesoriMcpCaller caller, required AgentPageDraft draft}) async {
+  Future<AgentPageSendResult> send({required SesoriToolCaller caller, required AgentPageDraft draft}) async {
     final String rootSessionId;
     try {
       rootSessionId = (await _sessions.resolveSessionFamily(

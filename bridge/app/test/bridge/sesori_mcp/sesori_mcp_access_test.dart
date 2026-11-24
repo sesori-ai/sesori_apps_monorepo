@@ -1,13 +1,13 @@
 import "dart:math";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/repositories/models/sesori_mcp_caller.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_mcp_grant.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/server/host/bridge_sesori_mcp_access_impl.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_bridge_plugin.dart";
@@ -133,7 +133,7 @@ void main() {
       expect(service.isMinted(token: token), isTrue);
       expect(
         await service.resolve(token: token),
-        isA<SesoriMcpCaller>().having((caller) => caller.sessionId, "sessionId", "s1"),
+        isA<SesoriToolCaller>().having((caller) => caller.sessionId, "sessionId", "s1"),
       );
     });
 

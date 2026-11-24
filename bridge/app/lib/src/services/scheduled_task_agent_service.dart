@@ -2,13 +2,13 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolCaller;
 
 import "../repositories/agent_approval_repository.dart";
 import "../repositories/models/agent_approval_change.dart";
 import "../repositories/models/agent_approval_outcome.dart";
 import "../repositories/models/history_window.dart";
 import "../repositories/models/scheduled_task_record.dart";
-import "../repositories/models/sesori_mcp_caller.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/task_command_edit.dart";
 import "../repositories/project_repository.dart";
@@ -47,7 +47,7 @@ class ScheduledTaskAgentService({
 
   /// Every task not yet done, or those of [projectId]. A task can outlive
   /// its project, so [projectId] is unknown only when no task has it either.
-  Future<AgentTaskListLookup> listTasks({required SesoriMcpCaller caller, required String? projectId}) async {
+  Future<AgentTaskListLookup> listTasks({required SesoriToolCaller caller, required String? projectId}) async {
     final tasks = [
       for (final task in (await _tasks.list()).items)
         if (projectId == null || task.definition.projectId == projectId) task,
@@ -62,7 +62,7 @@ class ScheduledTaskAgentService({
   }
 
   /// [taskId], or the caller's own task when the caller is a scheduled run.
-  Future<AgentTaskLookup> getTask({required SesoriMcpCaller caller, required String? taskId}) async {
+  Future<AgentTaskLookup> getTask({required SesoriToolCaller caller, required String? taskId}) async {
     final ownTaskId = await _ownTaskId(caller: caller);
     final targetId = taskId ?? ownTaskId;
     if (targetId == null) return const AgentTaskNotScheduledRun();
@@ -116,7 +116,7 @@ class ScheduledTaskAgentService({
   /// Asks to create [task] in the caller's project, or in [projectId], with
   /// the caller's harness.
   Future<AgentProposal> proposeCreate({
-    required SesoriMcpCaller caller,
+    required SesoriToolCaller caller,
     required String? projectId,
     required AgentNewTask task,
   }) async {
@@ -149,7 +149,7 @@ class ScheduledTaskAgentService({
   /// Asks to apply [edits] to [taskId]; fields [edits] leaves null keep their
   /// value.
   Future<AgentProposal> proposeUpdate({
-    required SesoriMcpCaller caller,
+    required SesoriToolCaller caller,
     required String taskId,
     required AgentTaskEdits edits,
   }) async {
@@ -218,7 +218,7 @@ class ScheduledTaskAgentService({
 
   /// Asks to pause or resume [taskId].
   Future<AgentProposal> proposeSetEnabled({
-    required SesoriMcpCaller caller,
+    required SesoriToolCaller caller,
     required String taskId,
     required bool enabled,
   }) async {
@@ -237,7 +237,7 @@ class ScheduledTaskAgentService({
   }
 
   /// Asks to run [taskId] once now.
-  Future<AgentProposal> proposeRunNow({required SesoriMcpCaller caller, required String taskId}) async {
+  Future<AgentProposal> proposeRunNow({required SesoriToolCaller caller, required String taskId}) async {
     final record = await _uncompletedTask(taskId: taskId);
     if (record == null) return AgentProposalTaskNotFound(taskId: taskId);
     return await _propose(
@@ -385,7 +385,7 @@ class ScheduledTaskAgentService({
       };
 
   Future<AgentProposal> _propose({
-    required SesoriMcpCaller caller,
+    required SesoriToolCaller caller,
     required ScheduledTaskAgentChange change,
   }) async {
     final SessionFamilyScope family;
@@ -440,7 +440,10 @@ class ScheduledTaskAgentService({
     return offered ? null : const AgentProposalRefused(reason: AgentProposalRefusal.modelNotOffered);
   }
 
-  Future<AgentRequester> _requester({required SesoriMcpCaller caller, required ScheduledTaskAgentChange change}) async {
+  Future<AgentRequester> _requester({
+    required SesoriToolCaller caller,
+    required ScheduledTaskAgentChange change,
+  }) async {
     final ownTaskId = await _ownTaskId(caller: caller);
     if (ownTaskId != null) {
       if (change is StoredTaskChange && change.taskId == ownTaskId) return const RequestedByOwnRun();
@@ -457,7 +460,7 @@ class ScheduledTaskAgentService({
     return record == null || record.completedAt != null ? null : record;
   }
 
-  Future<String?> _ownTaskId({required SesoriMcpCaller caller}) async {
+  Future<String?> _ownTaskId({required SesoriToolCaller caller}) async {
     final marks = await _taskRepository.marksOfSessions(sessionIds: {caller.sessionId});
     return marks[caller.sessionId]?.taskId;
   }
