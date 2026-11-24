@@ -39,6 +39,7 @@ import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
+import "../../helpers/arming_test_support.dart";
 
 const _definition = ScheduledTaskDefinition(
   name: "Morning summary",
@@ -95,6 +96,7 @@ void main() {
     final taskRepository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
     final now = DateTime.utc(2026, 11, 15, 10);
     tasks = ScheduledTaskService(
+      mutations: RecordingArmingMutations(),
       repository: taskRepository,
       sessionRepository: sessions,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -132,6 +134,7 @@ void main() {
       agent: agent,
       formatter: const SesoriMcpResultFormatter(),
       wakeUps: SessionWakeUpService(
+        mutations: RecordingArmingMutations(),
         wakeUps: wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
         sessions: sessions,
         calculator: const ScheduledTaskOccurrenceCalculator(),

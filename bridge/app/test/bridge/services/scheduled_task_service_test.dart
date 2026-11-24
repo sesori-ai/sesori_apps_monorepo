@@ -11,6 +11,7 @@ import "package:timezone/data/latest_all.dart" as tz_data;
 
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
+import "../../helpers/arming_test_support.dart";
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);
@@ -19,6 +20,7 @@ void main() {
   late ScheduledTaskRepository repository;
   late FakeSessionRepository sessionRepository;
   late ScheduledTaskService service;
+  late RecordingArmingMutations mutations;
   late DateTime now;
   late int changeCount;
 
@@ -47,7 +49,9 @@ void main() {
     now = DateTime.utc(2026, 11, 15, 10);
     repository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
     sessionRepository = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
+    mutations = RecordingArmingMutations();
     service = ScheduledTaskService(
+      mutations: mutations,
       repository: repository,
       sessionRepository: sessionRepository,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -278,8 +282,26 @@ void main() {
 
         await service.update(taskId: task.id, definition: moved);
         expect(await targetOf(taskId: task.id), isNull);
+        // The session it no longer continues in loses its arming.
+        expect(mutations.armedSessionIds, ["s1"]);
       });
     }
+
+    test("hears of each edit, pause, resume and delete as its arming", () async {
+      final task = await service.create(definition: definition);
+      expect(mutations.armedSessionIds, isEmpty);
+      await targetSession(taskId: task.id);
+
+      await service.update(
+        taskId: task.id,
+        definition: definition.copyWith(name: "Renamed"),
+      );
+      await service.setEnabled(taskId: task.id, enabled: false);
+      await service.setEnabled(taskId: task.id, enabled: true);
+      await service.delete(taskId: task.id);
+
+      expect(mutations.armedSessionIds, ["s1", "s1", "s1", "s1"]);
+    });
   });
 
   test("the list shows each task's newest run and leaves out done one-off tasks", () async {

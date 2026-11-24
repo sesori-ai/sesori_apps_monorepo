@@ -28,6 +28,10 @@ import "package:test/test.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
+
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
+
 import "../routing/routing_test_helpers.dart" show RequestHandlerTestMatching, makeRequest;
 
 void main() {
@@ -58,6 +62,7 @@ void main() {
     prompts = _Prompts(records: records);
     mutations = _Mutations();
     views = SessionViewService(
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
       sessions: sessions,
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
@@ -385,6 +390,7 @@ void main() {
     final leftover = (await interruptions.readLeftovers(pluginId: "plugin", startedBefore: reset)).single;
     await interruptions.convertLeftover(leftover: leftover, afterMessageId: "m1");
     final projecting = SessionViewService(
+      wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
       sessions: sessions,
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
