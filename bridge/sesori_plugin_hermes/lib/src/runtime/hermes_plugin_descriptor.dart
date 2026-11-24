@@ -36,13 +36,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   /// Latest stable Hermes Agent release targeted by this plugin.
   static const String targetVersion = "0.23.4";
 
-  /// Oldest Hermes Agent release that scopes each ACP session's MCP servers
-  /// to that session (0.22.1) and rebinds them when a load sends a changed
-  /// entry (0.22.3), so every session reaches Sesori with its own token.
-  static const String sesoriToolsMinVersion = "0.22.3";
-
   static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: minVersion);
-  static final SemanticVersion _sesoriToolsMinHermesVersion = SemanticVersion.parse(value: sesoriToolsMinVersion);
 
   /// CLI option naming the Hermes CLI binary (path or PATH name). Declared
   /// as the bare local name; the bridge's [PluginCliOptionsMapper] namespaces
@@ -92,11 +86,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
   @override
   bool get namesCommandInvocations => true;
-
-  /// Only from [sesoriToolsMinVersion]: [start] withholds the server from an
-  /// older Hermes, whose ACP sessions share one MCP registry per process.
-  @override
-  bool get injectsSesoriTools => true;
 
   @override
   List<PluginOption> get options => cliOptions;
@@ -189,7 +178,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
           actionHint: "Hermes setup could not be determined. Verify the local install and retry.",
         );
       case _HermesRuntimeReady(:final version):
-        runtimeVersion = version.toString();
+        runtimeVersion = version;
     }
 
     final statusResult = await _probeHermesStatus(
@@ -343,8 +332,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       );
       return _HermesRuntimeOutdated(version: parsed.toString());
     }
-    Log.d("[hermes] available: '$executablePath acp --version' -> ${parsed.toString()}");
-    return _HermesRuntimeReady(version: parsed);
+    final version = parsed.toString();
+    Log.d("[hermes] available: '$executablePath acp --version' -> $version");
+    return _HermesRuntimeReady(version: version);
   }
 
   SemanticVersion? _tryParseVersion({required String value}) {
@@ -390,24 +380,6 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     }
 
     final binaryPath = _explicitBin(config: host.config) ?? host.provisionedRuntimePath ?? HermesBinary.defaultBinary;
-    final runtime = await _probeHermesRuntime(
-      executablePath: binaryPath,
-      processes: host.processes,
-      environment: host.environment,
-    );
-    if (host.startAborted.isAborted) {
-      throw const PluginStartAbortedException();
-    }
-    final scopesSessionMcpServers = switch (runtime) {
-      _HermesRuntimeReady(:final version) => version.compareTo(_sesoriToolsMinHermesVersion) >= 0,
-      _ => false,
-    };
-    if (!scopesSessionMcpServers) {
-      Log.i(
-        "[hermes] Hermes Agent is older than $sesoriToolsMinVersion or unverified, so its sessions get no Sesori tools",
-      );
-    }
-
     final statusResult = await _probeHermesStatus(
       executablePath: binaryPath,
       processes: host.processes,
@@ -484,7 +456,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       commandTracker: commandTracker,
       processFactory: processFactory,
       hermesSessionOptionsService: sessionOptionsService,
-      sesoriMcp: scopesSessionMcpServers ? host.sesoriMcp : null,
+      sesoriMcp: injectsSesoriTools ? host.sesoriMcp : null,
     );
     // Eagerly spawns the agent and runs the ACP handshake (bounded), so the
     // first mobile request is fast and the status reflects reality; a
@@ -499,7 +471,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 /// rejected or unresolved runtime.
 sealed class const _HermesRuntimeProbe();
 
-final class const _HermesRuntimeReady({required final SemanticVersion version}) extends _HermesRuntimeProbe;
+final class const _HermesRuntimeReady({required final String version}) extends _HermesRuntimeProbe;
 
 final class const _HermesRuntimeMissing() extends _HermesRuntimeProbe;
 

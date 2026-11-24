@@ -193,7 +193,7 @@ send an empty list.
 | Grok | ✅ Grok asks its own permission before every MCP tool. The plugin answers allow-once for a `use_tool` call named `sesori_bridge__<tool>` in a session it gave the server, so only the bridge asks, once per proposal. Two concurrent runs each got their own task. Sesori's server replaces a user server of the same name for the session. Grok's `events.jsonl` keeps the server URL but not the header, and its config is unchanged. Verified live on 1.0.30, 2026-11-17. |
 | GitHub Copilot | ✅ Read tools run without a prompt. Copilot asks its own permission before each proposing tool and then the bridge asks too, so an unattended run waits for the user twice: Copilot's permission request names only the bare tool and its arguments, with no server, so the plugin cannot tell Sesori's tool from another server's. Two concurrent runs each got their own task. A user server of the same name wins over Sesori's. With an OpenAI-compatible test provider, `update_task` now raises the Sesori approval, and Allow changed the prompt the next run sent. That model still fills every field: empty strings read as left out, but it also guessed a schedule and a model (the bridge now refuses a model the harness does not offer), and the errors it got named the field (`model must be provider/model`, `schedule.at must be in the future`). Unverified with a GitHub-hosted model. Verified live on 1.0.113, 2026-11-17. |
 | Antigravity | ⬜ The plugin can pass the server, but it stays off until a live tool call passes; that needs a signed-in Google account. |
-| Hermes | ✅ From 0.22.3: the plugin reads `hermes acp --version` at start and gives an older or unverified Hermes no server. `hermes acp` fronts a gateway that scopes each ACP session's MCP servers to that session (0.22.1) and rebinds them when a load sends a changed entry (0.22.3). Two concurrent runs each got their own task, a plain session's `get_task` answered that it is not a scheduled run, and a session loaded again after a bridge restart reached Sesori with its new token. Hermes lists the server as `editor_sesori_bridge_<id>` and asks no permission before its tools. Its `config.yaml` is unchanged, neither the token nor the URL is stored under the Hermes home, and the agent's `env` shows no token. Gap: in a session that gets Sesori's server, every call to one of the user's own `config.yaml` MCP servers fails with `MCP server '<name>' is not connected`, because Hermes looks it up in that session's editor scope; with `agent-tools` off, or on a Hermes below 0.22.3, the same call works. Verified live on 0.23.4, 2026-11-25; 0.22.3 itself was checked only in source. |
+| Hermes | ⬜ Gap: Hermes keeps one MCP registry per process keyed by server name, so a second session may reach Sesori with the first session's identity. Stays off until a live two-session check passes; not run, because starting Hermes in an isolated home runs its self-bootstrap. |
 | Cursor | ⬜ Unverified: `session/new` needs a signed-in account. |
 | DeepSeek | 🚫 The adapter rejects any MCP server ("MCP servers are not supported"). Checked on 0.2.3. |
 | Other harnesses | ⬜ Not injected yet. |
@@ -370,7 +370,7 @@ leaves a running turn alone and is never written to the main transcript.
 | Harness | Native seam | Sesori availability |
 |---|---|---|
 | Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
-| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the 4,000-byte prompt, oldest text trimmed first. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
+| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the prompt: whole from 0.172.0, which removed the 4,000-byte cap; 0.164 to 0.171 enforce the cap, so there, and when the app-server names no version, the oldest text is trimmed first. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
 | OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
 | Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
 | Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
@@ -424,6 +424,9 @@ Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
   added.
 - An over-budget history was trimmed to exactly 4,000 bytes and still answered
   from the newest exchange.
+- On 0.172.0 (2026-11-24, same isolated setup), the app-server's
+  `initialize` version lifted the cap: a 12,655-byte prompt carrying all 12
+  earlier exchanges was answered, and the request held every exchange.
 - A stale turn id fails with "sample source turn must be the latest turn",
   which shows as a failed ask with Retry.
 
@@ -1023,6 +1026,7 @@ shows its id and the agent pill is left out.
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
 | OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; a choice and its paired "other" text property render as one question with an "Other" field; the schema default arrives selected; other string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, OMP plugin, shared bridge contract, and widget tests pass; live `18.19.0` built-in `ask` roundtrip on 2026-11-12 through the headless iOS simulator: default accepted, another option, "Other" text and decline each reached OMP as sent |
+| GitHub Copilot | ✅ From `1.0.115`, `ask_user` arrives as an ACP form: string `enum`/`oneOf` choices, `items.anyOf` and `items.enum` arrays, booleans, numbers and free text render as question cards. Copilot tells its model every choice also takes a free-form answer, so each choice question offers custom text, sent as that property's own value (an extra array item for a multi-select). Earlier versions do not send `ask_user` over ACP | Mapper and Copilot plugin tests; live `1.0.115` ACP wire probe on 2026-11-24 (fixture model): choices, multi-selects, free text, off-list answers and decline each reached Copilot as sent. No on-device roundtrip yet |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.
