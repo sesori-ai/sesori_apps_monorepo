@@ -309,7 +309,7 @@ class const _DiffBlock({
         for (final (:start, :end) in changedWords[index] ?? const <_Span>[]) {
           // Ranges arrive in order and inside the line; skip any that are not.
           if (start < shown || end <= start || end > text.length) continue;
-          spans.add(TextSpan(text: text.substring(shown, start)));
+          if (start > shown) spans.add(TextSpan(text: text.substring(shown, start)));
           spans.add(
             TextSpan(
               text: text.substring(start, end),
