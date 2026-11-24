@@ -5,10 +5,10 @@
 | 1 | 🌱 Plan session wake-ups and scheduled commands | Merged | #2885 |
 | 2 | 🚧 Bridge wake-ups, one-shot and repeating | Merged | #2887 |
 | 3 | 🚧 Wake-up commands | Merged | #2889 |
-| 4 | ⚙️ Scheduled-task commands | In this PR | |
+| 4 | ⚙️ Scheduled-task commands | Merged | #2892 |
 | 5 | ⚙️ Bridge projection of wake-ups and arming | Merged | #2888 |
 | 6 | ⚙️ App: wake-up chip, cancel and armed marks | Merged | #2891 |
-| 7 | 🌱 Reconcile regression docs | Not started | |
+| 7 | 🌱 Reconcile regression docs | In this PR | |
 | 8 | 🌿 Verify and retire | Not started | |
 
 ## Notes for later steps
