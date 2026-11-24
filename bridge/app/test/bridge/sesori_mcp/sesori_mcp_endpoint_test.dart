@@ -6,6 +6,7 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:image/image.dart" as img;
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
@@ -17,6 +18,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_result_formatter.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
@@ -25,6 +27,8 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
+import "package:sesori_bridge/src/services/session_wake_up_description_builder.dart";
+import "package:sesori_bridge/src/services/session_wake_up_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -72,6 +76,7 @@ void main() {
   late RecordingSessionNotices notices;
   late AgentPageRepository pages;
   late List<AgentApprovalEvent> approvalEvents;
+  late SessionWakeUpRepository wakeUps;
   var nextId = 1;
 
   setUpAll(tz_data.initializeTimeZones);
@@ -126,6 +131,15 @@ void main() {
       access: SesoriMcpAccessService(grants: grants, sessions: sessions),
       agent: agent,
       formatter: const SesoriMcpResultFormatter(),
+      wakeUps: SessionWakeUpService(
+        wakeUps: wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db)),
+        sessions: sessions,
+        calculator: const ScheduledTaskOccurrenceCalculator(),
+        notices: notices,
+        descriptions: const SessionWakeUpDescriptionBuilder(),
+        localTimeZone: () => "Europe/Bucharest",
+        clock: Clock(() => now),
+      ),
       pages: () {
         final imagesRoot = Directory.systemTemp.createTempSync("page_images_test_");
         addTearDown(() => imagesRoot.deleteSync(recursive: true));
@@ -333,6 +347,9 @@ void main() {
           "resume_task",
           "run_task_now",
           "send_page",
+          "schedule_wakeup",
+          "list_wakeups",
+          "cancel_wakeup",
         ],
       );
       for (final tool in tools) {
@@ -1477,6 +1494,173 @@ void main() {
         reason: "a caption says the agent meant an image",
       );
       expect(await pages.pendingPages(sessionId: "s1"), isEmpty);
+    });
+  });
+
+  group("wake-ups", () {
+    Future<void> addSession({required String sessionId, required String? parentSessionId}) async {
+      await insertTestSession(
+        db: db,
+        sessionId: sessionId,
+        backendSessionId: "backend-$sessionId",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      if (parentSessionId != null) {
+        await db.customStatement("UPDATE sessions_table SET parent_session_id = ? WHERE session_id = ?", [
+          parentSessionId,
+          sessionId,
+        ]);
+      }
+    }
+
+    String tokenFor({required String sessionId}) {
+      final minted = grants.mint(pluginId: "fake");
+      grants.bind(token: minted, backendSessionId: "backend-$sessionId");
+      return minted;
+    }
+
+    test("a one-time wake-up is stored for the session and tells the agent to end its turn", () async {
+      final result = await call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Check  the\nbuild",
+          "prompt": "Look at CI",
+          // A strict-schema provider fills every field.
+          "when": {"kind": "in", "minutes": 30, "time": "", "days": <String>[]},
+          "time_zone": "",
+        },
+      );
+
+      expect(result.isError, isFalse, reason: result.text);
+      expect(result.text, contains("End your turn now"));
+      final stored = (await wakeUps.forSession(sessionId: "s1")).single;
+      expect(stored.label, "Check the build");
+      expect(stored.prompt, "Look at CI");
+      expect(stored.nextDueAt, DateTime.utc(2026, 11, 15, 10, 30));
+      expect(result.text, contains(stored.id));
+    });
+
+    test("a calendar wake-up uses the bridge computer's zone unless the agent names one", () async {
+      final daily = await call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Standup",
+          "prompt": "Summarize",
+          "when": {"kind": "daily", "time": "09:00"},
+        },
+      );
+      final weekly = await call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Review",
+          "prompt": "Review PRs",
+          "when": {
+            "kind": "weekly",
+            "days": ["monday"],
+            "time": "08:00",
+          },
+          "time_zone": "America/New_York",
+        },
+      );
+
+      expect(daily.isError, isFalse, reason: daily.text);
+      expect(weekly.isError, isFalse, reason: weekly.text);
+      expect(daily.text, contains("It repeats"));
+      final listed = await call(tool: "list_wakeups", arguments: {});
+      expect(listed.text, contains("Europe/Bucharest"));
+      expect(listed.text, contains("America/New_York"));
+      final byLabel = {for (final wakeUp in await wakeUps.forSession(sessionId: "s1")) wakeUp.label: wakeUp};
+      // 09:00 in Bucharest (UTC+2) on the 16th, as 09:00 had passed on the 15th.
+      expect(byLabel["Standup"]?.nextDueAt, DateTime.utc(2026, 11, 16, 7));
+      // Monday the 16th, 08:00 in New York (UTC-5).
+      expect(byLabel["Review"]?.nextDueAt, DateTime.utc(2026, 11, 16, 13));
+    });
+
+    test("bad wake-up arguments are refused with the field to fix", () async {
+      Future<String> refused({
+        required Map<String, Object?> when,
+        required String? timeZone,
+        required String label,
+      }) async {
+        final result = await call(
+          tool: "schedule_wakeup",
+          arguments: {"label": label, "prompt": "Prompt", "when": when, "time_zone": ?timeZone},
+        );
+        expect(result.isError, isTrue, reason: result.text);
+        return result.text;
+      }
+
+      Future<String> refusedWhen(Map<String, Object?> when) => refused(when: when, timeZone: null, label: "Label");
+
+      expect(await refusedWhen({"kind": "daily", "time": "25:00"}), contains("when.time must be HH:MM"));
+      expect(await refusedWhen({"kind": "weekly", "time": "08:00"}), contains("when.days is required"));
+      expect(await refusedWhen({"kind": "weekly", "days": <String>[], "time": "08:00"}), contains("at least one day"));
+      expect(await refusedWhen({"kind": "in", "minutes": 0}), contains("when.minutes must be 1 to"));
+      expect(await refusedWhen({"kind": "every", "minutes": 10081}), contains("when.minutes must be 1 to"));
+      expect(await refusedWhen({"kind": "soon"}), contains("when.kind must be one of"));
+      expect(
+        await refused(when: {"kind": "daily", "time": "09:00"}, timeZone: "Mars/Olympus", label: "Label"),
+        contains("Unknown time_zone"),
+      );
+      expect(
+        await refused(when: {"kind": "in", "minutes": 5}, timeZone: null, label: "x" * 101),
+        contains("label is longer than"),
+      );
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+    });
+
+    test("a sub-agent's wake-up belongs to its root session, which lists and cancels it", () async {
+      await addSession(sessionId: "s2", parentSessionId: "s1");
+      final child = tokenFor(sessionId: "s2");
+
+      final set = await call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Later",
+          "prompt": "Continue",
+          "when": {"kind": "every", "minutes": 15},
+        },
+        bearer: child,
+      );
+      expect(set.isError, isFalse, reason: set.text);
+      final stored = (await wakeUps.forSession(sessionId: "s1")).single;
+      expect((await call(tool: "list_wakeups", arguments: {})).text, contains(stored.id));
+      expect((await call(tool: "list_wakeups", arguments: {}, bearer: child)).text, contains(stored.id));
+
+      final cancelled = await call(tool: "cancel_wakeup", arguments: {"wakeup_id": stored.id});
+      expect(cancelled.isError, isFalse, reason: cancelled.text);
+      expect(await wakeUps.forSession(sessionId: "s1"), isEmpty);
+      expect((await call(tool: "list_wakeups", arguments: {})).text, "This session has no wake-ups.");
+    });
+
+    test("a session cannot cancel another session's wake-up", () async {
+      await addSession(sessionId: "s9", parentSessionId: null);
+      final other = tokenFor(sessionId: "s9");
+      await call(
+        tool: "schedule_wakeup",
+        arguments: {
+          "label": "Theirs",
+          "prompt": "Prompt",
+          "when": {"kind": "in", "minutes": 5},
+        },
+        bearer: other,
+      );
+      final theirs = (await wakeUps.forSession(sessionId: "s9")).single;
+
+      final cancelled = await call(tool: "cancel_wakeup", arguments: {"wakeup_id": theirs.id});
+
+      expect(cancelled.isError, isTrue);
+      expect(cancelled.text, contains("no wake-up ${theirs.id}"));
+      expect(await wakeUps.exists(id: theirs.id), isTrue);
+      expect((await call(tool: "list_wakeups", arguments: {})).text, "This session has no wake-ups.");
     });
   });
 }

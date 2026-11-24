@@ -20,13 +20,22 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "single_plugin_repository_test_support.dart";
 import "test_drive_roots_api.dart";
 
-/// Records the notices instead of prompting sessions.
+/// Records the notices instead of prompting sessions. A claim runs as it
+/// would right before the send, and a lost one records nothing.
 class RecordingSessionNotices() implements SessionNoticeService {
-  final List<({String sessionId, SessionNotice notice})> delivered = [];
+  final List<({String sessionId, SessionNotice notice, SessionNoticeTiming timing})> delivered = [];
 
   @override
-  Future<void> deliver({required String sessionId, required SessionNotice notice}) async =>
-      delivered.add((sessionId: sessionId, notice: notice));
+  Future<SessionNoticeOutcome> deliver({
+    required String sessionId,
+    required SessionNotice notice,
+    required SessionNoticeTiming timing,
+    required Future<bool> Function()? claim,
+  }) async {
+    if (claim != null && !await claim()) return SessionNoticeOutcome.claimLost;
+    delivered.add((sessionId: sessionId, notice: notice, timing: timing));
+    return SessionNoticeOutcome.sent;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

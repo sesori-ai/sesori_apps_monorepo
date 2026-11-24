@@ -5,13 +5,14 @@ import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJson
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations, bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, sesoriMcpServerName;
 import "package:sesori_shared/sesori_shared.dart"
-    show PromptModel, ScheduledTaskErrorCode, SessionVariant, maxTranscriptImageBytes;
+    show PromptModel, ScheduledTaskErrorCode, SessionVariant, TaskSchedule, TaskTimeOfDay, maxTranscriptImageBytes;
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../repositories/models/sesori_mcp_caller.dart";
 import "../../services/agent_page_service.dart";
 import "../../services/scheduled_task_agent_service.dart";
 import "../../services/sesori_mcp_access_service.dart";
+import "../../services/session_wake_up_service.dart";
 import "models/sesori_mcp_rpc_request.dart";
 import "models/sesori_mcp_tool_arguments.dart";
 import "sesori_mcp_result_formatter.dart";
@@ -27,6 +28,7 @@ class SesoriMcpRequestDispatcher({
   required final SesoriMcpAccessService _access,
   required final ScheduledTaskAgentService _agent,
   required final AgentPageService _pages,
+  required final SessionWakeUpService _wakeUps,
   required final SesoriMcpResultFormatter _formatter,
 }) {
   /// The protocol versions this server speaks, oldest first. `initialize`
@@ -121,7 +123,9 @@ class SesoriMcpRequestDispatcher({
           "user on a page in the Sesori app. For tasks, start with list_tasks; get_task without a task_id shows "
           "this session's own task when it is a scheduled run. Tools that change a task only send the user a "
           "request to allow. Pages and requests return at once and are answered on their own; Sesori messages "
-          "this session with the user's answer, so don't poll for it.",
+          "this session with the user's answer, so don't poll for it. schedule_wakeup has Sesori send this "
+          "session a prompt later, as a message; use it instead of a harness timer, because the user can see and "
+          "cancel it.",
     };
   }
 
@@ -259,7 +263,83 @@ class SesoriMcpRequestDispatcher({
             draft: _pageDraft(args: args),
           ),
         );
+      case SesoriMcpTool.scheduleWakeUp:
+        final args = _parse(json: arguments, fromJson: ScheduleWakeUpArguments.fromJson);
+        return _wakeUpScheduled(
+          result: await _wakeUps.schedule(
+            caller: caller,
+            label: _requiredText(value: args.label, field: "label"),
+            prompt: _requiredText(value: args.prompt, field: "prompt"),
+            when: _wakeUpTime(when: args.when),
+            timeZone: _optionalText(value: args.timeZone),
+          ),
+        );
+      case SesoriMcpTool.listWakeUps:
+        return switch (await _wakeUps.list(caller: caller)) {
+          WakeUpList(:final wakeUps) => _ToolOutcome(isError: false, text: _formatter.wakeUpList(wakeUps: wakeUps)),
+          WakeUpListCallerGone() => const _ToolOutcome(isError: true, text: _callerGone),
+        };
+      case SesoriMcpTool.cancelWakeUp:
+        final args = _parse(json: arguments, fromJson: CancelWakeUpArguments.fromJson);
+        final wakeUpId = args.wakeUpId;
+        return switch (await _wakeUps.cancel(caller: caller, wakeUpId: wakeUpId)) {
+          WakeUpCancelResult.cancelled => _ToolOutcome(isError: false, text: "Cancelled wake-up $wakeUpId."),
+          WakeUpCancelResult.notFound => _ToolOutcome(
+            isError: true,
+            text: "This session has no wake-up $wakeUpId. Find ids with list_wakeups.",
+          ),
+          WakeUpCancelResult.callerGone => const _ToolOutcome(isError: true, text: _callerGone),
+        };
     }
+  }
+
+  static const String _callerGone = "This session is no longer known to Sesori.";
+
+  _ToolOutcome _wakeUpScheduled({required WakeUpScheduleResult result}) {
+    return switch (result) {
+      WakeUpScheduled(:final wakeUp) => _ToolOutcome(isError: false, text: _formatter.wakeUpScheduled(wakeUp: wakeUp)),
+      WakeUpRefused(:final reason) => _ToolOutcome(
+        isError: true,
+        text: switch (reason) {
+          WakeUpRefusal.callerGone => _callerGone,
+          WakeUpRefusal.labelTooLong => "label is longer than ${SessionWakeUpService.maxLabelLength} characters.",
+          WakeUpRefusal.minutesOutOfRange => "when.minutes must be 1 to ${SessionWakeUpService.maxMinutes} (a week).",
+          WakeUpRefusal.noDays => "when.days needs at least one day.",
+          WakeUpRefusal.unknownTimeZone => "Unknown time_zone; use an IANA name such as Europe/Bucharest.",
+          WakeUpRefusal.timeZoneNeeded =>
+            "The bridge cannot tell this computer's time zone; pass time_zone, such as Europe/Bucharest.",
+        },
+      ),
+    };
+  }
+
+  WakeUpRequestedTime _wakeUpTime({required WakeUpWhenArgument when}) {
+    return switch (when) {
+      WakeUpWhenAfterArgument(:final minutes) => WakeUpInMinutes(minutes: minutes),
+      WakeUpWhenEveryArgument(:final minutes) => WakeUpEveryMinutes(minutes: minutes),
+      WakeUpWhenDailyArgument(:final time) => WakeUpOnSchedule(
+        schedule: TaskSchedule.daily(time: _clockTime(text: time)),
+      ),
+      WakeUpWhenWeekdaysArgument(:final time) => WakeUpOnSchedule(
+        schedule: TaskSchedule.weekdays(time: _clockTime(text: time)),
+      ),
+      WakeUpWhenWeeklyArgument(:final days, :final time) => WakeUpOnSchedule(
+        schedule: TaskSchedule.weekly(
+          days: days,
+          time: _clockTime(text: time),
+        ),
+      ),
+    };
+  }
+
+  static final RegExp _clockTimePattern = RegExp(r"^([01]?\d|2[0-3]):([0-5]\d)$");
+
+  /// [text] as `HH:MM`, 24-hour.
+  TaskTimeOfDay _clockTime({required String text}) {
+    return switch (_clockTimePattern.firstMatch(text.trim())?.groups([1, 2])) {
+      [final String hour, final String minute] => TaskTimeOfDay(hour: int.parse(hour), minute: int.parse(minute)),
+      _ => throw const _InvalidArguments(reason: "when.time must be HH:MM, from 00:00 to 23:59."),
+    };
   }
 
   static const String _appliesToNextRun =
@@ -273,7 +353,7 @@ class SesoriMcpRequestDispatcher({
   _ToolOutcome _pageSent({required AgentPageSendResult result}) {
     final text = switch (result) {
       AgentPageSent(:final page) => "Sent “${page.title}” to the user. $_answerFollows",
-      AgentPageCallerGone() => "This session is no longer known to Sesori.",
+      AgentPageCallerGone() => _callerGone,
       AgentPageOverLimit(limit: AgentPageLimit.titleLength) =>
         "title is longer than ${AgentPageService.maxTitleLength} characters.",
       AgentPageOverLimit(limit: AgentPageLimit.images) =>
@@ -385,7 +465,7 @@ class SesoriMcpRequestDispatcher({
       AgentProposalRefused(:final reason) => _ToolOutcome(
         isError: true,
         text: switch (reason) {
-          AgentProposalRefusal.callerGone => "This session is no longer known to Sesori.",
+          AgentProposalRefusal.callerGone => _callerGone,
           AgentProposalRefusal.nothingChanged => "That is the task as it is; nothing would change.",
           AgentProposalRefusal.promptIsCommand =>
             "This task runs a command, so its prompt cannot be text. Change command_arguments instead.",
@@ -525,6 +605,13 @@ class SesoriMcpRequestDispatcher({
     "run_mode": {
       "newSession": [],
       "sameSession": ["autoCompact"],
+    },
+    "when": {
+      "in": ["minutes"],
+      "every": ["minutes"],
+      "daily": ["time"],
+      "weekdays": ["time"],
+      "weekly": ["days", "time"],
     },
   };
 

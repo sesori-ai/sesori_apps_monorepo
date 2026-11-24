@@ -183,6 +183,8 @@ class AgentPageService({
       _notices.deliver(
         sessionId: settled.displaySessionId ?? settled.sessionId,
         notice: _noticeBuilder.answered(page: settled, answers: request.answers, note: request.note),
+        timing: SessionNoticeTiming.derived,
+        claim: null,
       ),
     );
     return const PageSubmitAccepted();
@@ -205,6 +207,8 @@ class AgentPageService({
       _notices.deliver(
         sessionId: settled.displaySessionId ?? settled.sessionId,
         notice: _noticeBuilder.dismissed(page: settled),
+        timing: SessionNoticeTiming.derived,
+        claim: null,
       ),
     );
     return const AgentPageReplyDismissed();

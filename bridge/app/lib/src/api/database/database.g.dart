@@ -7437,6 +7437,496 @@ class AgentPagesTableCompanion extends UpdateCompanion<AgentPageDto> {
   }
 }
 
+mixin $SessionWakeUpsTableTableToColumns
+    implements Insertable<SessionWakeUpDto> {
+  String get id;
+
+  /// The root session the wake-up is sent to.
+  String get sessionId;
+  String get label;
+  String get prompt;
+  String get scheduleJson;
+
+  /// UTC milliseconds.
+  int get nextDueAt;
+
+  /// UTC milliseconds.
+  int get createdAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['session_id'] = Variable<String>(sessionId);
+    map['label'] = Variable<String>(label);
+    map['prompt'] = Variable<String>(prompt);
+    map['schedule_json'] = Variable<String>(scheduleJson);
+    map['next_due_at'] = Variable<int>(nextDueAt);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+}
+
+class $SessionWakeUpsTableTable extends SessionWakeUpsTable
+    with TableInfo<$SessionWakeUpsTableTable, SessionWakeUpDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionWakeUpsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptMeta = const VerificationMeta('prompt');
+  @override
+  late final GeneratedColumn<String> prompt = GeneratedColumn<String>(
+    'prompt',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scheduleJsonMeta = const VerificationMeta(
+    'scheduleJson',
+  );
+  @override
+  late final GeneratedColumn<String> scheduleJson = GeneratedColumn<String>(
+    'schedule_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nextDueAtMeta = const VerificationMeta(
+    'nextDueAt',
+  );
+  @override
+  late final GeneratedColumn<int> nextDueAt = GeneratedColumn<int>(
+    'next_due_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    label,
+    prompt,
+    scheduleJson,
+    nextDueAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_wake_ups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionWakeUpDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('prompt')) {
+      context.handle(
+        _promptMeta,
+        prompt.isAcceptableOrUnknown(data['prompt']!, _promptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promptMeta);
+    }
+    if (data.containsKey('schedule_json')) {
+      context.handle(
+        _scheduleJsonMeta,
+        scheduleJson.isAcceptableOrUnknown(
+          data['schedule_json']!,
+          _scheduleJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_scheduleJsonMeta);
+    }
+    if (data.containsKey('next_due_at')) {
+      context.handle(
+        _nextDueAtMeta,
+        nextDueAt.isAcceptableOrUnknown(data['next_due_at']!, _nextDueAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nextDueAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SessionWakeUpDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionWakeUpDto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      prompt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt'],
+      )!,
+      scheduleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schedule_json'],
+      )!,
+      nextDueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_due_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionWakeUpsTableTable createAlias(String alias) {
+    return $SessionWakeUpsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionWakeUpDto extends DataClass
+    with $SessionWakeUpsTableTableToColumns {
+  @override
+  final String id;
+
+  /// The root session the wake-up is sent to.
+  @override
+  final String sessionId;
+  @override
+  final String label;
+  @override
+  final String prompt;
+  @override
+  final String scheduleJson;
+
+  /// UTC milliseconds.
+  @override
+  final int nextDueAt;
+
+  /// UTC milliseconds.
+  @override
+  final int createdAt;
+  const SessionWakeUpDto({
+    required this.id,
+    required this.sessionId,
+    required this.label,
+    required this.prompt,
+    required this.scheduleJson,
+    required this.nextDueAt,
+    required this.createdAt,
+  });
+  SessionWakeUpsTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionWakeUpsTableCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      label: Value(label),
+      prompt: Value(prompt),
+      scheduleJson: Value(scheduleJson),
+      nextDueAt: Value(nextDueAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SessionWakeUpDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionWakeUpDto(
+      id: serializer.fromJson<String>(json['id']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      label: serializer.fromJson<String>(json['label']),
+      prompt: serializer.fromJson<String>(json['prompt']),
+      scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
+      nextDueAt: serializer.fromJson<int>(json['nextDueAt']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'label': serializer.toJson<String>(label),
+      'prompt': serializer.toJson<String>(prompt),
+      'scheduleJson': serializer.toJson<String>(scheduleJson),
+      'nextDueAt': serializer.toJson<int>(nextDueAt),
+      'createdAt': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  SessionWakeUpDto copyWith({
+    String? id,
+    String? sessionId,
+    String? label,
+    String? prompt,
+    String? scheduleJson,
+    int? nextDueAt,
+    int? createdAt,
+  }) => SessionWakeUpDto(
+    id: id ?? this.id,
+    sessionId: sessionId ?? this.sessionId,
+    label: label ?? this.label,
+    prompt: prompt ?? this.prompt,
+    scheduleJson: scheduleJson ?? this.scheduleJson,
+    nextDueAt: nextDueAt ?? this.nextDueAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SessionWakeUpDto copyWithCompanion(SessionWakeUpsTableCompanion data) {
+    return SessionWakeUpDto(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      label: data.label.present ? data.label.value : this.label,
+      prompt: data.prompt.present ? data.prompt.value : this.prompt,
+      scheduleJson: data.scheduleJson.present
+          ? data.scheduleJson.value
+          : this.scheduleJson,
+      nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionWakeUpDto(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('label: $label, ')
+          ..write('prompt: $prompt, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    label,
+    prompt,
+    scheduleJson,
+    nextDueAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionWakeUpDto &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.label == this.label &&
+          other.prompt == this.prompt &&
+          other.scheduleJson == this.scheduleJson &&
+          other.nextDueAt == this.nextDueAt &&
+          other.createdAt == this.createdAt);
+}
+
+class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
+  final Value<String> id;
+  final Value<String> sessionId;
+  final Value<String> label;
+  final Value<String> prompt;
+  final Value<String> scheduleJson;
+  final Value<int> nextDueAt;
+  final Value<int> createdAt;
+  const SessionWakeUpsTableCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.label = const Value.absent(),
+    this.prompt = const Value.absent(),
+    this.scheduleJson = const Value.absent(),
+    this.nextDueAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SessionWakeUpsTableCompanion.insert({
+    required String id,
+    required String sessionId,
+    required String label,
+    required String prompt,
+    required String scheduleJson,
+    required int nextDueAt,
+    required int createdAt,
+  }) : id = Value(id),
+       sessionId = Value(sessionId),
+       label = Value(label),
+       prompt = Value(prompt),
+       scheduleJson = Value(scheduleJson),
+       nextDueAt = Value(nextDueAt),
+       createdAt = Value(createdAt);
+  static Insertable<SessionWakeUpDto> custom({
+    Expression<String>? id,
+    Expression<String>? sessionId,
+    Expression<String>? label,
+    Expression<String>? prompt,
+    Expression<String>? scheduleJson,
+    Expression<int>? nextDueAt,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (label != null) 'label': label,
+      if (prompt != null) 'prompt': prompt,
+      if (scheduleJson != null) 'schedule_json': scheduleJson,
+      if (nextDueAt != null) 'next_due_at': nextDueAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SessionWakeUpsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sessionId,
+    Value<String>? label,
+    Value<String>? prompt,
+    Value<String>? scheduleJson,
+    Value<int>? nextDueAt,
+    Value<int>? createdAt,
+  }) {
+    return SessionWakeUpsTableCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      label: label ?? this.label,
+      prompt: prompt ?? this.prompt,
+      scheduleJson: scheduleJson ?? this.scheduleJson,
+      nextDueAt: nextDueAt ?? this.nextDueAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (prompt.present) {
+      map['prompt'] = Variable<String>(prompt.value);
+    }
+    if (scheduleJson.present) {
+      map['schedule_json'] = Variable<String>(scheduleJson.value);
+    }
+    if (nextDueAt.present) {
+      map['next_due_at'] = Variable<int>(nextDueAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionWakeUpsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('label: $label, ')
+          ..write('prompt: $prompt, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7467,6 +7957,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AgentPagesTableTable agentPagesTable = $AgentPagesTableTable(
     this,
   );
+  late final $SessionWakeUpsTableTable sessionWakeUpsTable =
+      $SessionWakeUpsTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -7507,6 +7999,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_agent_pages_status_root',
     'CREATE INDEX idx_agent_pages_status_root ON agent_pages (status, root_session_id)',
   );
+  late final Index idxSessionWakeUpsNextDue = Index(
+    'idx_session_wake_ups_next_due',
+    'CREATE INDEX idx_session_wake_ups_next_due ON session_wake_ups (next_due_at)',
+  );
+  late final Index idxSessionWakeUpsSession = Index(
+    'idx_session_wake_ups_session',
+    'CREATE INDEX idx_session_wake_ups_session ON session_wake_ups (session_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
@@ -7531,6 +8031,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionRunningTurnsTable,
     sessionInterruptionsTable,
     agentPagesTable,
+    sessionWakeUpsTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
@@ -7541,6 +8042,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxScheduledTaskRunsTask,
     idxScheduledTaskRunsSession,
     idxAgentPagesStatusRoot,
+    idxSessionWakeUpsNextDue,
+    idxSessionWakeUpsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7627,6 +8130,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('agent_pages', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_wake_ups', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -9226,6 +9736,32 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$SessionWakeUpsTableTable, List<SessionWakeUpDto>>
+  _sessionWakeUpsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionWakeUpsTable,
+        aliasName: 'sessions_table__session_id__session_wake_ups__session_id',
+      );
+
+  $$SessionWakeUpsTableTableProcessedTableManager get sessionWakeUpsTableRefs {
+    final manager =
+        $$SessionWakeUpsTableTableTableManager(
+          $_db,
+          $_db.sessionWakeUpsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionWakeUpsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -9629,6 +10165,31 @@ class $$SessionTableTableFilterComposer
           }) => $$AgentPagesTableTableFilterComposer(
             $db: $db,
             $table: $db.agentPagesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> sessionWakeUpsTableRefs(
+    Expression<bool> Function($$SessionWakeUpsTableTableFilterComposer f) f,
+  ) {
+    final $$SessionWakeUpsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionWakeUpsTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionWakeUpsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionWakeUpsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -10251,6 +10812,32 @@ class $$SessionTableTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> sessionWakeUpsTableRefs<T extends Object>(
+    Expression<T> Function($$SessionWakeUpsTableTableAnnotationComposer a) f,
+  ) {
+    final $$SessionWakeUpsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionWakeUpsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionWakeUpsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionWakeUpsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -10278,6 +10865,7 @@ class $$SessionTableTableTableManager
             bool sessionRunningTurnsTableRefs,
             bool sessionInterruptionsTableRefs,
             bool agentPagesTableRefs,
+            bool sessionWakeUpsTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -10434,6 +11022,7 @@ class $$SessionTableTableTableManager
                 sessionRunningTurnsTableRefs = false,
                 sessionInterruptionsTableRefs = false,
                 agentPagesTableRefs = false,
+                sessionWakeUpsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -10448,6 +11037,7 @@ class $$SessionTableTableTableManager
                     if (sessionInterruptionsTableRefs)
                       db.sessionInterruptionsTable,
                     if (agentPagesTableRefs) db.agentPagesTable,
+                    if (sessionWakeUpsTableRefs) db.sessionWakeUpsTable,
                   ],
                   addJoins:
                       <
@@ -10654,6 +11244,26 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (sessionWakeUpsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          SessionWakeUpDto,
+                          $SessionWakeUpsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionWakeUpsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionWakeUpsTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -10686,6 +11296,7 @@ typedef $$SessionTableTableProcessedTableManager =
         bool sessionRunningTurnsTableRefs,
         bool sessionInterruptionsTableRefs,
         bool agentPagesTableRefs,
+        bool sessionWakeUpsTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -14050,6 +14661,374 @@ typedef $$AgentPagesTableTableProcessedTableManager =
       AgentPageDto,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$SessionWakeUpsTableTableCreateCompanionBuilder =
+    SessionWakeUpsTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String label,
+      required String prompt,
+      required String scheduleJson,
+      required int nextDueAt,
+      required int createdAt,
+    });
+typedef $$SessionWakeUpsTableTableUpdateCompanionBuilder =
+    SessionWakeUpsTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> label,
+      Value<String> prompt,
+      Value<String> scheduleJson,
+      Value<int> nextDueAt,
+      Value<int> createdAt,
+    });
+
+final class $$SessionWakeUpsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionWakeUpsTableTable,
+          SessionWakeUpDto
+        > {
+  $$SessionWakeUpsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable
+      .createAlias('session_wake_ups__session_id__sessions_table__session_id');
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionWakeUpsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+  $$SessionWakeUpsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get nextDueAt => $composableBuilder(
+    column: $table.nextDueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionWakeUpsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+  $$SessionWakeUpsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextDueAt => $composableBuilder(
+    column: $table.nextDueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionWakeUpsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+  $$SessionWakeUpsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt =>
+      $composableBuilder(column: $table.prompt, builder: (column) => column);
+
+  GeneratedColumn<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get nextDueAt =>
+      $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionWakeUpsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionWakeUpsTableTable,
+          SessionWakeUpDto,
+          $$SessionWakeUpsTableTableFilterComposer,
+          $$SessionWakeUpsTableTableOrderingComposer,
+          $$SessionWakeUpsTableTableAnnotationComposer,
+          $$SessionWakeUpsTableTableCreateCompanionBuilder,
+          $$SessionWakeUpsTableTableUpdateCompanionBuilder,
+          (SessionWakeUpDto, $$SessionWakeUpsTableTableReferences),
+          SessionWakeUpDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionWakeUpsTableTableTableManager(
+    _$AppDatabase db,
+    $SessionWakeUpsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionWakeUpsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionWakeUpsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionWakeUpsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> prompt = const Value.absent(),
+                Value<String> scheduleJson = const Value.absent(),
+                Value<int> nextDueAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => SessionWakeUpsTableCompanion(
+                id: id,
+                sessionId: sessionId,
+                label: label,
+                prompt: prompt,
+                scheduleJson: scheduleJson,
+                nextDueAt: nextDueAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sessionId,
+                required String label,
+                required String prompt,
+                required String scheduleJson,
+                required int nextDueAt,
+                required int createdAt,
+              }) => SessionWakeUpsTableCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                label: label,
+                prompt: prompt,
+                scheduleJson: scheduleJson,
+                nextDueAt: nextDueAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SessionWakeUpsTableTable, SessionWakeUpDto>(
+                    table,
+                  ),
+                  $$SessionWakeUpsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable: $$SessionWakeUpsTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn: $$SessionWakeUpsTableTableReferences
+                            ._sessionIdTable(db)
+                            .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionWakeUpsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionWakeUpsTableTable,
+      SessionWakeUpDto,
+      $$SessionWakeUpsTableTableFilterComposer,
+      $$SessionWakeUpsTableTableOrderingComposer,
+      $$SessionWakeUpsTableTableAnnotationComposer,
+      $$SessionWakeUpsTableTableCreateCompanionBuilder,
+      $$SessionWakeUpsTableTableUpdateCompanionBuilder,
+      (SessionWakeUpDto, $$SessionWakeUpsTableTableReferences),
+      SessionWakeUpDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14106,4 +15085,6 @@ class $AppDatabaseManager {
       );
   $$AgentPagesTableTableTableManager get agentPagesTable =>
       $$AgentPagesTableTableTableManager(_db, _db.agentPagesTable);
+  $$SessionWakeUpsTableTableTableManager get sessionWakeUpsTable =>
+      $$SessionWakeUpsTableTableTableManager(_db, _db.sessionWakeUpsTable);
 }

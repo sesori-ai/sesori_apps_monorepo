@@ -239,6 +239,8 @@ class ScheduledTaskAgentService({
           outcome: outcome,
           bySubagent: approval.displaySessionId != null,
         ),
+        timing: SessionNoticeTiming.derived,
+        claim: null,
       ),
     );
     return AgentApprovalAnswered(outcome: outcome);

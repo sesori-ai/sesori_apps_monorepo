@@ -622,4 +622,314 @@ String toString() {
 
 
 
+
+/// @nodoc
+mixin _$ScheduleWakeUpArguments {
+
+ String get label; String get prompt; WakeUpWhenArgument get when;/// Null for the bridge computer's zone.
+@JsonKey(name: "time_zone") String? get timeZone;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as ScheduleWakeUpArguments;
+  return 'ScheduleWakeUpArguments(label: ${_this.label}, prompt: ${_this.prompt}, when: ${_this.when}, timeZone: ${_this.timeZone})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true, createToJson: false)
+class _ScheduleWakeUpArguments implements ScheduleWakeUpArguments {
+  const _ScheduleWakeUpArguments({required this.label, required this.prompt, required this.when, @JsonKey(name: "time_zone") required this.timeZone});
+  factory _ScheduleWakeUpArguments.fromJson(Map<String, dynamic> json) => _$ScheduleWakeUpArgumentsFromJson(json);
+
+@override final  String label;
+@override final  String prompt;
+@override final  WakeUpWhenArgument when;
+/// Null for the bridge computer's zone.
+@override@JsonKey(name: "time_zone") final  String? timeZone;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'ScheduleWakeUpArguments(label: $label, prompt: $prompt, when: $when, timeZone: $timeZone)';
+}
+
+
+}
+
+
+
+
+WakeUpWhenArgument _$WakeUpWhenArgumentFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['kind']) {
+                  case 'in':
+          return WakeUpWhenAfterArgument.fromJson(
+            json
+          );
+                case 'every':
+          return WakeUpWhenEveryArgument.fromJson(
+            json
+          );
+                case 'daily':
+          return WakeUpWhenDailyArgument.fromJson(
+            json
+          );
+                case 'weekdays':
+          return WakeUpWhenWeekdaysArgument.fromJson(
+            json
+          );
+                case 'weekly':
+          return WakeUpWhenWeeklyArgument.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'kind',
+  'WakeUpWhenArgument',
+  'Invalid union type "${json['kind']}"!'
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$WakeUpWhenArgument {
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class WakeUpWhenAfterArgument implements WakeUpWhenArgument {
+  const WakeUpWhenAfterArgument({required this.minutes,  String? $type}): $type = $type ?? 'in';
+  factory WakeUpWhenAfterArgument.fromJson(Map<String, dynamic> json) => _$WakeUpWhenAfterArgumentFromJson(json);
+
+ final  int minutes;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument.after(minutes: $minutes)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class WakeUpWhenEveryArgument implements WakeUpWhenArgument {
+  const WakeUpWhenEveryArgument({required this.minutes,  String? $type}): $type = $type ?? 'every';
+  factory WakeUpWhenEveryArgument.fromJson(Map<String, dynamic> json) => _$WakeUpWhenEveryArgumentFromJson(json);
+
+ final  int minutes;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument.every(minutes: $minutes)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class WakeUpWhenDailyArgument implements WakeUpWhenArgument {
+  const WakeUpWhenDailyArgument({required this.time,  String? $type}): $type = $type ?? 'daily';
+  factory WakeUpWhenDailyArgument.fromJson(Map<String, dynamic> json) => _$WakeUpWhenDailyArgumentFromJson(json);
+
+ final  String time;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument.daily(time: $time)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class WakeUpWhenWeekdaysArgument implements WakeUpWhenArgument {
+  const WakeUpWhenWeekdaysArgument({required this.time,  String? $type}): $type = $type ?? 'weekdays';
+  factory WakeUpWhenWeekdaysArgument.fromJson(Map<String, dynamic> json) => _$WakeUpWhenWeekdaysArgumentFromJson(json);
+
+ final  String time;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument.weekdays(time: $time)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class WakeUpWhenWeeklyArgument implements WakeUpWhenArgument {
+  const WakeUpWhenWeeklyArgument({required  Set<TaskWeekday> days, required this.time,  String? $type}): _days = days,$type = $type ?? 'weekly';
+  factory WakeUpWhenWeeklyArgument.fromJson(Map<String, dynamic> json) => _$WakeUpWhenWeeklyArgumentFromJson(json);
+
+ final  Set<TaskWeekday> _days;
+ Set<TaskWeekday> get days {
+  if (_days is EqualUnmodifiableSetView) return _days;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_days);
+}
+
+ final  String time;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+
+
+
+
+@override
+String toString() {
+    return 'WakeUpWhenArgument.weekly(days: $days, time: $time)';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$CancelWakeUpArguments {
+
+@JsonKey(name: "wakeup_id") String get wakeUpId;
+
+
+
+
+
+@override
+String toString() {
+  final _this = this as CancelWakeUpArguments;
+  return 'CancelWakeUpArguments(wakeUpId: ${_this.wakeUpId})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+
+@JsonSerializable(checked: true)
+class _CancelWakeUpArguments implements CancelWakeUpArguments {
+  const _CancelWakeUpArguments({@JsonKey(name: "wakeup_id") required this.wakeUpId});
+  factory _CancelWakeUpArguments.fromJson(Map<String, dynamic> json) => _$CancelWakeUpArgumentsFromJson(json);
+
+@override@JsonKey(name: "wakeup_id") final  String wakeUpId;
+
+
+
+
+
+
+@override
+String toString() {
+    return 'CancelWakeUpArguments(wakeUpId: $wakeUpId)';
+}
+
+
+}
+
+
+
+
 // dart format on

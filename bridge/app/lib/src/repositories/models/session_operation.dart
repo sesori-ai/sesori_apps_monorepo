@@ -50,4 +50,5 @@ enum SessionOperation() {
   proposeTaskChange,
   sendPage,
   deliverNotice,
+  manageWakeUps,
 }

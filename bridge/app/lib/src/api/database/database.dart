@@ -28,6 +28,7 @@ import "tables/session_interruptions_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_running_turns_table.dart";
 import "tables/session_table.dart";
+import "tables/session_wake_ups_table.dart";
 import "tables/side_chat_exchanges_table.dart";
 
 part "database.g.dart";
@@ -51,6 +52,7 @@ part "database.g.dart";
     SessionRunningTurnsTable,
     SessionInterruptionsTable,
     AgentPagesTable,
+    SessionWakeUpsTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -58,7 +60,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -414,6 +416,12 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // No agent sent a page before v31, so the table starts empty.
         await m.createTable(schema.agentPages);
         await m.createIndex(schema.idxAgentPagesStatusRoot);
+      },
+      from31To32: (m, schema) async {
+        // No agent set a wake-up before v32, so the table starts empty.
+        await m.createTable(schema.sessionWakeUps);
+        await m.createIndex(schema.idxSessionWakeUpsNextDue);
+        await m.createIndex(schema.idxSessionWakeUpsSession);
       },
     ),
     beforeOpen: (details) async {

@@ -130,8 +130,12 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   };
 
   /// The schedule in plain words, with its time zone.
-  String schedule({required ScheduledTaskDefinition definition}) {
-    final schedule = switch (definition.schedule) {
+  String schedule({required ScheduledTaskDefinition definition}) =>
+      scheduleIn(schedule: definition.schedule, timeZone: definition.timeZone);
+
+  /// [schedule] in plain words, with [timeZone].
+  String scheduleIn({required TaskSchedule schedule, required String timeZone}) {
+    final words = switch (schedule) {
       TaskScheduleOnce(:final at) => "once at ${_localDateTime(at: at)}",
       TaskScheduleDaily(:final time) => "daily at ${_time(time: time)}",
       TaskScheduleWeekdays(:final time) => "Monday to Friday at ${_time(time: time)}",
@@ -140,7 +144,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
       TaskScheduleEveryHours(:final hours, :final start) => "every $hours hours from ${_localDateTime(at: start)}",
       TaskScheduleUnknown() => "a schedule this bridge does not know",
     };
-    return "$schedule (${definition.timeZone})";
+    return "$words ($timeZone)";
   }
 
   List<String> _body({required ScheduledTaskAgentChange change}) {
