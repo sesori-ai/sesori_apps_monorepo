@@ -1074,6 +1074,8 @@ void main() {
 
         final created = (await tasks.list()).items.singleWhere((task) => task.definition.name == "Weekly cleanup");
         expect(created.command, "git fetch --prune");
+        final shown = await call(tool: "get_task", arguments: {"task_id": created.id});
+        expect(shown.text, contains("command, run before each run's prompt:\n```\ngit fetch --prune\n```\nprompt:"));
       });
 
       test("update_task sets, changes and removes the command on Allow", () async {

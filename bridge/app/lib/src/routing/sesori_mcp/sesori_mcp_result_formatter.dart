@@ -70,8 +70,7 @@ class const SesoriMcpResultFormatter() {
       "next run: ${_instantOrNone(instant: task.nextRunAt)}",
       "last run: ${_runOrNone(run: task.lastRun)}",
       switch (task.command) {
-        final command? =>
-          "command, run before each run's prompt:\n${ScheduledTaskChangeDescriptionBuilder.fence(text: command)}",
+        final command? => "command, run before each run's prompt:\n${_fenced(text: command)}",
         null => "command: none",
       },
       "prompt:",
@@ -244,6 +243,11 @@ class const SesoriMcpResultFormatter() {
 
   String _date({required int year, required int month, required int day}) =>
       "${year.toString().padLeft(4, "0")}-${_two(value: month)}-${_two(value: day)}";
+
+  String _fenced({required String text}) {
+    final fence = ScheduledTaskChangeDescriptionBuilder.fence(text: text);
+    return "$fence\n$text\n$fence";
+  }
 
   String _two({required int value}) => value.toString().padLeft(2, "0");
 

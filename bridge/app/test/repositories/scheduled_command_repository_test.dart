@@ -96,9 +96,13 @@ void main() {
   });
 
   test("a stop kills a running command", () async {
+    final ready = p.join(root.path, "ready");
     final stop = Completer<void>();
-    final result = run(command: "echo started; exec sleep 30", stop: stop.future);
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+    // Stopped once it has printed: a login shell can take a while to start.
+    final result = run(command: "echo started; touch '$ready'; exec sleep 30", stop: stop.future);
+    while (!File(ready).existsSync()) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
     stop.complete();
 
     expect(
