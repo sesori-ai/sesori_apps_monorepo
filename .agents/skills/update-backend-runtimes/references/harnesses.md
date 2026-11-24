@@ -189,7 +189,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   installer checks the `PATH` of the process running it, not the environment
   passed to the child, so a host `codex` on `PATH` blocks the managed install.
   Start the probe with a system-only `PATH` and an absolute Dart path (the asdf
-  shim fails under it).
+  shim fails under it). If the probe's process adapter wraps commands in
+  `sandbox-exec`, make it throw `ProcessException` when a bare executable is
+  not on the allowlisted `PATH`; otherwise the installer's PATH check sees a
+  failed command instead of a missing one and refuses with "The global Codex
+  runtime now takes precedence".
 - **Probe both current-host transports:** isolated HOME/`CODEX_HOME` (create the
   directory first; Codex exits when `CODEX_HOME` does not exist), exact
   version, 10-second response deadlines and bounded process-tree cleanup. Follow
