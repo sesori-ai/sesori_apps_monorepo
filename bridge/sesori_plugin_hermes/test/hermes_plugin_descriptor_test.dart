@@ -554,6 +554,12 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
+            stdoutBytes: utf8.encode("hermes-acp v0.23.4\n"),
+            stderrBytes: const [],
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
             stdoutBytes: utf8.encode("Model: DeepSeek-V4-Flash\nProvider: OpenCode Go\n"),
             stderrBytes: const [],
             exitCode: Future<int>.value(0),
@@ -589,8 +595,10 @@ void main() {
         "/resolved/hermes",
         "/resolved/hermes",
         "/resolved/hermes",
+        "/resolved/hermes",
       ]);
       expect(processes.spawnedArguments, [
+        const ["acp", "--version"],
         const ["status"],
         const ["acp"],
         const ["acp"],
@@ -598,12 +606,49 @@ void main() {
       ]);
       // Only the status probe skips a pending Hermes source update; the agent
       // launch still runs it so the update eventually finishes.
-      expect(processes.spawnedEnvironments[0]?["HERMES_DISABLE_LAZY_INSTALLS"], "1");
-      expect(processes.spawnedEnvironments[1]?.containsKey("HERMES_DISABLE_LAZY_INSTALLS"), isNot(isTrue));
+      expect(processes.spawnedEnvironments[1]?["HERMES_DISABLE_LAZY_INSTALLS"], "1");
+      expect(processes.spawnedEnvironments[2]?.containsKey("HERMES_DISABLE_LAZY_INSTALLS"), isNot(isTrue));
 
       await plugin.shutdown(budget: null);
       expect(processes.gracefulSignals, [101, 100]);
     });
+
+    for (final (:version, :getsTools) in const [
+      (version: "0.22.2", getsTools: false),
+      (version: "0.22.3", getsTools: true),
+    ]) {
+      test("start gives Hermes $version sessions Sesori tools: $getsTools", () async {
+        final processes = _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess(
+              pid: 1,
+              stdoutBytes: utf8.encode("hermes-acp v$version\n"),
+              stderrBytes: const [],
+              exitCode: Future<int>.value(0),
+            ),
+            _ProbeProcess(
+              pid: 2,
+              stdoutBytes: utf8.encode("Model: DeepSeek-V4-Flash\nProvider: OpenCode Go\n"),
+              stderrBytes: const [],
+              exitCode: Future<int>.value(0),
+            ),
+          ],
+          servesAcp: true,
+        );
+        final host = _StartPluginHost(
+          processes: processes,
+          config: config,
+          provisionedRuntimePath: "/resolved/hermes",
+        );
+
+        final plugin = await const HermesPluginDescriptor().start(host);
+        await plugin.shutdown(budget: null);
+
+        expect(const HermesPluginDescriptor().injectsSesoriTools, isTrue);
+        expect(host.sesoriMcpReads, getsTools ? 1 : 0);
+      });
+    }
   });
 }
 
@@ -621,8 +666,25 @@ class _StartPluginHost({
   @override
   StartAbortSignal get startAborted => StartAbortSignal.never;
 
+  int sesoriMcpReads = 0;
+
+  @override
+  SesoriMcpAccess get sesoriMcp {
+    sesoriMcpReads += 1;
+    return _UnusedSesoriMcp();
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedSesoriMcp() implements SesoriMcpAccess {
+  @override
+  SesoriMcpLaunch? mint() => throw StateError("Only a session the user starts mints a token");
+
+  @override
+  void bind({required SesoriMcpLaunch launch, required String backendSessionId}) =>
+      throw StateError("Only a session the user starts binds a token");
 }
 
 /// A [HostProcessService] that either throws on [spawn] (to simulate ENOENT)
