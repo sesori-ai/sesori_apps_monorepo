@@ -27,10 +27,10 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   /// A token that is a word.
   static final _word = RegExp(r"^[\p{L}\p{N}_]", unicode: true);
 
-  /// The most token pairs a changed line pair's word diff compares: its
-  /// table takes memory and time in proportion. A longer change shows its
-  /// lines without word marks.
-  static const _wordDiffBudget = 250000;
+  /// The most token pairs the word diffs of one diff block compare in total:
+  /// each diff's table takes memory and time in proportion. A pair that would
+  /// go past it shows its lines without word marks.
+  static const _wordDiffBudget = 1000000;
 
   /// Invisible characters that can reorder or hide what a command shows:
   /// bidi marks, embeddings, overrides and isolates, and zero-width ones.
@@ -365,9 +365,16 @@ class const ScheduledTaskChangeDescriptionBuilder() {
   /// words changed. In every run of removed lines followed by added lines, the
   /// first removed line pairs with the first added one, and so on, as in a
   /// split diff; unpaired lines and pairs that share no word stay plain,
-  /// because the whole line changed.
+  /// because the whole line changed. All pairs share [_wordDiffBudget].
   List<List<_Span>> _changedWords({required List<String> lines}) {
     final spans = [for (final _ in lines) <_Span>[]];
+    var budgetLeft = _wordDiffBudget;
+    bool spend(int pairs) {
+      if (pairs > budgetLeft) return false;
+      budgetLeft -= pairs;
+      return true;
+    }
+
     var index = 0;
     while (index < lines.length) {
       if (!lines[index].startsWith("-")) {
@@ -383,10 +390,15 @@ class const ScheduledTaskChangeDescriptionBuilder() {
         index++;
       }
       for (var pair = 0; pair < min(added - removed, index - added); pair++) {
-        if (_wordDiff(before: lines[removed + pair].substring(1), after: lines[added + pair].substring(1)) case (
-          :final before,
-          :final after,
-        )) {
+        if (_wordDiff(
+              before: lines[removed + pair].substring(1),
+              after: lines[added + pair].substring(1),
+              spend: spend,
+            )
+            case (
+              :final before,
+              :final after,
+            )) {
           spans[removed + pair] = before;
           spans[added + pair] = after;
         }
@@ -397,9 +409,13 @@ class const ScheduledTaskChangeDescriptionBuilder() {
 
   /// The ranges of [before] and of [after] whose words a word-level diff
   /// removes or adds, with ranges that only whitespace separates joined;
-  /// null when the two share no word, or when the part between their shared
-  /// start and end is too long to compare within [_wordDiffBudget].
-  ({List<_Span> before, List<_Span> after})? _wordDiff({required String before, required String after}) {
+  /// null when the two share no word, or when [spend] refuses the token pairs
+  /// that comparing the part between their shared start and end takes.
+  ({List<_Span> before, List<_Span> after})? _wordDiff({
+    required String before,
+    required String after,
+    required bool Function(int pairs) spend,
+  }) {
     final oldTokens = _tokens.allMatches(before).toList();
     final newTokens = _tokens.allMatches(after).toList();
     String text({required String line, required Match token}) => line.substring(token.start, token.end);
@@ -419,7 +435,7 @@ class const ScheduledTaskChangeDescriptionBuilder() {
     }
     final oldMiddle = oldTexts.sublist(prefix, oldTexts.length - suffix);
     final newMiddle = newTexts.sublist(prefix, newTexts.length - suffix);
-    if (oldMiddle.length * newMiddle.length > _wordDiffBudget) return null;
+    if (!spend(oldMiddle.length * newMiddle.length)) return null;
     final removed = <_Span>[];
     final added = <_Span>[];
     void mark({required List<_Span> spans, required String line, required Match token}) {

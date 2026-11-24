@@ -177,6 +177,18 @@ void main() {
       ),
       "```diff",
     );
+
+    // The pairs of one block share the budget: the first ones get marks, and
+    // once it runs out the rest show unmarked.
+    String lines({required String word}) => [
+      for (var line = 0; line < 20; line++) "${List.generate(150, (i) => "$word${line}_$i").join(" ")} shared",
+    ].join("\n");
+    final fence = diffFence(
+      before: lines(word: "a"),
+      after: lines(word: "b"),
+    );
+    expect(fence, startsWith("```diff words=0:"));
+    expect(fence, isNot(contains(";39:")));
   });
 
   test("a prompt whose text stays the same but whose kind changes shows the new prompt", () {
