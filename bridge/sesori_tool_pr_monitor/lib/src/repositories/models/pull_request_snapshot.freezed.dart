@@ -536,7 +536,9 @@ as DateTime,
 mixin _$PullRequestComment {
 
  String get id;/// `ghost` when GitHub reports no author (a deleted account).
- String get author; bool get isBot; DateTime get createdAt; PullRequestCommentOrigin get origin;/// The state of the review a thread comment belongs to; null for issue
+ String get author; bool get isBot; DateTime get createdAt;/// The raw Markdown text. Only on-demand feedback shows it; reports and
+/// stored baselines never carry it.
+ String get body; PullRequestCommentOrigin get origin;/// The state of the review a thread comment belongs to; null for issue
 /// comments and review summaries.
  PullRequestReviewState? get reviewState;
 /// Create a copy of PullRequestComment
@@ -550,20 +552,20 @@ $PullRequestCommentCopyWith<PullRequestComment> get copyWith => _$PullRequestCom
 @override
 bool operator ==(Object other) {
   final _this = this as PullRequestComment;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestComment&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.author, _this.author) || other.author == _this.author)&&(identical(other.isBot, _this.isBot) || other.isBot == _this.isBot)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.origin, _this.origin) || other.origin == _this.origin)&&(identical(other.reviewState, _this.reviewState) || other.reviewState == _this.reviewState));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestComment&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.author, _this.author) || other.author == _this.author)&&(identical(other.isBot, _this.isBot) || other.isBot == _this.isBot)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.body, _this.body) || other.body == _this.body)&&(identical(other.origin, _this.origin) || other.origin == _this.origin)&&(identical(other.reviewState, _this.reviewState) || other.reviewState == _this.reviewState));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PullRequestComment;
-  return Object.hash(runtimeType,_this.id,_this.author,_this.isBot,_this.createdAt,_this.origin,_this.reviewState);
+  return Object.hash(runtimeType,_this.id,_this.author,_this.isBot,_this.createdAt,_this.body,_this.origin,_this.reviewState);
 }
 
 @override
 String toString() {
   final _this = this as PullRequestComment;
-  return 'PullRequestComment(id: ${_this.id}, author: ${_this.author}, isBot: ${_this.isBot}, createdAt: ${_this.createdAt}, origin: ${_this.origin}, reviewState: ${_this.reviewState})';
+  return 'PullRequestComment(id: ${_this.id}, author: ${_this.author}, isBot: ${_this.isBot}, createdAt: ${_this.createdAt}, body: ${_this.body}, origin: ${_this.origin}, reviewState: ${_this.reviewState})';
 }
 
 
@@ -574,7 +576,7 @@ abstract mixin class $PullRequestCommentCopyWith<$Res>  {
   factory $PullRequestCommentCopyWith(PullRequestComment value, $Res Function(PullRequestComment) _then) = _$PullRequestCommentCopyWithImpl;
 @useResult
 $Res call({
- String id, String author, bool isBot, DateTime createdAt, PullRequestCommentOrigin origin, PullRequestReviewState? reviewState
+ String id, String author, bool isBot, DateTime createdAt, String body, PullRequestCommentOrigin origin, PullRequestReviewState? reviewState
 });
 
 
@@ -591,13 +593,14 @@ class _$PullRequestCommentCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestComment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? author = null,Object? isBot = null,Object? createdAt = null,Object? origin = null,Object? reviewState = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? author = null,Object? isBot = null,Object? createdAt = null,Object? body = null,Object? origin = null,Object? reviewState = freezed,}) {
   return _then(PullRequestComment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,author: null == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
 as String,isBot: null == isBot ? _self.isBot : isBot // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,origin: null == origin ? _self.origin : origin // ignore: cast_nullable_to_non_nullable
+as DateTime,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String,origin: null == origin ? _self.origin : origin // ignore: cast_nullable_to_non_nullable
 as PullRequestCommentOrigin,reviewState: freezed == reviewState ? _self.reviewState : reviewState // ignore: cast_nullable_to_non_nullable
 as PullRequestReviewState?,
   ));
@@ -611,7 +614,7 @@ as PullRequestReviewState?,
 
 
 class _PullRequestComment implements PullRequestComment {
-  const _PullRequestComment({required this.id, required this.author, required this.isBot, required this.createdAt, required this.origin, required this.reviewState});
+  const _PullRequestComment({required this.id, required this.author, required this.isBot, required this.createdAt, required this.body, required this.origin, required this.reviewState});
   
 
 @override final  String id;
@@ -619,6 +622,9 @@ class _PullRequestComment implements PullRequestComment {
 @override final  String author;
 @override final  bool isBot;
 @override final  DateTime createdAt;
+/// The raw Markdown text. Only on-demand feedback shows it; reports and
+/// stored baselines never carry it.
+@override final  String body;
 @override final  PullRequestCommentOrigin origin;
 /// The state of the review a thread comment belongs to; null for issue
 /// comments and review summaries.
@@ -634,18 +640,18 @@ _$PullRequestCommentCopyWith<_PullRequestComment> get copyWith => __$PullRequest
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestComment&&(identical(other.id, id) || other.id == id)&&(identical(other.author, author) || other.author == author)&&(identical(other.isBot, isBot) || other.isBot == isBot)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.origin, origin) || other.origin == origin)&&(identical(other.reviewState, reviewState) || other.reviewState == reviewState));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestComment&&(identical(other.id, id) || other.id == id)&&(identical(other.author, author) || other.author == author)&&(identical(other.isBot, isBot) || other.isBot == isBot)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.body, body) || other.body == body)&&(identical(other.origin, origin) || other.origin == origin)&&(identical(other.reviewState, reviewState) || other.reviewState == reviewState));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,author,isBot,createdAt,origin,reviewState);
+    return Object.hash(runtimeType,id,author,isBot,createdAt,body,origin,reviewState);
 }
 
 @override
 String toString() {
-    return 'PullRequestComment(id: $id, author: $author, isBot: $isBot, createdAt: $createdAt, origin: $origin, reviewState: $reviewState)';
+    return 'PullRequestComment(id: $id, author: $author, isBot: $isBot, createdAt: $createdAt, body: $body, origin: $origin, reviewState: $reviewState)';
 }
 
 
@@ -656,7 +662,7 @@ abstract mixin class _$PullRequestCommentCopyWith<$Res> implements $PullRequestC
   factory _$PullRequestCommentCopyWith(_PullRequestComment value, $Res Function(_PullRequestComment) _then) = __$PullRequestCommentCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String author, bool isBot, DateTime createdAt, PullRequestCommentOrigin origin, PullRequestReviewState? reviewState
+ String id, String author, bool isBot, DateTime createdAt, String body, PullRequestCommentOrigin origin, PullRequestReviewState? reviewState
 });
 
 
@@ -673,13 +679,14 @@ class __$PullRequestCommentCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestComment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? author = null,Object? isBot = null,Object? createdAt = null,Object? origin = null,Object? reviewState = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? author = null,Object? isBot = null,Object? createdAt = null,Object? body = null,Object? origin = null,Object? reviewState = freezed,}) {
   return _then(_PullRequestComment(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,author: null == author ? _self.author : author // ignore: cast_nullable_to_non_nullable
 as String,isBot: null == isBot ? _self.isBot : isBot // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,origin: null == origin ? _self.origin : origin // ignore: cast_nullable_to_non_nullable
+as DateTime,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String,origin: null == origin ? _self.origin : origin // ignore: cast_nullable_to_non_nullable
 as PullRequestCommentOrigin,reviewState: freezed == reviewState ? _self.reviewState : reviewState // ignore: cast_nullable_to_non_nullable
 as PullRequestReviewState?,
   ));

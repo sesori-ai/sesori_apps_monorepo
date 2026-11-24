@@ -6,8 +6,8 @@
 | 2 | ⚙️ Tool-group interface and grouped MCP server | Done | #2909 |
 | 3 | 🌿 Per-group toggles and leaner task text | In review | |
 | 4 | 🚧 Tool host: records, notices and approvals | Not started | |
-| 5 | ⚙️ PR monitor package: `gh` API and snapshots | In review | |
-| 6 | ⚙️ PR monitor rules | Not started | |
+| 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
+| 6 | ⚙️ PR monitor rules | In review | |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Not started | |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
@@ -47,3 +47,12 @@
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The
   verification matrix includes it once that PR lands.
+- Step 6 added `PullRequestBaseline` (seen comment ids per channel and the
+  unresolved-thread count) as the report builder's input; a null baseline is
+  a watch's first report. Step 7 extends it with the signatures, state and
+  mergeable it stores, and appends the plugin's startup assessment paragraph
+  to a new watch's first report. `PullRequestComment` now carries `body` for
+  the feedback builder; the stored baseline must not. Step 8 adds the
+  readiness-error and auto-merge-notice report lines and the auto-merge
+  guidance text. Report and feedback texts name the bridge tools
+  (`mark_pr_ready`, `reply_on_pr` with `thread_id`) instead of `pr_monitor`.
