@@ -12,6 +12,7 @@ import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
 import "../../session_diffs/utils/diff_theme.dart";
 import "pending_request_auto_dismiss.dart";
+import "permission_field_change.dart";
 
 // Shared by the touch and pointer layouts so integration tests find a
 // decision whichever layout the platform shows.
@@ -107,18 +108,19 @@ class const PermissionModal({
       data: permission.description,
       selectable: true,
       onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-      builders: {"pre": _WrappingCodeBlockBuilder(padding: prego.spacing.md)},
+      builders: {
+        "pre": _WrappingCodeBlockBuilder(padding: prego.spacing.md),
+        PermissionFieldChangeBuilder.tag: PermissionFieldChangeBuilder(),
+      },
+      blockSyntaxes: [PermissionFieldChangeSyntax()],
       styleSheet:
           buildSessionMarkdownStyleSheet(
             prego: prego,
             paragraphStyle: paragraphStyle,
           ).copyWith(
-            // An updated task's old values, struck through beside the new
-            // ones. Set whole, or the platform fallback's font and size win.
-            del: paragraphStyle.copyWith(
-              color: prego.colors.textSecondary,
-              decoration: TextDecoration.lineThrough,
-            ),
+            // Struck text, styled like a task update's old values. Set whole,
+            // or the platform fallback's font and size win.
+            del: oldValueStyle(prego: prego, style: paragraphStyle),
             codeblockDecoration: BoxDecoration(
               color: prego.colors.bgSurface1,
               borderRadius: BorderRadius.circular(prego.radius.md),
@@ -238,7 +240,14 @@ class _WrappingCodeBlockBuilder({required final double padding}) extends Markdow
     final isDiff = element.children?.any(
       (child) => child is md.Element && child.tag == "code" && child.attributes["class"] == "language-diff",
     );
-    if (isDiff ?? false) return _DiffBlock(diff: code, padding: padding, style: preferredStyle);
+    if (isDiff ?? false) {
+      return _DiffBlock(
+        diff: code,
+        changedWords: _changedWords(metadata: element.attributes["data-metadata"]),
+        padding: padding,
+        style: preferredStyle,
+      );
+    }
     return SizedBox(
       width: double.infinity,
       child: Padding(
@@ -249,23 +258,67 @@ class _WrappingCodeBlockBuilder({required final double padding}) extends Markdow
   }
 }
 
+/// A character range of a diff line's text, [end] exclusive.
+typedef _Span = ({int start, int end});
+
+/// The changed words a diff fence's info string lists after its language, as
+/// `words=<line>:<start>-<end>,…;…`, keyed by line index. Malformed entries
+/// are left out, so their lines show only their line tint.
+Map<int, List<_Span>> _changedWords({required String? metadata}) {
+  final words = <int, List<_Span>>{};
+  if (metadata == null || !metadata.startsWith("words=")) return words;
+  for (final entry in metadata.substring("words=".length).split(";")) {
+    if (entry.split(":") case [final line, final ranges]) {
+      if (int.tryParse(line) case final index?) {
+        words[index] = [
+          for (final range in ranges.split(","))
+            if (range.split("-") case [final start, final end])
+              if ((int.tryParse(start), int.tryParse(end)) case (final start?, final end?)) (start: start, end: end),
+        ];
+      }
+    }
+  }
+  return words;
+}
+
 /// A unified diff, such as the prompt change of a task update, tinted like
-/// the session's file diffs: removed lines red, added lines green. A wrapped
-/// line keeps its text clear of the `-`/`+` marker.
-class const _DiffBlock({required final String diff, required final double padding, required final TextStyle? style})
-    extends StatelessWidget {
+/// the session's file diffs: removed lines red, added lines green, and the
+/// words a changed line changed in a stronger tint. A wrapped line keeps its
+/// text clear of the `-`/`+` marker.
+class const _DiffBlock({
+  required final String diff,
+  required final Map<int, List<_Span>> changedWords,
+  required final double padding,
+  required final TextStyle? style,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = DiffTheme.of(context);
     const barWidth = 2.0;
-    Widget row({required String line}) {
-      final (Color, Color)? tint = switch (line.isEmpty ? null : line[0]) {
-        "-" => (theme.removedBg, theme.removedBar),
-        "+" => (theme.addedBg, theme.addedBar),
-        " " => (theme.contextBg, Colors.transparent),
+    Widget row({required int index, required String line}) {
+      final (Color, Color, Color)? tint = switch (line.isEmpty ? null : line[0]) {
+        "-" => (theme.removedBg, theme.removedBar, theme.removedWordBg),
+        "+" => (theme.addedBg, theme.addedBar, theme.addedWordBg),
+        " " => (theme.contextBg, Colors.transparent, Colors.transparent),
         _ => null,
       };
-      if (tint case (final background, final bar)) {
+      if (tint case (final background, final bar, final wordBackground)) {
+        final text = line.substring(1);
+        final spans = <TextSpan>[];
+        var shown = 0;
+        for (final (:start, :end) in changedWords[index] ?? const <_Span>[]) {
+          // Ranges arrive in order and inside the line; skip any that are not.
+          if (start < shown || end <= start || end > text.length) continue;
+          spans.add(TextSpan(text: text.substring(shown, start)));
+          spans.add(
+            TextSpan(
+              text: text.substring(start, end),
+              style: TextStyle(backgroundColor: wordBackground),
+            ),
+          );
+          shown = end;
+        }
+        spans.add(TextSpan(text: text.substring(shown)));
         return DecoratedBox(
           decoration: BoxDecoration(
             color: background,
@@ -279,7 +332,9 @@ class const _DiffBlock({required final String diff, required final double paddin
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(line[0], style: style?.copyWith(color: theme.prefixText)),
-                Expanded(child: Text(line.substring(1), style: style)),
+                Expanded(
+                  child: Text.rich(TextSpan(children: spans), style: style),
+                ),
               ],
             ),
           ),
@@ -297,7 +352,7 @@ class const _DiffBlock({required final String diff, required final double paddin
       child: SelectionArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [for (final line in diff.split("\n")) row(line: line)],
+          children: [for (final (index, line) in diff.split("\n").indexed) row(index: index, line: line)],
         ),
       ),
     );

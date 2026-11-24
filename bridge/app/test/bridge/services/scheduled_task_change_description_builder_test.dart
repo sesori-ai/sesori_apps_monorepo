@@ -57,7 +57,7 @@ void main() {
         "**Update “Nightly”**",
         "Schedule: ~~daily at 02:00 (UTC)~~ → Monday to Friday at 08:30 (UTC)",
         "Prompt changes:",
-        "```diff\n-Check the build\n+Check the build and the tests\n```",
+        "```diff words=1:15-29\n-Check the build\n+Check the build and the tests\n```",
         "Asked by a scheduled run of this task.",
       ],
     );
@@ -93,6 +93,37 @@ void main() {
         " 11",
         "-old",
         "````",
+      ].join("\n"),
+    );
+  });
+
+  test("a prompt change marks the words each removed line and the added line replacing it changed", () {
+    final before = _task.copyWith(
+      prompt: const ScheduledTaskPrompt.text(text: "Check the build on main.\nPost a summary.\nKeep this\nDrop this"),
+    );
+    final after = before.copyWith(
+      prompt: const ScheduledTaskPrompt.text(
+        text: "Check the tests on main and dev.\nWrite everything down.\nKeep this",
+      ),
+    );
+
+    final lines = blocks(
+      change: UpdateTaskChange(taskId: "t", before: before, after: after),
+    );
+
+    // The second pair shares only spaces and a full stop, so it stays plain,
+    // and the last removed line has no added line to pair with.
+    expect(
+      lines[lines.length - 2],
+      [
+        "```diff words=0:10-15;2:10-15,23-31",
+        "-Check the build on main.",
+        "-Post a summary.",
+        "+Check the tests on main and dev.",
+        "+Write everything down.",
+        " Keep this",
+        "-Drop this",
+        "```",
       ].join("\n"),
     );
   });
