@@ -23,7 +23,7 @@ final class const ScheduledCommandStopped({
 /// The command did not start, for example because its folder is gone.
 final class const ScheduledCommandCouldNotStart({required final String error}) extends ScheduledCommandResult;
 
-/// One output stream of a run.
+/// One output stream of a run, written whole to [path].
 final class const CommandStreamOutput({
   /// The file holding the whole stream; null when it could not be written.
   required final String? path,

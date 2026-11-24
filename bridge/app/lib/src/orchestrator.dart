@@ -1706,8 +1706,7 @@ class OrchestratorSession._({
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
       attempt(_scheduledTaskRunService.dispose),
-      // Kills running commands, so their wake-ups end before the notice and
-      // mutation dispatchers close.
+      // Kills running commands so shutdown does not wait out their timeout.
       attempt(_scheduledCommandService.dispose),
       attempt(_agentApprovalRepository.dispose),
       attempt(_agentPageRepository.dispose),
