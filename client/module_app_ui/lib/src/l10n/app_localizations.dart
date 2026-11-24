@@ -7585,6 +7585,12 @@ abstract class AppLocalizations {
   /// **'Next run'**
   String get scheduledTaskNextRun;
 
+  /// Task page row label above the shell command each run runs before its prompt; the command itself is shown below.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs first'**
+  String get scheduledTaskCommand;
+
   /// Task page next-run value when nothing is left to run.
   ///
   /// In en, this message translates to:

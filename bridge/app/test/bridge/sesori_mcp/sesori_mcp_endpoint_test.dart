@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
 import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -200,6 +201,7 @@ void main() {
       definition: _definition,
       nextDueAt: DateTime.utc(2026, 11, 16, 7),
       now: now,
+      command: null,
     );
     taskId = task.id;
     await db.customStatement("UPDATE sessions_table SET scheduled_task_id = ? WHERE session_id = 's1'", [taskId]);
@@ -792,7 +794,11 @@ void main() {
     test("Allow applies nothing once what the request showed changed", () async {
       Future<ScheduledTaskDefinition> definition() async => (await tasks.list()).items.single.definition;
       Future<void> edit(ScheduledTaskDefinition Function(ScheduledTaskDefinition definition) change) async {
-        await tasks.update(taskId: taskId, definition: change(await definition()));
+        await tasks.update(
+          taskId: taskId,
+          definition: change(await definition()),
+          command: const TaskCommandUnchanged(),
+        );
       }
 
       // A second project the task can move to.
@@ -883,6 +889,7 @@ void main() {
       await tasks.update(
         taskId: taskId,
         definition: current.copyWith(name: "Weekly summary"),
+        command: const TaskCommandUnchanged(),
       );
 
       expect(await answer(requestId: pause.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
@@ -919,6 +926,7 @@ void main() {
             at: TaskLocalDateTime(year: 2026, month: 11, day: 15, hour: 18, minute: 0),
           ),
         ),
+        command: const TaskCommandUnchanged(),
       );
 
       expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalStale>());
@@ -1037,6 +1045,103 @@ void main() {
       expect(created.model, const PromptModel(providerID: "anthropic", modelID: "claude-sonnet"));
       expect(created.dedicatedWorktree, isFalse);
       expect(created.approvalMode, TaskApprovalMode.ask);
+    });
+
+    group("task commands", () {
+      Future<String?> storedCommand() async => (await tasks.list()).items.single.command;
+
+      test("create_task shows the command in its request and saves it on Allow", () async {
+        await call(
+          tool: "create_task",
+          arguments: {
+            "name": "Weekly cleanup",
+            "prompt": "Delete merged branches",
+            "schedule": {
+              "kind": "weekly",
+              "days": ["friday"],
+              "time": {"hour": 17, "minute": 30},
+            },
+            "time_zone": "Europe/Bucharest",
+            "command": "git fetch --prune",
+          },
+        );
+        expect(
+          asked().description,
+          contains("Runs this command before each run's prompt:\n\n```\ngit fetch --prune\n```"),
+        );
+
+        await answer(requestId: asked().id, reply: PermissionReply.once);
+
+        final created = (await tasks.list()).items.singleWhere((task) => task.definition.name == "Weekly cleanup");
+        expect(created.command, "git fetch --prune");
+        final shown = await call(tool: "get_task", arguments: {"task_id": created.id});
+        expect(shown.text, contains("command, run before each run's prompt:\n```\ngit fetch --prune\n```\nprompt:"));
+      });
+
+      test("update_task sets, changes and removes the command on Allow", () async {
+        await call(tool: "update_task", arguments: {"task_id": taskId, "command": "git fetch"});
+        expect(asked().description, contains("Adds a command, run before each run's prompt:"));
+        expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+        expect(await storedCommand(), "git fetch");
+
+        await call(tool: "update_task", arguments: {"task_id": taskId, "command": "git pull"});
+        expect(asked().description, contains("```diff\n-git fetch\n+git pull\n```"));
+        expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+        expect(await storedCommand(), "git pull");
+
+        // An app edit sends the definition alone and keeps the command.
+        await tasks.update(
+          taskId: taskId,
+          definition: (await tasks.list()).items.single.definition.copyWith(name: "Morning pull"),
+          command: const TaskCommandUnchanged(),
+        );
+        expect(await storedCommand(), "git pull");
+
+        await call(tool: "update_task", arguments: {"task_id": taskId, "remove_command": true, "command": ""});
+        expect(asked().description, contains("Stops running this command:"));
+        expect(await answer(requestId: asked().id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+        expect(await storedCommand(), isNull);
+      });
+
+      test("a command request is stale once another changed the command", () async {
+        await call(tool: "update_task", arguments: {"task_id": taskId, "command": "make"});
+        final first = asked();
+        await call(tool: "update_task", arguments: {"task_id": taskId, "command": "make test"});
+        final second = asked();
+
+        expect(await answer(requestId: second.id, reply: PermissionReply.once), isA<AgentApprovalApplied>());
+        expect(await answer(requestId: first.id, reply: PermissionReply.once), isA<AgentApprovalStale>());
+        expect(await storedCommand(), "make test");
+      });
+
+      test("run_task_now shows the command it runs", () async {
+        await call(tool: "update_task", arguments: {"task_id": taskId, "command": "make"});
+        await answer(requestId: asked().id, reply: PermissionReply.once);
+
+        await call(tool: "run_task_now", arguments: {"task_id": taskId});
+
+        expect(asked().description, contains("Runs this command before each run's prompt:\n\n```\nmake\n```"));
+      });
+
+      test("an update cannot both set and remove the command, nor give a slash-command task one", () async {
+        final both = await call(
+          tool: "update_task",
+          arguments: {"task_id": taskId, "command": "make", "remove_command": true},
+        );
+        expect(both.isError, isTrue);
+        expect(both.text, contains("Pass command or remove_command, not both."));
+
+        await tasks.update(
+          taskId: taskId,
+          definition: (await tasks.list()).items.single.definition.copyWith(
+            prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.skill, arguments: null),
+          ),
+          command: const TaskCommandUnchanged(),
+        );
+        final slash = await call(tool: "update_task", arguments: {"task_id": taskId, "command": "make"});
+        expect(slash.isError, isTrue);
+        expect(slash.text, contains("cannot also run a shell command"));
+      });
     });
 
     test("a create or update the bridge could not save is refused before anyone is asked", () async {

@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show ScheduledTaskDefinition;
 
 import "session_wake_up.dart";
+import "task_command_edit.dart";
 
 /// A change an agent asked for, waiting for the user's Allow.
 sealed class const AgentApprovalChange();
@@ -8,29 +9,48 @@ sealed class const AgentApprovalChange();
 /// A scheduled-task change an agent proposed.
 sealed class const ScheduledTaskAgentChange() extends AgentApprovalChange;
 
-final class const CreateTaskChange({required final ScheduledTaskDefinition definition})
+/// [command] is the shell command each run runs first, or null for none.
+final class const CreateTaskChange({required final ScheduledTaskDefinition definition, required final String? command})
     extends ScheduledTaskAgentChange;
 
-/// A change to a stored task. [before] is the definition the request's
-/// description was built from. Allow applies the change only while what the
-/// description showed still holds: the fields the change sets, the approval
-/// mode its Approve everything warning came from (except for a pause), and a
+/// A change to a stored task. [before] and [beforeCommand] are the definition
+/// and shell command the request's description was built from. Allow applies
+/// the change only while what the description showed still holds: the fields
+/// the change sets, the approval mode its Approve everything warning came
+/// from and the command a resume or run shows (except for a pause), and a
 /// resume's schedule. Other fields may change meanwhile, for example through
 /// another request of the same session, and an update applies only its own
 /// fields on top of them.
-sealed class const StoredTaskChange({required final String taskId, required final ScheduledTaskDefinition before})
-    extends ScheduledTaskAgentChange;
+sealed class const StoredTaskChange({
+  required final String taskId,
+  required final ScheduledTaskDefinition before,
+  required final String? beforeCommand,
+}) extends ScheduledTaskAgentChange;
 
 final class const UpdateTaskChange({
   required super.taskId,
   required super.before,
+  required super.beforeCommand,
   required final ScheduledTaskDefinition after,
+  required final TaskCommandEdit command,
+}) extends StoredTaskChange {
+  /// The command the task runs once the change applies.
+  String? get afterCommand => switch (command) {
+    TaskCommandUnchanged() => beforeCommand,
+    TaskCommandSet(:final command) => command,
+    TaskCommandRemoved() => null,
+  };
+}
+
+final class const SetTaskEnabledChange({
+  required super.taskId,
+  required super.before,
+  required super.beforeCommand,
+  required final bool enabled,
 }) extends StoredTaskChange;
 
-final class const SetTaskEnabledChange({required super.taskId, required super.before, required final bool enabled})
+final class const RunTaskNowChange({required super.taskId, required super.before, required super.beforeCommand})
     extends StoredTaskChange;
-
-final class const RunTaskNowChange({required super.taskId, required super.before}) extends StoredTaskChange;
 
 /// A wake-up command waiting for the user's Allow.
 sealed class const WakeUpCommandChange() extends AgentApprovalChange;

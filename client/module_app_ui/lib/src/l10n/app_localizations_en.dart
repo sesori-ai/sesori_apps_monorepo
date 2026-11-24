@@ -4397,6 +4397,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskNextRun => 'Next run';
 
   @override
+  String get scheduledTaskCommand => 'Runs first';
+
+  @override
   String get scheduledTaskNoNextRun => 'Not scheduled';
 
   @override

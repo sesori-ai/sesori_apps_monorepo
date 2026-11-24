@@ -518,6 +518,7 @@ void main() {
         ),
         nextDueAt: null,
         now: DateTime.utc(2026, 11, 15),
+        command: null,
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",

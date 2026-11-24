@@ -1,7 +1,8 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, buildScheduledRunContext;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show ParallelLock, buildScheduledCommandContext, buildScheduledRunContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -13,6 +14,7 @@ import "../repositories/models/session_quietness.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
+import "scheduled_command_service.dart";
 import "scheduled_task_compaction_service.dart";
 import "scheduled_task_occurrence_calculator.dart";
 import "scheduled_task_request_exception.dart";
@@ -48,6 +50,10 @@ import "yolo_settings_service.dart";
 ///
 /// A text run's prompt opens with a hidden note asking the agent to propose
 /// improvements to its task, when the run's session gets Sesori's own tools.
+///
+/// A task with a command runs it through [ScheduledCommandService] once its
+/// run is recorded, outside the fire lock, and sends the prompt when it ends,
+/// with a hidden note carrying its result. The run counts as going meanwhile.
 class ScheduledTaskRunService({
   required final ScheduledTaskRepository _repository,
   required final ScheduledTaskCompactionService _compaction,
@@ -62,6 +68,7 @@ class ScheduledTaskRunService({
   required final SessionLifecycleService _lifecycle,
   required final SessionOptionsService _sessionOptions,
   required final ScheduledTaskOccurrenceCalculator _calculator,
+  required final ScheduledCommandService _commands,
   required final Clock _clock,
 }) {
   /// How long after its prompt goes out a run counts as going before its
@@ -77,6 +84,10 @@ class ScheduledTaskRunService({
 
   /// When each task's latest run's prompt went out.
   final Map<String, DateTime> _promptSentAt = {};
+
+  /// Runs whose task command is still running, by task id.
+  final Map<String, Future<void>> _commandRuns = {};
+  bool _disposing = false;
   final StreamController<void> _changes = StreamController<void>.broadcast();
   final StreamController<ScheduledTaskRunFailure> _failures = StreamController<ScheduledTaskRunFailure>.broadcast();
 
@@ -95,7 +106,10 @@ class ScheduledTaskRunService({
   /// Finished run sessions of a new-session task left unarchived.
   static const int keptFinishedRuns = 5;
 
+  /// A run whose command the shutdown stopped sends no prompt.
   Future<void> dispose() async {
+    _disposing = true;
+    await Future.wait(_commandRuns.values.toList());
     await _lock.idle;
     await _archiving;
     await Future.wait([_changes.close(), _failures.close()]);
@@ -188,6 +202,7 @@ class ScheduledTaskRunService({
 
   /// Whether the session of the task's latest started run is still going.
   Future<bool> _isPreviousRunActive({required String taskId}) async {
+    if (_commandRuns.containsKey(taskId)) return true;
     final sessionId = await _repository.latestStartedSessionId(taskId: taskId);
     if (sessionId == null) return false;
     // A harness reports a new turn's busy status a moment after the prompt
@@ -268,7 +283,23 @@ class ScheduledTaskRunService({
     _changes.add(null);
     switch (run.outcome) {
       case ScheduledTaskRunStarted(:final late):
-        return await _start(task: task, run: run, late: late, scheduled: scheduled);
+        if (task.command case final command?) {
+          _commandRuns[task.id] =
+              _runCommandThenStart(
+                task: task,
+                command: command,
+                run: run,
+                late: late,
+                scheduled: scheduled,
+                // A block body: remove returns this very future, which whenComplete
+                // would then wait for.
+              ).whenComplete(() {
+                _commandRuns.remove(task.id);
+              });
+          // Its session is not known until the command ends.
+          return run;
+        }
+        return await _start(task: task, run: run, late: late, scheduled: scheduled, commandNote: null);
       case ScheduledTaskRunFailed(:final reason):
         if (scheduled) {
           _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: task.definition.name, reason: reason));
@@ -279,16 +310,71 @@ class ScheduledTaskRunService({
     }
   }
 
+  /// Runs [command] where the run's prompt goes, then sends the prompt with
+  /// its result under the fire lock, as the task reads by then.
+  Future<void> _runCommandThenStart({
+    required ScheduledTaskRecord task,
+    required String command,
+    required ScheduledTaskRun run,
+    required bool late,
+    required bool scheduled,
+  }) async {
+    try {
+      final workingDirectory = await _commandDirectory(task: task);
+      final commandNote = workingDirectory == null
+          // The prompt then fails to start for the missing project.
+          ? null
+          : buildScheduledCommandContext(
+              command: command,
+              workingDirectory: workingDirectory,
+              result: await _commands.run(
+                outputKey: "task-${task.id}",
+                command: command,
+                workingDirectory: workingDirectory,
+              ),
+            );
+      // ponytail: the shutdown loses this run's prompt, and its row stays
+      // started with no session; resume it at startup if users notice.
+      if (_disposing) return;
+      await _lock.use(
+        operation: () async {
+          final current = await _repository.get(taskId: task.id);
+          if (current == null) {
+            Log.i("Scheduled task ${task.id} was deleted while its command ran");
+            return;
+          }
+          await _start(task: current, run: run, late: late, scheduled: scheduled, commandNote: commandNote);
+        },
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Scheduled task ${task.id} could not run its command and prompt", error, stackTrace);
+    }
+  }
+
+  /// Where the task's command runs: the session a same-session task continues
+  /// in, otherwise the project folder; null when the project is gone.
+  Future<String?> _commandDirectory({required ScheduledTaskRecord task}) async {
+    if (task.definition.runMode is TaskRunModeSameSession) {
+      if (await _promptableTarget(task: task) case final targetId?) {
+        if (await _sessions.getStoredSession(sessionId: targetId) case final target?) {
+          return target.worktreePath ?? target.directory;
+        }
+      }
+    }
+    return await _projects.projectPath(projectId: task.definition.projectId);
+  }
+
   Future<ScheduledTaskRun> _start({
     required ScheduledTaskRecord task,
     required ScheduledTaskRun run,
     required bool late,
     required bool scheduled,
+    required String? commandNote,
   }) async {
     final definition = task.definition;
     final String sessionId;
     try {
-      sessionId = await _sendRunPrompt(task: task);
+      sessionId = await _sendRunPrompt(task: task, commandNote: commandNote);
     } on Object catch (error, stackTrace) {
       final reason = switch (error) {
         ProjectNotFoundException() || PluginWorkingDirectoryMissingException() => TaskRunFailureReason.projectMissing,
@@ -335,14 +421,14 @@ class ScheduledTaskRunService({
   /// Sends the run's prompt and returns the session it went to: the target of
   /// a same-session task while it can still be prompted, otherwise a new
   /// session, which a same-session task then continues in.
-  Future<String> _sendRunPrompt({required ScheduledTaskRecord task}) async {
+  Future<String> _sendRunPrompt({required ScheduledTaskRecord task, required String? commandNote}) async {
     switch (task.definition.runMode) {
       case TaskRunModeSameSession():
         if (await _promptableTarget(task: task) case final targetId?) {
-          await _continueIn(sessionId: targetId, task: task);
+          await _continueIn(sessionId: targetId, task: task, commandNote: commandNote);
           return targetId;
         }
-        final session = await _createSession(task: task);
+        final session = await _createSession(task: task, commandNote: commandNote);
         if (await _repository.setTargetSession(task: task, sessionId: session.id)) {
           await _mutations.armingUpdated(sessionId: session.id);
         } else {
@@ -352,7 +438,7 @@ class ScheduledTaskRunService({
         }
         return session.id;
       case TaskRunModeNewSession() || TaskRunModeUnknown():
-        return (await _createSession(task: task)).id;
+        return (await _createSession(task: task, commandNote: commandNote)).id;
     }
   }
 
@@ -370,7 +456,7 @@ class ScheduledTaskRunService({
     return targetId;
   }
 
-  Future<Session> _createSession({required ScheduledTaskRecord task}) {
+  Future<Session> _createSession({required ScheduledTaskRecord task, required String? commandNote}) {
     final definition = task.definition;
     final (:command, :commandSource, :parts) = _promptOf(definition: definition);
     return _prompts.sendWithSettingsIn(
@@ -391,14 +477,18 @@ class ScheduledTaskRunService({
           dedicatedWorktree: definition.dedicatedWorktree,
         ),
         scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
-        runContext: _runContextOf(task: task),
+        runContext: _runContextOf(task: task, commandNote: commandNote),
       ),
     );
   }
 
   /// Sends the prompt on [sessionId]'s lane with the task's current options,
   /// after putting the session in the task's approval mode.
-  Future<void> _continueIn({required String sessionId, required ScheduledTaskRecord task}) async {
+  Future<void> _continueIn({
+    required String sessionId,
+    required ScheduledTaskRecord task,
+    required String? commandNote,
+  }) async {
     final definition = task.definition;
     await _yoloSettings.setSessionOverride(
       sessionId: sessionId,
@@ -423,20 +513,25 @@ class ScheduledTaskRunService({
           command: command,
           commandSource: commandSource,
           mark: null,
-          runContext: _runContextOf(task: task),
+          runContext: _runContextOf(task: task, commandNote: commandNote),
         ),
       ),
     );
   }
 
-  /// The note that leads a text run's prompt when its session gets Sesori's
-  /// own tools, or null. A command gets none: its arguments are command input.
-  String? _runContextOf({required ScheduledTaskRecord task}) {
+  /// The notes that lead a text run's prompt: the improvement note when its
+  /// session gets Sesori's own tools, then [commandNote]; null for none. A
+  /// slash command gets none: its arguments are command input, and a task
+  /// that runs one has no shell command.
+  String? _runContextOf({required ScheduledTaskRecord task, required String? commandNote}) {
     final definition = task.definition;
     if (definition.prompt is! ScheduledTaskPromptText) return null;
-    if (!_bridgeSettings.currentSettings.agentTools) return null;
-    if (!_sessions.sesoriToolsSupported(pluginId: definition.pluginId)) return null;
-    return buildScheduledRunContext(taskName: definition.name, taskId: task.id);
+    final notes = [
+      if (_bridgeSettings.currentSettings.agentTools && _sessions.sesoriToolsSupported(pluginId: definition.pluginId))
+        buildScheduledRunContext(taskName: definition.name, taskId: task.id),
+      ?commandNote,
+    ];
+    return notes.isEmpty ? null : notes.join("\n");
   }
 
   static PromptSettings _settingsOf({required ScheduledTaskDefinition definition}) => (

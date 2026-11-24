@@ -36,6 +36,10 @@ class ScheduledTasksTable() extends Table {
   TextColumn get approvalMode => textEnum<TaskApprovalMode>()();
   BoolColumn get enabled => boolean()();
 
+  /// The shell command each run runs before its prompt, set only through an
+  /// agent request the user allowed. Null for a task that runs none.
+  TextColumn get command => text().nullable()();
+
   /// UTC milliseconds of the next run. Null while paused or done.
   IntColumn get nextDueAt => integer().nullable()();
 

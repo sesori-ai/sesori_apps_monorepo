@@ -37,9 +37,31 @@ Do the task below. If you learn something that would make future runs better, su
 ''';
 }
 
+/// The bridge-owned note that opens a scheduled run's prompt when its task
+/// ran [command] in [workingDirectory] first; [result] is the block that
+/// reports how it went. Every line of both is indented, so a line of output
+/// that starts with `---` cannot end the note early.
+String buildScheduledCommandContext({
+  required String command,
+  required String workingDirectory,
+  required String result,
+}) {
+  String indented(String text) => text.split("\n").map((line) => "  $line").join("\n");
+  return '''
+$_marker
+Before this run, Sesori ran the task's command in $workingDirectory:
+${indented(command)}
+
+Its result:
+${indented(result)}
+
+---
+''';
+}
+
 /// Removes every leading bridge note ([buildWorktreeSystemContext],
-/// [buildScheduledRunContext]) from [text], so a first prompt that carries
-/// both is fully hidden.
+/// [buildScheduledRunContext], [buildScheduledCommandContext]) from [text], so
+/// a first prompt that carries several is fully hidden.
 ///
 /// The notes may follow one command token and a space (a harness that renders
 /// a command as `<token> <arguments>`); the token is kept. Matching is on the

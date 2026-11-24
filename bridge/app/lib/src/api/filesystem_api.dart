@@ -117,6 +117,14 @@ class const FilesystemApi() {
     await file.writeAsBytes(bytes, flush: true);
   }
 
+  /// Creates the file at [path], which only the current user can read or
+  /// write, and opens it for writing from its start.
+  Future<RandomAccessFile> openOwnerOnlyFileForWriting({required String path}) async {
+    final file = await File(path).create();
+    await hardenPath(targetPath: path, mode: ownerOnlyFileMode);
+    return await file.open(mode: FileMode.writeOnly);
+  }
+
   /// Creates the directory at [path] and any missing parents, then lets only
   /// the current user open it. Hardens an existing directory too.
   Future<void> createOwnerOnlyDirectory({required String path}) async {

@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/scheduled_task_record.dart";
+import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -55,7 +56,7 @@ void main() {
 
   test("a stored task reads back with the same definition and bridge state", () async {
     final dueAt = DateTime.utc(2026, 11, 16, 7, 30);
-    final created = await repository.create(definition: definition, nextDueAt: dueAt, now: now);
+    final created = await repository.create(definition: definition, nextDueAt: dueAt, now: now, command: null);
 
     final read = await repository.get(taskId: created.id);
     expect(read?.definition, definition);
@@ -67,8 +68,26 @@ void main() {
     expect((await repository.listUncompleted()).map((task) => task.id), [created.id]);
   });
 
+  test("an edit keeps, replaces or removes the task's command", () async {
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: "make");
+    Future<String?> editWith({required TaskCommandEdit command}) async => (await repository.updateDefinition(
+      taskId: task.id,
+      definition: definition,
+      command: command,
+      nextDueAt: null,
+      clearTarget: false,
+      now: now,
+    ))?.command;
+
+    expect((await repository.get(taskId: task.id))?.command, "make");
+    expect(await editWith(command: const TaskCommandUnchanged()), "make");
+    expect(await editWith(command: const TaskCommandSet(command: "make test")), "make test");
+    expect(await editWith(command: const TaskCommandRemoved()), isNull);
+    expect((await repository.get(taskId: task.id))?.command, isNull);
+  });
+
   test("a task completed meanwhile is neither edited nor re-enabled", () async {
-    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
     await db.customStatement("UPDATE scheduled_tasks SET completed_at = 1 WHERE id = ?", [task.id]);
 
     final edited = await repository.updateDefinition(
@@ -77,6 +96,7 @@ void main() {
       nextDueAt: null,
       clearTarget: false,
       now: now,
+      command: const TaskCommandUnchanged(),
     );
     final enabled = await repository.setEnabled(taskId: task.id, enabled: false, nextDueAt: null, now: now);
 
@@ -86,7 +106,7 @@ void main() {
   });
 
   test("tasks follow their project when it is merged into another", () async {
-    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
 
     await ScheduledTaskDao(database: db).moveTasksToProject(fromProjectIds: {"/repo"}, toProjectId: "/survivor");
 
@@ -94,7 +114,7 @@ void main() {
   });
 
   test("run history keeps the newest rows, newest first, with their outcomes", () async {
-    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
     const failed = ScheduledTaskRunOutcome.failed(
       reason: TaskRunFailureReason.modelUnavailable,
       attempt: ScheduledTaskRunAttempt(
@@ -124,7 +144,7 @@ void main() {
   });
 
   test("trimming never deletes the newest started run, however many skips follow it", () async {
-    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
     final startedId = await recordRun(
       taskId: task.id,
       outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
@@ -140,7 +160,7 @@ void main() {
   });
 
   test("trimming drops an older started run once a newer one exists", () async {
-    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
     final olderStartedId = await recordRun(
       taskId: task.id,
       outcome: const ScheduledTaskRunOutcome.started(session: null, late: false),
@@ -161,8 +181,8 @@ void main() {
   });
 
   test("trimming one task's history leaves other tasks' rows alone", () async {
-    final first = await repository.create(definition: definition, nextDueAt: null, now: now);
-    final second = await repository.create(definition: definition, nextDueAt: null, now: now);
+    final first = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
+    final second = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
     await recordRun(taskId: second.id, outcome: const ScheduledTaskRunOutcome.skipped(), minute: 0);
     for (var minute = 1; minute <= 25; minute++) {
       await recordRun(taskId: first.id, outcome: const ScheduledTaskRunOutcome.skipped(), minute: minute);
@@ -173,7 +193,7 @@ void main() {
 
   test("a fire reserves its run only against the task as it was read", () async {
     final dueAt = DateTime.utc(2026, 11, 16, 7, 30);
-    final read = await repository.create(definition: definition, nextDueAt: dueAt, now: now);
+    final read = await repository.create(definition: definition, nextDueAt: dueAt, now: now, command: null);
     await repository.setEnabled(
       taskId: read.id,
       enabled: false,
@@ -229,7 +249,7 @@ void main() {
     }
 
     test("marks name each run session's task and whether it repeats, in one read", () async {
-      final recurring = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final recurring = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
       final once = await repository.create(
         definition: definition.copyWith(
           name: "Release notes",
@@ -239,6 +259,7 @@ void main() {
         ),
         nextDueAt: null,
         now: now,
+        command: null,
       );
       await runSession(sessionId: "ses_recurring", taskId: recurring.id);
       await runSession(sessionId: "ses_once", taskId: once.id);
@@ -255,7 +276,7 @@ void main() {
     });
 
     test("a started run names the project its session is in, even after the task moved away", () async {
-      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
       await runSession(sessionId: "ses_1", taskId: task.id, projectId: "/elsewhere");
       await startedRun(taskId: task.id, sessionId: "ses_1", minute: 1);
       await recordRun(
@@ -275,7 +296,7 @@ void main() {
     });
 
     test("a run is unattended until the user prompts its session, and each new run starts unattended", () async {
-      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
       await runSession(sessionId: "ses_1", taskId: task.id);
       expect(await repository.isUnattendedRun(sessionId: "ses_1"), isFalse, reason: "no run went to it yet");
 
@@ -299,8 +320,8 @@ void main() {
     });
 
     test("archive candidates are only a task's unarchived, unpinned sessions", () async {
-      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
-      final other = await repository.create(definition: definition, nextDueAt: null, now: now);
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
+      final other = await repository.create(definition: definition, nextDueAt: null, now: now, command: null);
       for (final sessionId in ["ses_1", "ses_2", "ses_3", "ses_4"]) {
         await runSession(sessionId: sessionId, taskId: task.id);
       }

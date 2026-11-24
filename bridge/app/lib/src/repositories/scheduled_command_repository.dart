@@ -1,17 +1,19 @@
 import "dart:async";
 import "dart:collection";
 import "dart:convert";
-import "dart:io" show File, FileMode, FileSystemException, ProcessException, RandomAccessFile;
+import "dart:io" show FileSystemException, ProcessException, RandomAccessFile;
 
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../api/filesystem_api.dart";
 import "../api/shell_command_api.dart";
 import "models/scheduled_command_result.dart";
 
 /// Runs the shell commands wake-ups and tasks carry, writing each run's
-/// output as `stdout.txt` and `stderr.txt` in the folder it is given.
-class ScheduledCommandRepository({required final ShellCommandApi _shell}) {
+/// output as `stdout.txt` and `stderr.txt`, which only the user can open, in
+/// the folder it is given.
+class ScheduledCommandRepository({required final ShellCommandApi _shell, required final FilesystemApi _files}) {
   /// How long the streams may stay open after the shell ended or was killed:
   /// a process it started in the background can hold them.
   static const Duration _drainGrace = Duration(seconds: 5);
@@ -34,8 +36,8 @@ class ScheduledCommandRepository({required final ShellCommandApi _shell}) {
         timeout: timeout,
         stop: stop,
         capture: ({required stdout, required stderr}) => (
-          stdout: _StreamCapture(stream: stdout, path: p.join(folder, "stdout.txt")),
-          stderr: _StreamCapture(stream: stderr, path: p.join(folder, "stderr.txt")),
+          stdout: _StreamCapture(stream: stdout, files: _files, path: p.join(folder, "stdout.txt")),
+          stderr: _StreamCapture(stream: stderr, files: _files, path: p.join(folder, "stderr.txt")),
         ),
       );
     } on ProcessException catch (error) {
@@ -59,7 +61,11 @@ class ScheduledCommandRepository({required final ShellCommandApi _shell}) {
 ///
 /// A file that cannot be opened or written, as on a full disk, fails only the
 /// copy: the tally goes on, and the output no longer names the file.
-final class _StreamCapture({required Stream<List<int>> stream, required final String _path}) {
+final class _StreamCapture({
+  required Stream<List<int>> stream,
+  required final FilesystemApi _files,
+  required final String _path,
+}) {
   final _OutputTally _tally = _OutputTally();
   late final Sink<List<int>> _text = const Utf8Decoder(allowMalformed: true).startChunkedConversion(_tally);
   final Completer<void> _ended = Completer<void>();
@@ -103,7 +109,7 @@ final class _StreamCapture({required Stream<List<int>> stream, required final St
 
   Future<RandomAccessFile?> _open() async {
     try {
-      return await File(_path).open(mode: FileMode.writeOnly);
+      return await _files.openOwnerOnlyFileForWriting(path: _path);
     } on FileSystemException catch (error, stackTrace) {
       _failed(error: error, stackTrace: stackTrace);
       return null;

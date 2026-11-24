@@ -10,10 +10,6 @@ import "session_wake_up_description_builder.dart";
 /// The command comes first and verbatim, then where it runs, when, and the
 /// wake-up's label; agent-written text is escaped, so it cannot fake a line.
 class const WakeUpCommandDescriptionBuilder() {
-  /// Invisible characters that can reorder or hide what a command shows:
-  /// bidi marks, embeddings, overrides and isolates, and zero-width ones.
-  static final RegExp _invisible = RegExp("[\u061C\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]");
-
   static const SessionWakeUpDescriptionBuilder _wakeUpWords = SessionWakeUpDescriptionBuilder();
   static const ScheduledTaskChangeDescriptionBuilder _taskWords = ScheduledTaskChangeDescriptionBuilder();
 
@@ -35,17 +31,9 @@ class const WakeUpCommandDescriptionBuilder() {
             "the command now and at later times without asking again; Reject cancels the wake-up.",
       ),
     };
-    // The shell gets the command unchanged; the user sees each invisible
-    // character as its code, so it cannot make the command read differently.
-    final shown = command.replaceAllMapped(
-      _invisible,
-      (match) => "<U+${command.codeUnitAt(match.start).toRadixString(16).toUpperCase().padLeft(4, "0")}>",
-    );
-    final marker = ScheduledTaskChangeDescriptionBuilder.fence(text: shown);
     return [
       "**A wake-up runs this command**",
-      "$marker\n$shown\n$marker",
-      if (shown != command) "It contains invisible characters, which the command above shows as their Unicode codes.",
+      ...ScheduledTaskChangeDescriptionBuilder.commandBlock(command: command),
       "Runs in: ${ScheduledTaskChangeDescriptionBuilder.inline(text: workingDirectory)}",
       "When: ${ScheduledTaskChangeDescriptionBuilder.inline(text: timing)}",
       "Wake-up: ${ScheduledTaskChangeDescriptionBuilder.quoted(text: label)}",

@@ -213,7 +213,7 @@ String toString() {
 mixin _$CreateTaskArguments {
 
  String get name; String get prompt; TaskSchedule get schedule;@JsonKey(name: "time_zone") String get timeZone;/// Null for the caller's project.
-@JsonKey(name: "project_id") String? get projectId;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode get approvalMode;
+@JsonKey(name: "project_id") String? get projectId;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode get approvalMode; String? get command;
 
 
 
@@ -222,7 +222,7 @@ mixin _$CreateTaskArguments {
 @override
 String toString() {
   final _this = this as CreateTaskArguments;
-  return 'CreateTaskArguments(name: ${_this.name}, prompt: ${_this.prompt}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, projectId: ${_this.projectId}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode})';
+  return 'CreateTaskArguments(name: ${_this.name}, prompt: ${_this.prompt}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, projectId: ${_this.projectId}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode}, command: ${_this.command})';
 }
 
 
@@ -236,7 +236,7 @@ String toString() {
 
 @JsonSerializable(checked: true)
 class _CreateTaskArguments implements CreateTaskArguments {
-  const _CreateTaskArguments({required this.name, required this.prompt, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "project_id") required this.projectId, @JsonKey(name: "missed_run_policy") this.missedRunPolicy = TaskMissedRunPolicy.runWhenBack, @JsonKey(name: "run_mode") this.runMode = const TaskRunMode.newSession(), required this.model, required this.effort, @JsonKey(name: "approval_mode") this.approvalMode = TaskApprovalMode.ask});
+  const _CreateTaskArguments({required this.name, required this.prompt, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "project_id") required this.projectId, @JsonKey(name: "missed_run_policy") this.missedRunPolicy = TaskMissedRunPolicy.runWhenBack, @JsonKey(name: "run_mode") this.runMode = const TaskRunMode.newSession(), required this.model, required this.effort, @JsonKey(name: "approval_mode") this.approvalMode = TaskApprovalMode.ask, required this.command});
   factory _CreateTaskArguments.fromJson(Map<String, dynamic> json) => _$CreateTaskArgumentsFromJson(json);
 
 @override final  String name;
@@ -250,6 +250,7 @@ class _CreateTaskArguments implements CreateTaskArguments {
 @override final  String? model;
 @override final  String? effort;
 @override@JsonKey(name: "approval_mode") final  TaskApprovalMode approvalMode;
+@override final  String? command;
 
 
 
@@ -258,7 +259,7 @@ class _CreateTaskArguments implements CreateTaskArguments {
 
 @override
 String toString() {
-    return 'CreateTaskArguments(name: $name, prompt: $prompt, schedule: $schedule, timeZone: $timeZone, projectId: $projectId, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode)';
+    return 'CreateTaskArguments(name: $name, prompt: $prompt, schedule: $schedule, timeZone: $timeZone, projectId: $projectId, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode, command: $command)';
 }
 
 
@@ -271,7 +272,8 @@ String toString() {
 /// @nodoc
 mixin _$UpdateTaskArguments {
 
-@JsonKey(name: "task_id") String get taskId; String? get name; String? get prompt;@JsonKey(name: "command_arguments") String? get commandArguments; TaskSchedule? get schedule;@JsonKey(name: "time_zone") String? get timeZone;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy? get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode? get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode? get approvalMode;
+@JsonKey(name: "task_id") String get taskId; String? get name; String? get prompt;@JsonKey(name: "command_arguments") String? get commandArguments; TaskSchedule? get schedule;@JsonKey(name: "time_zone") String? get timeZone;@JsonKey(name: "missed_run_policy") TaskMissedRunPolicy? get missedRunPolicy;@JsonKey(name: "run_mode") TaskRunMode? get runMode; String? get model; String? get effort;@JsonKey(name: "approval_mode") TaskApprovalMode? get approvalMode; String? get command;/// Strict-schema providers send false for a field they leave out.
+@JsonKey(name: "remove_command") bool get removeCommand;
 
 
 
@@ -280,7 +282,7 @@ mixin _$UpdateTaskArguments {
 @override
 String toString() {
   final _this = this as UpdateTaskArguments;
-  return 'UpdateTaskArguments(taskId: ${_this.taskId}, name: ${_this.name}, prompt: ${_this.prompt}, commandArguments: ${_this.commandArguments}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode})';
+  return 'UpdateTaskArguments(taskId: ${_this.taskId}, name: ${_this.name}, prompt: ${_this.prompt}, commandArguments: ${_this.commandArguments}, schedule: ${_this.schedule}, timeZone: ${_this.timeZone}, missedRunPolicy: ${_this.missedRunPolicy}, runMode: ${_this.runMode}, model: ${_this.model}, effort: ${_this.effort}, approvalMode: ${_this.approvalMode}, command: ${_this.command}, removeCommand: ${_this.removeCommand})';
 }
 
 
@@ -294,7 +296,7 @@ String toString() {
 
 @JsonSerializable(checked: true)
 class _UpdateTaskArguments implements UpdateTaskArguments {
-  const _UpdateTaskArguments({@JsonKey(name: "task_id") required this.taskId, required this.name, required this.prompt, @JsonKey(name: "command_arguments") required this.commandArguments, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "missed_run_policy") required this.missedRunPolicy, @JsonKey(name: "run_mode") required this.runMode, required this.model, required this.effort, @JsonKey(name: "approval_mode") required this.approvalMode});
+  const _UpdateTaskArguments({@JsonKey(name: "task_id") required this.taskId, required this.name, required this.prompt, @JsonKey(name: "command_arguments") required this.commandArguments, required this.schedule, @JsonKey(name: "time_zone") required this.timeZone, @JsonKey(name: "missed_run_policy") required this.missedRunPolicy, @JsonKey(name: "run_mode") required this.runMode, required this.model, required this.effort, @JsonKey(name: "approval_mode") required this.approvalMode, required this.command, @JsonKey(name: "remove_command") this.removeCommand = false});
   factory _UpdateTaskArguments.fromJson(Map<String, dynamic> json) => _$UpdateTaskArgumentsFromJson(json);
 
 @override@JsonKey(name: "task_id") final  String taskId;
@@ -308,6 +310,9 @@ class _UpdateTaskArguments implements UpdateTaskArguments {
 @override final  String? model;
 @override final  String? effort;
 @override@JsonKey(name: "approval_mode") final  TaskApprovalMode? approvalMode;
+@override final  String? command;
+/// Strict-schema providers send false for a field they leave out.
+@override@JsonKey(name: "remove_command") final  bool removeCommand;
 
 
 
@@ -316,7 +321,7 @@ class _UpdateTaskArguments implements UpdateTaskArguments {
 
 @override
 String toString() {
-    return 'UpdateTaskArguments(taskId: $taskId, name: $name, prompt: $prompt, commandArguments: $commandArguments, schedule: $schedule, timeZone: $timeZone, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode)';
+    return 'UpdateTaskArguments(taskId: $taskId, name: $name, prompt: $prompt, commandArguments: $commandArguments, schedule: $schedule, timeZone: $timeZone, missedRunPolicy: $missedRunPolicy, runMode: $runMode, model: $model, effort: $effort, approvalMode: $approvalMode, command: $command, removeCommand: $removeCommand)';
 }
 
 

@@ -14,6 +14,19 @@ void main() {
     });
   });
 
+  group("buildScheduledCommandContext", () {
+    test("hides output lines that would otherwise end the note", () {
+      final commandNote = buildScheduledCommandContext(
+        command: "git diff\n---",
+        workingDirectory: "/repo",
+        result: "command exited 0\n\nstdout:\n```\n--- a/file\n+++ b/file\n```",
+      );
+
+      expect(commandNote, contains("Sesori ran the task's command in /repo:\n  git diff\n  ---"));
+      expect(stripSystemContext(text: "$runNote\n$commandNote\nCheck the diff"), "Check the diff");
+    });
+  });
+
   group("stripSystemContext", () {
     test("drops a part that is only a run note", () {
       expect(stripSystemContext(text: runNote), isNull);

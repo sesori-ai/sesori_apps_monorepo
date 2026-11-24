@@ -1040,6 +1040,7 @@ void main() {
       ),
       nextDueAt: DateTime.utc(2099),
       now: DateTime.utc(2026),
+      command: null,
     );
     final yolo = await _dispatch(
       dispatcher: harness.composition.routedRequestDispatcher,

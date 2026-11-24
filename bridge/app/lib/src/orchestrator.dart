@@ -428,8 +428,8 @@ class Orchestrator({
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriPageImagesDirectory(),
     );
-    // The same layout again for the output of the commands wake-ups run,
-    // kept for a week and removed with its session.
+    // The same layout again for the output of the commands wake-ups and
+    // tasks run, kept for a week and removed with its session.
     final commandOutputRepository = PromptUploadRepository(
       filesystemApi: const FilesystemApi(),
       uploadsRoot: sesoriCommandOutputDirectory(),
@@ -439,8 +439,10 @@ class Orchestrator({
         shell: ShellCommandApi.forPlatform(
           platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
           runner: const StreamingProcessRunner(),
+          tools: _processRunner,
           environment: Platform.environment,
         ),
+        files: const FilesystemApi(),
       ),
       outputs: commandOutputRepository,
       formatter: const ScheduledCommandResultFormatter(),
@@ -827,6 +829,7 @@ class Orchestrator({
       lifecycle: sessionLifecycleService,
       sessionOptions: sessionOptionsService,
       calculator: scheduledTaskOccurrenceCalculator,
+      commands: scheduledCommandService,
       clock: clock,
     );
     final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);

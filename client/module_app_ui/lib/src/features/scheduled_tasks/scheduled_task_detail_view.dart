@@ -151,6 +151,13 @@ class const _Summary({required final ScheduledTask task, required final String? 
             title: Text(loc.scheduledTaskNextRun),
             subtitle: Text(labels.nextRun(task: task)),
           ),
+          // Read-only: only an agent request the user allowed sets it.
+          if (task.command case final command?)
+            PregoGroupedRow(
+              icon: TablerRegular.terminal,
+              title: Text(loc.scheduledTaskCommand),
+              subtitle: Text(command, style: context.prego.textTheme.textSm.regular.monospace),
+            ),
         ],
       ),
     );
