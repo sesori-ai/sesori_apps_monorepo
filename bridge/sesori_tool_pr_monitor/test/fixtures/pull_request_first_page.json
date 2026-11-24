@@ -1,0 +1,83 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "title": "Add widget sizing",
+        "url": "https://github.com/octo-org/widget/pull/42",
+        "state": "OPEN",
+        "mergeable": "MERGEABLE",
+        "headRefOid": "0123456789abcdef0123456789abcdef01234567",
+        "commits": {
+          "nodes": [
+            {
+              "commit": {
+                "statusCheckRollup": {
+                  "contexts": {
+                    "pageInfo": { "hasNextPage": true, "endCursor": "checks-1" },
+                    "nodes": [
+                      { "__typename": "CheckRun", "id": "CR_build", "name": "build", "status": "COMPLETED", "conclusion": "SUCCESS" },
+                      { "__typename": "CheckRun", "id": "CR_lint", "name": "lint", "status": "COMPLETED", "conclusion": "FAILURE" },
+                      { "__typename": "CheckRun", "id": "CR_e2e", "name": "e2e", "status": "IN_PROGRESS", "conclusion": null },
+                      { "__typename": "StatusContext", "context": "ci/legacy", "state": "PENDING", "createdAt": "2026-11-20T10:00:00Z" },
+                      { "__typename": "StatusContext", "context": "deploy", "state": "ERROR", "createdAt": "2026-11-20T10:05:00Z" },
+                      { "__typename": "FutureContextKind" }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "reviewRequests": {
+          "nodes": [
+            { "requestedReviewer": { "login": "reviewer-a" } },
+            { "requestedReviewer": { "slug": "core-team" } },
+            { "requestedReviewer": {} },
+            { "requestedReviewer": null }
+          ]
+        },
+        "latestReviews": {
+          "pageInfo": { "hasNextPage": true, "endCursor": "reviews-1" },
+          "nodes": [
+            { "id": "R_approved", "author": { "login": "reviewer-b", "__typename": "User" }, "state": "APPROVED", "submittedAt": "2026-11-20T11:00:00Z", "body": "", "comments": { "totalCount": 0 } },
+            { "id": "R_changes", "author": { "login": "reviewer-c", "__typename": "User" }, "state": "CHANGES_REQUESTED", "submittedAt": "2026-11-20T11:05:00Z", "body": "", "comments": { "totalCount": 0 } },
+            { "id": "R_bot", "author": { "login": "review-bot", "__typename": "Bot" }, "state": "COMMENTED", "submittedAt": "2026-11-20T11:10:00Z", "body": "Looks fine overall.", "comments": { "totalCount": 3 } },
+            { "id": "R_pending", "author": { "login": "reviewer-d", "__typename": "User" }, "state": "PENDING", "submittedAt": null, "body": "Draft", "comments": { "totalCount": 1 } },
+            { "id": "R_ghost", "author": null, "state": "COMMENTED", "submittedAt": "2026-11-20T11:15:00Z", "body": "From a deleted account", "comments": { "totalCount": 0 } }
+          ]
+        },
+        "reviewThreads": {
+          "pageInfo": { "hasNextPage": true, "endCursor": "threads-1" },
+          "nodes": [
+            {
+              "id": "T_one",
+              "isResolved": false,
+              "path": "lib/widget.dart",
+              "line": 10,
+              "originalLine": 8,
+              "comments": {
+                "nodes": [
+                  { "id": "TC_review", "author": { "login": "reviewer-c", "__typename": "User" }, "body": "Please rename this.", "createdAt": "2026-11-20T11:05:00Z", "pullRequestReview": { "state": "CHANGES_REQUESTED" } },
+                  { "id": "TC_reply", "author": { "login": "Sesori-Dev", "__typename": "User" }, "body": "[Sesori reply] Renamed.", "createdAt": "2026-11-20T11:20:00Z", "pullRequestReview": { "state": "COMMENTED" } }
+                ]
+              }
+            }
+          ]
+        },
+        "comments": {
+          "totalCount": 5,
+          "nodes": [
+            { "id": "IC_reviewer", "author": { "login": "reviewer-a", "__typename": "User" }, "body": "Can you add a test?", "createdAt": "2026-11-20T12:00:00Z" },
+            { "id": "IC_reply", "author": { "login": "sesori-dev", "__typename": "User" }, "body": "[Sesori reply] Added one.", "createdAt": "2026-11-20T12:05:00Z" },
+            { "id": "IC_unprefixed", "author": { "login": "sesori-dev", "__typename": "User" }, "body": "A note without the prefix.", "createdAt": "2026-11-20T12:10:00Z" },
+            { "id": "IC_spoof", "author": { "login": "someone-else", "__typename": "User" }, "body": "[Sesori reply] Not the agent.", "createdAt": "2026-11-20T12:15:00Z" }
+          ]
+        },
+        "labels": {
+          "pageInfo": { "hasNextPage": true, "endCursor": "labels-1" },
+          "nodes": [ { "name": "agent-ready" } ]
+        }
+      }
+    }
+  }
+}

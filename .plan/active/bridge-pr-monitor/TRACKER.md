@@ -6,7 +6,7 @@
 | 2 | ⚙️ Tool-group interface and grouped MCP server | In review | #2909 |
 | 3 | 🌿 Per-group toggles and leaner task text | Not started | |
 | 4 | 🚧 Tool host: records, notices and approvals | Not started | |
-| 5 | ⚙️ PR monitor package: `gh` API and snapshots | Not started | |
+| 5 | ⚙️ PR monitor package: `gh` API and snapshots | In review | |
 | 6 | ⚙️ PR monitor rules | Not started | |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Not started | |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |

@@ -1,0 +1,12 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "labels": {
+          "pageInfo": { "hasNextPage": false, "endCursor": "labels-2" },
+          "nodes": [ { "name": "Needs-Review" } ]
+        }
+      }
+    }
+  }
+}

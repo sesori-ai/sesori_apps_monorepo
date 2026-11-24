@@ -22,3 +22,4 @@ workspace:
   - sesori_plugin_grok
   - sesori_plugin_deepseek
   - sesori_plugin_antigravity
+  - sesori_tool_pr_monitor

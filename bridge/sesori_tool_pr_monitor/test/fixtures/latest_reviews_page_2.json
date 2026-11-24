@@ -1,0 +1,14 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "latestReviews": {
+          "pageInfo": { "hasNextPage": false, "endCursor": "reviews-2" },
+          "nodes": [
+            { "id": "R_blank", "author": { "login": "reviewer-e", "__typename": "User" }, "state": "CHANGES_REQUESTED", "submittedAt": "2026-11-20T11:30:00Z", "body": "   ", "comments": { "totalCount": 2 } }
+          ]
+        }
+      }
+    }
+  }
+}
