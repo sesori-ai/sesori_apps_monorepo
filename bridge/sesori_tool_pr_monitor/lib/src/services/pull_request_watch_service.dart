@@ -181,13 +181,14 @@ class PullRequestWatchService({
             ),
           };
         }
+        // Read-only: labelling and merging wait for the next due report.
         var snapshot = await _applySnapshot(runtime: runtime, snapshot: fetched);
-        if (runtime.dirty) snapshot = await _prepareReport(runtime: runtime, snapshot: snapshot);
         // An unwatch while the fetch ran must not be undone.
         if (!_isCurrent(runtime: runtime, watch: watch)) return const PullRequestNotWatched();
         final report = _render(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: null);
         // ponytail: like a delivered report, this one shows the readiness
-        // news once; other watchers see the PR state, not the notice.
+        // news (from a report still being delivered) once; other watchers
+        // see the PR state, not the notice.
         snapshot = _applyStep(
           runtime: runtime,
           step: _merges.afterReport(snapshot: snapshot, state: runtime.merge),
@@ -523,6 +524,7 @@ class PullRequestWatchService({
     required PullRequestSnapshot snapshot,
     required int? forcedHoldMinutes,
   }) {
+    final mergeAttempt = runtime.merge.mergeAttempt;
     _deliver(
       runtime: runtime,
       watch: watch,
@@ -530,8 +532,14 @@ class PullRequestWatchService({
       guidance: _render(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: forcedHoldMinutes),
       timing: SesoriToolNoticeTiming.derived,
       onSent: () => _recordReport(runtime: runtime, watch: watch, snapshot: snapshot),
-      // The baseline stayed, so the PR's next poll reports it again.
-      onDropped: () => runtime.dirty = true,
+      // The baseline stayed, so the PR's next poll reports it again, with
+      // the readiness news this report carried.
+      onDropped: () {
+        final merge = runtime.merge;
+        runtime
+          ..dirty = true
+          ..merge = merge.copyWith(mergeAttempt: merge.mergeAttempt ?? mergeAttempt, reportedRetry: null);
+      },
     );
   }
 
@@ -598,18 +606,24 @@ class PullRequestWatchService({
             timing: timing,
             claim: () async => unchanged(),
           );
-          switch (outcome) {
-            case SesoriToolNoticeOutcome.sent:
-              if (unchanged()) await onSent();
-            case SesoriToolNoticeOutcome.claimLost:
-              break;
-            case SesoriToolNoticeOutcome.skippedInactive:
-              if (_isCurrent(runtime: runtime, watch: watch)) {
-                await _endWatch(runtime: runtime, sessionId: watch.sessionId);
+          // In the PR's queue, so it never interleaves with a tool's save.
+          await _run(
+            runtime: runtime,
+            operation: () async {
+              switch (outcome) {
+                case SesoriToolNoticeOutcome.sent:
+                  if (unchanged()) await onSent();
+                case SesoriToolNoticeOutcome.claimLost:
+                  break;
+                case SesoriToolNoticeOutcome.skippedInactive:
+                  if (_isCurrent(runtime: runtime, watch: watch)) {
+                    await _endWatch(runtime: runtime, sessionId: watch.sessionId);
+                  }
+                case SesoriToolNoticeOutcome.dropped:
+                  if (_isCurrent(runtime: runtime, watch: watch)) onDropped();
               }
-            case SesoriToolNoticeOutcome.dropped:
-              if (_isCurrent(runtime: runtime, watch: watch)) onDropped();
-          }
+            },
+          );
         } finally {
           watch.delivering = false;
         }
