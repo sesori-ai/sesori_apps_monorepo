@@ -45,6 +45,7 @@ import 'package:sesori_dart_core/src/api/product_analytics_event_api.dart'
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
+import 'package:sesori_dart_core/src/api/pull_request_watch_api.dart' as _i675;
 import 'package:sesori_dart_core/src/api/scheduled_task_api.dart' as _i655;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/side_chat_api.dart' as _i617;
@@ -186,6 +187,8 @@ import 'package:sesori_dart_core/src/repositories/product_analytics_preference_r
     as _i804;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
+import 'package:sesori_dart_core/src/repositories/pull_request_watch_repository.dart'
+    as _i403;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/scheduled_task_repository.dart'
@@ -717,6 +720,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i734.ProjectApi>(
       () => _i734.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i675.PullRequestWatchApi>(
+      () => _i675.PullRequestWatchApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i655.ScheduledTaskApi>(
       () => _i655.ScheduledTaskApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -810,6 +816,11 @@ extension GetItInjectableX on _i174.GetIt {
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i403.PullRequestWatchRepository>(
+      () => _i403.PullRequestWatchRepository(
+        api: gh<_i675.PullRequestWatchApi>(),
+      ),
     );
     gh.lazySingleton<_i578.PendingPageService>(
       () => _i578.PendingPageService(

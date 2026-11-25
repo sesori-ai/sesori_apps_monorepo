@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../pull_request_watches/pull_request_watches_list.dart";
 import "../composer_presentation_scope.dart";
 import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
@@ -140,18 +141,27 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     fastModeControl: state.fastModeControl,
     statusChips: ({required surfaceStyle, required pointer}) =>
         _statusChips(state: state, surfaceStyle: surfaceStyle, pointer: pointer),
-    wakeUpChip: ({required surfaceStyle, required pointer}) =>
-        switch ((state.session.wakeUps, state.session.pullRequestWatches)) {
-          ([], []) => null,
-          (final wakeUps, final watches) => SessionWakeUpChip(
-            surfaceStyle: surfaceStyle,
-            wakeUps: wakeUps,
-            pullRequestWatches: watches,
-            showLabel: pointer,
-            onCancel: (wakeUpId) => unawaited(context.read<SessionDetailCubit>().cancelWakeUp(wakeUpId: wakeUpId)),
-            onStopWatching: (watch) => unawaited(context.read<SessionDetailCubit>().stopPullRequestWatch(watch: watch)),
+    wakeUpChip: ({required surfaceStyle, required pointer}) => switch ((
+      state.session.wakeUps,
+      state.session.pullRequestWatches,
+    )) {
+      ([], []) => null,
+      (final wakeUps, final watches) => SessionWakeUpChip(
+        surfaceStyle: surfaceStyle,
+        wakeUps: wakeUps,
+        pullRequestWatches: watches,
+        showLabel: pointer,
+        onCancel: (wakeUpId) => unawaited(context.read<SessionDetailCubit>().cancelWakeUp(wakeUpId: wakeUpId)),
+        onOpenPullRequests: () => unawaited(
+          showPullRequestWatchesSheet(
+            context: context,
+            sessionId: widget.sessionId,
+            // This session is already open, so a row just closes the sheet.
+            onOpenSession: ({required projectId, required projectName, required sessionId, required sessionTitle}) {},
           ),
-        },
+        ),
+      ),
+    },
     composerTrailing: state.children.isEmpty
         ? null
         : ValueListenableBuilder<PregoComposerSurfaceStyle>(

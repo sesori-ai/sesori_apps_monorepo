@@ -363,6 +363,27 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Turns auto-merge on or off for one of a root session's pull request
+  /// watches. The bridge answers with the session, also when the watch was
+  /// already gone.
+  Future<ApiResponse<Session>> setPullRequestWatchAutoMerge({
+    required String sessionId,
+    required String repository,
+    required int number,
+    required bool enabled,
+  }) {
+    return _client.post(
+      "/session/pull-request-watch/auto-merge",
+      fromJson: Session.fromJson,
+      body: SetPullRequestWatchAutoMergeRequest(
+        sessionId: sessionId,
+        repository: repository,
+        number: number,
+        enabled: enabled,
+      ),
+    );
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,

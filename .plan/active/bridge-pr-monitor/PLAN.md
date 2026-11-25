@@ -740,6 +740,11 @@ count additions plus deletions, excluding generated files unless noted.
     - The composer chip opens the sheet filtered to its session, replacing
       the interim menu.
     - The desktop "Pull requests" sidebar row under Scheduled.
+    - Split: 14.a ⚙️ `module_core` and the phone (button, sheet, chip);
+      14.b 🌿 the desktop route, sidebar row and page. One
+      `PullRequestWatchListCubit` in `SessionScope` feeds the button, the
+      sheet and the desktop row, so the session filter lives in the list
+      widget (`arrangePullRequestWatches`), not in the cubit.
 15. ⚙️ **Sesori tools on OpenCode** (`sesori_plugin_opencode` only).
     **Mechanism decided by the owner 2026-11-25:** keep OpenCode's shared
     server (no bridge-owned server, no launch-time config) and use the

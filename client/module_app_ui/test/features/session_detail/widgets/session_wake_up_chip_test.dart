@@ -30,7 +30,7 @@ void main() {
           pullRequestWatches: const [],
           showLabel: true,
           onCancel: cancelled.add,
-          onStopWatching: (_) => fail("no watches"),
+          onOpenPullRequests: () => fail("no watches"),
         ),
       ),
     );
@@ -50,8 +50,8 @@ void main() {
     expect(find.text("Ping review"), findsNothing);
   });
 
-  testWidgets("watched pull requests: the count leads without a wake-up, the time leads with one, and Stop watching "
-      "names the pull request", (tester) async {
+  testWidgets("watched pull requests: the count leads and opens the list without a wake-up; with one the time leads "
+      "and the menu opens the list", (tester) async {
     const watches = [
       SessionPullRequestWatch(
         repository: "acme/app",
@@ -74,7 +74,7 @@ void main() {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final stopped = <SessionPullRequestWatch>[];
+    var opened = 0;
     final withWakeUps = ValueNotifier(<SessionWakeUp>[]);
     addTearDown(withWakeUps.dispose);
     await tester.pumpWidget(
@@ -87,12 +87,15 @@ void main() {
             pullRequestWatches: watches,
             showLabel: true,
             onCancel: (_) {},
-            onStopWatching: stopped.add,
+            onOpenPullRequests: () => opened++,
           ),
         ),
       ),
     );
     expect(find.text("2 pull requests"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("session-wake-up-chip")));
+    await tester.pumpAndSettle();
+    expect(opened, 1);
 
     withWakeUps.value = wakeUps;
     await tester.pumpAndSettle();
@@ -102,13 +105,11 @@ void main() {
     await tester.tap(find.byKey(const Key("session-wake-up-chip")));
     await tester.pumpAndSettle();
     expect(find.text("Check CI"), findsOneWidget);
-    expect(find.text("WATCHED PULL REQUESTS"), findsOneWidget);
-    expect(find.text("needs you · acme/app"), findsOneWidget);
-    expect(find.text("waiting · acme/app"), findsOneWidget);
+    expect(opened, 1);
 
-    await tester.tap(find.byKey(const Key("session-pull-request-watch-stop-acme/app#15")));
+    await tester.tap(find.byKey(const Key("session-pull-request-watches")));
     await tester.pumpAndSettle();
-    expect(stopped, [watches[1]]);
+    expect(opened, 2);
   });
 
   testWidgets("the chip grows in beside the pickers and folds away without a jump", (tester) async {

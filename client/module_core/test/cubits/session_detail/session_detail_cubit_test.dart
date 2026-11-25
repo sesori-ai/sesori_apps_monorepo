@@ -691,50 +691,6 @@ void main() {
       });
     });
 
-    group("pull request watches", () {
-      const watch = SessionPullRequestWatch(
-        repository: "octo/repo",
-        number: 12,
-        title: "Fix the thing",
-        url: "https://github.com/octo/repo/pull/12",
-        autoMerge: false,
-        status: PullRequestWatchStatus.waiting(),
-      );
-
-      Future<SessionDetailCubit> loadedCubit() async {
-        stubSessionRepositoryGetSession(
-          repository: mockSessionRepository,
-          sessionId: sessionId,
-          session: testSession(id: sessionId).copyWith(pullRequestWatches: const [watch]),
-        );
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
-        return cubit;
-      }
-
-      test("stop applies the session the bridge answers with", () async {
-        when(
-          () => mockSessionRepository.stopPullRequestWatch(sessionId: sessionId, repository: "octo/repo", number: 12),
-        ).thenAnswer((_) async => ApiResponse.success(testSession(id: sessionId)));
-        final cubit = await loadedCubit();
-        expect(cubit.state.hydratedSession?.pullRequestWatches, [watch]);
-        await cubit.stopPullRequestWatch(watch: watch);
-        expect(cubit.state.hydratedSession?.pullRequestWatches, isEmpty);
-      });
-
-      test("a failed stop keeps the watch and says so", () async {
-        when(
-          () => mockSessionRepository.stopPullRequestWatch(sessionId: sessionId, repository: "octo/repo", number: 12),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        final cubit = await loadedCubit();
-        final notice = cubit.noticeStream.first;
-        await cubit.stopPullRequestWatch(watch: watch);
-        expect(await notice, isA<SessionDetailPullRequestWatchStopFailed>());
-        expect(cubit.state.hydratedSession?.pullRequestWatches, [watch]);
-      });
-    });
-
     group("fast mode", () {
       const fastModel = AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
       // testSession's last update, which stands in for model activity because

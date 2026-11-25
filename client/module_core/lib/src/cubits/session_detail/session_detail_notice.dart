@@ -31,10 +31,6 @@ final class const SessionDetailAutoContinuationAlreadySubmitted() extends Sessio
 /// The bridge did not confirm a wake-up's cancel, so it may still fire.
 final class const SessionDetailWakeUpCancelFailed() extends SessionDetailNotice;
 
-/// The bridge did not confirm that it stopped watching a pull request, so it
-/// may still be watched.
-final class const SessionDetailPullRequestWatchStopFailed() extends SessionDetailNotice;
-
 /// The bridge did not acknowledge a change to the session's approval mode.
 final class const SessionDetailApprovalUpdateFailed() extends SessionDetailNotice;
 
