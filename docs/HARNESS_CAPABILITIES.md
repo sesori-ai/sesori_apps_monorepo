@@ -248,8 +248,8 @@ Grok through tool search, as for pages.
 Tool-group guides: a group with a long how-to (today the PR monitor) gives
 agents two ways to read it. Every harness that gets the server can call
 `get_guide`. Harnesses that can load extra skills per process also get the
-guide as a skill, which the bridge writes to `~/.sesori/agent-skills/` while
-the group is on.
+guide as a skill, which the bridge writes to `agent-skills/` in its data
+directory while the group is on.
 
 | Harness | Sesori skill |
 |---|---|

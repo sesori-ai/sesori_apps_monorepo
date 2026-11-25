@@ -53,7 +53,7 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
 - A group with a guide (today `pr_monitor`) adds `get_guide` to `tools/list`, whose `topic` enum names only the token's
   groups that have one; an unknown topic is an `isError` result, and a token without such a group lists no `get_guide`.
   The `initialize` instructions name the matching skill (`sesori-pr-monitor`, or `sesori:pr-monitor` in Claude Code).
-  While a group with a guide is on, the bridge keeps `~/.sesori/agent-skills/` holding it as a Claude plugin skill and
+  While a group with a guide is on, the bridge keeps `agent-skills/` in its data directory holding it as a Claude plugin skill and
   a plain skill, rewrites the folder when a setting turns such a group on or off, and removes it when none is on.
   Claude Code sessions get `--plugin-dir` and Codex gets `skills/extraRoots/set` (see
   [harness capabilities](../HARNESS_CAPABILITIES.md)).

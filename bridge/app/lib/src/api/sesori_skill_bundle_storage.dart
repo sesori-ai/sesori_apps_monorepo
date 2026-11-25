@@ -5,24 +5,19 @@ import "package:path/path.dart" as path;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriSkillBundle;
 import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGuide;
 
-/// The folder of skills written from tool-group guides
-/// (`sesoriAgentSkillsDirectory()`), in the two layouts of
-/// [SesoriSkillBundle]. Each write regenerates it whole, so it holds no
-/// state of its own.
+/// The bridge's own skill folder. Each bridge data directory has one, since
+/// its contents follow that bridge's settings.
+String sesoriSkillBundleDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "agent-skills");
+
+/// The folder of skills written from tool-group guides, in the two layouts of
+/// [SesoriSkillBundle]. Each write regenerates it whole.
 class SesoriSkillBundleStorage({required final String _directoryPath}) {
-  SesoriSkillBundle? _current;
-
-  /// The bundle the last [write] produced, or null before the first one, after
-  /// one with no guides, or after one that failed.
-  SesoriSkillBundle? get current => _current;
-
-  /// Replaces the folder with one skill per guide in [guides]; with none,
-  /// removes it.
-  void write({required List<SesoriToolGuide> guides}) {
-    _current = null;
+  /// Replaces the folder with one skill per guide in [guides] and returns
+  /// where they are; with none, removes it and returns null.
+  SesoriSkillBundle? write({required List<SesoriToolGuide> guides}) {
     final root = Directory(_directoryPath);
     if (root.existsSync()) root.deleteSync(recursive: true);
-    if (guides.isEmpty) return;
+    if (guides.isEmpty) return null;
 
     final pluginRoot = path.join(_directoryPath, "claude-plugin");
     final skillsRoot = path.join(_directoryPath, "skills");
@@ -43,7 +38,7 @@ class SesoriSkillBundleStorage({required final String _directoryPath}) {
         contents: _skill(name: "sesori-${guide.name}", guide: guide),
       );
     }
-    _current = SesoriSkillBundle(pluginRoot: pluginRoot, skillsRoot: skillsRoot);
+    return SesoriSkillBundle(pluginRoot: pluginRoot, skillsRoot: skillsRoot);
   }
 
   /// A JSON string is a valid YAML double-quoted scalar, so the description

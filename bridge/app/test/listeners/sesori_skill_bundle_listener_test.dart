@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/sesori_skill_bundle_storage.dart";
 import "package:sesori_bridge/src/listeners/sesori_skill_bundle_listener.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
+import "package:sesori_bridge/src/repositories/sesori_skill_bundle_repository.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:test/test.dart";
 
@@ -20,7 +21,7 @@ void main() {
 
   late Directory directory;
   late BridgeSettingsRepository settings;
-  late SesoriSkillBundleStorage storage;
+  late SesoriSkillBundleRepository skillBundles;
   late SesoriSkillBundleListener listener;
 
   setUp(() async {
@@ -30,14 +31,16 @@ void main() {
     });
     settings = BridgeSettingsRepository(defaultEditorApi: null, api: InMemoryBridgeSettingsApi(config: "{}"));
     await settings.loadSettings();
-    storage = SesoriSkillBundleStorage(directoryPath: path.join(directory.path, "agent-skills"));
+    skillBundles = SesoriSkillBundleRepository(
+      storage: SesoriSkillBundleStorage(directoryPath: path.join(directory.path, "agent-skills")),
+    );
     listener = SesoriSkillBundleListener(
       settings: settings,
       groups: [
         _FakeGroup(id: SesoriToolGroupIds.tasks, guide: null),
         _FakeGroup(id: SesoriToolGroupIds.prMonitor, guide: guide),
       ],
-      storage: storage,
+      skillBundles: skillBundles,
     );
     addTearDown(listener.dispose);
   });
@@ -45,7 +48,7 @@ void main() {
   test("writes each enabled guide as a Claude plugin skill and a plain skill", () {
     listener.start();
 
-    final bundle = storage.current ?? fail("the PR monitor has a guide and is on");
+    final bundle = skillBundles.current ?? fail("the PR monitor has a guide and is on");
     final manifest = jsonDecode(File(path.join(bundle.pluginRoot, ".claude-plugin", "plugin.json")).readAsStringSync());
     expect(manifest, containsPair("name", "sesori"));
     final pluginSkill = File(path.join(bundle.pluginRoot, "skills", "pr-monitor", "SKILL.md")).readAsStringSync();
@@ -61,16 +64,16 @@ void main() {
 
   test("removes the bundle while the group is off and writes it again once it is back on", () async {
     listener.start();
-    final bundle = storage.current ?? fail("the PR monitor starts on");
+    final bundle = skillBundles.current ?? fail("the PR monitor starts on");
 
     await settings.updateToolGroup(id: SesoriToolGroupIds.prMonitor, enabled: false);
     await pumpEventQueue();
-    expect(storage.current, isNull);
+    expect(skillBundles.current, isNull);
     expect(Directory(bundle.pluginRoot).existsSync(), isFalse);
 
     await settings.updateToolGroup(id: SesoriToolGroupIds.prMonitor, enabled: true);
     await pumpEventQueue();
-    expect(storage.current, isNotNull);
+    expect(skillBundles.current, isNotNull);
     expect(File(path.join(bundle.skillsRoot, "sesori-pr-monitor", "SKILL.md")).existsSync(), isTrue);
   });
 
@@ -79,7 +82,7 @@ void main() {
 
     listener.start();
 
-    expect(storage.current, isNull);
+    expect(skillBundles.current, isNull);
     expect(directory.listSync(), isEmpty);
   });
 }

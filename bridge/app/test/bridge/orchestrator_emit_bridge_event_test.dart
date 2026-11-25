@@ -2047,7 +2047,7 @@ class const _OrchestratorHarness({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: sesoriMcpRequests,
       sesoriMcpGrants: sesoriMcpGrants ?? SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

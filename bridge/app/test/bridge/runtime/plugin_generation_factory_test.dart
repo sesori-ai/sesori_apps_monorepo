@@ -89,7 +89,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       BridgePlugin? startedPlugin;
@@ -138,7 +138,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
     }
@@ -428,7 +428,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       await factory.enforceBridgeOwnership();

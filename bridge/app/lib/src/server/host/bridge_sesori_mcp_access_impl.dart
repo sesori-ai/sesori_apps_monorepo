@@ -1,10 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show SesoriMcpAccess, SesoriMcpLaunch, SesoriSkillBundle, sesoriMcpServerName;
-
 import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroupId;
 
-import "../../api/sesori_skill_bundle_storage.dart";
 import "../../repositories/sesori_mcp_grant_repository.dart";
+import "../../repositories/sesori_skill_bundle_repository.dart";
 
 /// One plugin's [SesoriMcpAccess]: mints launches for that plugin only.
 class BridgeSesoriMcpAccessImpl({
@@ -17,7 +16,7 @@ class BridgeSesoriMcpAccessImpl({
   required final Set<SesoriToolGroupId> Function() _enabledToolGroups,
 
   /// Kept in step with the enabled groups by `SesoriSkillBundleListener`.
-  required final SesoriSkillBundleStorage _skillBundles,
+  required final SesoriSkillBundleRepository _skillBundles,
 }) implements SesoriMcpAccess {
   @override
   SesoriMcpLaunch? mint() {

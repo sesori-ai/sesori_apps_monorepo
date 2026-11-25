@@ -7,13 +7,7 @@ import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show
-        DownloadProgress,
-        OsVersionFormatter,
-        PlatformOs,
-        bridgeVersion,
-        sesoriAgentSkillsDirectory,
-        sesoriAttachmentsDirectory;
+    show DownloadProgress, OsVersionFormatter, PlatformOs, bridgeVersion, sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePluginDescriptor,
@@ -77,6 +71,7 @@ import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
 import "../repositories/sesori_mcp_grant_repository.dart";
+import "../repositories/sesori_skill_bundle_repository.dart";
 import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
@@ -634,7 +629,11 @@ class const BridgeRuntimeRunner._() {
       shutdownCoordinator.addPhase(phase: BridgeShutdownPhase.pluginDispose, action: sesoriMcpServer.close);
       // Tokens live in memory only, so a restarted bridge refuses old ones.
       final sesoriMcpGrants = SesoriMcpGrantRepository(random: Random.secure());
-      final skillBundles = SesoriSkillBundleStorage(directoryPath: sesoriAgentSkillsDirectory());
+      final skillBundles = SesoriSkillBundleRepository(
+        storage: SesoriSkillBundleStorage(
+          directoryPath: sesoriSkillBundleDirectoryPath(dataDirectory: options.dataDirectory),
+        ),
+      );
       final generationFactory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,

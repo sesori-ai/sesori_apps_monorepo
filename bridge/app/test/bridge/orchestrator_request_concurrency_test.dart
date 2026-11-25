@@ -274,7 +274,7 @@ class _ConcurrencyHarness._({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

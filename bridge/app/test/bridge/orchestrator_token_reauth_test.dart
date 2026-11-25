@@ -385,7 +385,7 @@ class _ReauthHarness._({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: backoffPolicy,
     );
 

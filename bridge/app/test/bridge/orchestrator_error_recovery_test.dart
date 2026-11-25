@@ -97,7 +97,7 @@ void main() {
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final running = await startTestOrchestratorSession(session: composition.session);
@@ -181,7 +181,7 @@ void main() {
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create().session;
 
@@ -244,7 +244,7 @@ void main() {
         startupRetryService: BridgeStartupRetryService(),
         sesoriMcpRequests: const Stream.empty(),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
         reconnectBackoff: ReconnectBackoffPolicy.standard,
       );
 
@@ -372,7 +372,7 @@ class _TestHarness._({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
-      skillBundles: temporarySkillBundleStorage(),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     );
 

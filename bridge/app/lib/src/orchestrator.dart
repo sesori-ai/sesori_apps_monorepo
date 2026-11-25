@@ -34,7 +34,6 @@ import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
-import "api/sesori_skill_bundle_storage.dart";
 import "api/shell_command_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
@@ -115,6 +114,7 @@ import "repositories/scheduled_command_repository.dart";
 import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/sesori_mcp_grant_repository.dart";
+import "repositories/sesori_skill_bundle_repository.dart";
 import "repositories/sesori_tool_record_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
@@ -335,7 +335,7 @@ class Orchestrator({
   required final BridgeStartupRetryService _startupRetryService,
   required final Stream<SesoriMcpInboundRequest> _sesoriMcpRequests,
   required final SesoriMcpGrantRepository _sesoriMcpGrants,
-  required final SesoriSkillBundleStorage _skillBundles,
+  required final SesoriSkillBundleRepository _skillBundles,
 }) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -1138,7 +1138,7 @@ class Orchestrator({
       skillBundleListener: SesoriSkillBundleListener(
         settings: _bridgeSettingsRepository,
         groups: toolGroups,
-        storage: _skillBundles,
+        skillBundles: _skillBundles,
       ),
       toolGroupApprovalService: toolGroupApprovalService,
       agentApprovalRepository: agentApprovalRepository,

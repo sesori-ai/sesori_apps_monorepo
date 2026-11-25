@@ -65,7 +65,7 @@ void main() {
         url: url,
         grants: grants,
         enabledToolGroups: () => tasksOnly,
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
       );
 
       final launch = access.mint() ?? fail("a group is on, so a launch is minted");
@@ -91,7 +91,7 @@ void main() {
         url: url,
         grants: SesoriMcpGrantRepository(random: Random.secure()),
         enabledToolGroups: () => enabled,
-        skillBundles: temporarySkillBundleStorage(),
+        skillBundles: temporarySkillBundles(),
       );
 
       expect(access.mint(), isNull);
