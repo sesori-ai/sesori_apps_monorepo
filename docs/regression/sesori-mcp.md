@@ -228,7 +228,7 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
   set or clear), the quiet window (1–60 min, default 2), the running-CI hold (5–240 min, default 30) and the idle
   reminder (5–240 min, default 25, or off). A change that turns auto-merge on by default anywhere, including
   clearing a repository's off override while the default is on, asks the calling session's user with an Allow card,
-  unless that session approves everything. The call's timings and narrowing changes apply at once. The calling
+  unless that session approves everything. The call's timings and narrowing changes apply at once. Its root
   session hears the answer through a notice. If the auto-merge settings changed while the card was open, an Allow
   applies nothing and says so. `watch_pr` without `auto_merge` takes the repository override, else the default;
   watches already running keep their choice, while new timings apply to them from their next poll.
