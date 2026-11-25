@@ -18,7 +18,7 @@
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Done | #2926 (13.a), #2927 (13.b) |
 | 14 | ⚙️ App: watched-PR list | Done | #2929 (14.a), #2930 (14.b) |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
-| 16 | 🌱 Reconcile regression docs | Not started | |
+| 16 | 🌱 Reconcile regression docs | Done | #2932 |
 | 17 | 🌿 Verify and retire | Not started | |
 
 ## Notes for later steps
