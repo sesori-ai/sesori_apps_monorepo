@@ -53,6 +53,9 @@ typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
   required OpenCodeProtocol protocol,
   required String serverUrl,
   required String? password,
+
+  /// Null when the server cannot carry Sesori's tools.
+  required SesoriMcpAccess? sesoriMcp,
   required void Function() onConnected,
   required void Function() onDisconnected,
 });
@@ -67,6 +70,7 @@ OpenCodeManagedApi _buildProductionApi({
   required OpenCodeProtocol protocol,
   required String serverUrl,
   required String? password,
+  required SesoriMcpAccess? sesoriMcp,
   required void Function() onConnected,
   required void Function() onDisconnected,
 }) => switch (protocol) {
@@ -79,6 +83,7 @@ OpenCodeManagedApi _buildProductionApi({
   OpenCodeProtocolV2() => OpenCodeV2Plugin(
     serverUrl: serverUrl,
     password: password,
+    sesoriMcp: sesoriMcp,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
   ),
@@ -158,6 +163,11 @@ class const OpenCodePluginDescriptor({
   /// message by arrival (`OpenCodeV2CommandEchoTracker`).
   @override
   bool get namesCommandInvocations => true;
+
+  /// From OpenCode 2.2.0, through its client-MCP WebSocket, to every session
+  /// of the server, including those started in OpenCode's own apps.
+  @override
+  bool get injectsSesoriTools => true;
 
   @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
@@ -978,6 +988,11 @@ class const OpenCodePluginDescriptor({
       protocol: protocol,
       serverUrl: serverUrl,
       password: apiPassword,
+      sesoriMcp: switch (protocol) {
+        OpenCodeProtocolV2(:final version) when version.version.compareTo(openCodeClientMcpMinimumVersion) >= 0 =>
+          host.sesoriMcp,
+        OpenCodeProtocolV2() || OpenCodeProtocolV1() => null,
+      },
       onConnected: reporter.markConnected,
       onDisconnected: reporter.markDisconnected,
     );

@@ -9,6 +9,7 @@ import "../open_code_raw_http_client.dart";
 import "../runtime/open_code_managed_api.dart";
 import "../sse/sse_connection.dart";
 import "api/opencode_v2_api.dart";
+import "api/sesori_bridge_mcp_api.dart";
 import "mappers/v2_form_answer_mapper.dart";
 import "mappers/v2_form_answer_validator.dart";
 import "repositories/opencode_v2_activity_tracker.dart";
@@ -17,8 +18,10 @@ import "repositories/opencode_v2_compaction_tracker.dart";
 import "repositories/opencode_v2_repository.dart";
 import "repositories/v2_message_mapper.dart";
 import "repositories/v2_model_mapper.dart";
+import "repositories/v2_sesori_tools_repository.dart";
 import "services/opencode_v2_service.dart";
 import "services/v2_mcp_authentication_service.dart";
+import "services/v2_sesori_tools_service.dart";
 import "sse/v2_event_mapper.dart";
 import "sse/v2_event_parser.dart";
 
@@ -42,19 +45,20 @@ class OpenCodeV2Plugin._({
   factory({
     required String serverUrl,
     required String? password,
+
+    /// Null when the server cannot carry Sesori's tools.
+    required SesoriMcpAccess? sesoriMcp,
     required void Function() onConnected,
     required void Function() onDisconnected,
   }) {
     final httpClient = io.HttpClient()..maxConnectionsPerHost = openCodeMaxConnectionsPerHost;
     final modelMapper = V2ModelMapper(pluginId: _id);
     const messageMapper = V2MessageMapper();
-    final repository = OpenCodeV2Repository(
-      api: OpenCodeV2Api(
-        client: OpenCodeRawHttpClient(serverURL: serverUrl, password: password, client: IOClient(httpClient)),
-      ),
-      modelMapper: modelMapper,
-      messageMapper: messageMapper,
+    final client = IOClient(httpClient);
+    final api = OpenCodeV2Api(
+      client: OpenCodeRawHttpClient(serverURL: serverUrl, password: password, client: client),
     );
+    final repository = OpenCodeV2Repository(api: api, modelMapper: modelMapper, messageMapper: messageMapper);
     return OpenCodeV2Plugin._(
       service: OpenCodeV2Service(
         repository: repository,
@@ -66,6 +70,18 @@ class OpenCodeV2Plugin._({
         formAnswerMapper: const V2FormAnswerMapper(),
         formAnswerValidator: const V2FormAnswerValidator(),
         mcpAuthentication: V2McpAuthenticationService(repository: repository, pollInterval: const Duration(seconds: 1)),
+        sesoriTools: sesoriMcp == null
+            ? null
+            : V2SesoriToolsService(
+                repository: V2SesoriToolsRepository(
+                  api: api,
+                  bridge: SesoriBridgeMcpApi(client: client),
+                ),
+                access: sesoriMcp,
+                idleRelease: const Duration(hours: 1),
+                retryDelay: const Duration(seconds: 30),
+                attachWait: const Duration(seconds: 5),
+              ),
       ),
       httpClient: httpClient,
       serverUrl: serverUrl,
@@ -170,7 +186,7 @@ class OpenCodeV2Plugin._({
     if (_disposed) return;
     _disposed = true;
     _sseConnection.stop();
-    await _service.disposeMcpAuthentication();
+    await Future.wait([_service.disposeMcpAuthentication(), _service.disposeSesoriTools()]);
     _httpClient.close(force: true);
     _service.reset();
     await Future.wait([_eventBuffer.close(), _workState.close()]);

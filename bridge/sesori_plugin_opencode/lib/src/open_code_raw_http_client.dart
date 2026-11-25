@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io" show WebSocket;
 
 import "package:http/http.dart" as http;
 
@@ -84,6 +85,16 @@ class OpenCodeRawHttpClient({
     } finally {
       abort.complete();
     }
+  }
+
+  /// Opens a WebSocket to [path] with the same Basic auth as every request,
+  /// sent as a handshake header rather than in the URL.
+  Future<WebSocket> connectWebSocket({required String path, required Map<String, String> queryParameters}) {
+    final uri = Uri.parse("$_serverURL$path").replace(queryParameters: queryParameters);
+    return WebSocket.connect(
+      uri.replace(scheme: uri.scheme == "https" ? "wss" : "ws").toString(),
+      headers: _authHeaders,
+    );
   }
 
   Future<http.Response> get({

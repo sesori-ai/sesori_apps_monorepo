@@ -38,7 +38,13 @@ void main() {
       server: await HttpServer.bind(InternetAddress.loopbackIPv4, 0),
       native: jsonDecodeMap(File("test/v2/fixtures/native_2_0_16.json").readAsStringSync()),
     );
-    plugin = OpenCodeV2Plugin(serverUrl: server.url, password: "fixture", onConnected: () {}, onDisconnected: () {});
+    plugin = OpenCodeV2Plugin(
+      serverUrl: server.url,
+      password: "fixture",
+      sesoriMcp: null,
+      onConnected: () {},
+      onDisconnected: () {},
+    );
   });
   tearDown(() async {
     await plugin.dispose();

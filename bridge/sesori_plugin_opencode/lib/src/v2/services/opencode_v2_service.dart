@@ -19,6 +19,7 @@ import "../repositories/opencode_v2_repository.dart";
 import "../repositories/v2_model_mapper.dart";
 import "../sse/v2_event_mapper.dart";
 import "v2_mcp_authentication_service.dart";
+import "v2_sesori_tools_service.dart";
 
 /// The transport consumer serializes refresh and event handling. This service
 /// owns their orchestration, not a stream, queue, transcript cache or lifecycle.
@@ -32,6 +33,9 @@ class OpenCodeV2Service({
   required final V2FormAnswerMapper _formAnswerMapper,
   required final V2FormAnswerValidator _formAnswerValidator,
   required final V2McpAuthenticationService _mcpAuthentication,
+
+  /// Null when the OpenCode server predates client MCP.
+  required final V2SesoriToolsService? _sesoriTools,
 }) {
   static const compactionCommandName = "compact";
   static const _anthropicProviderId = "anthropic";
@@ -52,6 +56,7 @@ class OpenCodeV2Service({
       _repository.getActiveSessionIds(),
       _repository.getLoadedDirectories(),
     );
+    _sesoriTools?.reconnect(loaded: directories);
     final pending = await Future.wait(directories.map((directory) => _pendingInput(directory: directory)));
     final changes = _tracker.seed(
       sessions: sessions,
@@ -138,6 +143,7 @@ class OpenCodeV2Service({
   }
 
   Future<void> disposeMcpAuthentication() => _mcpAuthentication.dispose();
+  Future<void> disposeSesoriTools() async => await _sesoriTools?.dispose();
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     try {
       final directory = await _mcpDirectory(scope: scope);
@@ -305,6 +311,7 @@ class OpenCodeV2Service({
     required PluginSessionVariant? variant,
   }) async {
     await _select(sessionId: sessionId, agent: agent, model: model, variant: variant);
+    await _attachSesoriTools(sessionId: sessionId);
     await _repository.sendPrompt(sessionId: sessionId, promptId: promptId, parts: parts);
     // Native events own activity; acceptance can arrive after a fast terminal event.
   }
@@ -319,11 +326,10 @@ class OpenCodeV2Service({
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
-    final kind = await _commandKind(
-      directory: await _directory(sessionId: sessionId),
-      command: command,
-    );
+    final directory = await _directory(sessionId: sessionId);
+    final kind = await _commandKind(directory: directory, command: command);
     await _select(sessionId: sessionId, agent: agent, model: model, variant: variant);
+    await _sesoriTools?.attach(directory: directory);
     switch (kind) {
       case _V2CommandKind.native:
         // Its message can arrive before the request returns.
@@ -539,6 +545,12 @@ class OpenCodeV2Service({
     }
   }
 
+  /// Gives a prompt about to run the folder's Sesori tools from its first step.
+  Future<void> _attachSesoriTools({required String sessionId}) async {
+    final tools = _sesoriTools;
+    if (tools != null) await tools.attach(directory: await _directory(sessionId: sessionId));
+  }
+
   Future<String> _directory({required String sessionId}) async =>
       _tracker.session(sessionId: sessionId)?.directory ??
       (await _repository.getSession(sessionId: sessionId)).directory;
@@ -555,6 +567,9 @@ class OpenCodeV2Service({
       V2ModelUpdated() ||
       V2SkillUpdated() => null,
     };
+    if ((event, envelope.location?.directory) case (V2SessionEventData(), final directory?)) {
+      _sesoriTools?.touch(directory: directory);
+    }
     final deleted = event is V2SessionDeleted ? _tracker.session(sessionId: event.sessionID) : null;
     var changed = _tracker.apply(event: event);
     final result = _mapper.map(envelope: envelope);

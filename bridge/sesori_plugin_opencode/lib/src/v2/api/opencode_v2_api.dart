@@ -1,5 +1,5 @@
 import "dart:convert";
-import "dart:io" show HttpStatus;
+import "dart:io" show HttpStatus, WebSocket;
 
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -199,6 +199,18 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       decode: (body) => jsonDecodeListMap(body).map(LocationPublicRef.fromJson).toList(),
     );
   }
+
+  /// Attaches a client-hosted MCP server called [name] to [directory]'s
+  /// folder: OpenCode becomes the MCP client and sends JSON-RPC over the
+  /// socket, one message per text frame. Experimental; OpenCode 2.2.0+.
+  /// While the socket is open, OpenCode keeps the folder loaded.
+  Future<WebSocket> connectClientMcp({required String directory, required String name}) => _client.connectWebSocket(
+    path: "/api/experimental/client-mcp",
+    queryParameters: {
+      ..._location(directory: directory),
+      "name": name,
+    },
+  );
 
   Future<List<Project>> listProjects() async {
     const path = "/api/project";
