@@ -1,4 +1,6 @@
+import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_monitor_config.dart";
+import "models/pull_request_approval_answer.dart";
 import "models/pull_request_config_change.dart";
 
 /// The PR monitor's settings in words: the Allow card for turning auto-merge
@@ -26,31 +28,58 @@ class const PullRequestConfigDescriptionBuilder() {
         "choice.";
   }
 
+  /// The card's Markdown for turning auto-merge on for one watched PR.
+  String pullRequestApprovalBody({required PullRequestTarget target}) =>
+      "Turn auto-merge on for **${target.displayKey}**?\n\n"
+      "The agent asked for it. Once the agent marks the PR ready, it is squash-merged, titled with only the PR title, "
+      "without waiting for human review.";
+
+  /// The notice line the user sees once they answered a PR's card.
+  String pullRequestOutcomeSummary({required PullRequestTarget target, required PullRequestApprovalAnswer answer}) =>
+      "PR monitor: auto-merge for ${target.displayKey} ${_answered(answer: answer)}";
+
+  /// What the agent reads beside [pullRequestOutcomeSummary].
+  String pullRequestOutcomeGuidance({required PullRequestTarget target, required PullRequestApprovalAnswer answer}) =>
+      switch (answer) {
+        PullRequestApprovalAnswer.allowed =>
+          "The user allowed auto-merge for ${target.displayKey}: marking it ready, automatically or with "
+              "mark_pr_ready, is now the merge approval, and Sesori makes one squash-merge attempt for the accepted "
+              "head. Assess the PR again, and once nothing is left to do, call mark_pr_ready; never hold it back to "
+              "wait for a human.",
+        PullRequestApprovalAnswer.declined =>
+          "The user declined auto-merge for ${target.displayKey}; it stays off, so marking it ready hands it to a "
+              "human reviewer. Do not ask again unless the user does.",
+        PullRequestApprovalAnswer.outdated =>
+          "The user allowed auto-merge for ${target.displayKey}, but this session no longer watches it, so nothing "
+              "changed.",
+      };
+
   /// The notice line the user sees once they answered.
   String outcomeSummary({
     required PullRequestAutoMergeDefaultChange change,
-    required PullRequestConfigAnswer answer,
-  }) =>
-      "PR monitor: auto-merge by default for ${_scope(change: change)} ${switch (answer) {
-        PullRequestConfigAnswer.allowed => "allowed",
-        PullRequestConfigAnswer.declined => "declined",
-        PullRequestConfigAnswer.outdated => "not applied",
-      }}";
+    required PullRequestApprovalAnswer answer,
+  }) => "PR monitor: auto-merge by default for ${_scope(change: change)} ${_answered(answer: answer)}";
+
+  String _answered({required PullRequestApprovalAnswer answer}) => switch (answer) {
+    PullRequestApprovalAnswer.allowed => "allowed",
+    PullRequestApprovalAnswer.declined => "declined",
+    PullRequestApprovalAnswer.outdated => "not applied",
+  };
 
   /// What the agent reads beside [outcomeSummary]; [config] is the settings
   /// now in effect.
   String outcomeGuidance({
     required PullRequestAutoMergeDefaultChange change,
-    required PullRequestConfigAnswer answer,
+    required PullRequestApprovalAnswer answer,
     required PullRequestMonitorConfig config,
   }) => switch (answer) {
-    PullRequestConfigAnswer.allowed =>
+    PullRequestApprovalAnswer.allowed =>
       "The user allowed turning auto-merge on by default for ${_scope(change: change)}. PRs watched there from now "
           "on without choosing auto-merge get it; PRs already watched keep their choice. ${settingsText(config: config)}",
-    PullRequestConfigAnswer.declined =>
+    PullRequestApprovalAnswer.declined =>
       "The user declined turning auto-merge on by default for ${_scope(change: change)}; nothing changed. Do not ask "
           "again unless the user does. ${settingsText(config: config)}",
-    PullRequestConfigAnswer.outdated =>
+    PullRequestApprovalAnswer.outdated =>
       "The user allowed turning auto-merge on by default for ${_scope(change: change)}, but the auto-merge settings "
           "changed while they decided, so what they allowed no longer matches and nothing was applied. Call "
           "configure_pr_monitor again only if it is still wanted. ${settingsText(config: config)}",

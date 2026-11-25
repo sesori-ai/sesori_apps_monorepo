@@ -13,6 +13,7 @@ import "../repositories/models/stored_pull_request_watch.dart";
 import "../repositories/pull_request_action_repository.dart";
 import "../repositories/pull_request_snapshot_repository.dart";
 import "../repositories/pull_request_watch_repository.dart";
+import "models/pull_request_approval_answer.dart";
 import "models/pull_request_config_change.dart";
 import "models/pull_request_merge_state.dart";
 import "models/pull_request_watch_results.dart";
@@ -232,12 +233,12 @@ class PullRequestWatchService({
     required PullRequestMonitorConfig shown,
     required Future<SesoriToolApprovalOutcome> answer,
   }) async {
-    final PullRequestConfigAnswer result;
+    final PullRequestApprovalAnswer result;
     switch (await answer) {
       case SesoriToolApprovalOutcome.dropped:
         return;
       case SesoriToolApprovalOutcome.rejected:
-        result = PullRequestConfigAnswer.declined;
+        result = PullRequestApprovalAnswer.declined;
       case SesoriToolApprovalOutcome.allowed:
         var outdated = false;
         try {
@@ -257,7 +258,7 @@ class PullRequestWatchService({
           Log.w("PR monitor: saving the allowed auto-merge default failed", error, stackTrace);
           return;
         }
-        result = outdated ? PullRequestConfigAnswer.outdated : PullRequestConfigAnswer.allowed;
+        result = outdated ? PullRequestApprovalAnswer.outdated : PullRequestApprovalAnswer.allowed;
     }
     await _host.deliverNotice(
       sessionId: sessionId,
@@ -373,6 +374,78 @@ class PullRequestWatchService({
     );
   }
 
+  /// Whether an agent turning auto-merge on for [target] needs the user's
+  /// Allow: only while the settings leave it off by default there.
+  bool autoMergeNeedsAllow({required PullRequestTarget target}) =>
+      !_config.autoMergeFor(repositoryKey: target.repositoryKey);
+
+  /// An agent's request to turn auto-merge on for [sessionId]'s watch. Where
+  /// the default is off it first asks the user of [askingSessionId], the
+  /// session that called the tool; once they answer, [sessionId] hears the
+  /// outcome. Throws when removing a ready label fails.
+  Future<PullRequestAutoMergeRequest> requestAutoMerge({
+    required String askingSessionId,
+    required String sessionId,
+    required PullRequestTarget target,
+  }) async {
+    final watch = _runtimes[target.registryKey]?.watches[sessionId];
+    if (watch == null || watch.stored.autoMerge || !autoMergeNeedsAllow(target: target)) {
+      return PullRequestAutoMergeRequestApplied(
+        result: await setAutoMerge(sessionId: sessionId, target: target, enabled: true),
+      );
+    }
+    final approval = await _host.requestApproval(
+      sessionId: askingSessionId,
+      title: PullRequestConfigDescriptionBuilder.approvalTitle,
+      body: _configDescriptions.pullRequestApprovalBody(target: target),
+    );
+    switch (approval) {
+      case SesoriToolApprovalAllowed():
+        return PullRequestAutoMergeRequestApplied(
+          result: await _setAutoMerge(sessionId: sessionId, target: target, enabled: true, shown: watch),
+        );
+      case SesoriToolApprovalDropped():
+        return const PullRequestAutoMergeApprovalDropped();
+      case SesoriToolApprovalShown(:final answer):
+        unawaited(_applyAutoMergeAnswer(sessionId: sessionId, target: target, shown: watch, answer: answer));
+        return const PullRequestAutoMergeAwaitingApproval();
+    }
+  }
+
+  /// Turns auto-merge on for [shown], the watch the card was for, once the
+  /// user allows it, then tells [sessionId] the answer.
+  Future<void> _applyAutoMergeAnswer({
+    required String sessionId,
+    required PullRequestTarget target,
+    required _Watch shown,
+    required Future<SesoriToolApprovalOutcome> answer,
+  }) async {
+    final PullRequestApprovalAnswer result;
+    switch (await answer) {
+      case SesoriToolApprovalOutcome.dropped:
+        return;
+      case SesoriToolApprovalOutcome.rejected:
+        result = PullRequestApprovalAnswer.declined;
+      case SesoriToolApprovalOutcome.allowed:
+        try {
+          result = switch (await _setAutoMerge(sessionId: sessionId, target: target, enabled: true, shown: shown)) {
+            PullRequestAutoMergeNotWatched() => PullRequestApprovalAnswer.outdated,
+            PullRequestAutoMergeUnchanged() || PullRequestAutoMergeSet() => PullRequestApprovalAnswer.allowed,
+          };
+        } on Exception catch (error, stackTrace) {
+          Log.w("PR monitor: turning on the allowed auto-merge for ${target.displayKey} failed", error, stackTrace);
+          return;
+        }
+    }
+    await _host.deliverNotice(
+      sessionId: sessionId,
+      summary: _configDescriptions.pullRequestOutcomeSummary(target: target, answer: result),
+      guidance: _configDescriptions.pullRequestOutcomeGuidance(target: target, answer: result),
+      timing: SesoriToolNoticeTiming.derived,
+      claim: null,
+    );
+  }
+
   /// Turns auto-merge on or off for [sessionId]'s watch. When that turns it
   /// on for the PR, a ready label the PR carries is removed so that only a
   /// fresh judgment merges it. Throws when that removal fails.
@@ -380,6 +453,17 @@ class PullRequestWatchService({
     required String sessionId,
     required PullRequestTarget target,
     required bool enabled,
+  }) => _setAutoMerge(sessionId: sessionId, target: target, enabled: enabled, shown: null);
+
+  /// [setAutoMerge], for [shown] only when it is set: an Allow card's watch
+  /// that ended, or was replaced by a new watch, counts as not watched.
+  // ponytail: a watch whose auto-merge went on and back off while its card
+  // was open still takes the Allow; add a change count if that ever matters.
+  Future<PullRequestAutoMergeResult> _setAutoMerge({
+    required String sessionId,
+    required PullRequestTarget target,
+    required bool enabled,
+    required _Watch? shown,
   }) async {
     final runtime = _runtimes[target.registryKey];
     if (runtime == null || !runtime.watches.containsKey(sessionId)) return const PullRequestAutoMergeNotWatched();
@@ -387,7 +471,9 @@ class PullRequestWatchService({
       runtime: runtime,
       operation: () async {
         final watch = runtime.watches[sessionId];
-        if (watch == null) return const PullRequestAutoMergeNotWatched();
+        if (watch == null || (shown != null && !identical(watch, shown))) {
+          return const PullRequestAutoMergeNotWatched();
+        }
         if (watch.stored.autoMerge == enabled) return PullRequestAutoMergeUnchanged(enabled: enabled);
         var stored = watch.stored.copyWith(autoMerge: enabled);
         var readyLabelRemoved = false;
