@@ -48,6 +48,7 @@ void main() {
           warmUpPluginsOnSessionOpen: null,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );
@@ -174,6 +175,92 @@ void main() {
     });
   });
 
+  group("prevent sleep", () {
+    test("a bridge that does not report the setting has no row", () async {
+      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false, preventSleep: null));
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      expect((cubit.state as BridgeSettingsReady).preventSleep, isNull);
+    });
+
+    test("remembers the row through a failed load and a dropped connection", () async {
+      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false));
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      when(service.load).thenAnswer((_) async => BridgeSettingsLoadFailure(error: ApiError.generic()));
+      await cubit.refresh();
+      expect((cubit.state as BridgeSettingsFailure).reported.preventSleep, isTrue);
+
+      connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
+      await _waitForState<BridgeSettingsDisconnected>(cubit);
+      expect((cubit.state as BridgeSettingsDisconnected).reported.preventSleep, isTrue);
+    });
+
+    test("commits a change and shows it in progress meanwhile", () async {
+      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false));
+      when(() => service.updatePreventSleep(enabled: false)).thenAnswer(
+        (_) async => const PreventSleepSettingsMutationCommitted(enabled: false),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      final saving = cubit.updatePreventSleep(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
+      expect(_preventSleepOf(cubit).mutation, isA<PreventSleepMutationInProgress>());
+      expect(_preventSleepOf(cubit).enabled, isTrue);
+      await saving;
+
+      expect(_preventSleepOf(cubit).enabled, isFalse);
+      expect(_preventSleepOf(cubit).mutation, isA<PreventSleepMutationIdle>());
+    });
+
+    test("keeps the old value on a failed save", () async {
+      final error = ApiError.generic();
+      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false));
+      when(() => service.updatePreventSleep(enabled: false)).thenAnswer(
+        (_) async => PreventSleepSettingsMutationFailure(error: error),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updatePreventSleep(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_preventSleepOf(cubit).enabled, isTrue);
+      expect(
+        _preventSleepOf(cubit).mutation,
+        isA<PreventSleepMutationFailed>().having((failed) => failed.error, "error", same(error)),
+      );
+    });
+
+    test("an uncertain save reloads, and stays uncertain when the reload fails", () async {
+      final refreshError = ApiError.generic();
+      var loads = 0;
+      when(service.load).thenAnswer(
+        (_) async => loads++ == 0 ? _loadResult(yoloEnabled: false) : BridgeSettingsLoadFailure(error: refreshError),
+      );
+      when(() => service.updatePreventSleep(enabled: false)).thenAnswer(
+        (_) async => const PreventSleepSettingsMutationUncertain(),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updatePreventSleep(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_preventSleepOf(cubit).enabled, isTrue);
+      expect(
+        _preventSleepOf(cubit).mutation,
+        isA<PreventSleepMutationUncertain>().having((uncertain) => uncertain.refreshError, "error", same(refreshError)),
+      );
+    });
+  });
+
   group("release track", () {
     test("a bridge that does not report its track, or reports one this app does not know, has no row", () async {
       for (final track in [null, BridgeReleaseTrack.unknown]) {
@@ -205,18 +292,18 @@ void main() {
       );
       final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
       addTearDown(cubit.close);
-      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isFalse);
+      expect((cubit.state as BridgeSettingsLoading).reported.releaseTrack, isFalse);
       await _waitForState<BridgeSettingsReady>(cubit);
 
       when(service.load).thenAnswer((_) async => BridgeSettingsLoadFailure(error: ApiError.generic()));
       final reloading = cubit.refresh();
-      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isTrue);
+      expect((cubit.state as BridgeSettingsLoading).reported.releaseTrack, isTrue);
       await reloading;
-      expect((cubit.state as BridgeSettingsFailure).hasReleaseTrack, isTrue);
+      expect((cubit.state as BridgeSettingsFailure).reported.releaseTrack, isTrue);
 
       connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
       await _waitForState<BridgeSettingsDisconnected>(cubit);
-      expect((cubit.state as BridgeSettingsDisconnected).hasReleaseTrack, isTrue);
+      expect((cubit.state as BridgeSettingsDisconnected).reported.releaseTrack, isTrue);
     });
 
     test("commits a change without reloading the bridge", () async {
@@ -480,6 +567,7 @@ void main() {
         pluginWarmupMutation: PluginWarmupMutationIdle(enabled: true),
         agentTools: null,
         releaseTrack: null,
+        preventSleep: null,
       ),
     );
 
@@ -504,6 +592,7 @@ BridgeSettingsLoadSupported _loadResult({
   bool? agentToolsEnabled = true,
   List<BridgeToolGroupSetting> toolGroups = const [_prMonitor],
   BridgeReleaseTrack? releaseTrack = BridgeReleaseTrack.stable,
+  bool? preventSleep = true,
 }) {
   return BridgeSettingsLoadSupported(
     response: BridgeSettingsResponse(
@@ -512,10 +601,16 @@ BridgeSettingsLoadSupported _loadResult({
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: agentToolsEnabled,
       releaseTrack: releaseTrack,
+      preventSleep: preventSleep,
       toolGroups: toolGroups,
     ),
   );
 }
+
+PreventSleepSettings _preventSleepOf(BridgeSettingsCubit cubit) => switch (cubit.state) {
+  BridgeSettingsReady(:final PreventSleepSettings preventSleep) => preventSleep,
+  final other => fail("no prevent-sleep setting in $other"),
+};
 
 ReleaseTrackSettings _releaseTrackOf(BridgeSettingsCubit cubit) => switch (cubit.state) {
   BridgeSettingsReady(:final ReleaseTrackSettings releaseTrack) => releaseTrack,

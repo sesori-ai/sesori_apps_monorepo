@@ -41,6 +41,11 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
     @JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required BridgeReleaseTrack track,
   }) = ReleaseTrackSettingUpdate;
 
+  /// Keeps the bridge's computer awake while the bridge runs, or lets it
+  /// sleep. The bridge applies a change right away.
+  @FreezedUnionValue("preventSleep")
+  const factory preventSleep({required bool enabled}) = PreventSleepSettingUpdate;
+
   const factory unknown() = UnknownBridgeSettingUpdate;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);

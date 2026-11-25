@@ -41,6 +41,11 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
     // hides the setting for them too. Null keeps its meaning for bridges that do not update themselves; drop this note
     // once the minimum supported bridge sends the track.
     @JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required BridgeReleaseTrack? releaseTrack,
+
+    /// Whether the bridge keeps its computer from going to sleep while it runs.
+    // COMPATIBILITY 2026-11-25 (v1.16.0): v1.15.0 bridges omit this setting, and the app shows no row for them. Remove
+    // null handling and require a bool once the minimum supported bridge always sends it.
+    required bool? preventSleep,
   }) = _BridgeSettingsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);

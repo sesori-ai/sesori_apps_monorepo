@@ -93,6 +93,7 @@ class _FakeBridgeSettingsRepository({
     warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
     agentToolsEnabled: settings.agentTools,
     releaseTrack: null,
+    preventSleep: null,
   );
 
   @override
@@ -116,6 +117,13 @@ class _FakeBridgeSettingsRepository({
   @override
   Future<BridgeSettings> updateReleaseTrack({required ReleaseTrack track}) async {
     return settings = settings.copyWith(releaseTrack: track);
+  }
+
+  @override
+  Future<BridgeSettings> updatePreventSleep({required bool enabled}) async {
+    return settings = settings.copyWith(
+      sleepPrevention: enabled ? SleepPreventionMode.always : SleepPreventionMode.off,
+    );
   }
 
   @override

@@ -691,6 +691,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
 
   @override
+  String get settingsPreventSleepTitle => 'Keep computer awake';
+
+  @override
+  String get settingsPreventSleepDescription =>
+      'Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.';
+
+  @override
+  String get settingsPreventSleepUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsPreventSleepUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPreventSleepRetry => 'Retry keep computer awake setting';
+
+  @override
   String get settingsReleaseTrackTitle => 'Internal builds';
 
   @override

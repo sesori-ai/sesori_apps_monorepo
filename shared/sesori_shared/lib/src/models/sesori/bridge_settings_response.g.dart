@@ -32,6 +32,7 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
         json['releaseTrack'],
         unknownValue: BridgeReleaseTrack.unknown,
       ),
+      preventSleep: json['preventSleep'] as bool?,
     );
 
 Map<String, dynamic> _$BridgeSettingsResponseToJson(
@@ -43,6 +44,7 @@ Map<String, dynamic> _$BridgeSettingsResponseToJson(
   'agentToolsEnabled': ?instance.agentToolsEnabled,
   'toolGroups': instance.toolGroups.map((e) => e.toJson()).toList(),
   'releaseTrack': ?_$BridgeReleaseTrackEnumMap[instance.releaseTrack],
+  'preventSleep': ?instance.preventSleep,
 };
 
 const _$BridgeReleaseTrackEnumMap = {

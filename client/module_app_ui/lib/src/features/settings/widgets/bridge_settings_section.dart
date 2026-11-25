@@ -51,14 +51,20 @@ class const BridgeSettingsSection({
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
-    // The row waits out a reload or a dropped connection instead of closing
-    // and opening again under the finger.
-    final showReleaseTrack = switch (state) {
-      BridgeSettingsReady(:final releaseTrack) => releaseTrack != null,
-      BridgeSettingsLoading(:final hasReleaseTrack) ||
-      BridgeSettingsDisconnected(:final hasReleaseTrack) ||
-      BridgeSettingsFailure(:final hasReleaseTrack) => hasReleaseTrack,
-      BridgeSettingsUnsupported() => false,
+    // Optional rows wait out a reload or a dropped connection instead of
+    // closing and opening again under the finger.
+    final (:showPreventSleep, :showReleaseTrack) = switch (state) {
+      BridgeSettingsReady(:final preventSleep, :final releaseTrack) => (
+        showPreventSleep: preventSleep != null,
+        showReleaseTrack: releaseTrack != null,
+      ),
+      BridgeSettingsLoading(:final reported) ||
+      BridgeSettingsDisconnected(:final reported) ||
+      BridgeSettingsFailure(:final reported) => (
+        showPreventSleep: reported.preventSleep,
+        showReleaseTrack: reported.releaseTrack,
+      ),
+      BridgeSettingsUnsupported() => (showPreventSleep: false, showReleaseTrack: false),
     };
     final offline = state is BridgeSettingsDisconnected;
     final onOpenHarnesses = this.onOpenHarnesses;
@@ -113,6 +119,7 @@ class const BridgeSettingsSection({
         ),
       ("yolo", const _YoloSettingsRow()),
       ("plugin_warmup", const _PluginWarmupSettingsRow()),
+      if (showPreventSleep) ("prevent_sleep", const _PreventSleepSettingsRow()),
       if (showReleaseTrack) ("release_track", const _ReleaseTrackSettingsRow()),
     ];
     // Offline, one line above the group says why every row, Harnesses,
@@ -162,7 +169,8 @@ class const _YoloSettingsRow() extends StatelessWidget {
         ready.yoloMutation is! YoloMutationUncertain &&
         ready.yoloMutation is! YoloMutationUnsupported &&
         ready.pluginWarmupMutation is! PluginWarmupMutationInProgress &&
-        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress;
+        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress &&
+        ready.preventSleep?.mutation is! PreventSleepMutationInProgress;
     final bridgeOutdated = switch (state) {
       BridgeSettingsReady(yoloMutation: YoloMutationUnsupported()) || BridgeSettingsUnsupported() => true,
       BridgeSettingsReady() ||
@@ -227,7 +235,8 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
         ready != null &&
         enabled != null &&
         ready.yoloMutation is! YoloMutationInProgress &&
-        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress;
+        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress &&
+        ready.preventSleep?.mutation is! PreventSleepMutationInProgress;
     final bridgeOutdated = switch (state) {
       BridgeSettingsReady(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
       BridgeSettingsUnsupported() => true,
@@ -287,6 +296,81 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
   }
 }
 
+/// Whether the bridge keeps its computer awake. Shown only for a bridge that
+/// reports the setting; it waits out a reload or a dropped connection like the
+/// rows above it.
+class const _PreventSleepSettingsRow() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<BridgeSettingsCubit>().state;
+    final ready = state is BridgeSettingsReady ? state : null;
+    final preventSleep = ready?.preventSleep;
+    final interactive =
+        ready != null &&
+        ready.yoloMutation is! YoloMutationInProgress &&
+        ready.pluginWarmupMutation is! PluginWarmupMutationInProgress &&
+        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress &&
+        switch (preventSleep?.mutation) {
+          PreventSleepMutationIdle() || PreventSleepMutationFailed() => true,
+          PreventSleepMutationInProgress() || PreventSleepMutationUncertain() || null => false,
+        };
+
+    void toggle({required bool enabled}) {
+      if (ready == null || !interactive) return;
+      unawaited(context.read<BridgeSettingsCubit>().updatePreventSleep(enabled: enabled, expectedState: ready));
+    }
+
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        key: const Key("prevent_sleep_setting"),
+        icon: TablerRegular.coffee,
+        title: Text(context.loc.settingsPreventSleepTitle),
+        subtitle: Text(switch (preventSleep?.mutation) {
+          PreventSleepMutationUncertain() => context.loc.settingsPreventSleepUncertain,
+          PreventSleepMutationFailed() => context.loc.settingsPreventSleepUpdateFailed,
+          PreventSleepMutationIdle() ||
+          PreventSleepMutationInProgress() ||
+          null => context.loc.settingsPreventSleepDescription,
+        }),
+        trailing: switch (state) {
+          BridgeSettingsLoading() ||
+          BridgeSettingsReady(
+            preventSleep: PreventSleepSettings(mutation: PreventSleepMutationInProgress()),
+          ) => PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+          BridgeSettingsReady(
+            preventSleep: PreventSleepSettings(
+              :final enabled,
+              mutation: PreventSleepMutationIdle() || PreventSleepMutationFailed(),
+            ),
+          ) =>
+            PregoSwitch(
+              key: const Key("prevent_sleep_switch"),
+              value: enabled,
+              onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
+            ),
+          BridgeSettingsFailure() ||
+          BridgeSettingsReady(
+            preventSleep: PreventSleepSettings(mutation: PreventSleepMutationUncertain()),
+          ) => IconButton(
+            key: const Key("prevent_sleep_retry"),
+            tooltip: context.loc.settingsPreventSleepRetry,
+            onPressed: context.read<BridgeSettingsCubit>().refresh,
+            icon: const Icon(TablerRegular.refresh),
+          ),
+          // Leaving: the bridge no longer reports the setting.
+          BridgeSettingsReady(preventSleep: null) ||
+          BridgeSettingsDisconnected() ||
+          BridgeSettingsUnsupported() => null,
+        },
+        onTap: switch (preventSleep) {
+          PreventSleepSettings(:final enabled) when interactive => () => toggle(enabled: !enabled),
+          _ => null,
+        },
+      ),
+    );
+  }
+}
+
 /// Whether the bridge's auto-updater also takes internal pre-releases. Shown
 /// only for a bridge that updates itself and reports its track; it waits out a
 /// reload or a dropped connection like the rows above it.
@@ -300,6 +384,7 @@ class const _ReleaseTrackSettingsRow() extends StatelessWidget {
         ready != null &&
         ready.yoloMutation is! YoloMutationInProgress &&
         ready.pluginWarmupMutation is! PluginWarmupMutationInProgress &&
+        ready.preventSleep?.mutation is! PreventSleepMutationInProgress &&
         switch (releaseTrack?.mutation) {
           ReleaseTrackMutationIdle() || ReleaseTrackMutationFailed() => true,
           ReleaseTrackMutationInProgress() || ReleaseTrackMutationUncertain() || null => false,

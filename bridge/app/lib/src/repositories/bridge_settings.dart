@@ -225,6 +225,9 @@ class const BridgeSettings({
   /// Which of Sesori's tool groups sessions get while [agentTools] is on.
   final BridgeAgentToolGroupSettings agentToolGroups = const BridgeAgentToolGroupSettings(),
 }) {
+  /// Whether the bridge keeps its computer awake while it runs.
+  bool get preventsSleep => sleepPrevention == SleepPreventionMode.always;
+
   factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
       sleepPrevention: _parseSleepPrevention(json['sleepPrevention']),

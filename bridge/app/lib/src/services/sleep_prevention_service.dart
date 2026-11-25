@@ -10,10 +10,23 @@ class SleepPreventionService({
   required final DeviceTypeDetector _deviceTypeDetector,
   required final WarningLogger _warningLogger,
 }) {
+  /// Applies the stored mode. The settings must already be loaded.
   Future<SleepPreventionMode> applyConfiguredMode() async {
-    final settings = await _bridgeSettingsRepository.loadSettings();
+    final settings = await _bridgeSettingsRepository.readCommittedSettings();
+    await _apply(mode: settings.sleepPrevention);
+    return settings.sleepPrevention;
+  }
 
-    switch (settings.sleepPrevention) {
+  /// Stores whether the computer stays awake and applies it right away.
+  /// Returns the committed choice.
+  Future<bool> update({required bool enabled}) async {
+    final committed = await _bridgeSettingsRepository.updatePreventSleep(enabled: enabled);
+    await _apply(mode: committed.sleepPrevention);
+    return committed.preventsSleep;
+  }
+
+  Future<void> _apply({required SleepPreventionMode mode}) async {
+    switch (mode) {
       case SleepPreventionMode.always:
         try {
           await _wakeLockRepository.enable();
@@ -28,8 +41,6 @@ class SleepPreventionService({
           _warningLogger('[SleepPreventionService] failed to disable wake lock', error, stackTrace);
         }
     }
-
-    return settings.sleepPrevention;
   }
 
   Future<void> _warnIfLidCloseSleepNotPrevented() async {

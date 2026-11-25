@@ -64,3 +64,15 @@ final class const ReleaseTrackSettingsMutationUncertain() extends ReleaseTrackSe
 
 final class const ReleaseTrackSettingsMutationFailure({required final ApiError error})
     extends ReleaseTrackSettingsMutationResult;
+
+/// The outcome of keeping the bridge's computer awake, or letting it sleep.
+sealed class const PreventSleepSettingsMutationResult();
+
+/// The bridge's committed choice.
+final class const PreventSleepSettingsMutationCommitted({required final bool enabled})
+    extends PreventSleepSettingsMutationResult;
+
+final class const PreventSleepSettingsMutationUncertain() extends PreventSleepSettingsMutationResult;
+
+final class const PreventSleepSettingsMutationFailure({required final ApiError error})
+    extends PreventSleepSettingsMutationResult;

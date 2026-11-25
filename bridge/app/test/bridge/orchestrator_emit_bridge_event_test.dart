@@ -33,6 +33,7 @@ import "../helpers/fake_process_runner.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/skill_bundle_test_support.dart";
+import "../helpers/sleep_prevention_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -2014,6 +2015,10 @@ class const _OrchestratorHarness({
     final failureReporter = FakeFailureReporter();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
+      sleepPreventionService: createTestSleepPreventionService(
+        bridgeSettingsRepository: null,
+        wakeLockRepository: null,
+      ),
       connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: relayUrl,

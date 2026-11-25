@@ -40,6 +40,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return ReleaseTrackSettingUpdate.fromJson(
             json
           );
+                case 'preventSleep':
+          return PreventSleepSettingUpdate.fromJson(
+            json
+          );
         
           default:
             return UnknownBridgeSettingUpdate.fromJson(
@@ -318,6 +322,47 @@ int get hashCode {
 @override
 String toString() {
     return 'BridgeSettingUpdate.releaseTrack(track: $track)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PreventSleepSettingUpdate implements BridgeSettingUpdate {
+  const PreventSleepSettingUpdate({required this.enabled,  String? $type}): $type = $type ?? 'preventSleep';
+  factory PreventSleepSettingUpdate.fromJson(Map<String, dynamic> json) => _$PreventSleepSettingUpdateFromJson(json);
+
+ final  bool enabled;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PreventSleepSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PreventSleepSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
+
+@override
+String toString() {
+    return 'BridgeSettingUpdate.preventSleep(enabled: $enabled)';
 }
 
 

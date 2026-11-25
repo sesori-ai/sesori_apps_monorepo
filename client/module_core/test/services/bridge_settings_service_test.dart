@@ -86,6 +86,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: true,
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );
@@ -126,6 +127,7 @@ BridgeSettingsLoadSupported _loaded({required bool yoloEnabled}) {
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: true,
       releaseTrack: null,
+      preventSleep: null,
     ),
   );
 }

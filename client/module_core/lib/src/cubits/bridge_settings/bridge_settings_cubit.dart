@@ -17,8 +17,8 @@ class BridgeSettingsCubit({
   this
     : super(
         connectionService.currentStatus is ConnectionConnected
-            ? const BridgeSettingsLoading(hasReleaseTrack: false)
-            : const BridgeSettingsDisconnected(hasReleaseTrack: false),
+            ? const BridgeSettingsLoading(reported: ReportedOptionalSettings.none)
+            : const BridgeSettingsDisconnected(reported: ReportedOptionalSettings.none),
       ) {
     _connectionStatusSubscription = connectionService.status.skip(1).listen(_onConnectionStatus);
     if (_connected) unawaited(refresh());
@@ -39,14 +39,14 @@ class BridgeSettingsCubit({
     _operationInProgress = true;
     _refreshPending = false;
     final operationEpoch = _connectionEpoch;
-    emit(BridgeSettingsLoading(hasReleaseTrack: _hasReleaseTrack));
+    emit(BridgeSettingsLoading(reported: _reported));
     try {
       final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       _publishLoad(result: result);
     } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error), hasReleaseTrack: _hasReleaseTrack));
+      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error), reported: _reported));
     } finally {
       _finishOperation();
     }
@@ -409,6 +409,87 @@ class BridgeSettingsCubit({
     );
   }
 
+  /// Keeps the bridge's computer awake, or lets it sleep, right away.
+  Future<void> updatePreventSleep({required bool enabled, required BridgeSettingsReady expectedState}) async {
+    if (_operationInProgress || !_connected || isClosed) return;
+    final current = state;
+    if (current is! BridgeSettingsReady || !identical(current, expectedState)) return;
+    final preventSleep = current.preventSleep;
+    if (preventSleep == null || preventSleep.enabled == enabled) return;
+    switch (preventSleep.mutation) {
+      case PreventSleepMutationInProgress() || PreventSleepMutationUncertain():
+        return;
+      case PreventSleepMutationIdle() || PreventSleepMutationFailed():
+        break;
+    }
+
+    _operationInProgress = true;
+    final operationEpoch = _connectionEpoch;
+    final currentEnabled = preventSleep.enabled;
+    emit(_withPreventSleep(state: current, enabled: currentEnabled, mutation: const PreventSleepMutationInProgress()));
+    try {
+      final result = await _service.updatePreventSleep(enabled: enabled);
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      switch (result) {
+        case PreventSleepSettingsMutationCommitted(enabled: final committed):
+          emit(_withPreventSleep(state: current, enabled: committed, mutation: const PreventSleepMutationIdle()));
+        case PreventSleepSettingsMutationFailure(:final error):
+          emit(
+            _withPreventSleep(
+              state: current,
+              enabled: currentEnabled,
+              mutation: PreventSleepMutationFailed(error: error),
+            ),
+          );
+        case PreventSleepSettingsMutationUncertain():
+          await _reconcilePreventSleep(
+            current: current,
+            currentEnabled: currentEnabled,
+            operationEpoch: operationEpoch,
+          );
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      emit(
+        _withPreventSleep(
+          state: current,
+          enabled: currentEnabled,
+          mutation: PreventSleepMutationFailed(error: ApiError.dartHttpClient(error)),
+        ),
+      );
+    } finally {
+      _finishOperation();
+    }
+  }
+
+  Future<void> _reconcilePreventSleep({
+    required BridgeSettingsReady current,
+    required bool currentEnabled,
+    required int operationEpoch,
+  }) async {
+    ApiError refreshError;
+    try {
+      final result = await _service.load();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      if (result case BridgeSettingsLoadFailure(:final error)) {
+        refreshError = error;
+      } else {
+        _publishLoad(result: result);
+        return;
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      refreshError = ApiError.dartHttpClient(error);
+    }
+    emit(
+      _withPreventSleep(
+        state: current,
+        enabled: currentEnabled,
+        mutation: PreventSleepMutationUncertain(refreshError: refreshError),
+      ),
+    );
+  }
+
   Future<void> _reconcileYolo({required BridgeSettingsReady current, required int operationEpoch}) async {
     try {
       final result = await _service.load();
@@ -492,12 +573,16 @@ class BridgeSettingsCubit({
               ),
               null => null,
             },
+            preventSleep: switch (response.preventSleep) {
+              final bool enabled => PreventSleepSettings(enabled: enabled, mutation: const PreventSleepMutationIdle()),
+              null => null,
+            },
           ),
         );
       case BridgeSettingsLoadUnsupported():
         emit(const BridgeSettingsUnsupported());
       case BridgeSettingsLoadFailure(:final error):
-        emit(BridgeSettingsFailure(error: error, hasReleaseTrack: _hasReleaseTrack));
+        emit(BridgeSettingsFailure(error: error, reported: _reported));
     }
   }
 
@@ -512,6 +597,7 @@ class BridgeSettingsCubit({
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: state.agentTools,
       releaseTrack: state.releaseTrack,
+      preventSleep: state.preventSleep,
     );
   }
 
@@ -525,6 +611,7 @@ class BridgeSettingsCubit({
       pluginWarmupMutation: mutation,
       agentTools: state.agentTools,
       releaseTrack: state.releaseTrack,
+      preventSleep: state.preventSleep,
     );
   }
 
@@ -535,6 +622,7 @@ class BridgeSettingsCubit({
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: agentTools,
       releaseTrack: state.releaseTrack,
+      preventSleep: state.preventSleep,
     );
   }
 
@@ -549,6 +637,22 @@ class BridgeSettingsCubit({
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: state.agentTools,
       releaseTrack: ReleaseTrackSettings(internalBuilds: internalBuilds, mutation: mutation),
+      preventSleep: state.preventSleep,
+    );
+  }
+
+  BridgeSettingsReady _withPreventSleep({
+    required BridgeSettingsReady state,
+    required bool enabled,
+    required PreventSleepMutationState mutation,
+  }) {
+    return BridgeSettingsReady(
+      yoloEnabled: state.yoloEnabled,
+      yoloMutation: state.yoloMutation,
+      pluginWarmupMutation: state.pluginWarmupMutation,
+      agentTools: state.agentTools,
+      releaseTrack: state.releaseTrack,
+      preventSleep: PreventSleepSettings(enabled: enabled, mutation: mutation),
     );
   }
 
@@ -557,23 +661,22 @@ class BridgeSettingsCubit({
     _connectionEpoch++;
     _connected = status is ConnectionConnected;
     _refreshPending = false;
-    final hasReleaseTrack = _hasReleaseTrack;
-    emit(
-      _connected
-          ? BridgeSettingsLoading(hasReleaseTrack: hasReleaseTrack)
-          : BridgeSettingsDisconnected(hasReleaseTrack: hasReleaseTrack),
-    );
+    final reported = _reported;
+    emit(_connected ? BridgeSettingsLoading(reported: reported) : BridgeSettingsDisconnected(reported: reported));
     if (_connected) unawaited(refresh());
   }
 
-  /// Whether the last loaded settings reported a release track, carried
+  /// Which optional settings the last loaded settings reported, carried
   /// through a reload or a dropped connection.
-  bool get _hasReleaseTrack => switch (state) {
-    BridgeSettingsReady(:final releaseTrack) => releaseTrack != null,
-    BridgeSettingsLoading(:final hasReleaseTrack) ||
-    BridgeSettingsDisconnected(:final hasReleaseTrack) ||
-    BridgeSettingsFailure(:final hasReleaseTrack) => hasReleaseTrack,
-    BridgeSettingsUnsupported() => false,
+  ReportedOptionalSettings get _reported => switch (state) {
+    BridgeSettingsReady(:final releaseTrack, :final preventSleep) => ReportedOptionalSettings(
+      releaseTrack: releaseTrack != null,
+      preventSleep: preventSleep != null,
+    ),
+    BridgeSettingsLoading(:final reported) ||
+    BridgeSettingsDisconnected(:final reported) ||
+    BridgeSettingsFailure(:final reported) => reported,
+    BridgeSettingsUnsupported() => ReportedOptionalSettings.none,
   };
 
   bool _canPublish({required int operationEpoch}) => !isClosed && _connected && operationEpoch == _connectionEpoch;

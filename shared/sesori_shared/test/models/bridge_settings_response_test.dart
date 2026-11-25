@@ -12,6 +12,7 @@ void main() {
         BridgeToolGroupSetting(id: "tasks", title: "Scheduled tasks", summary: "Read tasks.", enabled: false),
       ],
       releaseTrack: BridgeReleaseTrack.internal,
+      preventSleep: true,
     );
 
     expect(response.toJson(), {
@@ -23,6 +24,7 @@ void main() {
         {"id": "tasks", "title": "Scheduled tasks", "summary": "Read tasks.", "enabled": false},
       ],
       "releaseTrack": "internal",
+      "preventSleep": true,
     });
     expect(BridgeSettingsResponse.fromJson(response.toJson()), response);
   });
@@ -37,6 +39,7 @@ void main() {
     expect(response.agentToolsEnabled, isNull);
     expect(response.toolGroups, isEmpty);
     expect(response.releaseTrack, isNull);
+    expect(response.preventSleep, isNull);
   });
 
   test("BridgeSettingsResponse reads a release track it does not know as unknown", () {

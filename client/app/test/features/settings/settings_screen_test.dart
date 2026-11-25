@@ -238,6 +238,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );
@@ -537,6 +538,49 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isFalse);
   });
 
+  testWidgets("a bridge that predates the setting has no Keep computer awake row", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsOneWidget);
+    expect(find.byKey(const Key("prevent_sleep_setting")), findsNothing);
+  });
+
+  testWidgets("toggles Keep computer awake", (tester) async {
+    _useTallSurface(tester);
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: null,
+          preventSleep: true,
+        ),
+      ),
+    );
+    when(() => bridgeSettingsService.updatePreventSleep(enabled: false)).thenAnswer(
+      (_) async => const PreventSleepSettingsMutationCommitted(enabled: false),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Keep computer awake"), findsOneWidget);
+    expect(
+      find.text("Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes."),
+      findsOneWidget,
+    );
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isTrue);
+
+    await tester.tap(find.byKey(const Key("prevent_sleep_setting")));
+    await tester.pumpAndSettle();
+
+    verify(() => bridgeSettingsService.updatePreventSleep(enabled: false)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isFalse);
+  });
+
   testWidgets("a bridge that does not update itself has no Internal builds row", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
@@ -556,6 +600,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: BridgeReleaseTrack.stable,
+          preventSleep: null,
         ),
       ),
     );
@@ -596,6 +641,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: loads > 1 ? BridgeReleaseTrack.internal : BridgeReleaseTrack.stable,
+          preventSleep: null,
         ),
       );
     });
@@ -638,6 +684,7 @@ void main() {
               ),
             ],
             releaseTrack: null,
+            preventSleep: null,
           ),
         ),
       );
@@ -760,6 +807,7 @@ void main() {
           warmUpPluginsOnSessionOpen: null,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );
@@ -783,6 +831,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       );
     });
@@ -812,6 +861,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       );
     });
@@ -911,6 +961,7 @@ void main() {
                 warmUpPluginsOnSessionOpen: true,
                 agentToolsEnabled: null,
                 releaseTrack: null,
+                preventSleep: null,
               ),
             );
     });

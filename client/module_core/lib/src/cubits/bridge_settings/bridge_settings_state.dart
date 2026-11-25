@@ -3,25 +3,24 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const BridgeSettingsState();
 
-final class const BridgeSettingsLoading({
-  /// Whether the last loaded settings reported a release track, so its row
-  /// can wait out the load instead of closing.
-  required final bool hasReleaseTrack,
-}) extends BridgeSettingsState;
+final class const BridgeSettingsLoading({required final ReportedOptionalSettings reported}) extends BridgeSettingsState;
 
-final class const BridgeSettingsDisconnected({
-  /// Whether the last loaded settings reported a release track.
-  required final bool hasReleaseTrack,
-}) extends BridgeSettingsState;
+final class const BridgeSettingsDisconnected({required final ReportedOptionalSettings reported})
+    extends BridgeSettingsState;
 
 final class const BridgeSettingsUnsupported() extends BridgeSettingsState;
 
 final class const BridgeSettingsFailure({
   required final ApiError error,
-
-  /// Whether the last loaded settings reported a release track.
-  required final bool hasReleaseTrack,
+  required final ReportedOptionalSettings reported,
 }) extends BridgeSettingsState;
+
+/// Which optional settings the last loaded settings reported, carried through
+/// a reload, a failed load or a dropped connection so their rows can wait
+/// instead of closing.
+final class const ReportedOptionalSettings({required final bool releaseTrack, required final bool preventSleep}) {
+  static const none = ReportedOptionalSettings(releaseTrack: false, preventSleep: false);
+}
 
 final class const BridgeSettingsReady({
   required final bool yoloEnabled,
@@ -35,6 +34,9 @@ final class const BridgeSettingsReady({
   /// Null for a bridge that does not update itself or predates the setting,
   /// which leaves it out.
   required final ReleaseTrackSettings? releaseTrack,
+
+  /// Null for a bridge that predates the setting, which leaves it out.
+  required final PreventSleepSettings? preventSleep,
 }) extends BridgeSettingsState;
 
 sealed class const YoloMutationState();
@@ -116,3 +118,22 @@ final class const ReleaseTrackMutationFailed({required final ApiError error}) ex
 /// A save whose outcome is unknown, and the reload after it failed too.
 final class const ReleaseTrackMutationUncertain({required final ApiError refreshError})
     extends ReleaseTrackMutationState;
+
+/// Whether the bridge keeps its computer from going to sleep. A change
+/// applies right away.
+final class const PreventSleepSettings({
+  required final bool enabled,
+  required final PreventSleepMutationState mutation,
+});
+
+sealed class const PreventSleepMutationState();
+
+final class const PreventSleepMutationIdle() extends PreventSleepMutationState;
+
+final class const PreventSleepMutationInProgress() extends PreventSleepMutationState;
+
+final class const PreventSleepMutationFailed({required final ApiError error}) extends PreventSleepMutationState;
+
+/// A save whose outcome is unknown, and the reload after it failed too.
+final class const PreventSleepMutationUncertain({required final ApiError refreshError})
+    extends PreventSleepMutationState;

@@ -1291,6 +1291,36 @@ abstract class AppLocalizations {
   /// **'Retry harness warm-up setting'**
   String get settingsPluginWarmupRetry;
 
+  /// Settings toggle that stops the connected bridge's computer from going to sleep while the bridge runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep computer awake'**
+  String get settingsPreventSleepTitle;
+
+  /// Footnote under the Keep computer awake toggle: what it does, and that a closed laptop lid may still put the computer to sleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.'**
+  String get settingsPreventSleepDescription;
+
+  /// No description provided for @settingsPreventSleepUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsPreventSleepUncertain;
+
+  /// No description provided for @settingsPreventSleepUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsPreventSleepUpdateFailed;
+
+  /// No description provided for @settingsPreventSleepRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry keep computer awake setting'**
+  String get settingsPreventSleepRetry;
+
   /// Settings toggle that makes the connected bridge also update itself to internal pre-release builds.
   ///
   /// In en, this message translates to:
