@@ -57,7 +57,7 @@ void main() {
   /// back the change, then the service settles it.
   void answer({required PendingPermission permission, required PermissionReply reply}) {
     final approval = approvals.take(requestId: permission.id, reply: reply) ?? fail("not pending");
-    expect(approval.change, isA<ToolGroupAgentChange>().having((change) => change.groupId, "groupId", _monitor));
+    expect(approval.change, isA<ToolGroupAgentChange>());
     service.settle(requestId: permission.id, reply: reply);
   }
 
@@ -121,7 +121,7 @@ void main() {
     expect(await outcome, SesoriToolApprovalOutcome.allowed);
   });
 
-  test("a bridge stop drops every open request", () async {
+  test("a bridge stop drops every open request and any asked after it", () async {
     final first = request(sessionId: "root");
     final second = request(sessionId: "child");
     await pumpEventQueue();
@@ -131,6 +131,8 @@ void main() {
 
     expect(await first, SesoriToolApprovalOutcome.dropped);
     expect(await second, SesoriToolApprovalOutcome.dropped);
+    expect(await request(sessionId: "root"), SesoriToolApprovalOutcome.dropped, reason: "asked after the stop began");
+    expect(asked, hasLength(2));
   });
 
   test("Approve everything allows at once with no card", () async {

@@ -17,7 +17,9 @@ abstract interface class SesoriToolHost() {
 
   /// Sends Sesori's message into [sessionId] once [timing] allows: [summary]
   /// is the line the user sees, and [guidance] what the agent reads beside
-  /// it. Completes once it is sent, skipped or dropped; never throws.
+  /// it. Completes once it is sent, skipped or dropped; never throws. A
+  /// notice still waiting when the bridge stops ends as dropped, possibly
+  /// after the group's `dispose`.
   ///
   /// [claim], when given, runs right before the send, with nothing else
   /// reaching the session in between. Returning false sends nothing
@@ -41,8 +43,9 @@ abstract interface class SesoriToolHost() {
   /// shows on the session's root. Completes with the answer; a session that
   /// approves everything is allowed at once, with nothing shown.
   ///
-  /// The request lives in memory only: a bridge restart drops it
-  /// ([SesoriToolApprovalOutcome.dropped]), and the group applies nothing.
+  /// The request lives in memory only: once the bridge begins to stop it
+  /// ends as [SesoriToolApprovalOutcome.dropped], and the group applies
+  /// nothing.
   Future<SesoriToolApprovalOutcome> requestApproval({
     required String sessionId,
     required String title,

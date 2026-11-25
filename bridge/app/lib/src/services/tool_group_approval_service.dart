@@ -12,7 +12,7 @@ import "permission_auto_approval_service.dart";
 
 /// The Allow requests Sesori tool groups make for their agents, shown as
 /// agent approvals beside the tasks' and wake-ups'. Each request waits here
-/// until the user answers it, or the bridge stops.
+/// until the user answers it, or the bridge begins to stop.
 ///
 /// Approve everything answers for the user: when it covers both the asking
 /// session and the root session the request would show on, the change is
@@ -24,6 +24,7 @@ class ToolGroupApprovalService({
 }) {
   /// The open requests by request id. In memory only, as every agent approval.
   final Map<String, Completer<SesoriToolApprovalOutcome>> _waiting = {};
+  bool _closed = false;
 
   /// Asks the user to allow [groupId]'s change for [sessionId]'s agent.
   Future<SesoriToolApprovalOutcome> request({
@@ -32,6 +33,7 @@ class ToolGroupApprovalService({
     required String title,
     required String body,
   }) async {
+    if (_closed) return SesoriToolApprovalOutcome.dropped;
     final String rootSessionId;
     try {
       rootSessionId = (await _sessions.resolveSessionFamily(
@@ -45,12 +47,14 @@ class ToolGroupApprovalService({
     if (await _autoApproval.isYolo(sessionId: sessionId) && await _autoApproval.isYolo(sessionId: rootSessionId)) {
       return SesoriToolApprovalOutcome.allowed;
     }
+    // The bridge may have begun to stop during the reads.
+    if (_closed) return SesoriToolApprovalOutcome.dropped;
     final completer = Completer<SesoriToolApprovalOutcome>();
     final requestId = _approvals.add(
       sessionId: sessionId,
       // A sub-agent's request shows on its root session, like plugin permissions.
       displaySessionId: rootSessionId == sessionId ? null : rootSessionId,
-      change: ToolGroupAgentChange(groupId: groupId, title: title),
+      change: ToolGroupAgentChange(title: title),
       description: body,
     );
     _waiting[requestId] = completer;
@@ -67,8 +71,10 @@ class ToolGroupApprovalService({
         );
   }
 
-  /// Ends every open request unanswered.
+  /// Ends every open request unanswered, and answers later ones the same
+  /// way, so nothing waiting on an approval holds up the bridge's stop.
   void dispose() {
+    _closed = true;
     final waiting = [..._waiting.values];
     _waiting.clear();
     for (final completer in waiting) {

@@ -41,6 +41,8 @@ abstract interface class SesoriToolGroup() {
   });
 
   /// Stops the group's own work. The bridge calls it once no [call] is
-  /// running, before its database closes.
+  /// running, before its database closes. Every host approval has ended
+  /// (`dropped`) by then, but a host notice may still be waiting for its
+  /// session: abandon it rather than await it.
   Future<void> dispose();
 }

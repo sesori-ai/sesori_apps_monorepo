@@ -1725,6 +1725,9 @@ class OrchestratorSession._({
     _sessionCreationService.beginShutdown();
     _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
+    // First, so a tool call or group waiting on the user's Allow ends now
+    // instead of holding up the drains below.
+    _toolGroupApprovalService.dispose();
     final teardownSw = Stopwatch()..start();
     (Object, StackTrace)? firstTeardownFailure;
 
@@ -1764,10 +1767,8 @@ class OrchestratorSession._({
       attempt(_sesoriMcpRequestDispatcher.drain),
     ]);
     // After the drain, so no tool call is still running in a group, and
-    // before the database closes. A group's open approvals then end
-    // unanswered.
+    // before the database closes.
     await attempt(_disposeToolGroups);
-    _toolGroupApprovalService.dispose();
     await Future.wait([
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
