@@ -485,7 +485,7 @@ void main() {
 
     test("get_guide returns a group's guide and points at its skill", () async {
       final initialized = (await rpc(method: "initialize", params: {}))["result"] as Map;
-      expect(initialized["instructions"], contains("sesori-pr-monitor, or sesori:pr-monitor in Claude Code"));
+      expect(initialized["instructions"], contains("sesori-pr-monitor, sesori:pr-monitor or pr-monitor"));
 
       final guide = await call(tool: "get_guide", arguments: {"topic": "pr_monitor"});
       expect(guide.isError, isFalse);

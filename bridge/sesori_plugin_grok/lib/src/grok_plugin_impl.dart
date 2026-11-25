@@ -104,6 +104,17 @@ class GrokPlugin._({
   @override
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.perChildSnapshot;
 
+  /// `_meta.pluginDirs` loads Sesori's Claude-style plugin for this session
+  /// only, so its skills surface as `sesori:<name>`. A Grok without the field
+  /// ignores it, where `agent --plugin-dir` would stop the process starting.
+  @override
+  Map<String, dynamic>? sessionActivationMeta({required SesoriSkillBundle? skills}) => switch (skills) {
+    final skills? => {
+      "pluginDirs": [skills.pluginRoot],
+    },
+    null => null,
+  };
+
   @override
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,

@@ -56,9 +56,14 @@ class OmpPlugin._({
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker(selectionCommands: OmpCatalogRepository.selectionCommands);
     final childSessionTracker = AcpChildSessionTracker();
+    // Read at every spawn, so a restarted process picks up a toggle. The
+    // catalog lease gets the skills too, so the app's command list shows them.
+    Future<AcpProcessHandle> spawn(AcpLaunchSpec spec) => processFactory(
+      spec.withArguments(arguments: OmpBinary.skillArguments(skills: sesoriMcp?.skillBundle)),
+    );
     final catalogApi = OmpAcpApi(
       binaryPath: binaryPath,
-      processFactory: processFactory,
+      processFactory: spawn,
       logTag: "${OmpPluginIdentity.id}-catalog",
       isolateSessionHistory: true,
       scratchParent: scratchDirectory,
@@ -111,7 +116,7 @@ class OmpPlugin._({
       ompSessionOptionsService: ompSessionOptionsService,
       cleanupService: cleanupService,
       steeringService: OmpSteeringService(repository: OmpSteeringRepository(api: catalogApi)),
-      processFactory: processFactory,
+      processFactory: spawn,
       sesoriMcp: sesoriMcp,
     );
   }

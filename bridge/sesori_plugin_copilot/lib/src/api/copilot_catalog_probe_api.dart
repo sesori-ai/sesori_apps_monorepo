@@ -29,7 +29,7 @@ class CopilotCatalogProbeApi({required final AcpStdioClient _client}) {
   }
 
   Future<AcpNewSessionResult> newSession({required String cwd, required Duration timeout}) =>
-      _api().newSession(cwd: cwd, sesoriMcp: null, timeout: timeout);
+      _api().newSession(cwd: cwd, sesoriMcp: null, meta: null, timeout: timeout);
 
   Future<AcpNewSessionResult?> setConfigOption({
     required String sessionId,

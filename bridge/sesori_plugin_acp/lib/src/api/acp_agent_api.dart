@@ -137,16 +137,17 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   }
 
   /// `session/new` in [cwd], with Sesori's MCP server when [sesoriMcp] is
-  /// given. Throws [FormatException] when the agent answers without a session
+  /// given and [meta] as the request's `_meta`. Throws [FormatException] when the agent answers without a session
   /// id, since nothing can be done with such a session.
   Future<AcpNewSessionResult> newSession({
     required String cwd,
     required SesoriMcpLaunch? sesoriMcp,
+    required Map<String, dynamic>? meta,
     required Duration timeout,
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionNew,
-      params: _sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp),
+      params: _sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp, meta: meta),
       timeout: timeout,
     );
     return AcpNewSessionResult.fromJson(_asJson(raw));
@@ -160,12 +161,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required SesoriMcpLaunch? sesoriMcp,
+    required Map<String, dynamic>? meta,
     required Duration timeout,
   }) => _activateSession(
     method: AcpMethods.sessionLoad,
     sessionId: sessionId,
     cwd: cwd,
     sesoriMcp: sesoriMcp,
+    meta: meta,
     timeout: timeout,
   );
 
@@ -175,12 +178,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required SesoriMcpLaunch? sesoriMcp,
+    required Map<String, dynamic>? meta,
     required Duration timeout,
   }) => _activateSession(
     method: AcpMethods.sessionResume,
     sessionId: sessionId,
     cwd: cwd,
     sesoriMcp: sesoriMcp,
+    meta: meta,
     timeout: timeout,
   );
 
@@ -238,13 +243,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required SesoriMcpLaunch? sesoriMcp,
+    required Map<String, dynamic>? meta,
     required Duration timeout,
   }) async {
     final raw = await client.request(
       method: method,
       params: {
         "sessionId": sessionId,
-        ..._sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp),
+        ..._sessionActivationParams(cwd: cwd, sesoriMcp: sesoriMcp, meta: meta),
       },
       timeout: timeout,
     );
@@ -260,6 +266,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   static Map<String, dynamic> _sessionActivationParams({
     required String cwd,
     required SesoriMcpLaunch? sesoriMcp,
+    required Map<String, dynamic>? meta,
   }) => {
     "cwd": cwd,
     "mcpServers": [
@@ -273,6 +280,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
           ],
         },
     ],
+    "_meta": ?meta,
   };
 
   static Map<String, dynamic> _asJson(Object? raw) =>

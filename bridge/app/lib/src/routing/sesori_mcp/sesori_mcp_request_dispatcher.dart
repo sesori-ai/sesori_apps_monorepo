@@ -141,9 +141,10 @@ class SesoriMcpRequestDispatcher({
     required List<SesoriToolGroup> groups,
     required Map<SesoriToolGroupId, SesoriToolGuide> guides,
   }) {
-    final skills = [
-      for (final guide in guides.values) "sesori-${guide.name}, or sesori:${guide.name} in Claude Code",
-    ].join("; ");
+    final guideInstructions =
+        "For a group's full how-to, use its Sesori skill when your skills list one (${_skillNames(guides: guides)}). "
+        "The skill and $getGuideTool hold the same text: once you have loaded the skill, don't call $getGuideTool; "
+        "call it only when no such skill is listed.";
     String? requested;
     try {
       requested = params == null ? null : SesoriMcpInitializeParams.fromJson(params).protocolVersion;
@@ -159,8 +160,7 @@ class SesoriMcpRequestDispatcher({
       "instructions": [
         _instructionsLead,
         for (final group in groups) group.instructions,
-        if (guides.isNotEmpty)
-          "For a group's full how-to, load its Sesori skill if you have it ($skills), otherwise call $getGuideTool.",
+        if (guides.isNotEmpty) guideInstructions,
       ].join(" "),
     };
   }
@@ -183,8 +183,9 @@ class SesoriMcpRequestDispatcher({
           _listedTool(
             name: getGuideTool,
             description:
-                "Read the how-to for a Sesori tool group before you first use it, unless its Sesori skill is "
-                "already loaded. Topics: ${[for (final MapEntry(:key, :value) in guides.entries) "${key.value}: ${value.whenToUse}"].join(" ")}",
+                "Read the how-to for a Sesori tool group before you first use it. Its Sesori skill "
+                "(${_skillNames(guides: guides)}) holds the same text: when that skill is loaded or listed, use it "
+                "and don't call this tool. Topics: ${[for (final MapEntry(:key, :value) in guides.entries) "${key.value}: ${value.whenToUse}"].join(" ")}",
             inputSchema: {
               "type": "object",
               "properties": {
@@ -202,6 +203,11 @@ class SesoriMcpRequestDispatcher({
       ],
     };
   }
+
+  /// The names harnesses give the guides' skills, which differ by harness.
+  static String _skillNames({required Map<SesoriToolGroupId, SesoriToolGuide> guides}) => [
+    for (final guide in guides.values) "sesori-${guide.name}, sesori:${guide.name} or ${guide.name}",
+  ].join("; ");
 
   Map<String, Object?> _listedTool({
     required String name,
