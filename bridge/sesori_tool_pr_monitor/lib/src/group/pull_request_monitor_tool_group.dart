@@ -381,7 +381,7 @@ class PullRequestMonitorToolGroup({
   }
 
   /// `owner/repo#N — watching, quiet, last report 3m ago, ready: no`.
-  String _statusLine({required PullRequestWatchStatus status}) => [
+  String _statusLine({required PullRequestWatchDetail status}) => [
     "${status.target.displayKey} — ${status.ciHold ? "ci-hold" : "watching"}",
     if (status.activityBuffered) "activity buffered" else "quiet",
     "last report ${status.sinceLastReport.inMinutes}m ago",

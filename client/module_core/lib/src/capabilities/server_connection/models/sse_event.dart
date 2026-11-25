@@ -41,6 +41,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriMcpInventoryChanged() ||
     SesoriMcpAuthenticationChanged() ||
     SesoriScheduledTasksChanged() ||
+    SesoriPullRequestWatchesChanged() ||
     SesoriPluginManagementChanged() ||
     SesoriPluginInstallProgress() ||
     SesoriPluginAuthenticationProgress() ||

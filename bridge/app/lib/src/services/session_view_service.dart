@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart" show PullRequestWatchRepository;
 
 import "../repositories/models/session_continuation_record.dart";
 import "../repositories/models/session_wake_up.dart";
@@ -10,13 +11,15 @@ import "../repositories/session_repository.dart";
 import "../repositories/session_wake_up_repository.dart";
 
 /// Projects bridge-owned continuation, interruption and wake-up state,
-/// scheduled-run marks, and arming onto existing session responses.
+/// scheduled-run marks, arming and watched PRs onto existing session
+/// responses.
 class const SessionViewService({
   required final SessionRepository _sessions,
   required final SessionContinuationRepository _continuations,
   required final ScheduledTaskRepository _scheduledTasks,
   required final SessionInterruptionRepository _interruptions,
   required final SessionWakeUpRepository _wakeUps,
+  required final PullRequestWatchRepository _pullRequestWatches,
   required final Duration _resetBuffer,
 }) {
   Future<Session> get({required String sessionId}) async {
@@ -36,6 +39,7 @@ class const SessionViewService({
     final interruptions = await _interruptions.readMany(sessionIds: sessionIds);
     final wakeUps = await _wakeUps.forSessions(sessionIds: sessionIds);
     final upcomingRuns = await _scheduledTasks.upcomingRunsInSessions(sessionIds: sessionIds);
+    final pullRequestWatches = await _pullRequestWatches.watchesBySession();
     return [
       for (final session in sessions)
         session.copyWith(
@@ -54,6 +58,7 @@ class const SessionViewService({
             soonestWakeUp: wakeUps[session.id]?.first,
             upcomingRun: upcomingRuns[session.id],
           ),
+          pullRequestWatches: pullRequestWatches[session.id] ?? const [],
           autoContinuation: _view(session: session, record: records[session.id]),
           scheduledTask: marks[session.id],
           interruption: switch (interruptions[session.id]) {
@@ -66,6 +71,22 @@ class const SessionViewService({
         ),
     ];
   }
+
+  /// Every PR this bridge watches, with its session. A watch whose session
+  /// is gone is left out.
+  Future<PullRequestWatchListResponse> pullRequestWatches() async => PullRequestWatchListResponse(
+    watches: [
+      for (final MapEntry(key: sessionId, value: watches) in (await _pullRequestWatches.watchesBySession()).entries)
+        if (await _sessions.getCatalogSession(sessionId: sessionId) case final session?)
+          for (final watch in watches)
+            PullRequestWatchListItem(
+              sessionId: sessionId,
+              sessionTitle: session.title,
+              projectId: session.projectID,
+              watch: watch,
+            ),
+    ],
+  );
 
   /// The soonest of the session's wake-ups and the next run of a task that
   /// continues in it. An archived session is not armed: a task starts a fresh

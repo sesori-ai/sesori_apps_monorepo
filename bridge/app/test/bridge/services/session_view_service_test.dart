@@ -52,6 +52,7 @@ void main() {
       ),
       scheduledTasks: tasks,
       interruptions: const NoSessionInterruptions(),
+      pullRequestWatches: createTestPullRequestWatches(database: db),
       resetBuffer: const Duration(minutes: 2),
     );
   });

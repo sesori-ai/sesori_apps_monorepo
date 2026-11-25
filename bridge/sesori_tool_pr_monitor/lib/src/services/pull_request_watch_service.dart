@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
+import "package:sesori_shared/sesori_shared.dart" show PullRequestWatchStatus, PullRequestWatchStatusMerged;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
 import "../models/gh_cli_exception.dart";
@@ -55,6 +56,15 @@ class PullRequestWatchService({
   /// The stored settings, loaded by [resume].
   PullRequestMonitorConfig _config = PullRequestMonitorConfig.defaults;
 
+  final StreamController<Set<String>> _watchesChanged = StreamController<Set<String>>.broadcast();
+
+  /// The local day whose earlier merged watches are cleared.
+  DateTime? _mergedClearedFor;
+
+  /// The sessions whose watches started, ended, or changed their status or
+  /// auto-merge, so the app's views of them follow.
+  Stream<Set<String>> get watchesChanged => _watchesChanged.stream;
+
   /// The session a caller's watches belong to: its family's root, as for
   /// wake-ups. Null when Sesori no longer knows the caller.
   Future<String?> watchSessionOf({required SesoriToolCaller caller}) async =>
@@ -66,6 +76,8 @@ class PullRequestWatchService({
   Future<void> resume() async {
     _config = await _watches.loadConfig();
     for (final (:sessionId, :watch) in await _watches.loadAll()) {
+      // A merged watch only stays listed, until midnight.
+      if (watch.status is PullRequestWatchStatusMerged) continue;
       _runtimeOf(
         target: PullRequestTarget(owner: watch.owner, repo: watch.repo, number: watch.number),
       ).watches.putIfAbsent(sessionId, () => _Watch(sessionId: sessionId, stored: watch, resumed: true));
@@ -124,9 +136,14 @@ class PullRequestWatchService({
           autoMerge: autoMerge,
           baseline: _activity.baselineOf(snapshot: snapshot),
           lastReportAt: _clock.now(),
+          status: _readiness.watchStatus(
+            snapshot: snapshot,
+            autoMerge: autoMerge || _autoMerge(runtime: runtime),
+          ),
         );
         await _watches.save(sessionId: sessionId, watch: stored);
         runtime.watches[sessionId] = _Watch(sessionId: sessionId, stored: stored, resumed: false);
+        _announce(sessionIds: {sessionId});
         return PullRequestWatchStarted(
           title: snapshot.title,
           report: _reports.buildReport(
@@ -153,6 +170,7 @@ class PullRequestWatchService({
     final removed = runtime?.watches.remove(sessionId) != null;
     if (runtime != null) _dropIfUnused(runtime: runtime);
     final deleted = await _watches.delete(sessionId: sessionId, target: target);
+    if (removed || deleted) _announce(sessionIds: {sessionId});
     return removed || deleted;
   }
 
@@ -177,7 +195,7 @@ class PullRequestWatchService({
   }) async {
     final autoMerge = change.autoMerge;
     var needsAllow = false;
-    await _updateConfig(
+    final shown = await _updateConfig(
       update: (config) {
         final timed = change.timingsAppliedTo(config: config);
         if (autoMerge == null) return timed;
@@ -190,7 +208,7 @@ class PullRequestWatchService({
     final approval = await _host.requestApproval(
       sessionId: askingSessionId,
       title: PullRequestConfigDescriptionBuilder.approvalTitle,
-      body: _configDescriptions.approvalBody(change: autoMerge, config: _config),
+      body: _configDescriptions.approvalBody(change: autoMerge, config: shown),
     );
     switch (approval) {
       case SesoriToolApprovalAllowed():
@@ -200,7 +218,7 @@ class PullRequestWatchService({
       case SesoriToolApprovalDropped():
         return PullRequestConfigApprovalDropped(config: _config, autoMerge: autoMerge);
       case SesoriToolApprovalShown(:final answer):
-        unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, shown: _config, answer: answer));
+        unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, shown: shown, answer: answer));
         return PullRequestConfigAwaitingApproval(config: _config, autoMerge: autoMerge);
     }
   }
@@ -387,6 +405,7 @@ class PullRequestWatchService({
         if (!await _saveIfCurrent(runtime: runtime, watch: watch, stored: stored)) {
           return const PullRequestAutoMergeNotWatched();
         }
+        _announce(sessionIds: {sessionId});
         return PullRequestAutoMergeSet(
           enabled: enabled,
           effective: _autoMerge(runtime: runtime),
@@ -411,6 +430,7 @@ class PullRequestWatchService({
   /// time, and sends the reports and reminders that are due. A PR whose
   /// previous operation still runs waits for the next call.
   Future<void> pollDue() async {
+    await _clearMergedWatches();
     await _dropInactiveWatches();
     final now = _clock.now();
     for (final runtime in [..._runtimes.values]) {
@@ -423,6 +443,26 @@ class PullRequestWatchService({
         operation: () => _poll(runtime: runtime),
       );
     }
+  }
+
+  /// Deletes the watches merged before today, once per local day.
+  Future<void> _clearMergedWatches() async {
+    final now = _clock.now().toLocal();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_mergedClearedFor == today) return;
+    final cleared = <String>{};
+    for (final (:sessionId, :watch) in await _watches.loadAll()) {
+      if (watch.status case PullRequestWatchStatusMerged(:final mergedAt)
+          when DateTime.fromMillisecondsSinceEpoch(mergedAt).isBefore(today)) {
+        await _watches.delete(
+          sessionId: sessionId,
+          target: PullRequestTarget(owner: watch.owner, repo: watch.repo, number: watch.number),
+        );
+        cleared.add(sessionId);
+      }
+    }
+    _mergedClearedFor = today;
+    _announce(sessionIds: cleared);
   }
 
   /// Ends watches whose session was archived or deleted, with one lookup
@@ -717,9 +757,10 @@ class PullRequestWatchService({
     required void Function() onDropped,
   }) {
     watch.delivering = true;
-    // A get_pr_report while this waited already told the session more.
-    final queued = watch.stored;
-    bool unchanged() => _isCurrent(runtime: runtime, watch: watch) && identical(watch.stored, queued);
+    // A get_pr_report or a label change while this waited already told the
+    // session more.
+    final queued = watch.stored.baseline;
+    bool unchanged() => _isCurrent(runtime: runtime, watch: watch) && identical(watch.stored.baseline, queued);
     unawaited(
       () async {
         try {
@@ -758,8 +799,8 @@ class PullRequestWatchService({
   }
 
   /// Marks [snapshot] as reported to [watch]: its new baseline, or the end
-  /// of the watch once the PR is merged or closed. False when the watch
-  /// ended meanwhile.
+  /// of the watch once the PR is merged or closed. A merged watch stays
+  /// listed until midnight. False when the watch ended meanwhile.
   Future<bool> _recordReport({
     required _PullRequestRuntime runtime,
     required _Watch watch,
@@ -767,6 +808,19 @@ class PullRequestWatchService({
   }) async {
     if (!_isCurrent(runtime: runtime, watch: watch)) return false;
     watch.resumed = false;
+    if (snapshot.state == PullRequestState.merged) {
+      runtime.watches.remove(watch.sessionId);
+      _dropIfUnused(runtime: runtime);
+      await _watches.save(
+        sessionId: watch.sessionId,
+        watch: watch.stored.copyWith(
+          title: snapshot.title,
+          status: PullRequestWatchStatus.merged(mergedAt: _clock.now().millisecondsSinceEpoch),
+        ),
+      );
+      _announce(sessionIds: {watch.sessionId});
+      return true;
+    }
     if (snapshot.state != PullRequestState.open) {
       await _endWatch(runtime: runtime, sessionId: watch.sessionId);
       return true;
@@ -821,6 +875,34 @@ class PullRequestWatchService({
     runtime.watches.remove(sessionId);
     _dropIfUnused(runtime: runtime);
     await _watches.delete(sessionId: sessionId, target: runtime.target);
+    _announce(sessionIds: {sessionId});
+  }
+
+  /// Stores each watch's status when the PR's last poll changed it.
+  Future<void> _syncStatuses({required _PullRequestRuntime runtime}) async {
+    final snapshot = runtime.snapshot;
+    // A merged or closed PR's watches end with their next report.
+    if (snapshot == null || snapshot.state != PullRequestState.open) return;
+    final status = _readiness.watchStatus(
+      snapshot: snapshot,
+      autoMerge: _autoMerge(runtime: runtime),
+    );
+    final changed = <String>{};
+    for (final watch in [...runtime.watches.values]) {
+      if (watch.stored.status == status) continue;
+      if (await _saveIfCurrent(
+        runtime: runtime,
+        watch: watch,
+        stored: watch.stored.copyWith(status: status),
+      )) {
+        changed.add(watch.sessionId);
+      }
+    }
+    _announce(sessionIds: changed);
+  }
+
+  void _announce({required Set<String> sessionIds}) {
+    if (sessionIds.isNotEmpty) _watchesChanged.add(sessionIds);
   }
 
   String _render({
@@ -839,9 +921,9 @@ class PullRequestWatchService({
     opening: watch.resumed ? PullRequestReportOpening.resumed : PullRequestReportOpening.ongoing,
   );
 
-  PullRequestWatchStatus _status({required _PullRequestRuntime runtime, required _Watch watch}) {
+  PullRequestWatchDetail _status({required _PullRequestRuntime runtime, required _Watch watch}) {
     final snapshot = runtime.snapshot;
-    return PullRequestWatchStatus(
+    return PullRequestWatchDetail(
       target: runtime.target,
       ciHold: runtime.holdStartedAt != null,
       activityBuffered: runtime.dirty,
@@ -873,10 +955,15 @@ class PullRequestWatchService({
     () => _PullRequestRuntime(target: target, lastActivityAt: _clock.now()),
   );
 
-  /// Runs [operation] after the PR's earlier ones.
+  /// Runs [operation] after the PR's earlier ones, then stores the watches'
+  /// new status.
   Future<T> _run<T>({required _PullRequestRuntime runtime, required Future<T> Function() operation}) {
     runtime.pendingOperations++;
-    final result = runtime.queue.then((_) => operation());
+    final result = runtime.queue.then((_) async {
+      final value = await operation();
+      await _syncStatuses(runtime: runtime);
+      return value;
+    });
     runtime.queue = result.then<void>((_) {}, onError: (Object _) {});
     return result.whenComplete(() {
       runtime.pendingOperations--;

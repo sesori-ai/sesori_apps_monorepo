@@ -211,6 +211,18 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
   the last wake-up goes; nothing above the composer moves. Its menu lists each wake-up with its label, time, a repeat
   or alarm glyph and a terminal glyph when it runs a command, and a Cancel button that closes the menu and cancels
   it. A failed cancel says so and keeps the wake-up. Older bridges send no wake-ups, so the chip never offers them.
+- Sessions carry the PRs the `pr_monitor` group watches for them (`Session.pullRequestWatches`: repository, number,
+  title, url, the session's auto-merge, and a status). The status is `needsYou` with its reasons (CI concluded and
+  failing, a merge conflict, review feedback without a `[Sesori reply]`, or ready while no watch auto-merges it),
+  otherwise `ready` when labelled ready, otherwise `waiting`; a merged PR is `merged` with its time and stays listed,
+  unpolled and across restarts, until the bridge's local midnight. The bridge stores the status after every poll,
+  watch, unwatch and auto-merge change, and republishes each session whose watches changed plus a
+  `pullRequestWatches.changed` event. `GET /pull-request-watches` lists every watch on the bridge with its session's
+  id, title and project, skipping deleted sessions. `POST /session/pull-request-watch/stop` and
+  `/session/pull-request-watch/auto-merge` end a watch or set its auto-merge without an Allow card or a notice to the
+  agent, answer with the updated session (also when the watch was already gone), and refuse a repository that is not
+  `owner/repo` with 400. Older bridges omit the list, which reads as no watches; an unknown status or reason from a
+  newer bridge reads as `unknown`.
 - A run's final reply (`list_task_runs`) is the agent's last text in the newest turn a user prompt started, read from
   the newest 10 messages. A turn a notice started is skipped, so the agent's answer to a notice never replaces the
   run's reply and a Sesori row is never one. A later same-session run's reply replaces it.

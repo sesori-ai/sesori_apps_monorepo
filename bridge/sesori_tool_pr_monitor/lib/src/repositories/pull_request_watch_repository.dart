@@ -1,3 +1,4 @@
+import "package:sesori_shared/sesori_shared.dart" show SessionPullRequestWatch;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
 import "../models/pull_request_target.dart";
@@ -36,6 +37,26 @@ class PullRequestWatchRepository({required final SesoriToolStore _store}) {
         if (_parse(sessionId: record.sessionId, key: record.key, value: record.value) case final watch?)
           (sessionId: record.sessionId, watch: watch),
     ];
+  }
+
+  /// Every session's watches as the app shows them, merged ones included, by
+  /// session id.
+  Future<Map<String, List<SessionPullRequestWatch>>> watchesBySession() async {
+    final bySession = <String, List<SessionPullRequestWatch>>{};
+    for (final (:sessionId, :watch) in await loadAll()) {
+      final target = PullRequestTarget(owner: watch.owner, repo: watch.repo, number: watch.number);
+      (bySession[sessionId] ??= []).add(
+        SessionPullRequestWatch(
+          repository: "${watch.owner}/${watch.repo}",
+          number: watch.number,
+          title: watch.title,
+          url: target.url,
+          autoMerge: watch.autoMerge,
+          status: watch.status,
+        ),
+      );
+    }
+    return bySession;
   }
 
   /// Writes [watch], replacing [sessionId]'s earlier record of the PR. The

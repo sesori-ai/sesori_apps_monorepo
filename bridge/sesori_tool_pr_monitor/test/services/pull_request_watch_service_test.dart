@@ -1,4 +1,6 @@
 import "package:clock/clock.dart";
+import "package:sesori_shared/sesori_shared.dart"
+    show PullRequestWatchNeed, PullRequestWatchStatus, SessionPullRequestWatch;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:sesori_tool_pr_monitor/src/listeners/pull_request_poll_listener.dart";
 import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
@@ -57,6 +59,9 @@ class _Harness() {
   }
 
   List<String> get sentTo => [for (final notice in host.sent) notice.sessionId];
+
+  /// The status the app sees for [sessionId]'s one stored watch.
+  Object? storedStatus({required String sessionId}) => store.sessionRecords[sessionId]?.values.single["status"];
 }
 
 final PullRequestSnapshot _withComment = emptySnapshot.copyWith(
@@ -120,7 +125,7 @@ void main() {
     expect(h.host.sent.single.guidance, contains("- CI: running for 30m+ (in_progress: build)"));
   });
 
-  test("a new CI failure and a merge report at once; the merge ends the watch", () async {
+  test("a new CI failure and a merge report at once; the merge ends the watch and keeps it listed as merged", () async {
     await h.watch(sessionId: "s1");
     h.snapshots.enqueue(
       emptySnapshot.copyWith(
@@ -133,8 +138,63 @@ void main() {
     h.snapshots.enqueue(emptySnapshot.copyWith(state: PullRequestState.merged));
     await h.poll();
     expect(h.host.sent.last.guidance, contains("- Monitor stopped: PR merged"));
-    expect(h.store.sessionRecords["s1"], isEmpty);
+    expect(h.storedStatus(sessionId: "s1"), {"kind": "merged", "mergedAt": h.now.millisecondsSinceEpoch});
     expect(h.service.statusOf(sessionId: "s1").watches, isEmpty);
+  });
+
+  test("each poll stores the status the app sees and announces every session whose watch changed", () async {
+    final changes = <Set<String>>[];
+    h.service.watchesChanged.listen(changes.add);
+    await h.watch(sessionId: "s1");
+    await h.watch(sessionId: "s2");
+    await pumpEventQueue();
+    expect(h.storedStatus(sessionId: "s1"), {"kind": "waiting"});
+    expect(changes, [
+      {"s1"},
+      {"s2"},
+    ]);
+
+    h.snapshots.enqueue(_withComment);
+    await h.poll();
+    expect(h.storedStatus(sessionId: "s2"), {
+      "kind": "needsYou",
+      "reasons": ["newReviewComments"],
+    });
+    expect(changes.last, {"s1", "s2"});
+
+    await h.poll();
+    expect(changes, hasLength(3), reason: "an unchanged status is not announced again");
+    expect((await PullRequestWatchRepository(store: h.store).watchesBySession())["s1"], [
+      const SessionPullRequestWatch(
+        repository: "sesori/example",
+        number: 42,
+        title: "test PR",
+        url: "https://github.com/sesori/example/pull/42",
+        autoMerge: false,
+        status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.newReviewComments]),
+      ),
+    ]);
+  });
+
+  test("a merged watch stays listed without polling, across a restart, until local midnight", () async {
+    await h.watch(sessionId: "s1");
+    h.snapshots.enqueue(emptySnapshot.copyWith(state: PullRequestState.merged));
+    await h.poll();
+    final fetches = h.snapshots.fetches.length;
+
+    h.service = h.build();
+    await h.service.resume();
+    await h.poll();
+    expect(h.snapshots.fetches, hasLength(fetches));
+    expect(h.storedStatus(sessionId: "s1"), containsPair("kind", "merged"));
+
+    final changes = <Set<String>>[];
+    h.service.watchesChanged.listen(changes.add);
+    await h.poll(after: const Duration(days: 1));
+    expect(h.store.sessionRecords["s1"], isEmpty);
+    expect(changes, [
+      {"s1"},
+    ]);
   });
 
   test("a report whose watch ended while it waited is not sent, and a dropped one is sent again", () async {
@@ -231,7 +291,7 @@ void main() {
     final report = h.host.sent.single.guidance;
     expect(report, contains("- Resumed after the bridge restarted; this covers changes since the last report."));
     expect(report, contains("— MERGED"));
-    expect(h.store.sessionRecords["s1"], isEmpty);
+    expect(h.storedStatus(sessionId: "s1"), {"kind": "merged", "mergedAt": h.now.millisecondsSinceEpoch});
   });
 
   test("after a restart an unchanged PR stays quiet and a new comment reports after the quiet window", () async {
@@ -372,7 +432,7 @@ void main() {
       await h.poll();
       expect(h.host.sent, hasLength(2));
       expect(h.host.sent.last.guidance, isNot(contains("Auto-merge succeeded")), reason: "the notice shows once");
-      expect(h.store.sessionRecords["s1"], isEmpty);
+      expect(h.storedStatus(sessionId: "s1"), {"kind": "merged", "mergedAt": h.now.millisecondsSinceEpoch});
     });
 
     test("a get_pr_report that shows the merge result is not followed by a report repeating it", () async {
@@ -681,6 +741,22 @@ void main() {
         autoMerge: const PullRequestRepositoryAutoMergeCleared(repositoryKey: "sesori/example"),
       );
       expect(cleared, isA<PullRequestConfigApplied>(), reason: "clearing an off override under an off default");
+
+      h.host.asked.single.answer.complete(SesoriToolApprovalOutcome.allowed);
+      await pumpEventQueue();
+
+      expect(h.host.sent.single.summary, "PR monitor: auto-merge by default for every repository not applied");
+      expect(config(), PullRequestMonitorConfig.defaults);
+    });
+
+    test("an Allow is dropped when the auto-merge settings changed while the card was being sent", () async {
+      await configure(
+        autoMerge: const PullRequestRepositoryAutoMerge(repositoryKey: "sesori/example", enabled: false),
+      );
+      await Future.wait([
+        configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true)),
+        configure(autoMerge: const PullRequestRepositoryAutoMergeCleared(repositoryKey: "sesori/example")),
+      ]);
 
       h.host.asked.single.answer.complete(SesoriToolApprovalOutcome.allowed);
       await pumpEventQueue();

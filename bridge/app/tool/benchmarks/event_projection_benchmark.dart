@@ -3,22 +3,27 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
+import "package:sesori_bridge/src/repositories/sesori_tool_record_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
+import "package:sesori_bridge/src/server/host/bridge_sesori_tool_store_impl.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
@@ -27,6 +32,7 @@ import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
 
 import "benchmark_plugin_runtime.dart";
 import "benchmark_relay_fixture.dart";
@@ -107,6 +113,15 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
           ),
           interruptions: SessionInterruptionRepository(dao: SessionInterruptionDao(database: database)),
           wakeUps: SessionWakeUpRepository(dao: SessionWakeUpDao(database: database)),
+          pullRequestWatches: PullRequestWatchRepository(
+            store: BridgeSesoriToolStoreImpl(
+              groupId: SesoriToolGroupIds.prMonitor,
+              records: SesoriToolRecordRepository(
+                dao: SesoriToolRecordDao(database: database),
+                clock: const Clock(),
+              ),
+            ),
+          ),
           resetBuffer: const Duration(minutes: 2),
         ),
         sessionPromptService: const _UnusedSessionPromptService(),

@@ -65,6 +65,7 @@ void main() {
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
       interruptions: const NoSessionInterruptions(),
+      pullRequestWatches: createTestPullRequestWatches(database: db),
       resetBuffer: const Duration(minutes: 2),
     );
     now = observed;
@@ -393,6 +394,7 @@ void main() {
       scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
       interruptions: interruptions,
+      pullRequestWatches: createTestPullRequestWatches(database: db),
       resetBuffer: const Duration(minutes: 2),
     );
     Future<List<SessionInterruption?>> project() async {

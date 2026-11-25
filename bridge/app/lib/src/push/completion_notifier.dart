@@ -123,6 +123,7 @@ class CompletionNotifier({
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
           SesoriScheduledTasksChanged() ||
+          SesoriPullRequestWatchesChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||
