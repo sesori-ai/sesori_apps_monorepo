@@ -23,6 +23,7 @@ void main() {
       yolo: YoloSettingsResponse(enabled: true),
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: true,
+      releaseTrack: null,
     );
     when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.success(response));
 
@@ -84,6 +85,38 @@ void main() {
       await repository.updateToolGroup(id: "tasks", enabled: false),
       isA<AgentToolsSettingsMutationUncertain>(),
     );
+  });
+
+  test("maps the release track update", () async {
+    when(
+      () => api.update(update: const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.internal)),
+    ).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(
+        update: BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.internal),
+      ),
+    );
+    final refused = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"type":"unknown"}');
+    when(
+      () => api.update(update: const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.stable)),
+    ).thenAnswer((_) async => BridgeSettingUpdateApiFailure(error: refused));
+
+    expect(
+      await repository.updateReleaseTrack(internalBuilds: true),
+      isA<ReleaseTrackSettingsMutationCommitted>().having((result) => result.internalBuilds, "internal", isTrue),
+    );
+    expect(
+      await repository.updateReleaseTrack(internalBuilds: false),
+      isA<ReleaseTrackSettingsMutationFailure>().having((result) => result.error, "error", same(refused)),
+    );
+
+    when(
+      () => api.update(update: const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.stable)),
+    ).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(
+        update: BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.unknown),
+      ),
+    );
+    expect(await repository.updateReleaseTrack(internalBuilds: false), isA<ReleaseTrackSettingsMutationUncertain>());
   });
 
   test("maps every setting mutation response", () async {

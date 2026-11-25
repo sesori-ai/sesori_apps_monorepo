@@ -69,6 +69,9 @@ class BridgeSettingsService({
   Future<AgentToolsSettingsMutationResult> updateToolGroup({required String id, required bool enabled}) =>
       _repository.updateToolGroup(id: id, enabled: enabled);
 
+  Future<ReleaseTrackSettingsMutationResult> updateReleaseTrack({required bool internalBuilds}) =>
+      _repository.updateReleaseTrack(internalBuilds: internalBuilds);
+
   void _onConnectionStatus(ConnectionStatus status) {
     if (status is ConnectionConnected) unawaited(_loadOnConnect());
   }

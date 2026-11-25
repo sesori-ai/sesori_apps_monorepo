@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../converters/strict_int_json_converter.dart";
+import "bridge_release_track.dart";
 
 part "bridge_setting_update.freezed.dart";
 part "bridge_setting_update.g.dart";
@@ -32,6 +33,13 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
   /// Turns the tool group [id] (a `BridgeToolGroupSetting.id`) on or off.
   @FreezedUnionValue("toolGroup")
   const factory toolGroup({required String id, required bool enabled}) = ToolGroupSettingUpdate;
+
+  /// Sets the release channel the bridge's auto-updater follows from its
+  /// next start. A bridge refuses a track it does not know.
+  @FreezedUnionValue("releaseTrack")
+  const factory releaseTrack({
+    @JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required BridgeReleaseTrack track,
+  }) = ReleaseTrackSettingUpdate;
 
   const factory unknown() = UnknownBridgeSettingUpdate;
 

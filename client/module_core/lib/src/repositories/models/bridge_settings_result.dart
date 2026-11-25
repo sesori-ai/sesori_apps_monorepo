@@ -4,7 +4,15 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class const BridgeSettingsLoadResult();
 
 final class const BridgeSettingsLoadSupported({required final BridgeSettingsResponse response})
-    extends BridgeSettingsLoadResult;
+    extends BridgeSettingsLoadResult {
+  /// Whether the bridge's auto-updater also takes internal pre-releases, or
+  /// null when it reports no track or one this app does not know.
+  bool? get releaseTrackInternalBuilds => switch (response.releaseTrack) {
+    BridgeReleaseTrack.stable => false,
+    BridgeReleaseTrack.internal => true,
+    BridgeReleaseTrack.unknown || null => null,
+  };
+}
 
 final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResult;
 
@@ -44,3 +52,15 @@ final class const AgentToolsSettingsMutationUncertain() extends AgentToolsSettin
 
 final class const AgentToolsSettingsMutationFailure({required final ApiError error})
     extends AgentToolsSettingsMutationResult;
+
+/// The outcome of setting the bridge's release track.
+sealed class const ReleaseTrackSettingsMutationResult();
+
+/// The bridge's committed track: internal pre-releases too, or stable only.
+final class const ReleaseTrackSettingsMutationCommitted({required final bool internalBuilds})
+    extends ReleaseTrackSettingsMutationResult;
+
+final class const ReleaseTrackSettingsMutationUncertain() extends ReleaseTrackSettingsMutationResult;
+
+final class const ReleaseTrackSettingsMutationFailure({required final ApiError error})
+    extends ReleaseTrackSettingsMutationResult;

@@ -378,6 +378,7 @@ class _LiveAttachmentHarness({
         authBackendURL: "https://api.sesori.test",
         sseReplayWindow: const Duration(minutes: 1),
         yolo: false,
+        updatesItself: false,
       ),
       client: RelayClient(
         relayURL: relayUrl,

@@ -691,6 +691,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
 
   @override
+  String get settingsReleaseTrackTitle => 'Internal builds';
+
+  @override
+  String get settingsReleaseTrackDescription =>
+      'Updates the bridge to pre-release builds too, which may be unstable. Applies the next time the bridge starts.';
+
+  @override
+  String get settingsReleaseTrackUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsReleaseTrackUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsReleaseTrackRetry => 'Retry internal builds setting';
+
+  @override
   String get settingsAgentToolsSection => 'Agent tools';
 
   @override

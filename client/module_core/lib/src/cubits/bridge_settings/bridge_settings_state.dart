@@ -3,13 +3,25 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const BridgeSettingsState();
 
-final class const BridgeSettingsLoading() extends BridgeSettingsState;
+final class const BridgeSettingsLoading({
+  /// Whether the last loaded settings reported a release track, so its row
+  /// can wait out the load instead of closing.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
-final class const BridgeSettingsDisconnected() extends BridgeSettingsState;
+final class const BridgeSettingsDisconnected({
+  /// Whether the last loaded settings reported a release track.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
 final class const BridgeSettingsUnsupported() extends BridgeSettingsState;
 
-final class const BridgeSettingsFailure({required final ApiError error}) extends BridgeSettingsState;
+final class const BridgeSettingsFailure({
+  required final ApiError error,
+
+  /// Whether the last loaded settings reported a release track.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
 final class const BridgeSettingsReady({
   required final bool yoloEnabled,
@@ -19,6 +31,10 @@ final class const BridgeSettingsReady({
   /// Null for a bridge without agent-tools settings, which leaves the
   /// section out.
   required final AgentToolsSettings? agentTools,
+
+  /// Null for a bridge that does not update itself or predates the setting,
+  /// which leaves it out.
+  required final ReleaseTrackSettings? releaseTrack,
 }) extends BridgeSettingsState;
 
 sealed class const YoloMutationState();
@@ -80,3 +96,23 @@ final class const AgentToolsMutationFailed({
 
 /// A save whose outcome is unknown, and the reload after it failed too.
 final class const AgentToolsMutationUncertain({required final ApiError refreshError}) extends AgentToolsMutationState;
+
+/// The release channel of a bridge that updates itself: stable releases
+/// only, or internal pre-releases too. A change applies from the bridge's
+/// next start.
+final class const ReleaseTrackSettings({
+  required final bool internalBuilds,
+  required final ReleaseTrackMutationState mutation,
+});
+
+sealed class const ReleaseTrackMutationState();
+
+final class const ReleaseTrackMutationIdle() extends ReleaseTrackMutationState;
+
+final class const ReleaseTrackMutationInProgress() extends ReleaseTrackMutationState;
+
+final class const ReleaseTrackMutationFailed({required final ApiError error}) extends ReleaseTrackMutationState;
+
+/// A save whose outcome is unknown, and the reload after it failed too.
+final class const ReleaseTrackMutationUncertain({required final ApiError refreshError})
+    extends ReleaseTrackMutationState;
