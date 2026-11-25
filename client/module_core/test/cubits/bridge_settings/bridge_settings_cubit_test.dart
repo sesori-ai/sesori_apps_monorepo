@@ -47,6 +47,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: null,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       ),
     );
@@ -170,6 +171,135 @@ void main() {
       final agentTools = _agentToolsOf(cubit);
       expect(agentTools.enabled, isFalse);
       expect(agentTools.mutation, isA<AgentToolsMutationIdle>());
+    });
+  });
+
+  group("release track", () {
+    test("a bridge that does not report its track, or reports one this app does not know, has no row", () async {
+      for (final track in [null, BridgeReleaseTrack.unknown]) {
+        when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false, releaseTrack: track));
+        final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+        await _waitForState<BridgeSettingsReady>(cubit);
+
+        expect((cubit.state as BridgeSettingsReady).releaseTrack, isNull);
+        await cubit.close();
+      }
+    });
+
+    test("loads the track", () async {
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(yoloEnabled: false, releaseTrack: BridgeReleaseTrack.internal),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      expect(_releaseTrackOf(cubit).internalBuilds, isTrue);
+      expect(_releaseTrackOf(cubit).mutation, isA<ReleaseTrackMutationIdle>());
+    });
+
+    test("remembers the track through a reload, a failed load and a dropped connection", () async {
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(yoloEnabled: false, releaseTrack: BridgeReleaseTrack.stable),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isFalse);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      when(service.load).thenAnswer((_) async => BridgeSettingsLoadFailure(error: ApiError.generic()));
+      final reloading = cubit.refresh();
+      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isTrue);
+      await reloading;
+      expect((cubit.state as BridgeSettingsFailure).hasReleaseTrack, isTrue);
+
+      connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
+      await _waitForState<BridgeSettingsDisconnected>(cubit);
+      expect((cubit.state as BridgeSettingsDisconnected).hasReleaseTrack, isTrue);
+    });
+
+    test("commits a change without reloading the bridge", () async {
+      _stubLoad(service, yoloEnabled: false);
+      when(() => service.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+        (_) async => const ReleaseTrackSettingsMutationCommitted(internalBuilds: true),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      final saving = cubit.updateReleaseTrack(internalBuilds: true, expectedState: cubit.state as BridgeSettingsReady);
+      expect(_releaseTrackOf(cubit).mutation, isA<ReleaseTrackMutationInProgress>());
+      expect(_releaseTrackOf(cubit).internalBuilds, isFalse);
+      await saving;
+
+      expect(_releaseTrackOf(cubit).internalBuilds, isTrue);
+      expect(_releaseTrackOf(cubit).mutation, isA<ReleaseTrackMutationIdle>());
+      verify(service.load).called(1);
+    });
+
+    test("a failed save keeps the track and stays retryable", () async {
+      _stubLoad(service, yoloEnabled: false);
+      final error = ApiError.generic();
+      when(() => service.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+        (_) async => ReleaseTrackSettingsMutationFailure(error: error),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateReleaseTrack(internalBuilds: true, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_releaseTrackOf(cubit).internalBuilds, isFalse);
+      expect(
+        _releaseTrackOf(cubit).mutation,
+        isA<ReleaseTrackMutationFailed>().having((failed) => failed.error, "error", same(error)),
+      );
+      await cubit.updateReleaseTrack(internalBuilds: true, expectedState: cubit.state as BridgeSettingsReady);
+      verify(() => service.updateReleaseTrack(internalBuilds: true)).called(2);
+    });
+
+    test("an uncertain save reloads the bridge's settings", () async {
+      var loads = 0;
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(
+          yoloEnabled: false,
+          releaseTrack: loads++ == 0 ? BridgeReleaseTrack.stable : BridgeReleaseTrack.internal,
+        ),
+      );
+      when(() => service.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+        (_) async => const ReleaseTrackSettingsMutationUncertain(),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateReleaseTrack(internalBuilds: true, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_releaseTrackOf(cubit).internalBuilds, isTrue);
+      expect(_releaseTrackOf(cubit).mutation, isA<ReleaseTrackMutationIdle>());
+    });
+
+    test("an uncertain save whose reload fails stays uncertain", () async {
+      var loads = 0;
+      final refreshError = ApiError.generic();
+      when(service.load).thenAnswer(
+        (_) async => loads++ == 0 ? _loadResult(yoloEnabled: false) : BridgeSettingsLoadFailure(error: refreshError),
+      );
+      when(() => service.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+        (_) async => const ReleaseTrackSettingsMutationUncertain(),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateReleaseTrack(internalBuilds: true, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_releaseTrackOf(cubit).internalBuilds, isFalse);
+      expect(
+        _releaseTrackOf(cubit).mutation,
+        isA<ReleaseTrackMutationUncertain>().having((uncertain) => uncertain.refreshError, "error", same(refreshError)),
+      );
     });
   });
 
@@ -349,6 +479,7 @@ void main() {
         yoloMutation: YoloMutationIdle(),
         pluginWarmupMutation: PluginWarmupMutationIdle(enabled: true),
         agentTools: null,
+        releaseTrack: null,
       ),
     );
 
@@ -372,6 +503,7 @@ BridgeSettingsLoadSupported _loadResult({
   required bool yoloEnabled,
   bool? agentToolsEnabled = true,
   List<BridgeToolGroupSetting> toolGroups = const [_prMonitor],
+  BridgeReleaseTrack? releaseTrack = BridgeReleaseTrack.stable,
 }) {
   return BridgeSettingsLoadSupported(
     response: BridgeSettingsResponse(
@@ -379,10 +511,16 @@ BridgeSettingsLoadSupported _loadResult({
       yolo: YoloSettingsResponse(enabled: yoloEnabled),
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: agentToolsEnabled,
+      releaseTrack: releaseTrack,
       toolGroups: toolGroups,
     ),
   );
 }
+
+ReleaseTrackSettings _releaseTrackOf(BridgeSettingsCubit cubit) => switch (cubit.state) {
+  BridgeSettingsReady(:final ReleaseTrackSettings releaseTrack) => releaseTrack,
+  final other => fail("no release track in $other"),
+};
 
 AgentToolsSettings _agentToolsOf(BridgeSettingsCubit cubit) => switch (cubit.state) {
   BridgeSettingsReady(:final AgentToolsSettings agentTools) => agentTools,

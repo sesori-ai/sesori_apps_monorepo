@@ -85,6 +85,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: true,
+          releaseTrack: null,
         ),
       ),
     );
@@ -124,6 +125,7 @@ BridgeSettingsLoadSupported _loaded({required bool yoloEnabled}) {
       yolo: YoloSettingsResponse(enabled: yoloEnabled),
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: true,
+      releaseTrack: null,
     ),
   );
 }

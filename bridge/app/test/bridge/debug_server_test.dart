@@ -46,6 +46,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
       authBackendURL: "https://api.sesori.test",
       sseReplayWindow: const Duration(minutes: 5),
       yolo: false,
+      updatesItself: false,
     ),
     client: RelayClient(
       relayURL: relayUrl,

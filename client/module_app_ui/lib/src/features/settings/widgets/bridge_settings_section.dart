@@ -51,45 +51,69 @@ class const BridgeSettingsSection({
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
+    // The row waits out a reload or a dropped connection instead of closing
+    // and opening again under the finger.
+    final showReleaseTrack = switch (state) {
+      BridgeSettingsReady(:final releaseTrack) => releaseTrack != null,
+      BridgeSettingsLoading(:final hasReleaseTrack) ||
+      BridgeSettingsDisconnected(:final hasReleaseTrack) ||
+      BridgeSettingsFailure(:final hasReleaseTrack) => hasReleaseTrack,
+      BridgeSettingsUnsupported() => false,
+    };
     final offline = state is BridgeSettingsDisconnected;
     final onOpenHarnesses = this.onOpenHarnesses;
     final onOpenProjects = this.onOpenProjects;
     final onOpenArchived = this.onOpenArchived;
     final onOpenScheduled = this.onOpenScheduled;
-    final bridgeRows = <Widget>[
+    // Keyed, so a row that comes with the loaded settings, such as Internal
+    // builds, opens in place instead of snapping in.
+    final bridgeRows = <(String, Widget)>[
       if (onOpenHarnesses != null)
-        PregoGroupedRow(
-          icon: TablerRegular.plug,
-          title: Text(context.loc.settingsHarnessesTitle),
-          trailing: const Icon(TablerRegular.chevron_right),
-          onTap: offline ? null : onOpenHarnesses,
+        (
+          "harnesses",
+          PregoGroupedRow(
+            icon: TablerRegular.plug,
+            title: Text(context.loc.settingsHarnessesTitle),
+            trailing: const Icon(TablerRegular.chevron_right),
+            onTap: offline ? null : onOpenHarnesses,
+          ),
         ),
       if (onOpenProjects != null)
-        PregoGroupedRow(
-          key: const Key("settings_projects"),
-          icon: TablerRegular.folder,
-          title: Text(context.loc.settingsProjectsTitle),
-          trailing: const Icon(TablerRegular.chevron_right),
-          onTap: offline ? null : onOpenProjects,
+        (
+          "projects",
+          PregoGroupedRow(
+            key: const Key("settings_projects"),
+            icon: TablerRegular.folder,
+            title: Text(context.loc.settingsProjectsTitle),
+            trailing: const Icon(TablerRegular.chevron_right),
+            onTap: offline ? null : onOpenProjects,
+          ),
         ),
       if (onOpenArchived != null)
-        PregoGroupedRow(
-          key: const Key("settings_archived"),
-          icon: TablerRegular.archive,
-          title: Text(context.loc.archivedSessionsTitle),
-          trailing: const Icon(TablerRegular.chevron_right),
-          onTap: offline ? null : onOpenArchived,
+        (
+          "archived",
+          PregoGroupedRow(
+            key: const Key("settings_archived"),
+            icon: TablerRegular.archive,
+            title: Text(context.loc.archivedSessionsTitle),
+            trailing: const Icon(TablerRegular.chevron_right),
+            onTap: offline ? null : onOpenArchived,
+          ),
         ),
       if (onOpenScheduled != null)
-        PregoGroupedRow(
-          key: const Key("settings_scheduled"),
-          icon: TablerRegular.calendar_time,
-          title: Text(context.loc.scheduledTasksTitle),
-          trailing: const Icon(TablerRegular.chevron_right),
-          onTap: offline ? null : onOpenScheduled,
+        (
+          "scheduled",
+          PregoGroupedRow(
+            key: const Key("settings_scheduled"),
+            icon: TablerRegular.calendar_time,
+            title: Text(context.loc.scheduledTasksTitle),
+            trailing: const Icon(TablerRegular.chevron_right),
+            onTap: offline ? null : onOpenScheduled,
+          ),
         ),
-      const _YoloSettingsRow(),
-      const _PluginWarmupSettingsRow(),
+      ("yolo", const _YoloSettingsRow()),
+      ("plugin_warmup", const _PluginWarmupSettingsRow()),
+      if (showReleaseTrack) ("release_track", const _ReleaseTrackSettingsRow()),
     ];
     // Offline, one line above the group says why every row, Harnesses,
     // Projects, Archived and Scheduled included, is dimmed and disabled, in place of the
@@ -110,7 +134,14 @@ class const BridgeSettingsSection({
           ],
           PregoGroupedRows(
             children: [
-              for (final row in bridgeRows) Opacity(opacity: offline ? _offlineRowsOpacity : 1, child: row),
+              PregoAnimatedList<(String, Widget)>(
+                items: bridgeRows,
+                itemKey: (row) => ValueKey(row.$1),
+                itemBuilder: (context, index, row) => PregoGroupedRowPosition(
+                  isLast: index == bridgeRows.length - 1,
+                  child: Opacity(opacity: offline ? _offlineRowsOpacity : 1, child: row.$2),
+                ),
+              ),
             ],
           ),
           const AgentToolsSettingsSection(),
@@ -130,7 +161,8 @@ class const _YoloSettingsRow() extends StatelessWidget {
         ready.yoloMutation is! YoloMutationInProgress &&
         ready.yoloMutation is! YoloMutationUncertain &&
         ready.yoloMutation is! YoloMutationUnsupported &&
-        ready.pluginWarmupMutation is! PluginWarmupMutationInProgress;
+        ready.pluginWarmupMutation is! PluginWarmupMutationInProgress &&
+        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress;
     final bridgeOutdated = switch (state) {
       BridgeSettingsReady(yoloMutation: YoloMutationUnsupported()) || BridgeSettingsUnsupported() => true,
       BridgeSettingsReady() ||
@@ -191,7 +223,11 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
       PluginWarmupMutationUnsupported() ||
       null => null,
     };
-    final interactive = ready != null && enabled != null && ready.yoloMutation is! YoloMutationInProgress;
+    final interactive =
+        ready != null &&
+        enabled != null &&
+        ready.yoloMutation is! YoloMutationInProgress &&
+        ready.releaseTrack?.mutation is! ReleaseTrackMutationInProgress;
     final bridgeOutdated = switch (state) {
       BridgeSettingsReady(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
       BridgeSettingsUnsupported() => true,
@@ -246,6 +282,82 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
             : enabled == null || !interactive
             ? null
             : () => toggle(enabled: !enabled),
+      ),
+    );
+  }
+}
+
+/// Whether the bridge's auto-updater also takes internal pre-releases. Shown
+/// only for a bridge that updates itself and reports its track; it waits out a
+/// reload or a dropped connection like the rows above it.
+class const _ReleaseTrackSettingsRow() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<BridgeSettingsCubit>().state;
+    final ready = state is BridgeSettingsReady ? state : null;
+    final releaseTrack = ready?.releaseTrack;
+    final interactive =
+        ready != null &&
+        ready.yoloMutation is! YoloMutationInProgress &&
+        ready.pluginWarmupMutation is! PluginWarmupMutationInProgress &&
+        switch (releaseTrack?.mutation) {
+          ReleaseTrackMutationIdle() || ReleaseTrackMutationFailed() => true,
+          ReleaseTrackMutationInProgress() || ReleaseTrackMutationUncertain() || null => false,
+        };
+
+    void toggle({required bool internalBuilds}) {
+      if (ready == null || !interactive) return;
+      unawaited(
+        context.read<BridgeSettingsCubit>().updateReleaseTrack(internalBuilds: internalBuilds, expectedState: ready),
+      );
+    }
+
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        key: const Key("release_track_setting"),
+        icon: TablerRegular.flask,
+        title: Text(context.loc.settingsReleaseTrackTitle),
+        subtitle: Text(switch (releaseTrack?.mutation) {
+          ReleaseTrackMutationUncertain() => context.loc.settingsReleaseTrackUncertain,
+          ReleaseTrackMutationFailed() => context.loc.settingsReleaseTrackUpdateFailed,
+          ReleaseTrackMutationIdle() ||
+          ReleaseTrackMutationInProgress() ||
+          null => context.loc.settingsReleaseTrackDescription,
+        }),
+        trailing: switch (state) {
+          BridgeSettingsLoading() ||
+          BridgeSettingsReady(
+            releaseTrack: ReleaseTrackSettings(mutation: ReleaseTrackMutationInProgress()),
+          ) => PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+          BridgeSettingsReady(
+            releaseTrack: ReleaseTrackSettings(
+              :final internalBuilds,
+              mutation: ReleaseTrackMutationIdle() || ReleaseTrackMutationFailed(),
+            ),
+          ) =>
+            PregoSwitch(
+              key: const Key("release_track_switch"),
+              value: internalBuilds,
+              onChanged: interactive ? (internalBuilds) => toggle(internalBuilds: internalBuilds) : null,
+            ),
+          BridgeSettingsFailure() ||
+          BridgeSettingsReady(
+            releaseTrack: ReleaseTrackSettings(mutation: ReleaseTrackMutationUncertain()),
+          ) => IconButton(
+            key: const Key("release_track_retry"),
+            tooltip: context.loc.settingsReleaseTrackRetry,
+            onPressed: context.read<BridgeSettingsCubit>().refresh,
+            icon: const Icon(TablerRegular.refresh),
+          ),
+          // Leaving: the bridge no longer reports a track.
+          BridgeSettingsReady(releaseTrack: null) ||
+          BridgeSettingsDisconnected() ||
+          BridgeSettingsUnsupported() => null,
+        },
+        onTap: switch (releaseTrack) {
+          ReleaseTrackSettings(:final internalBuilds) when interactive => () => toggle(internalBuilds: !internalBuilds),
+          _ => null,
+        },
       ),
     );
   }

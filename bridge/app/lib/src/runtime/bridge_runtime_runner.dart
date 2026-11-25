@@ -814,6 +814,7 @@ class const BridgeRuntimeRunner._() {
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
           yolo: bridgeSettings.yolo,
+          updatesItself: updatesEnabledForThisInstall,
         ),
         client: relayClient,
         pluginLifecycleRepository: lifecycleRepository,

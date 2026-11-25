@@ -27,6 +27,11 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
               )
               .toList() ??
           const <BridgeToolGroupSetting>[],
+      releaseTrack: $enumDecodeNullable(
+        _$BridgeReleaseTrackEnumMap,
+        json['releaseTrack'],
+        unknownValue: BridgeReleaseTrack.unknown,
+      ),
     );
 
 Map<String, dynamic> _$BridgeSettingsResponseToJson(
@@ -37,4 +42,11 @@ Map<String, dynamic> _$BridgeSettingsResponseToJson(
   'warmUpPluginsOnSessionOpen': ?instance.warmUpPluginsOnSessionOpen,
   'agentToolsEnabled': ?instance.agentToolsEnabled,
   'toolGroups': instance.toolGroups.map((e) => e.toJson()).toList(),
+  'releaseTrack': ?_$BridgeReleaseTrackEnumMap[instance.releaseTrack],
+};
+
+const _$BridgeReleaseTrackEnumMap = {
+  BridgeReleaseTrack.stable: 'stable',
+  BridgeReleaseTrack.internal: 'internal',
+  BridgeReleaseTrack.unknown: 'unknown',
 };

@@ -202,6 +202,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       ),
     );
@@ -592,6 +593,8 @@ void main() {
     expect(find.text("Local bridge"), findsOneWidget);
     expect(find.text("Off"), findsOneWidget);
     expect(find.text("Warm harness on session open"), findsOneWidget);
+    // A bridge the desktop app runs does not update itself, so it has no track.
+    expect(find.text("Internal builds"), findsNothing);
     expect(find.text("Launch Sesori at login"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
     await tester.ensureVisible(find.text("Open logs"));
@@ -599,6 +602,32 @@ void main() {
     await tester.tap(find.text("Open logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
+  });
+
+  testWidgets("a connected bridge that updates itself toggles Internal builds", (tester) async {
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: BridgeReleaseTrack.internal,
+        ),
+      ),
+    );
+    when(() => bridgeSettingsService.updateReleaseTrack(internalBuilds: false)).thenAnswer(
+      (_) async => const ReleaseTrackSettingsMutationCommitted(internalBuilds: false),
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isTrue);
+
+    await tester.ensureVisible(find.byKey(const Key("release_track_switch")));
+    await tester.tap(find.byKey(const Key("release_track_switch")));
+    await tester.pumpAndSettle();
+
+    verify(() => bridgeSettingsService.updateReleaseTrack(internalBuilds: false)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isFalse);
   });
 
   testWidgets("Bridge lists the agent tools after the connected bridge's settings, and the master switch saves", (
@@ -614,6 +643,7 @@ void main() {
           toolGroups: [
             BridgeToolGroupSetting(id: "tasks", title: "Tasks", summary: "Agents can manage tasks.", enabled: true),
           ],
+          releaseTrack: null,
         ),
       ),
     );
