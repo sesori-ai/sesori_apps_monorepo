@@ -213,7 +213,8 @@ class _PagelessSessionRepository() extends Mock implements SessionRepository {
 class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;
 
 /// A computer with no watched pull requests, so the home's button stays hidden.
-PullRequestWatchRepository _noPullRequestWatches() {
+/// A list repository answering that nothing is watched.
+PullRequestWatchRepository noPullRequestWatches() {
   final repository = MockPullRequestWatchRepository();
   when(repository.listWatches).thenAnswer((_) async => const PullRequestWatchListSuccess(watches: []));
   return repository;
@@ -228,7 +229,7 @@ Widget testHome() {
   when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
   return SessionScope(
     sessionSendTracker: SessionSendTracker(),
-    pullRequestWatchRepository: _noPullRequestWatches(),
+    pullRequestWatchRepository: noPullRequestWatches(),
     sessionRepository: MockSessionRepository(),
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
