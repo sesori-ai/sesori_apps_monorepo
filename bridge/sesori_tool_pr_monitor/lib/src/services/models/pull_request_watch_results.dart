@@ -1,4 +1,4 @@
-import "../../api/gh_cli_exception.dart";
+import "../../models/gh_cli_exception.dart";
 import "../../models/pull_request_target.dart";
 import "../../repositories/models/pull_request_snapshot.dart";
 

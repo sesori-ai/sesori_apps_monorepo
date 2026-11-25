@@ -1,4 +1,3 @@
-import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_baseline.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_report_builder.dart";
 import "package:test/test.dart";
@@ -8,7 +7,7 @@ import "../support/pull_request_builders.dart";
 String report({required PullRequestSnapshot snapshot, required PullRequestSnapshot? baseline}) => reports.buildReport(
   target: target,
   snapshot: snapshot,
-  baseline: baseline == null ? null : PullRequestBaseline.fromSnapshot(snapshot: baseline),
+  baseline: baseline == null ? null : activity.baselineOf(snapshot: baseline),
   forcedHoldMinutes: null,
   autoMergeEnabled: false,
   opening: PullRequestReportOpening.ongoing,

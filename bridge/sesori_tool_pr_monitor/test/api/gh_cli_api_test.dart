@@ -2,8 +2,8 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_tool_pr_monitor/src/api/gh_cli_api.dart";
-import "package:sesori_tool_pr_monitor/src/api/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/api/models/gh_pull_request_dto.dart";
+import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/models/pull_request_target.dart";
 import "package:test/test.dart";
 

@@ -4,8 +4,8 @@ import "dart:io" show ProcessException;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandExecutor, CommandResult;
 import "package:sesori_shared/sesori_shared.dart" show asStringKeyedMap, jsonDecodeMap;
 
+import "../models/gh_cli_exception.dart";
 import "../models/pull_request_target.dart";
-import "gh_cli_exception.dart";
 import "models/gh_graphql_response_dto.dart";
 import "models/gh_pull_request_dto.dart";
 

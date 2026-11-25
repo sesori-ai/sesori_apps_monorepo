@@ -67,11 +67,30 @@ class const PullRequestActivityCalculator() {
     return failing.any((check) => !before.contains(check.id));
   }
 
+  /// What a report on [snapshot] covers, as a watch stores it.
+  PullRequestBaseline baselineOf({required PullRequestSnapshot snapshot}) => PullRequestBaseline(
+    state: snapshot.state,
+    headSha: snapshot.headSha,
+    mergeable: snapshot.mergeable,
+    ciRunning: ciPhase(snapshot: snapshot) == PullRequestCiPhase.running,
+    failedCheckIds: _failedCheckIds(snapshot: snapshot).toSet(),
+    reviewSignature: _reviewSignature(snapshot: snapshot),
+    issueCommentIds: _relevantIds(comments: snapshot.issueComments),
+    issueCommentsTotal: snapshot.issueCommentsTotal,
+    reviewSummaryIds: _relevantIds(comments: snapshot.reviewSummaries),
+    threadCommentIds: {for (final thread in snapshot.reviewThreads) thread.id: _relevantIds(comments: thread.comments)},
+    resolvedThreadIds: {
+      for (final thread in snapshot.reviewThreads)
+        if (thread.isResolved) thread.id,
+    },
+    unresolvedThreadCount: snapshot.reviewThreads.where((thread) => !thread.isResolved).length,
+  );
+
   /// True when [snapshot] holds nothing [baseline] did not: a report against
   /// it would say nothing new. Mergeability GitHub has not computed yet is
   /// not a change.
   bool covers({required PullRequestBaseline baseline, required PullRequestSnapshot snapshot}) {
-    final fresh = PullRequestBaseline.fromSnapshot(snapshot: snapshot);
+    final fresh = baselineOf(snapshot: snapshot);
     return baseline ==
         (fresh.mergeable == PullRequestMergeable.unknown ? fresh.copyWith(mergeable: baseline.mergeable) : fresh);
   }
@@ -96,10 +115,7 @@ class const PullRequestActivityCalculator() {
     // checks for the new head.
     if (previous.headSha != next.headSha) return true;
     if (_mergeableChanged(lastDefiniteMergeable: lastDefiniteMergeable, next: next)) return true;
-    if (PullRequestBaseline.reviewSignatureOf(snapshot: previous) !=
-        PullRequestBaseline.reviewSignatureOf(snapshot: next)) {
-      return true;
-    }
+    if (_reviewSignature(snapshot: previous) != _reviewSignature(snapshot: next)) return true;
     if (_reviewThreadsChanged(previous: previous.reviewThreads, next: next.reviewThreads)) return true;
     if (previous.issueCommentsTotal != next.issueCommentsTotal ||
         hasAddedRelevantComment(previous: previous.issueComments, next: next.issueComments) ||
@@ -135,6 +151,21 @@ class const PullRequestActivityCalculator() {
           hasAddedRelevantComment(previous: earlier.comments, next: thread.comments);
     });
   }
+
+  /// A change here is review activity: a new or changed review, or a
+  /// reviewer requested or removed.
+  String _reviewSignature({required PullRequestSnapshot snapshot}) {
+    final states = [
+      for (final review in snapshot.reviews)
+        "${review.login}=${review.state.name}@${review.submittedAt.toUtc().toIso8601String()}",
+    ]..sort();
+    final pending = [...snapshot.pendingReviewers]..sort();
+    return "${states.join(",")}|${pending.join(",")}";
+  }
+
+  Set<String> _relevantIds({required List<PullRequestComment> comments}) => {
+    for (final comment in relevantComments(comments: comments)) comment.id,
+  };
 
   Iterable<String> _failedCheckIds({required PullRequestSnapshot snapshot}) =>
       snapshot.checks.where((check) => check.outcome == PullRequestCheckOutcome.failure).map((check) => check.id);

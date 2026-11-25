@@ -3,9 +3,8 @@ import "dart:async";
 import "package:clock/clock.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
-import "../api/gh_cli_exception.dart";
+import "../models/gh_cli_exception.dart";
 import "../models/pull_request_target.dart";
-import "../repositories/models/pull_request_baseline.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "../repositories/models/stored_pull_request_watch.dart";
 import "../repositories/pull_request_action_repository.dart";
@@ -94,7 +93,7 @@ class PullRequestWatchService({
           number: target.number,
           title: snapshot.title,
           autoMerge: false,
-          baseline: PullRequestBaseline.fromSnapshot(snapshot: snapshot),
+          baseline: _activity.baselineOf(snapshot: snapshot),
           lastReportAt: _clock.now(),
         );
         await _watches.save(sessionId: sessionId, watch: stored);
@@ -438,7 +437,7 @@ class PullRequestWatchService({
       watch: watch,
       stored: watch.stored.copyWith(
         title: snapshot.title,
-        baseline: PullRequestBaseline.fromSnapshot(snapshot: snapshot),
+        baseline: _activity.baselineOf(snapshot: snapshot),
         lastReportAt: _clock.now(),
       ),
     );

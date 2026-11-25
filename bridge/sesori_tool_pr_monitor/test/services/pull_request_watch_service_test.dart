@@ -1,7 +1,7 @@
 import "package:clock/clock.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
-import "package:sesori_tool_pr_monitor/src/api/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/listeners/pull_request_poll_listener.dart";
+import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_watch_repository.dart";
 import "package:sesori_tool_pr_monitor/src/services/models/pull_request_watch_results.dart";
