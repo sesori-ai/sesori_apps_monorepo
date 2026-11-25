@@ -16,7 +16,7 @@
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Done | #2926 (13.a), #2927 (13.b) |
-| 14 | ⚙️ App: watched-PR list | In review | 14.a (phone), 14.b (desktop) |
+| 14 | ⚙️ App: watched-PR list | In review | #2929 (14.a), 14.b (desktop) |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
 | 17 | 🌿 Verify and retire | Not started | |
@@ -137,6 +137,12 @@
   desktop sidebar and sesori-mcp regression docs agree after 14.b; step 17
   should check the button's fade and the badge roll on a device, and the
   list in dark mode.
+- Step 14.b as built: the desktop sidebar's "Pull requests" row (always
+  shown, red count at its end) opens `AppRoute.pullRequests()`, a page over
+  the main pane (`PullRequestWatchesPage`) reporting the `pull_requests`
+  screen. The phone registers no such route: it uses the sheet. Loads retry
+  through `ScheduledTaskRefreshDispatcher` (its name is now broader than its
+  use; rename it only if a third user appears).
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The
