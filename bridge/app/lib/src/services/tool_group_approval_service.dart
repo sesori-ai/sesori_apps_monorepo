@@ -2,7 +2,13 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginOperationException;
 import "package:sesori_shared/sesori_shared.dart" show PermissionReply;
-import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolApprovalOutcome, SesoriToolGroupId;
+import "package:sesori_tool_interface/sesori_tool_interface.dart"
+    show
+        SesoriToolApproval,
+        SesoriToolApprovalOutcome,
+        SesoriToolApprovalSettled,
+        SesoriToolApprovalShown,
+        SesoriToolGroupId;
 
 import "../repositories/agent_approval_repository.dart";
 import "../repositories/models/agent_approval_change.dart";
@@ -27,13 +33,13 @@ class ToolGroupApprovalService({
   bool _closed = false;
 
   /// Asks the user to allow [groupId]'s change for [sessionId]'s agent.
-  Future<SesoriToolApprovalOutcome> request({
+  Future<SesoriToolApproval> request({
     required SesoriToolGroupId groupId,
     required String sessionId,
     required String title,
     required String body,
   }) async {
-    if (_closed) return SesoriToolApprovalOutcome.dropped;
+    if (_closed) return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
     final String rootSessionId;
     try {
       rootSessionId = (await _sessions.resolveSessionFamily(
@@ -42,13 +48,13 @@ class ToolGroupApprovalService({
       )).rootSessionId;
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("Dropped a ${groupId.value} approval for session $sessionId", error, stackTrace);
-      return SesoriToolApprovalOutcome.dropped;
+      return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
     }
     if (await _autoApproval.isYolo(sessionId: sessionId) && await _autoApproval.isYolo(sessionId: rootSessionId)) {
-      return SesoriToolApprovalOutcome.allowed;
+      return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.allowed);
     }
     // The bridge may have begun to stop during the reads.
-    if (_closed) return SesoriToolApprovalOutcome.dropped;
+    if (_closed) return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
     final completer = Completer<SesoriToolApprovalOutcome>();
     final requestId = _approvals.add(
       sessionId: sessionId,
@@ -59,7 +65,7 @@ class ToolGroupApprovalService({
     );
     _waiting[requestId] = completer;
     Log.i("Session $sessionId asked for a ${groupId.value} approval ($requestId)");
-    return await completer.future;
+    return SesoriToolApprovalShown(answer: completer.future);
   }
 
   /// Hands the user's [reply] to the group waiting on [requestId].

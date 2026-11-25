@@ -46,12 +46,18 @@ void main() {
     }
   }
 
-  Future<SesoriToolApprovalOutcome> request({required String sessionId}) => service.request(
+  Future<SesoriToolApproval> begin({required String sessionId}) => service.request(
     groupId: _monitor,
     sessionId: sessionId,
     title: "Sesori: PR monitor auto-merge",
     body: "Turn auto-merge on for **every repository**?",
   );
+
+  Future<SesoriToolApprovalOutcome> request({required String sessionId}) async =>
+      switch (await begin(sessionId: sessionId)) {
+        SesoriToolApprovalSettled(:final outcome) => outcome,
+        SesoriToolApprovalShown(:final answer) => await answer,
+      };
 
   /// Answers [permission] as the reply route does: the repository hands
   /// back the change, then the service settles it.
@@ -138,8 +144,12 @@ void main() {
   test("Approve everything allows at once with no card", () async {
     autoApproval.yoloSessionIds.addAll({"root", "child"});
 
-    expect(await request(sessionId: "root"), SesoriToolApprovalOutcome.allowed);
-    expect(await request(sessionId: "child"), SesoriToolApprovalOutcome.allowed);
+    for (final sessionId in ["root", "child"]) {
+      expect(
+        await begin(sessionId: sessionId),
+        isA<SesoriToolApprovalSettled>().having((it) => it.outcome, "outcome", SesoriToolApprovalOutcome.allowed),
+      );
+    }
     await pumpEventQueue();
     expect(asked, isEmpty);
   });

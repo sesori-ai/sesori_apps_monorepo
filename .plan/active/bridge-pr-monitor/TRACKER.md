@@ -69,6 +69,20 @@
     `get_pr_feedback` and `reply_on_pr` call GitHub outside the op queue.
   - A merge result or new readiness failure reports to every watcher once;
     a `get_pr_report` that shows it consumes it for all of them.
+- Step 9 as built:
+  - `PullRequestWatchService` owns `PullRequestMonitorConfig` (the group's
+    bridge record `config`, loaded in `resume`). `watch_pr` without
+    `auto_merge` takes the repo override, else the global default.
+  - `SesoriToolHost.requestApproval` now returns `SesoriToolApproval`:
+    `Settled` (approve everything, or dropped) or `Shown` with the answer's
+    future, so the tool can answer at once under YOLO and say "Sent to the
+    user" otherwise. An allowed answer applies on top of the settings at
+    that time, and the session gets an allowed or declined notice.
+  - A call that widens applies its timings at once and only its auto-merge
+    part waits. Clearing a repo's `off` override under a global `on` counts
+    as widening.
+  - A standalone (unwatched) `mark_pr_ready` stays label-only: the default
+    applies to new watches only.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.

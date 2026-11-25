@@ -975,6 +975,7 @@ class Orchestrator({
       reports: pullRequestReports,
       feedback: const PullRequestFeedbackBuilder(readiness: pullRequestReadiness),
       merges: PullRequestMergeService(actions: pullRequestActions, readiness: pullRequestReadiness),
+      configDescriptions: const PullRequestConfigDescriptionBuilder(),
       clock: clock,
     );
     final toolGroups = <SesoriToolGroup>[
@@ -985,6 +986,7 @@ class Orchestrator({
         watches: pullRequestWatchService,
         poller: PullRequestPollListener(service: pullRequestWatchService, host: pullRequestMonitorHost),
         reports: pullRequestReports,
+        configDescriptions: const PullRequestConfigDescriptionBuilder(),
       ),
     ];
     // Launches grant groups by SesoriToolGroupIds before these are built.

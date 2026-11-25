@@ -31,11 +31,23 @@ class const PullRequestTarget({
     return PullRequestTarget(owner: owner, repo: repo, number: number);
   }
 
+  static final RegExp _repositoryForm = RegExp(r"^([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)/([A-Za-z0-9._-]+)$");
+
+  /// Parses an agent-supplied `owner/repo` into its lowercased key, or
+  /// throws [FormatException] whose message is the text to show the agent.
+  static String parseRepositoryKey({required String input}) {
+    if (_repositoryForm.firstMatch(input.trim()) case RegExpMatch(:final input)) return input.toLowerCase();
+    throw FormatException('Invalid repository: "$input". Use "owner/repo".');
+  }
+
   /// `owner/repo#N` as the agent wrote it, for messages.
   String get displayKey => "$owner/$repo#$number";
 
   /// The case-insensitive identity of the PR, for storage and fan-out.
-  String get registryKey => "${owner.toLowerCase()}/${repo.toLowerCase()}#$number";
+  String get registryKey => "$repositoryKey#$number";
+
+  /// The case-insensitive identity of the PR's repository, for settings.
+  String get repositoryKey => "${owner.toLowerCase()}/${repo.toLowerCase()}";
 
   String get url => "https://github.com/$owner/$repo/pull/$number";
 

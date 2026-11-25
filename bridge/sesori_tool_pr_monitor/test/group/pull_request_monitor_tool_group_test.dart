@@ -4,6 +4,7 @@ import "package:sesori_tool_pr_monitor/src/group/pull_request_monitor_tool_group
 import "package:sesori_tool_pr_monitor/src/listeners/pull_request_poll_listener.dart";
 import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_watch_repository.dart";
+import "package:sesori_tool_pr_monitor/src/services/pull_request_config_description_builder.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_merge_service.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_watch_service.dart";
 import "package:test/test.dart";
@@ -35,12 +36,14 @@ void main() {
       reports: reports,
       feedback: feedback,
       merges: PullRequestMergeService(actions: actions, readiness: readiness),
+      configDescriptions: const PullRequestConfigDescriptionBuilder(),
       clock: Clock.fixed(DateTime.utc(2026, 11, 25, 12)),
     );
     group = PullRequestMonitorToolGroup(
       watches: service,
       poller: PullRequestPollListener(service: service, host: host),
       reports: reports,
+      configDescriptions: const PullRequestConfigDescriptionBuilder(),
     );
   });
 
@@ -67,7 +70,9 @@ void main() {
     expect(
       status.text,
       "sesori/example#42 — watching, quiet, last report 0m ago, ready: no\n"
-      "This computer polls 1 watched PR once a minute.",
+      "This computer polls 1 watched PR once a minute.\n"
+      "Auto-merge by default: off. Reports wait for 2 min of quiet, running CI holds them for up to 30 min, and an "
+      "open PR that stays still for 25 min gets an idle reminder.",
     );
 
     expect(
@@ -161,5 +166,41 @@ void main() {
       (await call(tool: "get_pr_feedback", session: "root", pr: "sesori/example#42")).text,
       "No feedback on sesori/example#42 is awaiting a reply.",
     );
+  });
+
+  test("configure_pr_monitor checks its arguments and says when it waits for the user's Allow", () async {
+    Future<SesoriToolResult> configure(Map<String, Object?> arguments) => group.call(
+      tool: "configure_pr_monitor",
+      caller: const SesoriToolCaller(sessionId: "child"),
+      arguments: arguments,
+    );
+
+    for (final invalid in <Map<String, Object?>>[
+      {"auto_merge": "yes"},
+      {"clear_repository": true},
+      {"repository": "sesori/example"},
+      {"auto_merge": "on", "repository": "sesori/example", "clear_repository": true},
+      {"auto_merge": "on", "repository": "sesori"},
+      {"quiet_minutes": 0},
+      {"ci_wait_minutes": 241},
+      {"idle_reminder_minutes": 3},
+    ]) {
+      await expectLater(configure(invalid), throwsA(isA<InvalidToolArguments>()), reason: "$invalid");
+    }
+
+    expect(
+      (await configure({"auto_merge": "off", "idle_reminder_minutes": 0, "quiet_minutes": "", "repository": ""})).text,
+      "Saved. Auto-merge by default: off. Reports wait for 2 min of quiet, running CI holds them for up to 30 min, "
+      "and idle reminders are off.",
+    );
+
+    final waiting = await configure({"auto_merge": "on", "repository": "Sesori/Example"});
+    expect(waiting, isA<SesoriToolSuccess>());
+    expect(
+      waiting.text,
+      startsWith("Sent to the user for approval: turning auto-merge on by default needs their Allow."),
+    );
+    expect(host.asked.single.sessionId, "root");
+    expect(host.asked.single.body, startsWith("Turn auto-merge on by default for **sesori/example**?"));
   });
 }

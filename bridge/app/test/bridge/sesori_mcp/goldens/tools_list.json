@@ -803,7 +803,7 @@
           },
           "auto_merge": {
             "type": "boolean",
-            "description": "Only when the user asked for this PR to be merged without human review: marking it ready then squash-merges it once. Defaults to false."
+            "description": "Only when the user asked for this PR to be merged without human review: marking it ready then squash-merges it once. Leave it out for the user's default from configure_pr_monitor, which is off unless they changed it."
           }
         },
         "required": [
@@ -975,6 +975,47 @@
           "pr",
           "enabled"
         ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "configure_pr_monitor",
+      "description": "Change the PR monitor's settings on this computer, only when the user asks: whether PRs watched without choosing auto_merge get auto-merge, for every repository or one, and the report timings. Timings apply to every watch from its next poll; the auto-merge default applies to watches started afterwards. Turning auto-merge on by default asks the user to allow it, and the result says whether it waits for their answer. pr_watch_status shows the current settings.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "auto_merge": {
+            "type": "string",
+            "enum": [
+              "on",
+              "off"
+            ],
+            "description": "The auto-merge default: for every repository, or for repository alone when given."
+          },
+          "repository": {
+            "type": "string",
+            "description": "owner/repo: auto_merge or clear_repository then sets that repository's own default."
+          },
+          "clear_repository": {
+            "type": "boolean",
+            "description": "true to remove repository's own auto-merge default, so it follows every repository's."
+          },
+          "quiet_minutes": {
+            "type": "integer",
+            "description": "1 to 60: how long a report waits after the latest activity, so a burst arrives as one report. Default 2."
+          },
+          "ci_wait_minutes": {
+            "type": "integer",
+            "description": "5 to 240: how long a due report waits for running CI before it goes out anyway. Default 30."
+          },
+          "idle_reminder_minutes": {
+            "type": "integer",
+            "description": "5 to 240, or 0 for none: how long an open PR stays still before this session is reminded of it. Default 25."
+          }
+        },
         "additionalProperties": false
       },
       "annotations": {

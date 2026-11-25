@@ -6,14 +6,17 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "../models/gh_cli_exception.dart";
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_ci_phase.dart";
+import "../repositories/models/pull_request_monitor_config.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "../repositories/models/stored_pull_request_watch.dart";
 import "../repositories/pull_request_action_repository.dart";
 import "../repositories/pull_request_snapshot_repository.dart";
 import "../repositories/pull_request_watch_repository.dart";
+import "models/pull_request_config_change.dart";
 import "models/pull_request_merge_state.dart";
 import "models/pull_request_watch_results.dart";
 import "pull_request_activity_calculator.dart";
+import "pull_request_config_description_builder.dart";
 import "pull_request_feedback_builder.dart";
 import "pull_request_merge_service.dart";
 import "pull_request_readiness_calculator.dart";
@@ -27,6 +30,9 @@ import "pull_request_report_builder.dart";
 /// is claimed right before the send only while its watch still has the
 /// baseline it was rendered against, and becomes the new baseline once sent,
 /// so a restart resumes from the stored baselines.
+///
+/// It also owns the settings: their timings apply to every watch from its
+/// next poll, and their auto-merge default to watches started after them.
 class PullRequestWatchService({
   required final PullRequestSnapshotRepository _snapshots,
   required final PullRequestActionRepository _actions,
@@ -37,21 +43,17 @@ class PullRequestWatchService({
   required final PullRequestReportBuilder _reports,
   required final PullRequestFeedbackBuilder _feedback,
   required final PullRequestMergeService _merges,
+  required final PullRequestConfigDescriptionBuilder _configDescriptions,
   required final Clock _clock,
 }) {
   static const Duration pollInterval = Duration(seconds: 60);
-
-  /// How long a report waits after the latest activity, so a burst arrives
-  /// as one report.
-  static const Duration quietWindow = Duration(minutes: 2);
-
-  /// How long a due report waits for running CI before it goes out anyway.
-  static const Duration ciWait = Duration(minutes: 30);
-  static const Duration idleReminderDelay = Duration(minutes: 25);
   static const int maxConsecutiveFailures = 10;
 
   /// By the PR's registry key.
   final Map<String, _PullRequestRuntime> _runtimes = {};
+
+  /// The stored settings, loaded by [resume].
+  PullRequestMonitorConfig _config = PullRequestMonitorConfig.defaults;
 
   /// The session a caller's watches belong to: its family's root, as for
   /// wake-ups. Null when Sesori no longer knows the caller.
@@ -62,6 +64,7 @@ class PullRequestWatchService({
   /// watch's stored baseline with GitHub, so what changed while the bridge
   /// was off is reported.
   Future<void> resume() async {
+    _config = await _watches.loadConfig();
     for (final (:sessionId, :watch) in await _watches.loadAll()) {
       _runtimeOf(
         target: PullRequestTarget(owner: watch.owner, repo: watch.repo, number: watch.number),
@@ -69,13 +72,15 @@ class PullRequestWatchService({
     }
   }
 
-  /// With [autoMerge], a ready label the PR already carries is removed
-  /// first, unless auto-merge already applied to it.
+  /// With auto-merge, a ready label the PR already carries is removed
+  /// first, unless auto-merge already applied to it. A null
+  /// [requestedAutoMerge] takes the settings' default for the repository.
   Future<PullRequestWatchStart> watch({
     required String sessionId,
     required PullRequestTarget target,
-    required bool autoMerge,
+    required bool? requestedAutoMerge,
   }) async {
+    final autoMerge = requestedAutoMerge ?? _config.autoMergeFor(repositoryKey: target.repositoryKey);
     final String selfLogin;
     try {
       selfLogin = await _actions.selfLogin();
@@ -157,7 +162,70 @@ class PullRequestWatchService({
         if (runtime.watches[sessionId] case final watch?) _status(runtime: runtime, watch: watch),
     ],
     watchedPullRequests: _runtimes.values.where((runtime) => runtime.watches.isNotEmpty).length,
+    config: _config,
   );
+
+  /// `configure_pr_monitor`: applies [change] at once, except an auto-merge
+  /// change that turns it on by default anywhere. That one first asks
+  /// [sessionId]'s user, and once they answer the session hears the outcome.
+  Future<PullRequestConfigureResult> configure({
+    required String sessionId,
+    required PullRequestConfigChange change,
+  }) async {
+    final timed = change.timingsAppliedTo(config: _config);
+    final autoMerge = change.autoMerge;
+    if (autoMerge == null || !timed.isWidenedBy(next: autoMerge.appliedTo(config: timed))) {
+      await _saveConfig(config: autoMerge?.appliedTo(config: timed) ?? timed);
+      return PullRequestConfigApplied(config: _config);
+    }
+    await _saveConfig(config: timed);
+    final approval = await _host.requestApproval(
+      sessionId: sessionId,
+      title: PullRequestConfigDescriptionBuilder.approvalTitle,
+      body: _configDescriptions.approvalBody(change: autoMerge, config: _config),
+    );
+    switch (approval) {
+      case SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.allowed):
+        await _saveConfig(config: autoMerge.appliedTo(config: _config));
+        return PullRequestConfigApplied(config: _config);
+      case SesoriToolApprovalSettled():
+        return PullRequestConfigApprovalDropped(config: _config, autoMerge: autoMerge);
+      case SesoriToolApprovalShown(:final answer):
+        unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, answer: answer));
+        return PullRequestConfigAwaitingApproval(config: _config, autoMerge: autoMerge);
+    }
+  }
+
+  /// Applies [autoMerge] on top of the settings at the time the user allowed
+  /// it, then tells [sessionId] the answer.
+  Future<void> _applyAnswer({
+    required String sessionId,
+    required PullRequestAutoMergeDefaultChange autoMerge,
+    required Future<SesoriToolApprovalOutcome> answer,
+  }) async {
+    final outcome = await answer;
+    if (outcome == SesoriToolApprovalOutcome.dropped) return;
+    final allowed = outcome == SesoriToolApprovalOutcome.allowed;
+    try {
+      if (allowed) await _saveConfig(config: autoMerge.appliedTo(config: _config));
+    } on Exception catch (error, stackTrace) {
+      Log.w("PR monitor: saving the allowed auto-merge default failed", error, stackTrace);
+      return;
+    }
+    await _host.deliverNotice(
+      sessionId: sessionId,
+      summary: _configDescriptions.outcomeSummary(change: autoMerge, allowed: allowed),
+      guidance: _configDescriptions.outcomeGuidance(change: autoMerge, allowed: allowed, config: _config),
+      timing: SesoriToolNoticeTiming.derived,
+      claim: null,
+    );
+  }
+
+  Future<void> _saveConfig({required PullRequestMonitorConfig config}) async {
+    if (config == _config) return;
+    await _watches.saveConfig(config: config);
+    _config = config;
+  }
 
   /// Fetches [target] now and renders [sessionId]'s report, which then
   /// counts as delivered to it. Other sessions' reports are unaffected.
@@ -483,11 +551,11 @@ class PullRequestWatchService({
     }
     int? forcedHoldMinutes;
     if (!runtime.urgent) {
-      if (now.difference(runtime.lastActivityAt) < quietWindow) return;
+      if (now.difference(runtime.lastActivityAt) < _config.quietWindow) return;
       if (snapshot.state == PullRequestState.open &&
           _activity.ciPhase(snapshot: snapshot) == PullRequestCiPhase.running) {
         final held = now.difference(runtime.holdStartedAt ??= now);
-        if (held < ciWait) return;
+        if (held < _config.ciWait) return;
         forcedHoldMinutes = held.inMinutes;
       }
     }
@@ -536,21 +604,24 @@ class PullRequestWatchService({
   }
 
   /// Nudges each watch of an open PR that has had no activity and no report
-  /// for [idleReminderDelay], unless it was handed to a human: ready with
-  /// auto-merge off.
+  /// for the settings' delay, unless it was handed to a human: ready with
+  /// auto-merge off, or reminders are off.
   void _sendIdleReminders({
     required _PullRequestRuntime runtime,
     required PullRequestSnapshot snapshot,
     required DateTime now,
   }) {
+    final delay = _config.idleReminderDelay;
     final autoMerge = _autoMerge(runtime: runtime);
-    if (snapshot.state != PullRequestState.open || (!autoMerge && _readiness.hasReadyLabel(snapshot: snapshot))) {
+    if (delay == null ||
+        snapshot.state != PullRequestState.open ||
+        (!autoMerge && _readiness.hasReadyLabel(snapshot: snapshot))) {
       return;
     }
     for (final watch in [...runtime.watches.values]) {
       final lastReportAt = watch.stored.lastReportAt;
       final idle = now.difference(lastReportAt.isAfter(runtime.lastActivityAt) ? lastReportAt : runtime.lastActivityAt);
-      if (watch.delivering || idle < idleReminderDelay) continue;
+      if (watch.delivering || idle < delay) continue;
       _deliver(
         runtime: runtime,
         watch: watch,

@@ -3,10 +3,13 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:sesori_tool_pr_monitor/src/listeners/pull_request_poll_listener.dart";
 import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_merge_outcome.dart";
+import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_monitor_config.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_watch_repository.dart";
+import "package:sesori_tool_pr_monitor/src/services/models/pull_request_config_change.dart";
 import "package:sesori_tool_pr_monitor/src/services/models/pull_request_merge_state.dart";
 import "package:sesori_tool_pr_monitor/src/services/models/pull_request_watch_results.dart";
+import "package:sesori_tool_pr_monitor/src/services/pull_request_config_description_builder.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_merge_service.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_watch_service.dart";
 import "package:test/test.dart";
@@ -35,12 +38,13 @@ class _Harness() {
     reports: reports,
     feedback: feedback,
     merges: PullRequestMergeService(actions: actions, readiness: readiness),
+    configDescriptions: const PullRequestConfigDescriptionBuilder(),
     clock: Clock(() => now),
   );
 
   Future<void> watch({required String sessionId, bool autoMerge = false}) async {
     expect(
-      await service.watch(sessionId: sessionId, target: target, autoMerge: autoMerge),
+      await service.watch(sessionId: sessionId, target: target, requestedAutoMerge: autoMerge),
       isA<PullRequestWatchStarted>(),
     );
   }
@@ -304,10 +308,16 @@ void main() {
 
   test("a merged PR cannot be watched, and a second watch from a session reports the first", () async {
     await h.watch(sessionId: "s1");
-    expect(await h.service.watch(sessionId: "s1", target: target, autoMerge: false), isA<PullRequestAlreadyWatched>());
+    expect(
+      await h.service.watch(sessionId: "s1", target: target, requestedAutoMerge: false),
+      isA<PullRequestAlreadyWatched>(),
+    );
 
     h.snapshots.enqueue(emptySnapshot.copyWith(state: PullRequestState.merged));
-    expect(await h.service.watch(sessionId: "s2", target: target, autoMerge: false), isA<PullRequestAlreadyEnded>());
+    expect(
+      await h.service.watch(sessionId: "s2", target: target, requestedAutoMerge: false),
+      isA<PullRequestAlreadyEnded>(),
+    );
     expect(h.store.sessionRecords["s2"], isNull);
   });
 
@@ -527,6 +537,133 @@ void main() {
       await h.poll(after: const Duration(minutes: 2));
       expect(h.actions.calls, ["add label", "remove label", "add label"]);
       expect(h.host.sent.single.guidance, contains("- Ready: YES"));
+    });
+  });
+
+  group("configure", () {
+    const repositoryOn = PullRequestRepositoryAutoMerge(repositoryKey: "sesori/example", enabled: true);
+
+    Future<PullRequestConfigureResult> configure({
+      String sessionId = "s1",
+      PullRequestAutoMergeDefaultChange? autoMerge,
+      int? quiet,
+      int? ciWait,
+      int? idle,
+    }) => h.service.configure(
+      sessionId: sessionId,
+      change: PullRequestConfigChange(
+        autoMerge: autoMerge,
+        quietMinutes: quiet,
+        ciWaitMinutes: ciWait,
+        idleReminderMinutes: idle,
+      ),
+    );
+
+    PullRequestMonitorConfig config() => h.service.statusOf(sessionId: "s1").config;
+
+    test("narrowing and timings apply at once with no card, and are loaded after a restart", () async {
+      expect(
+        await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: false), quiet: 5, idle: 0),
+        isA<PullRequestConfigApplied>(),
+      );
+      expect(h.host.asked, isEmpty);
+
+      h.service = h.build();
+      await h.service.resume();
+      expect(config(), PullRequestMonitorConfig.defaults.copyWith(quietMinutes: 5, idleReminderMinutes: 0));
+    });
+
+    test("new timings apply to an existing watch from its next poll", () async {
+      await h.watch(sessionId: "s1");
+      await configure(quiet: 5, idle: 0);
+
+      h.snapshots.enqueue(_withComment);
+      await h.poll();
+      await h.poll(after: const Duration(minutes: 2));
+      expect(h.host.sent, isEmpty, reason: "the quiet window is now 5 minutes");
+      await h.poll(after: const Duration(minutes: 3));
+      expect(h.host.sent, hasLength(1));
+      await h.poll(after: const Duration(hours: 1));
+      expect(h.host.sent, hasLength(1), reason: "idle reminders are off");
+    });
+
+    test(
+      "turning auto-merge on for a repository waits for Allow, then applies to watches started afterwards",
+      () async {
+        await h.watch(sessionId: "s1");
+
+        final result = await configure(sessionId: "s2", autoMerge: repositoryOn, ciWait: 60);
+        expect(result, isA<PullRequestConfigAwaitingApproval>());
+        expect(config().ciWaitMinutes, 60, reason: "timings do not wait for the answer");
+        expect(config().autoMergeFor(repositoryKey: "sesori/example"), isFalse);
+        final asked = h.host.asked.single;
+        expect(asked.sessionId, "s2");
+        expect(asked.title, "Sesori: PR monitor auto-merge");
+        expect(asked.body, startsWith("Turn auto-merge on by default for **sesori/example**?"));
+
+        await configure(quiet: 10);
+        asked.answer.complete(SesoriToolApprovalOutcome.allowed);
+        await pumpEventQueue();
+
+        expect(h.host.sent.single.sessionId, "s2");
+        expect(h.host.sent.single.summary, "PR monitor: auto-merge by default for sesori/example allowed");
+        expect(config().autoMergeFor(repositoryKey: "sesori/example"), isTrue);
+        expect(config().quietMinutes, 10, reason: "Allow applies on top of later changes");
+        expect(
+          h.service.statusOf(sessionId: "s1").watches.single.autoMerge,
+          isFalse,
+          reason: "a watch keeps its choice",
+        );
+        expect(
+          await h.service.watch(sessionId: "s2", target: target, requestedAutoMerge: null),
+          isA<PullRequestWatchStarted>().having((started) => started.autoMerge, "autoMerge", isTrue),
+        );
+      },
+    );
+
+    test("a declined request changes nothing and tells the session", () async {
+      await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));
+      h.host.asked.single.answer.complete(SesoriToolApprovalOutcome.rejected);
+      await pumpEventQueue();
+
+      expect(h.host.sent.single.summary, "PR monitor: auto-merge by default for every repository declined");
+      expect(config(), PullRequestMonitorConfig.defaults);
+      expect(h.store.records, isEmpty);
+    });
+
+    test("a session that approves everything turns it on at once, with no card or notice", () async {
+      h.host.approvesEverything = true;
+
+      final result = await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));
+      expect(
+        result,
+        isA<PullRequestConfigApplied>().having((applied) => applied.config.autoMerge, "autoMerge", isTrue),
+      );
+      await pumpEventQueue();
+      expect(h.host.asked, isEmpty);
+      expect(h.host.sent, isEmpty);
+    });
+
+    test("removing a repository's own off setting under a global on default asks first", () async {
+      h.host.approvesEverything = true;
+      await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));
+      h.host.approvesEverything = false;
+      expect(
+        await configure(
+          autoMerge: const PullRequestRepositoryAutoMerge(repositoryKey: "sesori/example", enabled: false),
+        ),
+        isA<PullRequestConfigApplied>(),
+      );
+
+      expect(
+        await configure(autoMerge: const PullRequestRepositoryAutoMergeCleared(repositoryKey: "sesori/example")),
+        isA<PullRequestConfigAwaitingApproval>(),
+      );
+      expect(h.host.asked.single.body, startsWith("Remove **sesori/example**'s own auto-merge setting (off)"));
+      expect(
+        await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: false)),
+        isA<PullRequestConfigApplied>(),
+      );
     });
   });
 }

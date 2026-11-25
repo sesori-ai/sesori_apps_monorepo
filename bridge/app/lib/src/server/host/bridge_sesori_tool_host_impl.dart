@@ -89,7 +89,7 @@ class BridgeSesoriToolHostImpl({
   }
 
   @override
-  Future<SesoriToolApprovalOutcome> requestApproval({
+  Future<SesoriToolApproval> requestApproval({
     required String sessionId,
     required String title,
     required String body,

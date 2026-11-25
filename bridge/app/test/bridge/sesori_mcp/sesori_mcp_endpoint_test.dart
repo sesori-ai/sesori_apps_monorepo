@@ -43,7 +43,12 @@ import "package:sesori_bridge/src/services/tool_group_approval_service.dart";
 import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart"
-    show SesoriToolApprovalOutcome, SesoriToolGroupId, SesoriToolHost;
+    show
+        SesoriToolApprovalOutcome,
+        SesoriToolApprovalSettled,
+        SesoriToolApprovalShown,
+        SesoriToolGroupId,
+        SesoriToolHost;
 import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -418,6 +423,7 @@ void main() {
           "mark_pr_ready",
           "unmark_pr_ready",
           "set_pr_auto_merge",
+        "configure_pr_monitor",
           "get_guide",
         ],
       );
@@ -1931,7 +1937,7 @@ void main() {
   });
 
   test("the user's reply to a tool group's request reaches the group waiting on it", () async {
-    final outcome = toolGroupApprovals.request(
+    final approval = await toolGroupApprovals.request(
       groupId: const SesoriToolGroupId("pr_monitor"),
       sessionId: "s1",
       title: "Sesori: PR monitor auto-merge",
@@ -1942,7 +1948,11 @@ void main() {
     expect(asked.tool, "Sesori: PR monitor auto-merge");
 
     expect(await agent.settle(requestId: asked.id, reply: PermissionReply.once), isA<ToolGroupChangeAnswered>());
-    expect(await outcome, SesoriToolApprovalOutcome.allowed);
+    final answer = switch (approval) {
+      SesoriToolApprovalShown(:final answer) => answer,
+      SesoriToolApprovalSettled() => fail("settled without a card"),
+    };
+    expect(await answer, SesoriToolApprovalOutcome.allowed);
     expect(notices.delivered, isEmpty, reason: "the group tells the session itself");
   });
 }
@@ -1993,11 +2003,13 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
     reports: reports,
     feedback: const PullRequestFeedbackBuilder(readiness: readiness),
     merges: PullRequestMergeService(actions: actions, readiness: readiness),
+    configDescriptions: const PullRequestConfigDescriptionBuilder(),
     clock: const Clock(),
   );
   return PullRequestMonitorToolGroup(
     watches: service,
     poller: PullRequestPollListener(service: service, host: host),
     reports: reports,
+    configDescriptions: const PullRequestConfigDescriptionBuilder(),
   );
 }

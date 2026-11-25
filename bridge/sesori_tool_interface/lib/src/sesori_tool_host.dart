@@ -40,13 +40,14 @@ abstract interface class SesoriToolHost() {
 
   /// Asks the user to allow a change [sessionId]'s agent asked for: [title]
   /// names the request and [body] is the Markdown the user approves. It
-  /// shows on the session's root. Completes with the answer; a session that
-  /// approves everything is allowed at once, with nothing shown.
+  /// shows on the session's root. Completes once the request is shown, or
+  /// already settled with nothing shown: allowed when the session approves
+  /// everything.
   ///
   /// The request lives in memory only: once the bridge begins to stop it
   /// ends as [SesoriToolApprovalOutcome.dropped], and the group applies
   /// nothing.
-  Future<SesoriToolApprovalOutcome> requestApproval({
+  Future<SesoriToolApproval> requestApproval({
     required String sessionId,
     required String title,
     required String body,
@@ -87,6 +88,18 @@ final class const SesoriToolSession({
   required final String workingDirectory,
   required final bool archived,
 });
+
+/// How a [SesoriToolHost.requestApproval] began.
+sealed class const SesoriToolApproval();
+
+/// Settled with nothing shown to the user.
+final class const SesoriToolApprovalSettled({required final SesoriToolApprovalOutcome outcome})
+    extends SesoriToolApproval;
+
+/// Shown to the user; [answer] completes once they answer it, or once the
+/// bridge begins to stop.
+final class const SesoriToolApprovalShown({required final Future<SesoriToolApprovalOutcome> answer})
+    extends SesoriToolApproval;
 
 enum SesoriToolApprovalOutcome() {
   allowed,
