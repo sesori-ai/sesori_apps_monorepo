@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
@@ -159,6 +160,161 @@ class BridgeSettingsCubit({
     }
   }
 
+  /// Turns Sesori's tools on or off as a whole.
+  Future<void> updateAgentTools({required bool enabled, required BridgeSettingsReady expectedState}) =>
+      _updateAgentTools(
+        expectedState: expectedState,
+        target: const AgentToolsMasterSwitch(),
+        enabled: enabled,
+        save: () => _service.updateAgentTools(enabled: enabled),
+      );
+
+  /// Turns the tool group [id] on or off; it also changes while the master
+  /// switch is off, and applies once it is on.
+  Future<void> updateToolGroup({
+    required String id,
+    required bool enabled,
+    required BridgeSettingsReady expectedState,
+  }) => _updateAgentTools(
+    expectedState: expectedState,
+    target: AgentToolGroupSwitch(id: id),
+    enabled: enabled,
+    save: () => _service.updateToolGroup(id: id, enabled: enabled),
+  );
+
+  Future<void> _updateAgentTools({
+    required BridgeSettingsReady expectedState,
+    required AgentToolsSwitch target,
+    required bool enabled,
+    required Future<AgentToolsSettingsMutationResult> Function() save,
+  }) async {
+    if (_operationInProgress || !_connected || isClosed) return;
+    final current = state;
+    if (current is! BridgeSettingsReady || !identical(current, expectedState)) return;
+    final agentTools = current.agentTools;
+    if (agentTools == null) return;
+    switch (agentTools.mutation) {
+      case AgentToolsMutationInProgress() || AgentToolsMutationUncertain():
+        return;
+      case AgentToolsMutationIdle() || AgentToolsMutationFailed():
+        break;
+    }
+    final currentEnabled = _enabledOf(agentTools: agentTools, target: target);
+    if (currentEnabled == null || currentEnabled == enabled) return;
+
+    _operationInProgress = true;
+    final operationEpoch = _connectionEpoch;
+    emit(
+      _withAgentTools(
+        state: current,
+        agentTools: _withMutation(
+          agentTools: agentTools,
+          mutation: AgentToolsMutationInProgress(target: target),
+        ),
+      ),
+    );
+    try {
+      final result = await save();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      switch (result) {
+        case AgentToolsSettingsMutationCommitted(:final enabled):
+          emit(
+            _withAgentTools(
+              state: current,
+              agentTools: _withSwitch(agentTools: agentTools, target: target, enabled: enabled),
+            ),
+          );
+        case AgentToolsSettingsMutationFailure(:final error):
+          emit(
+            _withAgentTools(
+              state: current,
+              agentTools: _withMutation(
+                agentTools: agentTools,
+                mutation: AgentToolsMutationFailed(target: target, error: error),
+              ),
+            ),
+          );
+        case AgentToolsSettingsMutationUncertain():
+          await _reconcileAgentTools(current: current, agentTools: agentTools, operationEpoch: operationEpoch);
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      emit(
+        _withAgentTools(
+          state: current,
+          agentTools: _withMutation(
+            agentTools: agentTools,
+            mutation: AgentToolsMutationFailed(target: target, error: ApiError.dartHttpClient(error)),
+          ),
+        ),
+      );
+    } finally {
+      _finishOperation();
+    }
+  }
+
+  Future<void> _reconcileAgentTools({
+    required BridgeSettingsReady current,
+    required AgentToolsSettings agentTools,
+    required int operationEpoch,
+  }) async {
+    ApiError refreshError;
+    try {
+      final result = await _service.load();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      if (result case BridgeSettingsLoadFailure(:final error)) {
+        refreshError = error;
+      } else {
+        _publishLoad(result: result);
+        return;
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      refreshError = ApiError.dartHttpClient(error);
+    }
+    emit(
+      _withAgentTools(
+        state: current,
+        agentTools: _withMutation(
+          agentTools: agentTools,
+          mutation: AgentToolsMutationUncertain(refreshError: refreshError),
+        ),
+      ),
+    );
+  }
+
+  /// The switch's state, or null for a group the bridge did not list.
+  static bool? _enabledOf({required AgentToolsSettings agentTools, required AgentToolsSwitch target}) {
+    return switch (target) {
+      AgentToolsMasterSwitch() => agentTools.enabled,
+      AgentToolGroupSwitch(:final id) => agentTools.groups.where((group) => group.id == id).firstOrNull?.enabled,
+    };
+  }
+
+  static AgentToolsSettings _withSwitch({
+    required AgentToolsSettings agentTools,
+    required AgentToolsSwitch target,
+    required bool enabled,
+  }) {
+    return switch (target) {
+      AgentToolsMasterSwitch() => AgentToolsSettings(
+        enabled: enabled,
+        groups: agentTools.groups,
+        mutation: const AgentToolsMutationIdle(),
+      ),
+      AgentToolGroupSwitch(:final id) => AgentToolsSettings(
+        enabled: agentTools.enabled,
+        groups: [for (final group in agentTools.groups) group.id == id ? group.copyWith(enabled: enabled) : group],
+        mutation: const AgentToolsMutationIdle(),
+      ),
+    };
+  }
+
+  static AgentToolsSettings _withMutation({
+    required AgentToolsSettings agentTools,
+    required AgentToolsMutationState mutation,
+  }) => AgentToolsSettings(enabled: agentTools.enabled, groups: agentTools.groups, mutation: mutation);
+
   Future<void> _reconcileYolo({required BridgeSettingsReady current, required int operationEpoch}) async {
     try {
       final result = await _service.load();
@@ -229,6 +385,12 @@ class BridgeSettingsCubit({
               final bool enabled => PluginWarmupMutationIdle(enabled: enabled),
               null => const PluginWarmupMutationUnsupported(),
             },
+            agentTools: switch (response) {
+              BridgeSettingsResponse(agentToolsEnabled: final bool enabled, :final toolGroups)
+                  when toolGroups.isNotEmpty =>
+                AgentToolsSettings(enabled: enabled, groups: toolGroups, mutation: const AgentToolsMutationIdle()),
+              BridgeSettingsResponse() => null,
+            },
           ),
         );
       case BridgeSettingsLoadUnsupported():
@@ -247,6 +409,7 @@ class BridgeSettingsCubit({
       yoloEnabled: enabled,
       yoloMutation: mutation,
       pluginWarmupMutation: state.pluginWarmupMutation,
+      agentTools: state.agentTools,
     );
   }
 
@@ -258,6 +421,16 @@ class BridgeSettingsCubit({
       yoloEnabled: state.yoloEnabled,
       yoloMutation: state.yoloMutation,
       pluginWarmupMutation: mutation,
+      agentTools: state.agentTools,
+    );
+  }
+
+  BridgeSettingsReady _withAgentTools({required BridgeSettingsReady state, required AgentToolsSettings agentTools}) {
+    return BridgeSettingsReady(
+      yoloEnabled: state.yoloEnabled,
+      yoloMutation: state.yoloMutation,
+      pluginWarmupMutation: state.pluginWarmupMutation,
+      agentTools: agentTools,
     );
   }
 

@@ -84,6 +84,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 60),
           yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: true,
         ),
       ),
     );
@@ -122,6 +123,7 @@ BridgeSettingsLoadSupported _loaded({required bool yoloEnabled}) {
       pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 60),
       yolo: YoloSettingsResponse(enabled: yoloEnabled),
       warmUpPluginsOnSessionOpen: true,
+      agentToolsEnabled: true,
     ),
   );
 }

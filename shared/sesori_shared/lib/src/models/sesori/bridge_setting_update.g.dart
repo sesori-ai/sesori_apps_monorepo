@@ -39,6 +39,16 @@ Map<String, dynamic> _$WarmUpPluginsOnSessionOpenSettingUpdateToJson(
   WarmUpPluginsOnSessionOpenSettingUpdate instance,
 ) => <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
 
+AgentToolsSettingUpdate _$AgentToolsSettingUpdateFromJson(Map json) =>
+    AgentToolsSettingUpdate(
+      enabled: json['enabled'] as bool,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$AgentToolsSettingUpdateToJson(
+  AgentToolsSettingUpdate instance,
+) => <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
+
 ToolGroupSettingUpdate _$ToolGroupSettingUpdateFromJson(Map json) =>
     ToolGroupSettingUpdate(
       id: json['id'] as String,

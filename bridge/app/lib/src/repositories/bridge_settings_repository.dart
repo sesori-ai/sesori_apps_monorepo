@@ -51,6 +51,7 @@ class BridgeSettingsRepository({
       ),
       yolo: YoloSettingsResponse(enabled: settings.yolo, supportsSessionOverride: true),
       warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
+      agentToolsEnabled: settings.agentTools,
     );
   }
 
@@ -128,8 +129,10 @@ class BridgeSettingsRepository({
     await mutateSettings(mutation: ({required current}) => current.copyWith(yolo: enabled));
   }
 
-  Future<void> updateAgentTools({required bool enabled}) async {
-    await mutateSettings(mutation: ({required current}) => current.copyWith(agentTools: enabled));
+  Future<BridgeSettings> updateAgentTools({required bool enabled}) {
+    return mutateSettings(
+      mutation: ({required current}) => current.agentTools == enabled ? current : current.copyWith(agentTools: enabled),
+    );
   }
 
   Future<BridgeSettings> updateToolGroup({required SesoriToolGroupId id, required bool enabled}) {

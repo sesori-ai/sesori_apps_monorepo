@@ -236,6 +236,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
         ),
       ),
     );
@@ -584,6 +585,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: null,
+          agentToolsEnabled: null,
         ),
       ),
     );
@@ -605,6 +607,7 @@ void main() {
           pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: loads > 1),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
         ),
       );
     });
@@ -632,6 +635,7 @@ void main() {
           pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: loads > 1),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
         ),
       );
     });
@@ -729,6 +733,7 @@ void main() {
                 pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
                 yolo: YoloSettingsResponse(enabled: false),
                 warmUpPluginsOnSessionOpen: true,
+                agentToolsEnabled: null,
               ),
             );
     });

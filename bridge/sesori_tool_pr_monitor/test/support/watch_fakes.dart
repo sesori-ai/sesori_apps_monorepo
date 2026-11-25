@@ -152,8 +152,16 @@ class FakeHost({required final MemoryStore records}) implements SesoriToolHost {
   @override
   bool enabled = true;
 
+  final StreamController<bool> _enabledChanges = StreamController<bool>.broadcast(sync: true);
+
   @override
-  Stream<bool> get enabledChanges => const Stream.empty();
+  Stream<bool> get enabledChanges => _enabledChanges.stream;
+
+  /// Turns the group on or off as the user does, telling listeners.
+  void toggle({required bool enabled}) {
+    this.enabled = enabled;
+    _enabledChanges.add(enabled);
+  }
 
   void addSession({required String sessionId, String? rootSessionId}) => knownSessions[sessionId] = SesoriToolSession(
     rootSessionId: rootSessionId ?? sessionId,

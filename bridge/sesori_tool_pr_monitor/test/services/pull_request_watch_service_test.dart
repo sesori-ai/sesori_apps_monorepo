@@ -406,6 +406,29 @@ void main() {
     expect(h.snapshots.fetches, hasLength(fetches + 1));
   });
 
+  test("toggling the group republishes every watched session, polling first when it comes back on", () async {
+    await h.watch(sessionId: "s1");
+    final changes = <Set<String>>[];
+    h.service.watchesChanged.listen(changes.add);
+    final listener = PullRequestPollListener(service: h.service, host: h.host)..start();
+    await pumpEventQueue();
+    final fetches = h.snapshots.fetches.length;
+
+    h.host.toggle(enabled: false);
+    await pumpEventQueue();
+    expect(changes, [
+      {"s1"},
+    ]);
+    expect(h.snapshots.fetches, hasLength(fetches));
+
+    h.now = h.now.add(const Duration(minutes: 5));
+    h.host.toggle(enabled: true);
+    await pumpEventQueue();
+    await listener.dispose();
+    expect(h.snapshots.fetches, hasLength(fetches + 1));
+    expect(changes.last, {"s1"});
+  });
+
   group("readiness and auto-merge", () {
     final passing = emptySnapshot.copyWith(
       checks: [check(name: "build", outcome: PullRequestCheckOutcome.success)],

@@ -46,6 +46,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: null,
+          agentToolsEnabled: null,
         ),
       ),
     );
@@ -58,6 +59,118 @@ void main() {
       (cubit.state as BridgeSettingsReady).pluginWarmupMutation,
       isA<PluginWarmupMutationUnsupported>(),
     );
+  });
+
+  group("agent tools", () {
+    test("a bridge without the master switch or tool groups has no agent tools section", () async {
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(yoloEnabled: false, agentToolsEnabled: null, toolGroups: const []),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      expect((cubit.state as BridgeSettingsReady).agentTools, isNull);
+    });
+
+    test("loads the master switch and each group", () async {
+      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false, agentToolsEnabled: false));
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      final agentTools = _agentToolsOf(cubit);
+      expect(agentTools.enabled, isFalse);
+      expect(agentTools.groups, [_prMonitor]);
+      expect(agentTools.mutation, isA<AgentToolsMutationIdle>());
+    });
+
+    test("turning the master off keeps each group's own switch", () async {
+      _stubLoad(service, yoloEnabled: false);
+      when(() => service.updateAgentTools(enabled: false)).thenAnswer(
+        (_) async => const AgentToolsSettingsMutationCommitted(enabled: false),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      final saving = cubit.updateAgentTools(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
+      expect(_agentToolsOf(cubit).mutation, isA<AgentToolsMutationInProgress>());
+      await saving;
+
+      final agentTools = _agentToolsOf(cubit);
+      expect(agentTools.enabled, isFalse);
+      expect(agentTools.groups, [_prMonitor]);
+      expect(agentTools.mutation, isA<AgentToolsMutationIdle>());
+    });
+
+    test("a group change replaces only that group", () async {
+      _stubLoad(service, yoloEnabled: false);
+      when(() => service.updateToolGroup(id: "pr_monitor", enabled: false)).thenAnswer(
+        (_) async => const AgentToolsSettingsMutationCommitted(enabled: false),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateToolGroup(
+        id: "pr_monitor",
+        enabled: false,
+        expectedState: cubit.state as BridgeSettingsReady,
+      );
+
+      final agentTools = _agentToolsOf(cubit);
+      expect(agentTools.enabled, isTrue);
+      expect(agentTools.groups, [_prMonitor.copyWith(enabled: false)]);
+    });
+
+    test("a failed save names the switch and keeps its state", () async {
+      _stubLoad(service, yoloEnabled: false);
+      when(() => service.updateToolGroup(id: "pr_monitor", enabled: false)).thenAnswer(
+        (_) async => AgentToolsSettingsMutationFailure(error: ApiError.generic()),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateToolGroup(
+        id: "pr_monitor",
+        enabled: false,
+        expectedState: cubit.state as BridgeSettingsReady,
+      );
+
+      final agentTools = _agentToolsOf(cubit);
+      expect(agentTools.groups, [_prMonitor]);
+      expect(
+        agentTools.mutation,
+        isA<AgentToolsMutationFailed>().having(
+          (failed) => failed.target,
+          "target",
+          isA<AgentToolGroupSwitch>().having((target) => target.id, "id", "pr_monitor"),
+        ),
+      );
+    });
+
+    test("an uncertain save reloads the bridge's settings", () async {
+      var loads = 0;
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(yoloEnabled: false, agentToolsEnabled: loads++ == 0),
+      );
+      when(() => service.updateAgentTools(enabled: false)).thenAnswer(
+        (_) async => const AgentToolsSettingsMutationUncertain(),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      await cubit.updateAgentTools(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
+
+      final agentTools = _agentToolsOf(cubit);
+      expect(agentTools.enabled, isFalse);
+      expect(agentTools.mutation, isA<AgentToolsMutationIdle>());
+    });
   });
 
   test("a bridge without the settings route is unsupported", () async {
@@ -235,6 +348,7 @@ void main() {
         yoloEnabled: true,
         yoloMutation: YoloMutationIdle(),
         pluginWarmupMutation: PluginWarmupMutationIdle(enabled: true),
+        agentTools: null,
       ),
     );
 
@@ -247,15 +361,33 @@ const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
-BridgeSettingsLoadSupported _loadResult({required bool yoloEnabled}) {
+const _prMonitor = BridgeToolGroupSetting(
+  id: "pr_monitor",
+  title: "PR monitor",
+  summary: "Agents can watch pull requests.",
+  enabled: true,
+);
+
+BridgeSettingsLoadSupported _loadResult({
+  required bool yoloEnabled,
+  bool? agentToolsEnabled = true,
+  List<BridgeToolGroupSetting> toolGroups = const [_prMonitor],
+}) {
   return BridgeSettingsLoadSupported(
     response: BridgeSettingsResponse(
       pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       yolo: YoloSettingsResponse(enabled: yoloEnabled),
       warmUpPluginsOnSessionOpen: true,
+      agentToolsEnabled: agentToolsEnabled,
+      toolGroups: toolGroups,
     ),
   );
 }
+
+AgentToolsSettings _agentToolsOf(BridgeSettingsCubit cubit) => switch (cubit.state) {
+  BridgeSettingsReady(:final AgentToolsSettings agentTools) => agentTools,
+  final other => fail("no agent tools in $other"),
+};
 
 void _stubLoad(_MockBridgeSettingsService service, {required bool yoloEnabled}) {
   when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: yoloEnabled));

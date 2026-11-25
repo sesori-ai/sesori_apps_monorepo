@@ -32,3 +32,15 @@ final class const PluginWarmupSettingsMutationUncertain() extends PluginWarmupSe
 
 final class const PluginWarmupSettingsMutationFailure({required final ApiError error})
     extends PluginWarmupSettingsMutationResult;
+
+/// The outcome of turning Sesori's tools, or one of their groups, on or off.
+sealed class const AgentToolsSettingsMutationResult();
+
+/// The bridge's committed state of the switch that was changed.
+final class const AgentToolsSettingsMutationCommitted({required final bool enabled})
+    extends AgentToolsSettingsMutationResult;
+
+final class const AgentToolsSettingsMutationUncertain() extends AgentToolsSettingsMutationResult;
+
+final class const AgentToolsSettingsMutationFailure({required final ApiError error})
+    extends AgentToolsSettingsMutationResult;

@@ -11,11 +11,11 @@
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Done | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Done | #2919, #2920 |
 | 9 | ⚙️ `configure_pr_monitor` | Done | #2921 |
-| 9.b | 🌿 Allow for an agent's per-PR auto-merge | In review | #2925 |
+| 9.b | 🌿 Allow for an agent's per-PR auto-merge | Done | #2925 |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
-| 13 | ⚙️ App: row mark, composer chip and group toggles | Not started | |
+| 13 | ⚙️ App: row mark, composer chip and group toggles | In review | 13.a (bridge and wire), 13.b (app UI) |
 | 14 | ⚙️ App: watched-PR list | Not started | |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
@@ -25,11 +25,8 @@
 
 - The owner answered the first round of questions on 2026-11-25; see
   Decisions in `PLAN.md`.
-- Step 14 starts by checking what multi-computer knows about other bridges,
-  for the `N watched` rows. If N is not available, ask on a review page.
-  Step 12 checked: it is not. The app talks to one target bridge at a time,
-  and the relay never crosses frames or broadcasts to another bridge; the
-  app only gets other computers' presence and pushes.
+- Step 14 has no other-computer rows (owner, 2026-11-25): the sheet lists
+  only the current computer's PRs.
 - Step 15 mechanism decided by the owner 2026-11-25: keep OpenCode's shared
   server (no bridge-owned server, no launch-time config). Use the client-MCP
   WebSocket relay; every OpenCode session that calls a Sesori tool —
@@ -111,9 +108,19 @@
   was read before Grok loaded `_meta.pluginDirs`; not confirmed. Check during
   the final verification and fix if the command list can be refreshed after
   load.
-- Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
-  summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
-  An older bridge omits the list and answers the update with 400 `unknown`.
+- Step 13.a as built: `GET /settings` also sends `agentToolsEnabled`
+  (`bool?`, null from v1.15.0 bridges) and `PATCH /settings` takes
+  `BridgeSettingUpdate.agentTools`. `BridgeSettingsReady.agentTools` is null
+  when the bridge sends no master or no groups (the section is hidden);
+  otherwise it holds the master, the groups and one mutation state (idle,
+  in progress, failed or uncertain, naming the switch where it applies).
+  There is no unsupported state: only bridges that send the master see the
+  switches. `SessionViewService`
+  leaves watches out while `toolGroupEnabled(prMonitor)` is false (master
+  included), and `PullRequestPollListener` republishes every watched session
+  on each toggle, polling first when it comes back on. Step 14's list route
+  and its `pullRequestWatches.changed` refetch therefore see an empty list
+  while the group is off; the home button simply hides.
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The

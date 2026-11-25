@@ -269,7 +269,8 @@ change.
 - **Bridge.** `BridgeSettings` gains
   `agentToolGroups: BridgeAgentToolGroupSettings(disabled: Set<String>)`,
   modelled on `plugins.disabled`: a group is enabled unless it is listed.
-  Unknown ids are kept and ignored. The master `agentTools` switch stays.
+  Unknown ids are kept and ignored. The master `agentTools` switch stays,
+  and since step 13 the app sets it too.
   - CLI: `sesori-bridge config tool-group <id> [on|off]`. With no id it lists
     each group with its state.
 - **Wire, additive.**
@@ -279,6 +280,12 @@ change.
   - `BridgeSettingUpdate.toolGroup(id, enabled)`.
   - An older app ignores both. A newer app hides the section when the list is
     empty.
+  - Step 13 adds the master switch: `BridgeSettingsResponse.agentToolsEnabled`
+    (`bool?`, null from v1.15.0 bridges, with a dated `COMPATIBILITY` comment)
+    and `BridgeSettingUpdate.agentTools(enabled)`. The app offers the
+    switches only to bridges that send the master, so it never sends the
+    update to an older bridge; a refusal is a plain, retryable failure. The
+    CLI command keeps working.
 - **App.** `module_core`'s `BridgeSettingsRepository` and
   `BridgeSettingsCubit` gain the tool-group list and a `setToolGroupEnabled`
   action. The phone and desktop settings screens render an "Agent tools"
@@ -543,11 +550,9 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
     the list route and the change event. A `PullRequestWatchListCubit` holds
     the grouped list, the needs-you count, and an optional session filter.
   - The calculator change.
-  - **Other computers.** Phase 1 lists the current computer's PRs, plus one
-    `<computer> · N watched · Switch` row for each other paired computer. The
-    step first checks what multi-computer already knows about the other
-    bridges. If N cannot be had without connecting to them, it raises that
-    on a review page instead of inventing a channel.
+  - **Other computers.** The sheet lists only the current computer's PRs
+    (owner, 2026-11-25). A cross-computer "pending input" highlight is a
+    separate future feature, not part of this plan.
 - **`module_app_ui`, the session and composer.** This follows the wake-up
   precedent:
   - The session row shows the lead PR (`#123`, coloured by its status) plus
@@ -718,17 +723,20 @@ count additions plus deletions, excluding generated files unless noted.
     - Merged records kept until local midnight.
     - The stop and auto-merge request models, handlers and routes.
     - `GET /pull-request-watches` and the `pullRequestWatchesChanged` event.
-13. ⚙️ **App: row mark, composer chip and group toggles** (~1,300).
-    - The `module_core` session actions and calculator; the row mark (lead
-      PR plus `+N`); the chip with its interim per-session menu and Stop.
-    - The Agent tools settings section on phone and desktop.
+13. ⚙️ **App: row mark, composer chip and group toggles** (~2,000, split).
+    - 13.a ⚙️ bridge and wire: the master-switch field and update, watches
+      hidden while the PR monitor is off with a republish on each change,
+      and the `module_core` settings repository and cubit.
+    - 13.b ⚙️ app UI: the `module_core` session action and calculator; the
+      row mark (lead PR plus `+N`); the chip with its interim per-session
+      menu and Stop; the Agent tools settings section, master switch
+      first, on phone and desktop.
 14. ⚙️ **App: watched-PR list** (~1,400).
     - `PullRequestWatchApi`, the client repository and
       `PullRequestWatchListCubit`.
     - The home top-bar button with its rolling red count, and the grouped
       sheet with tap, swipe (Auto-merge, Stop), in-place updates and
       regroup on next open.
-    - The other-computers rows (checked first, see Wire and app).
     - The composer chip opens the sheet filtered to its session, replacing
       the interim menu.
     - The desktop "Pull requests" sidebar row under Scheduled.
@@ -928,8 +936,16 @@ asking.
   when something needs the user), the grouped sheet (Needs you, Waiting,
   Ready, Merged today), tap to the session, swipe for Auto-merge and Stop,
   in-place updates and regroup on next open, and a desktop "Pull requests"
-  sidebar row under Scheduled. Phase 1 lists this computer's PRs plus a
-  `<computer> · N watched · Switch` row for each other computer.
+  sidebar row under Scheduled. The sheet lists only this computer's PRs
+  (2026-11-25: other computers' rows are not relevant to the PR monitor; a
+  cross-computer "pending input" highlight is a separate future feature,
+  outside this plan).
+- 2026-11-25, for step 13: the app gets the master "Agent tools" switch
+  above the group switches ("everything should be able to change from
+  phone directly"). While it is off, the group switches are dimmed, and a
+  tap on one says why. The bridge leaves watches out of sessions and the
+  list while the PR monitor (or agent tools) is off, and republishes their
+  sessions when that changes, so the marks fade out and back in.
 - The red count covers CI failure, conflict and new review comments, plus
   Ready PRs whose auto-merge is off. Merged PRs stay listed until the end of
   the day.
@@ -966,7 +982,8 @@ asking.
 - Generic two-table tool storage.
 - The grant snapshots groups at mint.
 - Toggles apply from the next launch or resume.
-- The master `agentTools` switch is kept.
+- The master `agentTools` switch is kept, and the app can set it (see the
+  owner's 2026-11-25 decision).
 - Labels are left out of the phase-1 interface.
 - A stable skill-bundle folder with Claude and plain layouts.
 - A seam that fails live verification falls back to `get_guide`.
