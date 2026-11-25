@@ -427,6 +427,14 @@ void main() {
       expect(plugin.supportsFormElicitation, isFalse);
     });
 
+    test("session activations load Sesori's skills as a per-session plugin", () {
+      const skills = SesoriSkillBundle(pluginRoot: "/skills/claude-plugin", skillsRoot: "/skills/skills");
+      expect(plugin.sessionActivationMeta(skills: skills), {
+        "pluginDirs": ["/skills/claude-plugin"],
+      });
+      expect(plugin.sessionActivationMeta(skills: null), isNull);
+    });
+
     test("initialize captures one Grok provider without a scratch process", () async {
       await connect();
 

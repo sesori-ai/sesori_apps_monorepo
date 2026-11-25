@@ -3,7 +3,7 @@
 /// for those that don't.
 final class const SesoriToolGuide({
   /// The skill's name, lowercase with dashes, such as `pr-monitor`. Harnesses
-  /// see it as `sesori-pr-monitor`, or `sesori:pr-monitor` in Claude Code.
+  /// spell it `sesori-pr-monitor`, `sesori:pr-monitor` or `pr-monitor`.
   required final String name,
 
   /// When to load the guide, in one sentence: the skill's `description` and

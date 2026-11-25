@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriSkillBundle;
 
 /// Builds the launch spec for `omp acp` and declares the handshake policy every
 /// Sesori ACP connection to it (live plugin, catalog and cleanup leases) uses.
@@ -41,4 +42,9 @@ abstract final class OmpBinary() {
     cwd: cwd,
     environment: _environment,
   );
+
+  /// Loads Sesori's Claude-style plugin for this process only.
+  static List<String> skillArguments({required SesoriSkillBundle? skills}) => [
+    if (skills != null) ...["--plugin-dir", skills.pluginRoot],
+  ];
 }

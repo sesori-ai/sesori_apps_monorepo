@@ -3,11 +3,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 
 /// A [SesoriMcpAccess] that mints numbered tokens (`token-1`, `token-2`, ...)
 /// while [enabled] and records every bind as `(token, backendSessionId)`.
+/// While [enabled] it also offers [skills].
 class RecordingSesoriMcpAccess({
   /// False behaves like the bridge's `agent-tools` setting turned off.
   required var bool enabled,
 }) implements SesoriMcpAccess {
   static const String url = "http://127.0.0.1:4100/mcp";
+  static const SesoriSkillBundle skills = SesoriSkillBundle(
+    pluginRoot: "/skills/claude-plugin",
+    skillsRoot: "/skills/skills",
+  );
 
   int minted = 0;
   final List<(String, String)> binds = [];
@@ -25,5 +30,5 @@ class RecordingSesoriMcpAccess({
   }
 
   @override
-  SesoriSkillBundle? get skillBundle => null;
+  SesoriSkillBundle? get skillBundle => enabled ? skills : null;
 }

@@ -9,6 +9,7 @@ import "../api/models/pi_rpc_frame.dart";
 import "../api/pi_launch_spec.dart";
 import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
+import "../api/pi_rpc_startup_extension.dart";
 import "../models/pi_rpc_command.dart";
 import "../models/pi_thinking_level.dart";
 import "../pi_identity.dart";
@@ -46,6 +47,7 @@ class PiBackendCatalogRepository({
   required final String _binaryPath,
   required final Map<String, String> _environment,
   required final PiProcessFactory _processFactory,
+  required final SesoriMcpAccess _sesoriMcp,
 }) {
   static const _rpcExcludedCommandSourcePaths = <String>{
     // Pi's bundled llama.cpp extension only exposes /llama, whose handler
@@ -68,7 +70,10 @@ class PiBackendCatalogRepository({
         launch: const PiNoSession(),
         model: null,
         thinkingLevel: null,
-        environment: _environment,
+        environment: {
+          ..._environment,
+          if (_sesoriMcp.skillBundle case final bundle?) ...piSesoriSkillsEnvironment(bundle: bundle),
+        },
       ),
       processFactory: _processFactory,
     );

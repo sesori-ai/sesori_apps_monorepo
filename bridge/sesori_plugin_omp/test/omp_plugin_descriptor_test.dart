@@ -293,7 +293,8 @@ void main() {
 
       expect(plugin, isA<AcpBridgePlugin>());
       expect(processes.executables.single, "omp");
-      expect(processes.arguments.single, ["acp"]);
+      // Sesori's skills load for this process only.
+      expect(processes.arguments.single, ["acp", "--plugin-dir", RecordingSesoriMcpAccess.skills.pluginRoot]);
       expect(processes.environments.single, const {
         "OMP_PROFILE": "work",
         "PI_CODING_AGENT_DIR": "/profile",

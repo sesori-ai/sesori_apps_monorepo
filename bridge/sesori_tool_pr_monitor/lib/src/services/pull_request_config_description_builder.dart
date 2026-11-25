@@ -27,20 +27,34 @@ class const PullRequestConfigDescriptionBuilder() {
   }
 
   /// The notice line the user sees once they answered.
-  String outcomeSummary({required PullRequestAutoMergeDefaultChange change, required bool allowed}) =>
-      "PR monitor: auto-merge by default for ${_scope(change: change)} ${allowed ? "allowed" : "declined"}";
+  String outcomeSummary({
+    required PullRequestAutoMergeDefaultChange change,
+    required PullRequestConfigAnswer answer,
+  }) =>
+      "PR monitor: auto-merge by default for ${_scope(change: change)} ${switch (answer) {
+        PullRequestConfigAnswer.allowed => "allowed",
+        PullRequestConfigAnswer.declined => "declined",
+        PullRequestConfigAnswer.outdated => "not applied",
+      }}";
 
   /// What the agent reads beside [outcomeSummary]; [config] is the settings
   /// now in effect.
   String outcomeGuidance({
     required PullRequestAutoMergeDefaultChange change,
-    required bool allowed,
+    required PullRequestConfigAnswer answer,
     required PullRequestMonitorConfig config,
-  }) => allowed
-      ? "The user allowed turning auto-merge on by default for ${_scope(change: change)}. PRs watched there from now "
-            "on without choosing auto-merge get it; PRs already watched keep their choice. ${settingsText(config: config)}"
-      : "The user declined turning auto-merge on by default for ${_scope(change: change)}; nothing changed. Do not ask "
-            "again unless the user does. ${settingsText(config: config)}";
+  }) => switch (answer) {
+    PullRequestConfigAnswer.allowed =>
+      "The user allowed turning auto-merge on by default for ${_scope(change: change)}. PRs watched there from now "
+          "on without choosing auto-merge get it; PRs already watched keep their choice. ${settingsText(config: config)}",
+    PullRequestConfigAnswer.declined =>
+      "The user declined turning auto-merge on by default for ${_scope(change: change)}; nothing changed. Do not ask "
+          "again unless the user does. ${settingsText(config: config)}",
+    PullRequestConfigAnswer.outdated =>
+      "The user allowed turning auto-merge on by default for ${_scope(change: change)}, but the auto-merge settings "
+          "changed while they decided, so what they allowed no longer matches and nothing was applied. Call "
+          "configure_pr_monitor again only if it is still wanted. ${settingsText(config: config)}",
+  };
 
   /// `Auto-merge by default: off (owner/repo: on). Reports wait …`.
   String settingsText({required PullRequestMonitorConfig config}) {

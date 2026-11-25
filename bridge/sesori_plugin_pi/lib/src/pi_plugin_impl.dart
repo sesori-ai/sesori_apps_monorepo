@@ -100,6 +100,7 @@ final class PiPlugin._({
         binaryPath: binaryPath,
         environment: processEnvironment,
         processFactory: processFactory,
+        sesoriMcp: sesoriMcp,
       ),
       tracker: PiCatalogTracker(),
       totalTimeout: catalogTimeout,

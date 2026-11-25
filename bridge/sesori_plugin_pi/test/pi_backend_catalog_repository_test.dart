@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "support/fake_pi_process.dart";
+import "support/fake_sesori_mcp_access.dart";
 
 void main() {
   test("maps providers, deduped exact IDs, reasoning levels, and command sources", () async {
@@ -31,6 +32,8 @@ void main() {
 
     expect(harness.specs.single.arguments, ["--mode", "rpc", "--no-session", "--approve"]);
     expect(harness.specs.single.workingDirectory, path.normalize(path.absolute("project/./nested/..")));
+    // The probe loads the skills too, so the command list shows them.
+    expect(harness.specs.single.environment, containsPair("SESORI_SKILLS_ROOT", "/skills/skills"));
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
     expect(options.agents.single.name, "pi");
     expect(options.agents.single.mode, PluginAgentMode.primary);
@@ -315,6 +318,7 @@ class _ProbeHarness({
       PiBackendCatalogRepository(
         binaryPath: "pi",
         environment: const {},
+        sesoriMcp: FakeSesoriMcpAccess(enabled: true),
         processFactory: ({required spec}) async {
           specs.add(spec);
           final process = FakePiProcess();

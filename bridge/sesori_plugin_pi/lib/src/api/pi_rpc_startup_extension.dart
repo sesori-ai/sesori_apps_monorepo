@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 const String _sesoriMcpUrlVariable = "SESORI_MCP_URL";
 const String _sesoriMcpTokenVariable = "SESORI_MCP_TOKEN";
 const String _sesoriMcpServerVariable = "SESORI_MCP_SERVER";
+const String _sesoriSkillsVariable = "SESORI_SKILLS_ROOT";
 
 /// The environment that lets [piRpcStartupExtensionSource] give one Pi process
 /// Sesori's MCP tools. The token stays out of argv, which other local users can
@@ -14,6 +15,13 @@ Map<String, String> piSesoriMcpEnvironment({required SesoriMcpLaunch launch}) =>
   _sesoriMcpServerVariable: launch.serverName,
 };
 
+/// The environment that makes [piRpcStartupExtensionSource] add Sesori's
+/// skills (`SesoriSkillBundle.skillsRoot`) to one Pi process. The catalog probe
+/// gets it too, so the app's command list shows the skills sessions see.
+Map<String, String> piSesoriSkillsEnvironment({required SesoriSkillBundle bundle}) => {
+  _sesoriSkillsVariable: bundle.skillsRoot,
+};
+
 /// Loaded before user extensions. It owns two startup concerns:
 ///
 /// - Startup dialogs. Pi 1.0.4 awaits `session_start` before attaching its
@@ -22,9 +30,15 @@ Map<String, String> piSesoriMcpEnvironment({required SesoriMcpLaunch launch}) =>
 /// - Sesori's MCP tools, when the launch environment carries them. Each tool
 ///   the server lists is registered with `pi.registerTool` under Pi's own MCP
 ///   name, `mcp__<server>__<tool>`, and each call is forwarded to the server.
+///   The tools are deferred (Pi 0.99.0 and later): the built-in `tool_search`,
+///   which the extension activates, declares them when the agent needs them,
+///   so they cost no context until then. The server's `instructions` go into
+///   the system prompt through `before_agent_start`.
 ///   `pi.registerMcpServer` is avoided because an MCP-replacing extension such
 ///   as pi-mcp-adapter makes it fail. Nothing reaches Pi's configuration, so a
 ///   session resumed outside Sesori has no Sesori tools.
+/// - Sesori's skills, through `resources_discover`, when the environment names
+///   their folder.
 const piRpcStartupExtensionSource =
     '''
 import { randomUUID } from "node:crypto";
@@ -35,6 +49,7 @@ const sesoriMcpEnvironment = {
   url: "$_sesoriMcpUrlVariable",
   token: "$_sesoriMcpTokenVariable",
   server: "$_sesoriMcpServerVariable",
+  skills: "$_sesoriSkillsVariable",
 };
 '''
     r'''
@@ -129,7 +144,8 @@ async function registerSesoriTools(pi) {
     Object.entries(sesoriMcpEnvironment).map(([field, name]) => [field, process.env[name]])
   ));
   for (const name of Object.values(sesoriMcpEnvironment)) delete process.env[name];
-  const { url, token, server } = launch;
+  const { url, token, server, skills } = launch;
+  if (skills) pi.on("resources_discover", () => ({ skillPaths: [skills] }));
   if (!url || !token || !server) return;
 
   const call = async (method, params, signal) => {
@@ -149,13 +165,34 @@ async function registerSesoriTools(pi) {
     return reply.result;
   };
 
-  let tools;
+  let tools, instructions;
   try {
+    ({ instructions } = await call("initialize", {}, AbortSignal.timeout(10000)));
     ({ tools } = await call("tools/list", {}, AbortSignal.timeout(10000)));
   } catch (error) {
     console.error(`[sesori] ${server} tools are unavailable: ${error?.message ?? error}`);
     return;
   }
+  const prompt = [
+    instructions,
+    `These tools are named mcp__${server}__<tool> and are not declared up front: load the ones you need with tool_search.`,
+  ].filter(Boolean).join("\n\n");
+  pi.on("before_agent_start", event => {
+    // Pi patches a changed section into the conversation and keeps its cache.
+    const sections = event.systemPromptOptions?.sections;
+    if (sections) {
+      sections.sesori = prompt;
+      return;
+    }
+    return { systemPrompt: `${event.systemPrompt}\n\n${prompt}` };
+  });
+  // Built-in tools are all registered by session_start. tool_search ships
+  // with deferred exposure, so every supported Pi has it.
+  pi.on("session_start", () => {
+    if (pi.getAllTools().some(tool => tool.name === "tool_search")) {
+      pi.setActiveTools([...new Set([...pi.getActiveTools(), "tool_search"])]);
+    }
+  });
   for (const tool of tools) {
     pi.registerTool({
       name: `mcp__${server}__${tool.name}`,
@@ -163,6 +200,7 @@ async function registerSesoriTools(pi) {
       description: tool.description ?? "",
       parameters: tool.inputSchema,
       annotations: tool.annotations,
+      exposure: "deferred",
       async execute(_toolCallId, params, signal) {
         const result = await call("tools/call", { name: tool.name, arguments: params }, signal);
         return { content: result.content, details: {}, isError: result.isError === true };

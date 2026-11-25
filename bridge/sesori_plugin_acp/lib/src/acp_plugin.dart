@@ -324,6 +324,11 @@ abstract class AcpPlugin({
   /// rejection, so the base classifies none.
   bool isBusyPromptRejection({required AcpRpcException error}) => false;
 
+  /// Optional `_meta` for `session/new`, `session/load` and `session/resume`
+  /// on a live process, given Sesori's skills ([skills]; null when there are
+  /// none).
+  Map<String, dynamic>? sessionActivationMeta({required SesoriSkillBundle? skills}) => null;
+
   /// Optional top-level metadata for an outbound `session/prompt` request.
   Map<String, dynamic>? outboundPromptMeta({
     required String sessionId,
@@ -1085,6 +1090,7 @@ abstract class AcpPlugin({
     final session = await AcpAgentApi(client: client).newSession(
       cwd: directory,
       sesoriMcp: launch,
+      meta: sessionActivationMeta(skills: sesoriMcp?.skillBundle),
       timeout: AcpAgentApi.defaultRequestTimeout,
     );
     if (sesoriMcp != null && launch != null) {
@@ -1601,6 +1607,7 @@ abstract class AcpPlugin({
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
         sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
+        meta: sessionActivationMeta(skills: _sesoriMcp?.skillBundle),
         timeout: const Duration(minutes: 2),
       );
       // A resume load: capture the catalog + this session's own model, but do
@@ -1645,6 +1652,7 @@ abstract class AcpPlugin({
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
         sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
+        meta: sessionActivationMeta(skills: _sesoriMcp?.skillBundle),
         timeout: const Duration(minutes: 2),
       );
       // The resume result carries the modes/configOptions catalog (and this
@@ -2734,6 +2742,7 @@ abstract class AcpPlugin({
           sessionId: sessionId,
           cwd: directoryForSession(sessionId: sessionId),
           sesoriMcp: null,
+          meta: null,
           timeout: const Duration(minutes: 2),
         );
       } on AcpRpcException catch (error, stackTrace) {
@@ -2844,6 +2853,7 @@ abstract class AcpPlugin({
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
         sesoriMcp: _sesoriMcpLaunchFor(sessionId: sessionId),
+        meta: sessionActivationMeta(skills: _sesoriMcp?.skillBundle),
         timeout: const Duration(minutes: 2),
       );
       captureSessionConfig(result, sessionId: sessionId, fromNewSession: false);

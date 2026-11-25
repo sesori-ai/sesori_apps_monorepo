@@ -200,31 +200,51 @@ class PullRequestWatchService({
       case SesoriToolApprovalDropped():
         return PullRequestConfigApprovalDropped(config: _config, autoMerge: autoMerge);
       case SesoriToolApprovalShown(:final answer):
-        unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, answer: answer));
+        unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, shown: _config, answer: answer));
         return PullRequestConfigAwaitingApproval(config: _config, autoMerge: autoMerge);
     }
   }
 
-  /// Applies [autoMerge] on top of the settings at the time the user allowed
-  /// it, then tells [sessionId] the answer.
+  /// Applies [autoMerge] once the user allows it, then tells [sessionId] the
+  /// answer. The card described [shown]: timings may change meanwhile, but if
+  /// the auto-merge settings did, the Allow no longer matches and is dropped.
   Future<void> _applyAnswer({
     required String sessionId,
     required PullRequestAutoMergeDefaultChange autoMerge,
+    required PullRequestMonitorConfig shown,
     required Future<SesoriToolApprovalOutcome> answer,
   }) async {
-    final outcome = await answer;
-    if (outcome == SesoriToolApprovalOutcome.dropped) return;
-    final allowed = outcome == SesoriToolApprovalOutcome.allowed;
-    try {
-      if (allowed) await _updateConfig(update: (config) => autoMerge.appliedTo(config: config));
-    } on Exception catch (error, stackTrace) {
-      Log.w("PR monitor: saving the allowed auto-merge default failed", error, stackTrace);
-      return;
+    final PullRequestConfigAnswer result;
+    switch (await answer) {
+      case SesoriToolApprovalOutcome.dropped:
+        return;
+      case SesoriToolApprovalOutcome.rejected:
+        result = PullRequestConfigAnswer.declined;
+      case SesoriToolApprovalOutcome.allowed:
+        var outdated = false;
+        try {
+          await _updateConfig(
+            update: (config) {
+              outdated =
+                  config.copyWith(
+                    quietMinutes: shown.quietMinutes,
+                    ciWaitMinutes: shown.ciWaitMinutes,
+                    idleReminderMinutes: shown.idleReminderMinutes,
+                  ) !=
+                  shown;
+              return outdated ? config : autoMerge.appliedTo(config: config);
+            },
+          );
+        } on Exception catch (error, stackTrace) {
+          Log.w("PR monitor: saving the allowed auto-merge default failed", error, stackTrace);
+          return;
+        }
+        result = outdated ? PullRequestConfigAnswer.outdated : PullRequestConfigAnswer.allowed;
     }
     await _host.deliverNotice(
       sessionId: sessionId,
-      summary: _configDescriptions.outcomeSummary(change: autoMerge, allowed: allowed),
-      guidance: _configDescriptions.outcomeGuidance(change: autoMerge, allowed: allowed, config: _config),
+      summary: _configDescriptions.outcomeSummary(change: autoMerge, answer: result),
+      guidance: _configDescriptions.outcomeGuidance(change: autoMerge, answer: result, config: _config),
       timing: SesoriToolNoticeTiming.derived,
       claim: null,
     );

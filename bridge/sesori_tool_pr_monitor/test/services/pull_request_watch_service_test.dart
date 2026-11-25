@@ -673,6 +673,22 @@ void main() {
       expect(config(), PullRequestMonitorConfig.defaults.copyWith(quietMinutes: 5, ciWaitMinutes: 60));
     });
 
+    test("an Allow is dropped when the auto-merge settings changed while the card was open", () async {
+      const repositoryOff = PullRequestRepositoryAutoMerge(repositoryKey: "sesori/example", enabled: false);
+      await configure(autoMerge: repositoryOff);
+      await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));
+      final cleared = await configure(
+        autoMerge: const PullRequestRepositoryAutoMergeCleared(repositoryKey: "sesori/example"),
+      );
+      expect(cleared, isA<PullRequestConfigApplied>(), reason: "clearing an off override under an off default");
+
+      h.host.asked.single.answer.complete(SesoriToolApprovalOutcome.allowed);
+      await pumpEventQueue();
+
+      expect(h.host.sent.single.summary, "PR monitor: auto-merge by default for every repository not applied");
+      expect(config(), PullRequestMonitorConfig.defaults);
+    });
+
     test("a declined request changes nothing and tells the session", () async {
       await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));
       h.host.asked.single.answer.complete(SesoriToolApprovalOutcome.rejected);
