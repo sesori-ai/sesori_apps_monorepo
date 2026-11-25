@@ -812,7 +812,8 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
       // A slash command the bridge sent marks its expanded body `unclassified`
       // too, but only the message it sent carries `host_synthetic`; the body
       // stays hidden like any command body.
-      final isHost = dto.originKind == ClaudeMessageOriginKind.host && dto.turnOrigin == _hostSyntheticTurnOrigin;
+      final isHost =
+          dto.originKind == ClaudeMessageOriginKind.unclassified && dto.turnOrigin == _hostSyntheticTurnOrigin;
       return ClaudeTranscriptUserRecord(
         id: id,
         content: isHost ? _withoutNonUserSourcePrefix(content: dto.message?.content) : dto.message?.content,
@@ -820,9 +821,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
         isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly ?? false,
         isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
-        originKind: isHost || dto.originKind != ClaudeMessageOriginKind.host
-            ? dto.originKind
-            : ClaudeMessageOriginKind.unknown,
+        originKind: isHost ? ClaudeMessageOriginKind.host : dto.originKind,
         isUnattributedSdkRecord: dto.entrypoint == _sdkEntrypoint && dto.turnAttributionKey == null,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
@@ -875,9 +874,12 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
         prompt: attachment.prompt,
         isMeta: attachment.isMeta ?? false,
         // The command mode shares the origin vocabulary (`task-notification`).
-        originKind: attachment.originKind == ClaudeMessageOriginKind.unknown
-            ? ClaudeMessageOriginKind.parse(kind: attachment.commandMode)
-            : attachment.originKind,
+        // The attachment is the queued message itself, never a command body.
+        originKind: switch (attachment.originKind) {
+          ClaudeMessageOriginKind.unknown => ClaudeMessageOriginKind.parse(kind: attachment.commandMode),
+          ClaudeMessageOriginKind.unclassified => ClaudeMessageOriginKind.host,
+          final kind => kind,
+        },
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,

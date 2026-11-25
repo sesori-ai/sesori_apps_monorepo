@@ -187,16 +187,13 @@ void main() {
       expect(stored.single.parts.single.text, notice);
     });
 
-    test("keeps the expanded body of its slash command hidden", () async {
-      final stored = await replay(
-        records: [
-          {
-            ..._user(uuid: "command-body", content: _skillBody, origin: const {"kind": "unclassified"}),
-            "isMeta": true,
-          },
-        ],
-      );
-      expect(stored, isEmpty);
+    test("keeps the expanded body of its slash command hidden, live and after replay", () async {
+      final body = {
+        ..._user(uuid: "command-body", content: _skillBody, origin: const {"kind": "unclassified"}),
+        "isMeta": true,
+      };
+      expect(mapLive(frames: [body]), isEmpty);
+      expect(await replay(records: [body]), isEmpty);
     });
   });
 
