@@ -11,9 +11,9 @@
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Done | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | In review | #2919, #2920 |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
-| 10 | ⚙️ Guides and skills on Claude Code and Codex | In review | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
-| 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Not started | |
-| 12 | ⚙️ Bridge projection, status and app actions | Not started | |
+| 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
+| 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
+| 12 | ⚙️ Bridge projection, status and app actions | In review | #2923 |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Not started | |
 | 14 | ⚙️ App: watched-PR list | Not started | |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
@@ -26,6 +26,9 @@
   Decisions in `PLAN.md`.
 - Step 14 starts by checking what multi-computer knows about other bridges,
   for the `N watched` rows. If N is not available, ask on a review page.
+  Step 12 checked: it is not. The app talks to one target bridge at a time,
+  and the relay never crosses frames or broadcasts to another bridge; the
+  app only gets other computers' presence and pushes.
 - Step 15 mechanism decided by the owner 2026-11-25: keep OpenCode's shared
   server (no bridge-owned server, no launch-time config). Use the client-MCP
   WebSocket relay; every OpenCode session that calls a Sesori tool —
@@ -71,6 +74,27 @@
     a `get_pr_report` that shows it consumes it for all of them, and a
     dropped report restores it. `get_pr_report` stays read-only: only a due
     report labels or merges. Notice settlement runs in the PR's op queue.
+- Step 12 as built (#2923):
+  - `Session.pullRequestWatches` (repository, number, title, url, autoMerge,
+    status). The red count is a `PullRequestWatchStatusNeedsYou`; its reasons
+    are `ciFailing`, `conflict`, `newReviewComments`, `readyWithoutAutoMerge`.
+    The lead PR for the row is the app's choice (needs-you first is natural).
+  - The status is stored in each watch record and synced after every op in
+    the PR's queue, so `SessionViewService` reads it via the repository. A
+    merged watch stays as `merged(mergedAt)` until the first poll after the
+    bridge's local midnight.
+  - `GET /pull-request-watches` (session id, title, project, watch) for the
+    step 14 list; `POST /session/pull-request-watch/stop` and `/auto-merge`
+    answer with the updated session; `pullRequestWatches.changed` fires with
+    every session republish caused by a watch change.
+  - While `pr_monitor` is off, stored watches stay listed with frozen
+    statuses, merged ones included. Step 13 decides whether the app hides
+    them when the group is off.
+- Step 17: Grok 1.0.30 left the Sesori skill out of the command list in the
+  first live session; it appeared from the next session on. Probably the list
+  was read before Grok loaded `_meta.pluginDirs`; not confirmed. Check during
+  the final verification and fix if the command list can be refreshed after
+  load.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.
