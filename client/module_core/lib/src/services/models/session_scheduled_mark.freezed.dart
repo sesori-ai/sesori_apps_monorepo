@@ -148,6 +148,85 @@ as int,
 /// @nodoc
 
 
+class SessionScheduledMarkWatchingPullRequests implements SessionScheduledMark {
+  const SessionScheduledMarkWatchingPullRequests({required this.lead, required this.others});
+  
+
+ final  SessionPullRequestWatch lead;
+ final  int others;
+
+/// Create a copy of SessionScheduledMark
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionScheduledMarkWatchingPullRequestsCopyWith<SessionScheduledMarkWatchingPullRequests> get copyWith => _$SessionScheduledMarkWatchingPullRequestsCopyWithImpl<SessionScheduledMarkWatchingPullRequests>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionScheduledMarkWatchingPullRequests&&(identical(other.lead, lead) || other.lead == lead)&&(identical(other.others, others) || other.others == others));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,lead,others);
+}
+
+@override
+String toString() {
+    return 'SessionScheduledMark.watchingPullRequests(lead: $lead, others: $others)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionScheduledMarkWatchingPullRequestsCopyWith<$Res> implements $SessionScheduledMarkCopyWith<$Res> {
+  factory $SessionScheduledMarkWatchingPullRequestsCopyWith(SessionScheduledMarkWatchingPullRequests value, $Res Function(SessionScheduledMarkWatchingPullRequests) _then) = _$SessionScheduledMarkWatchingPullRequestsCopyWithImpl;
+@useResult
+$Res call({
+ SessionPullRequestWatch lead, int others
+});
+
+
+$SessionPullRequestWatchCopyWith<$Res> get lead;
+
+}
+/// @nodoc
+class _$SessionScheduledMarkWatchingPullRequestsCopyWithImpl<$Res>
+    implements $SessionScheduledMarkWatchingPullRequestsCopyWith<$Res> {
+  _$SessionScheduledMarkWatchingPullRequestsCopyWithImpl(this._self, this._then);
+
+  final SessionScheduledMarkWatchingPullRequests _self;
+  final $Res Function(SessionScheduledMarkWatchingPullRequests) _then;
+
+/// Create a copy of SessionScheduledMark
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? lead = null,Object? others = null,}) {
+  return _then(SessionScheduledMarkWatchingPullRequests(
+lead: null == lead ? _self.lead : lead // ignore: cast_nullable_to_non_nullable
+as SessionPullRequestWatch,others: null == others ? _self.others : others // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+/// Create a copy of SessionScheduledMark
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPullRequestWatchCopyWith<$Res> get lead {
+  
+  return $SessionPullRequestWatchCopyWith<$Res>(_self.lead, (value) {
+    return _then(_self.copyWith(lead: value));
+  });
+}
+}
+
+/// @nodoc
+
+
 class SessionScheduledMarkFromTask implements SessionScheduledMark {
   const SessionScheduledMarkFromTask({required this.name});
   

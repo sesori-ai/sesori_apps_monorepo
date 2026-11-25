@@ -1291,6 +1291,54 @@ abstract class AppLocalizations {
   /// **'Retry harness warm-up setting'**
   String get settingsPluginWarmupRetry;
 
+  /// Heading of the settings section with the switches for the tools Sesori gives agents on the connected computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent tools'**
+  String get settingsAgentToolsSection;
+
+  /// Master switch row in the Agent tools section; while it is off, agents get none of the tools listed below it.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori tools'**
+  String get settingsAgentToolsTitle;
+
+  /// No description provided for @settingsAgentToolsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets agents on this computer use the tools below.'**
+  String get settingsAgentToolsDescription;
+
+  /// Quiet line under the Agent tools switches: running harness processes keep the tools they started with.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply to sessions started or resumed afterwards.'**
+  String get settingsAgentToolsFootnote;
+
+  /// Answer to a tap on a dimmed tool group switch while the Sesori tools master switch is off.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on Sesori tools to use {group}.'**
+  String settingsAgentToolsOff(String group);
+
+  /// No description provided for @settingsAgentToolsUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the change. Check your connection and try again.'**
+  String get settingsAgentToolsUpdateFailed;
+
+  /// No description provided for @settingsAgentToolsUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsAgentToolsUncertain;
+
+  /// No description provided for @settingsAgentToolsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh agent tool settings'**
+  String get settingsAgentToolsRetry;
+
   /// No description provided for @harnessManagementDefaultsSection.
   ///
   /// In en, this message translates to:
@@ -6462,6 +6510,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not cancel the wake-up. It may still run. Reconnect and try again.'**
   String get sessionWakeUpCancelFailed;
+
+  /// Label of the pull-request chip beside the session's model picker while the session watches pull requests and has no wake-up. Tapping it lists them.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 pull request} other{{count} pull requests}}'**
+  String sessionPullRequestWatchesChip(int count);
+
+  /// Heading of the menu section listing the pull requests the session's agent watches.
+  ///
+  /// In en, this message translates to:
+  /// **'Watched pull requests'**
+  String get sessionPullRequestWatchesTitle;
+
+  /// Button on one watched pull request in the session's menu; the agent stops getting reports on it.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop watching'**
+  String get sessionPullRequestWatchStop;
+
+  /// No description provided for @sessionPullRequestWatchStopFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not stop watching the pull request. Reconnect and try again.'**
+  String get sessionPullRequestWatchStopFailed;
+
+  /// Status of a watched pull request with failing CI, a conflict, new review comments, or ready without auto-merge.
+  ///
+  /// In en, this message translates to:
+  /// **'needs you'**
+  String get pullRequestWatchStatusNeedsYou;
+
+  /// Status of a watched pull request the agent marked ready.
+  ///
+  /// In en, this message translates to:
+  /// **'ready'**
+  String get pullRequestWatchStatusReady;
+
+  /// Status of a watched pull request waiting on CI or review.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting'**
+  String get pullRequestWatchStatusWaiting;
+
+  /// No description provided for @pullRequestWatchStatusMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'merged'**
+  String get pullRequestWatchStatusMerged;
+
+  /// No description provided for @pullRequestWatchStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'status unknown'**
+  String get pullRequestWatchStatusUnknown;
+
+  /// Screen-reader wording for the session-row mark of a session whose agent watches pull requests: the one that needs the user most, its status, and how many more.
+  ///
+  /// In en, this message translates to:
+  /// **'{others, plural, =0{Watching pull request {number}, {status}} =1{Watching pull request {number}, {status}, and 1 more} other{Watching pull request {number}, {status}, and {others} more}}'**
+  String sessionListWatchingPullRequests(int others, String number, String status);
 
   /// No description provided for @sessionAutoContinuationAlreadySubmitted.
   ///

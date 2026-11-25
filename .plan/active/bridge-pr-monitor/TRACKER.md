@@ -15,7 +15,7 @@
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
-| 13 | ⚙️ App: row mark, composer chip and group toggles | In review | 13.a (bridge and wire), 13.b (app UI) |
+| 13 | ⚙️ App: row mark, composer chip and group toggles | Done | #2926 (13.a), #2927 (13.b) |
 | 14 | ⚙️ App: watched-PR list | Not started | |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
@@ -121,6 +121,12 @@
   on each toggle, polling first when it comes back on. Step 14's list route
   and its `pullRequestWatches.changed` refetch therefore see an empty list
   while the group is off; the home button simply hides.
+- Step 13.b as built: `pullRequestWatchLook` (`module_app_ui/lib/src/widgets/`)
+  maps a status to its colour and words, for the row mark and the chip's
+  menu; step 14's list can reuse it. `SessionDetailCubit.stopPullRequestWatch`
+  and `SessionApi.stopPullRequestWatch` exist; step 14 adds the auto-merge
+  route. The Agent tools section lives inside `BridgeSettingsSection`, so
+  both surfaces get it.
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The

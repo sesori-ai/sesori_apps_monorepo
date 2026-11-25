@@ -63,6 +63,14 @@ class SessionRepository({
     return _api.cancelWakeUp(sessionId: sessionId, wakeUpId: wakeUpId);
   }
 
+  Future<ApiResponse<Session>> stopPullRequestWatch({
+    required String sessionId,
+    required String repository,
+    required int number,
+  }) {
+    return _api.stopPullRequestWatch(sessionId: sessionId, repository: repository, number: number);
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,
