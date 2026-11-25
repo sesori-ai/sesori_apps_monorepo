@@ -14,6 +14,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolGroup, SesoriToolGroupId;
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
@@ -21,6 +22,7 @@ import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/agent_pages_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/scheduled_task_dao.dart";
+import "api/database/daos/sesori_tool_record_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_interruption_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
@@ -42,6 +44,7 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/local_time_zone.dart";
 import "foundation/process_runner.dart";
+import "foundation/process_runner_command_executor.dart";
 import "foundation/relay_client.dart";
 import "foundation/relay_plaintext_codec.dart";
 import "foundation/sesori_mcp_server.dart";
@@ -110,6 +113,7 @@ import "repositories/scheduled_command_repository.dart";
 import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/sesori_mcp_grant_repository.dart";
+import "repositories/sesori_tool_record_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_interruption_repository.dart";
@@ -216,6 +220,7 @@ import "routing/submit_page_handler.dart";
 import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
+import "server/host/bridge_sesori_tool_host_impl.dart";
 import "services/agent_page_answer_notice_builder.dart";
 import "services/agent_page_service.dart";
 import "services/archived_session_validator.dart";
@@ -940,10 +945,39 @@ class Orchestrator({
       toolGroupApprovals: toolGroupApprovalService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
+    final sesoriToolRecords = SesoriToolRecordRepository(
+      dao: SesoriToolRecordDao(database: _database),
+      clock: clock,
+    );
+    final pullRequestMonitorHost = BridgeSesoriToolHostImpl(
+      groupId: SesoriToolGroupIds.prMonitor,
+      records: sesoriToolRecords,
+      notices: sessionNoticeService,
+      sessions: sessionRepository,
+      settings: _bridgeSettingsRepository,
+      approvals: toolGroupApprovalService,
+    );
+    final ghCliApi = GhCliApi(commandExecutor: ProcessRunnerCommandExecutor(processRunner: _processRunner));
+    const pullRequestActivity = PullRequestActivityCalculator();
+    const pullRequestReadiness = PullRequestReadinessCalculator(activity: pullRequestActivity);
+    final pullRequestWatchService = PullRequestWatchService(
+      snapshots: PullRequestSnapshotRepository(api: ghCliApi),
+      actions: PullRequestActionRepository(api: ghCliApi),
+      watches: PullRequestWatchRepository(store: pullRequestMonitorHost.store),
+      host: pullRequestMonitorHost,
+      activity: pullRequestActivity,
+      readiness: pullRequestReadiness,
+      reports: const PullRequestReportBuilder(activity: pullRequestActivity, readiness: pullRequestReadiness),
+      clock: clock,
+    );
     final toolGroups = <SesoriToolGroup>[
       ScheduledTaskToolGroup(agent: scheduledTaskAgentService, formatter: const ScheduledTaskToolResultFormatter()),
       PageToolGroup(pages: agentPageService),
       WakeUpToolGroup(wakeUps: sessionWakeUpService),
+      PullRequestMonitorToolGroup(
+        watches: pullRequestWatchService,
+        poller: PullRequestPollListener(service: pullRequestWatchService, host: pullRequestMonitorHost),
+      ),
     ];
     // Launches grant groups by SesoriToolGroupIds before these are built.
     assert(

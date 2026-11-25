@@ -678,6 +678,8 @@ count additions plus deletions, excluding generated files unless noted.
      including a merge while the bridge was off; archived and deleted
      sessions; ten failures and not-found stops; a disabled group stops
      polling.
+   - As built: no guide text yet (step 10 adds `guide` and writes it), and
+     `watch_pr` has no `auto_merge` argument until step 8. See TRACKER notes.
 8. 🚧 **Readiness, auto-merge, feedback and reply** (~1,400).
    - `PullRequestActionRepository` and the stateless
      `PullRequestMergeService`: automatic and manual labels, invalidation,

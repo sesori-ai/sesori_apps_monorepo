@@ -1,5 +1,6 @@
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_baseline.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
+import "package:sesori_tool_pr_monitor/src/services/pull_request_report_builder.dart";
 import "package:test/test.dart";
 
 import "../support/pull_request_builders.dart";
@@ -10,6 +11,7 @@ String report({required PullRequestSnapshot snapshot, required PullRequestSnapsh
   baseline: baseline == null ? null : PullRequestBaseline.fromSnapshot(snapshot: baseline),
   forcedHoldMinutes: null,
   autoMergeEnabled: false,
+  opening: PullRequestReportOpening.ongoing,
 );
 
 void main() {
@@ -204,6 +206,7 @@ void main() {
           baseline: null,
           forcedHoldMinutes: forcedHoldMinutes,
           autoMergeEnabled: false,
+          opening: PullRequestReportOpening.ongoing,
         )
         .split("\n")[1];
 
@@ -285,6 +288,7 @@ void main() {
       baseline: null,
       forcedHoldMinutes: null,
       autoMergeEnabled: true,
+      opening: PullRequestReportOpening.ongoing,
     );
 
     expect(

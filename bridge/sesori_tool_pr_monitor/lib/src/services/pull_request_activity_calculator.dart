@@ -1,3 +1,4 @@
+import "../repositories/models/pull_request_baseline.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 
 enum PullRequestCiPhase() {
@@ -66,6 +67,24 @@ class const PullRequestActivityCalculator() {
     return failing.any((check) => !before.contains(check.id));
   }
 
+  /// True when [snapshot] holds nothing [baseline] did not: a report against
+  /// it would say nothing new. Mergeability GitHub has not computed yet is
+  /// not a change.
+  bool covers({required PullRequestBaseline baseline, required PullRequestSnapshot snapshot}) {
+    final fresh = PullRequestBaseline.fromSnapshot(snapshot: snapshot);
+    return baseline ==
+        (fresh.mergeable == PullRequestMergeable.unknown ? fresh.copyWith(mergeable: baseline.mergeable) : fresh);
+  }
+
+  /// [hasNewCiFailure] against a stored [baseline] instead of the previous
+  /// poll, for the first poll after a restart.
+  bool hasNewCiFailureSince({required PullRequestBaseline baseline, required PullRequestSnapshot next}) {
+    final failing = _failedCheckIds(snapshot: next);
+    if (failing.isEmpty) return false;
+    if (baseline.headSha != next.headSha) return true;
+    return failing.any((id) => !baseline.failedCheckIds.contains(id));
+  }
+
   /// True when something report-worthy changed between consecutive polls.
   bool detectActivity({
     required PullRequestSnapshot previous,
@@ -77,7 +96,10 @@ class const PullRequestActivityCalculator() {
     // checks for the new head.
     if (previous.headSha != next.headSha) return true;
     if (_mergeableChanged(lastDefiniteMergeable: lastDefiniteMergeable, next: next)) return true;
-    if (_reviewSignature(snapshot: previous) != _reviewSignature(snapshot: next)) return true;
+    if (PullRequestBaseline.reviewSignatureOf(snapshot: previous) !=
+        PullRequestBaseline.reviewSignatureOf(snapshot: next)) {
+      return true;
+    }
     if (_reviewThreadsChanged(previous: previous.reviewThreads, next: next.reviewThreads)) return true;
     if (previous.issueCommentsTotal != next.issueCommentsTotal ||
         hasAddedRelevantComment(previous: previous.issueComments, next: next.issueComments) ||
@@ -97,15 +119,6 @@ class const PullRequestActivityCalculator() {
   bool _mergeableChanged({required PullRequestMergeable? lastDefiniteMergeable, required PullRequestSnapshot next}) {
     if (next.mergeable == PullRequestMergeable.unknown || lastDefiniteMergeable == null) return false;
     return lastDefiniteMergeable != next.mergeable;
-  }
-
-  String _reviewSignature({required PullRequestSnapshot snapshot}) {
-    final states = [
-      for (final review in snapshot.reviews)
-        "${review.login}=${review.state.name}@${review.submittedAt.toUtc().toIso8601String()}",
-    ]..sort();
-    final pending = [...snapshot.pendingReviewers]..sort();
-    return "${states.join(",")}|${pending.join(",")}";
   }
 
   bool _reviewThreadsChanged({

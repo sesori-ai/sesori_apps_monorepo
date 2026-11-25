@@ -44,7 +44,7 @@ Dependencies flow in one direction:
 10. `sesori_plugin_hermes` — Hermes ACP adapter; depends on interface + foundation + ACP
 11. `sesori_plugin_grok` — Grok Build ACP adapter; depends on interface + foundation + ACP + `sesori_shared`
 12. `sesori_plugin_pi` — Pi adapter; depends on interface + foundation + runtime + `sesori_shared`
-13. `sesori_tool_pr_monitor` — the PR monitor tool group; depends on foundation (`CommandExecutor`) + `sesori_shared`, and on the tool interface once its group lands. Runs the user's `gh` CLI; never imports harness plugins
+13. `sesori_tool_pr_monitor` — the PR monitor tool group; depends on foundation (`CommandExecutor`), `sesori_shared` and the tool interface. Runs the user's `gh` CLI; never imports harness plugins
 14. `app` — depends on interface + tool interface + foundation + registered concrete plugins + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.

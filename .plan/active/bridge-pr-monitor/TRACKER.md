@@ -5,10 +5,10 @@
 | 1 | 🌱 Raise the plan | Done | #2908 |
 | 2 | ⚙️ Tool-group interface and grouped MCP server | Done | #2909 |
 | 3 | 🌿 Per-group toggles and leaner task text | Done | #2911 |
-| 4 | 🚧 Tool host: records, notices and approvals | In review | #2913 |
+| 4 | 🚧 Tool host: records, notices and approvals | Done | #2913 |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
-| 7 | 🚧 Watches: fan-out polling, delivery and restart | Not started | |
+| 7 | 🚧 Watches: fan-out polling, delivery and restart | In review | #PRNUM |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Not started | |
@@ -35,26 +35,25 @@
 - Step 4 added `start`, `dispose` and `SesoriToolHost` (with `SesoriToolStore`)
   to the interface, which now depends on `sesori_plugin_interface` and
   re-exports `Log`. Step 10 adds `guide`.
-- For step 7, from step 4 as built:
-  - The orchestrator already builds `ToolGroupApprovalService` and starts and
-    disposes every group (`OrchestratorSession._startToolGroups`, after the
-    MCP drain on shutdown). No host exists yet: step 7 builds one
-    `SesoriToolRecordRepository(dao: SesoriToolRecordDao(...), clock: clock)`
-    and a `BridgeSesoriToolHostImpl` for the PR monitor group.
-  - Store values are JSON maps; `put…` replaces by key, and a session record
-    for an unstored session throws (foreign key). A claim that must not
-    resurrect an ended watch should check the record inside the claim.
-  - `host.enabled` is false while either the group's toggle or the
-    `agent-tools` master switch is off; `enabledChanges` emits only this
-    group's flips.
-  - `requestApproval` skips the card only when both the caller and its root
-    session approve everything, as wake-up commands do, and returns
-    `dropped` for an unstored session or at bridge stop.
-- Group ids live in `bridge/app/lib/src/repositories/models/sesori_tool_group_ids.dart`
-  (`SesoriToolGroupIds.all`), because launches, the CLI and scheduled runs
-  read them before the groups are built. Step 7 adds the PR monitor's id there,
-  in `tools/list` order, beside adding its group to the orchestrator's list;
-  the orchestrator asserts the two match.
+- Step 7 as built (`PullRequestWatchService` owns the watches):
+  - The orchestrator builds the PR monitor's `BridgeSesoriToolHostImpl` and
+    passes it to the service and the poll listener, not to the group itself.
+    `SesoriToolGroupIds.prMonitor` is last in `all`.
+  - `watch_pr` takes only `pr`: step 8 adds `auto_merge`. Each record stores
+    `autoMerge` (always false so far); a PR's effective auto-merge is any
+    watcher's. Status already prints `auto-merge: squash` when set.
+  - `watch_pr` returns the first report (every existing comment new, plus the
+    startup assessment) in its result instead of sending a notice.
+  - A watch ends, and its record is deleted, inside the claim of its terminal
+    report (merged, closed, not found, 10 failures). Step 12's "merged PRs stay
+    listed until end of day" needs its own record of ended watches.
+  - A `dropped` delivery marks the PR dirty again, so the next poll re-reports;
+    there is no delivery-failure stop. `skippedInactive` ends the watch.
+  - Step 8 hooks: `PullRequestActionRepository` holds the cached `selfLogin`
+    (add merge, label and reply there); `_recordReport` is where readiness and
+    auto-merge run after a report; the idle reminder already skips a PR that
+    has the ready label unless auto-merge is on.
+  - No `watchesChanged` stream yet; step 12 adds what its projection needs.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.
@@ -64,10 +63,8 @@
   verification matrix includes it once that PR lands.
 - Step 6 added `PullRequestBaseline` (seen comment ids per channel and the
   unresolved-thread count) as the report builder's input; a null baseline is
-  a watch's first report. Step 7 extends it with the signatures, state and
-  mergeable it stores, and appends the plugin's startup assessment paragraph
-  to a new watch's first report. `PullRequestComment` now carries `body` for
-  the feedback builder; the stored baseline must not. Step 8 adds the
+  a watch's first report. Step 7 stores it as JSON (relevant comment ids only,
+  no bodies) with state, head, mergeable and CI and review signatures. Step 8 adds the
   readiness-error and auto-merge-notice report lines and the auto-merge
   guidance text. Report and feedback texts name the bridge tools
   (`mark_pr_ready`, `reply_on_pr` with `thread_id`) instead of `pr_monitor`.

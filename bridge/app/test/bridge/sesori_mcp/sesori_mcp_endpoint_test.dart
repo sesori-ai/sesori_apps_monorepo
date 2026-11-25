@@ -6,12 +6,14 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:image/image.dart" as img;
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/foundation/sesori_mcp_server.dart";
 import "package:sesori_bridge/src/repositories/agent_approval_repository.dart";
 import "package:sesori_bridge/src/repositories/agent_page_repository.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval.dart";
 import "package:sesori_bridge/src/repositories/models/agent_approval_outcome.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
@@ -20,6 +22,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/task_command_edit.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
+import "package:sesori_bridge/src/repositories/sesori_tool_record_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/groups/pages/page_tool_group.dart";
@@ -27,6 +30,7 @@ import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task
 import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task_tool_result_formatter.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/groups/wake_ups/wake_up_tool_group.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
+import "package:sesori_bridge/src/server/host/bridge_sesori_tool_host_impl.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -38,16 +42,20 @@ import "package:sesori_bridge/src/services/session_wake_up_service.dart";
 import "package:sesori_bridge/src/services/tool_group_approval_service.dart";
 import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolApprovalOutcome, SesoriToolGroupId;
+import "package:sesori_tool_interface/sesori_tool_interface.dart"
+    show SesoriToolApprovalOutcome, SesoriToolGroupId, SesoriToolHost;
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
 import "../../helpers/agent_page_test_support.dart";
 import "../../helpers/arming_test_support.dart";
+import "../../helpers/fake_command_executor.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/fakes/wake_up_command_fakes.dart";
+import "../../helpers/in_memory_bridge_settings_api.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 
@@ -187,6 +195,19 @@ void main() {
           }(),
         ),
         WakeUpToolGroup(wakeUps: wakeUpService),
+        _pullRequestMonitorGroup(
+          host: BridgeSesoriToolHostImpl(
+            groupId: SesoriToolGroupIds.prMonitor,
+            records: SesoriToolRecordRepository(
+              dao: SesoriToolRecordDao(database: db),
+              clock: const Clock(),
+            ),
+            notices: notices,
+            sessions: sessions,
+            settings: BridgeSettingsRepository(defaultEditorApi: null, api: InMemoryBridgeSettingsApi(config: "{}")),
+            approvals: toolGroupApprovals,
+          ),
+        ),
       ],
     );
     // As the Orchestrator wires it.
@@ -388,11 +409,16 @@ void main() {
           "schedule_wakeup",
           "list_wakeups",
           "cancel_wakeup",
+          "watch_pr",
+          "unwatch_pr",
+          "pr_watch_status",
+          "get_pr_report",
         ],
       );
       for (final tool in tools) {
         final name = (tool as Map<String, dynamic>)["name"] as String;
-        final readOnly = name.startsWith("list_") || name.startsWith("get_") || name == "send_page";
+        final readOnly =
+            name.startsWith("list_") || name.startsWith("get_") || name == "send_page" || name == "pr_watch_status";
         expect(tool["annotations"], {"readOnlyHint": readOnly});
         expect(tool["inputSchema"], containsPair("type", "object"));
       }
@@ -1925,4 +1951,25 @@ class _FakeRunService() implements ScheduledTaskRunService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// The PR monitor as the Orchestrator builds it, over a gh that is never run.
+PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost host}) {
+  final api = GhCliApi(commandExecutor: FakeCommandExecutor(results: {}));
+  const activity = PullRequestActivityCalculator();
+  const readiness = PullRequestReadinessCalculator(activity: activity);
+  final service = PullRequestWatchService(
+    snapshots: PullRequestSnapshotRepository(api: api),
+    actions: PullRequestActionRepository(api: api),
+    watches: PullRequestWatchRepository(store: host.store),
+    host: host,
+    activity: activity,
+    readiness: readiness,
+    reports: const PullRequestReportBuilder(activity: activity, readiness: readiness),
+    clock: const Clock(),
+  );
+  return PullRequestMonitorToolGroup(
+    watches: service,
+    poller: PullRequestPollListener(service: service, host: host),
+  );
 }

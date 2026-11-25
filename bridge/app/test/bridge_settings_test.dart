@@ -55,7 +55,11 @@ void main() {
 
       expect(settings.toolGroupEnabled(id: tasks), isFalse);
       expect(settings.toolGroupEnabled(id: const SesoriToolGroupId('pages')), isTrue);
-      expect(settings.enabledToolGroups, {SesoriToolGroupIds.pages, SesoriToolGroupIds.wakeUps});
+      expect(settings.enabledToolGroups, {
+        SesoriToolGroupIds.pages,
+        SesoriToolGroupIds.wakeUps,
+        SesoriToolGroupIds.prMonitor,
+      });
       expect(settings.copyWith(agentTools: false).enabledToolGroups, isEmpty);
       expect(settings.toJson()['agentToolGroups'], {
         'disabled': ['tasks', 'from_a_future_bridge'],
