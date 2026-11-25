@@ -637,6 +637,21 @@
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPluginWarmupUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupRetry": "Retry harness warm-up setting",
+  "settingsAgentToolsSection": "Agent tools",
+  "@settingsAgentToolsSection": {"description": "Heading of the settings section with the switches for the tools Sesori gives agents on the connected computer."},
+  "settingsAgentToolsTitle": "Sesori tools",
+  "@settingsAgentToolsTitle": {"description": "Master switch row in the Agent tools section; while it is off, agents get none of the tools listed below it."},
+  "settingsAgentToolsDescription": "Lets agents on this computer use the tools below.",
+  "settingsAgentToolsFootnote": "Changes apply to sessions started or resumed afterwards.",
+  "@settingsAgentToolsFootnote": {"description": "Quiet line under the Agent tools switches: running harness processes keep the tools they started with."},
+  "settingsAgentToolsOff": "Turn on Sesori tools to use {group}.",
+  "@settingsAgentToolsOff": {
+    "description": "Answer to a tap on a dimmed tool group switch while the Sesori tools master switch is off.",
+    "placeholders": {"group": {"type": "String"}}
+  },
+  "settingsAgentToolsUpdateFailed": "Couldn't save the change. Check your connection and try again.",
+  "settingsAgentToolsUncertain": "The update status is unknown. Refresh before trying again.",
+  "settingsAgentToolsRetry": "Refresh agent tool settings",
   "harnessManagementDefaultsSection": "Global harness settings",
   "harnessManagementDefaultTimeout": "Default idle timeout",
   "harnessManagementDefaultTimeoutDescription": "Apply to all harnesses and replace individual overrides.",
@@ -2780,6 +2795,29 @@
   "sessionWakeUpRunsCommand": "Runs a command",
   "@sessionWakeUpRunsCommand": {"description": "Screen-reader wording for the terminal mark on a wake-up that runs a shell command when it fires."},
   "sessionWakeUpCancelFailed": "Could not cancel the wake-up. It may still run. Reconnect and try again.",
+  "sessionPullRequestWatchesChip": "{count, plural, =1{1 pull request} other{{count} pull requests}}",
+  "@sessionPullRequestWatchesChip": {
+    "description": "Label of the pull-request chip beside the session's model picker while the session watches pull requests and has no wake-up. Tapping it lists them.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sessionPullRequestWatchesTitle": "Watched pull requests",
+  "@sessionPullRequestWatchesTitle": {"description": "Heading of the menu section listing the pull requests the session's agent watches."},
+  "sessionPullRequestWatchStop": "Stop watching",
+  "@sessionPullRequestWatchStop": {"description": "Button on one watched pull request in the session's menu; the agent stops getting reports on it."},
+  "sessionPullRequestWatchStopFailed": "Could not stop watching the pull request. Reconnect and try again.",
+  "pullRequestWatchStatusNeedsYou": "needs you",
+  "@pullRequestWatchStatusNeedsYou": {"description": "Status of a watched pull request with failing CI, a conflict, new review comments, or ready without auto-merge."},
+  "pullRequestWatchStatusReady": "ready",
+  "@pullRequestWatchStatusReady": {"description": "Status of a watched pull request the agent marked ready."},
+  "pullRequestWatchStatusWaiting": "waiting",
+  "@pullRequestWatchStatusWaiting": {"description": "Status of a watched pull request waiting on CI or review."},
+  "pullRequestWatchStatusMerged": "merged",
+  "pullRequestWatchStatusUnknown": "status unknown",
+  "sessionListWatchingPullRequests": "{others, plural, =0{Watching pull request {number}, {status}} =1{Watching pull request {number}, {status}, and 1 more} other{Watching pull request {number}, {status}, and {others} more}}",
+  "@sessionListWatchingPullRequests": {
+    "description": "Screen-reader wording for the session-row mark of a session whose agent watches pull requests: the one that needs the user most, its status, and how many more.",
+    "placeholders": {"others": {"type": "int"}, "number": {"type": "String"}, "status": {"type": "String"}}
+  },
   "sessionAutoContinuationAlreadySubmitted": "Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.",
   "@sessionAutoContinuationOffer": {
     "placeholders": {

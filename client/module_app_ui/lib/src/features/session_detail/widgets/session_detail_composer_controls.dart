@@ -140,15 +140,18 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     fastModeControl: state.fastModeControl,
     statusChips: ({required surfaceStyle, required pointer}) =>
         _statusChips(state: state, surfaceStyle: surfaceStyle, pointer: pointer),
-    wakeUpChip: ({required surfaceStyle, required pointer}) => switch (state.session.wakeUps) {
-      [] => null,
-      final wakeUps => SessionWakeUpChip(
-        surfaceStyle: surfaceStyle,
-        wakeUps: wakeUps,
-        showLabel: pointer,
-        onCancel: (wakeUpId) => unawaited(context.read<SessionDetailCubit>().cancelWakeUp(wakeUpId: wakeUpId)),
-      ),
-    },
+    wakeUpChip: ({required surfaceStyle, required pointer}) =>
+        switch ((state.session.wakeUps, state.session.pullRequestWatches)) {
+          ([], []) => null,
+          (final wakeUps, final watches) => SessionWakeUpChip(
+            surfaceStyle: surfaceStyle,
+            wakeUps: wakeUps,
+            pullRequestWatches: watches,
+            showLabel: pointer,
+            onCancel: (wakeUpId) => unawaited(context.read<SessionDetailCubit>().cancelWakeUp(wakeUpId: wakeUpId)),
+            onStopWatching: (watch) => unawaited(context.read<SessionDetailCubit>().stopPullRequestWatch(watch: watch)),
+          ),
+        },
     composerTrailing: state.children.isEmpty
         ? null
         : ValueListenableBuilder<PregoComposerSurfaceStyle>(
