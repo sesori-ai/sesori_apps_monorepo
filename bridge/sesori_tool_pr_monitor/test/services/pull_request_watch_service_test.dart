@@ -46,9 +46,15 @@ class _Harness() {
 
   Future<void> watch({required String sessionId, bool autoMerge = false}) async {
     expect(
-      await service.watch(sessionId: sessionId, target: target, requestedAutoMerge: autoMerge),
+      await service.watch(sessionId: sessionId, target: target, autoMergeByDefault: false),
       isA<PullRequestWatchStarted>(),
     );
+    if (autoMerge) {
+      expect(
+        await service.setAutoMerge(sessionId: sessionId, target: target, enabled: true),
+        isNot(isA<PullRequestAutoMergeNotWatched>()),
+      );
+    }
   }
 
   /// Moves time on by [after] and runs one poll tick.
@@ -370,13 +376,13 @@ void main() {
   test("a merged PR cannot be watched, and a second watch from a session reports the first", () async {
     await h.watch(sessionId: "s1");
     expect(
-      await h.service.watch(sessionId: "s1", target: target, requestedAutoMerge: false),
+      await h.service.watch(sessionId: "s1", target: target, autoMergeByDefault: false),
       isA<PullRequestAlreadyWatched>(),
     );
 
     h.snapshots.enqueue(emptySnapshot.copyWith(state: PullRequestState.merged));
     expect(
-      await h.service.watch(sessionId: "s2", target: target, requestedAutoMerge: false),
+      await h.service.watch(sessionId: "s2", target: target, autoMergeByDefault: false),
       isA<PullRequestAlreadyEnded>(),
     );
     expect(h.store.sessionRecords["s2"], isNull);
@@ -722,7 +728,7 @@ void main() {
           reason: "a watch keeps its choice",
         );
         expect(
-          await h.service.watch(sessionId: "s2", target: target, requestedAutoMerge: null),
+          await h.service.watch(sessionId: "s2", target: target, autoMergeByDefault: true),
           isA<PullRequestWatchStarted>().having((started) => started.autoMerge, "autoMerge", isTrue),
         );
       },

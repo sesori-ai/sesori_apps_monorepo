@@ -65,14 +65,13 @@ class PullRequestMonitorToolGroup({
         arguments: arguments,
         run: (target) async {
           final requested = _flag(value: arguments["auto_merge"], field: "auto_merge");
-          final askFirst = (requested ?? false) && _watches.autoMergeNeedsAllow(target: target);
           final result = await _watches.watch(
             sessionId: sessionId,
             target: target,
-            requestedAutoMerge: askFirst ? false : requested,
+            autoMergeByDefault: requested ?? true,
           );
           final started = _watchResult(target: target, result: result);
-          if (!askFirst || result is! PullRequestWatchStarted) return started;
+          if (requested != true || result is! PullRequestWatchStarted) return started;
           final request = await _requestAutoMerge(
             askingSessionId: caller.sessionId,
             sessionId: sessionId,

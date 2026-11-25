@@ -85,15 +85,17 @@ class PullRequestWatchService({
     }
   }
 
-  /// With auto-merge, a ready label the PR already carries is removed
-  /// first, unless auto-merge already applied to it. A null
-  /// [requestedAutoMerge] takes the settings' default for the repository.
+  /// Starts [sessionId]'s watch, with auto-merge only when
+  /// [autoMergeByDefault] and the settings turn it on for the repository: an
+  /// agent asking for it goes through [requestAutoMerge]. With auto-merge, a
+  /// ready label the PR already carries is removed first, unless auto-merge
+  /// already applied to it.
   Future<PullRequestWatchStart> watch({
     required String sessionId,
     required PullRequestTarget target,
-    required bool? requestedAutoMerge,
+    required bool autoMergeByDefault,
   }) async {
-    final autoMerge = requestedAutoMerge ?? _config.autoMergeFor(repositoryKey: target.repositoryKey);
+    final autoMerge = autoMergeByDefault && _config.autoMergeFor(repositoryKey: target.repositoryKey);
     final String selfLogin;
     try {
       selfLogin = await _actions.selfLogin();
@@ -374,11 +376,6 @@ class PullRequestWatchService({
     );
   }
 
-  /// Whether an agent turning auto-merge on for [target] needs the user's
-  /// Allow: only while the settings leave it off by default there.
-  bool autoMergeNeedsAllow({required PullRequestTarget target}) =>
-      !_config.autoMergeFor(repositoryKey: target.repositoryKey);
-
   /// An agent's request to turn auto-merge on for [sessionId]'s watch. Where
   /// the default is off it first asks the user of [askingSessionId], the
   /// session that called the tool; once they answer, [sessionId] hears the
@@ -389,7 +386,7 @@ class PullRequestWatchService({
     required PullRequestTarget target,
   }) async {
     final watch = _runtimes[target.registryKey]?.watches[sessionId];
-    if (watch == null || watch.stored.autoMerge || !autoMergeNeedsAllow(target: target)) {
+    if (watch == null || watch.stored.autoMerge || _config.autoMergeFor(repositoryKey: target.repositoryKey)) {
       return PullRequestAutoMergeRequestApplied(
         result: await setAutoMerge(sessionId: sessionId, target: target, enabled: true),
       );
