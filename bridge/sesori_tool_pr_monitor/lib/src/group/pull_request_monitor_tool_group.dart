@@ -119,7 +119,8 @@ class PullRequestMonitorToolGroup({
   Future<SesoriToolResult> _attempt({required String failure, required Future<String> Function() run}) async {
     try {
       return SesoriToolSuccess(text: await run());
-    } on Exception catch (error) {
+    } on Exception catch (error, stackTrace) {
+      Log.w("PR monitor: $failure", error, stackTrace);
       return SesoriToolFailure(text: "$failure: $error");
     }
   }
