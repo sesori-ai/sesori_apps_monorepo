@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -211,6 +212,23 @@ void main() {
       final state = cubit.state as PullRequestWatchListLoaded;
       expect(state.watches, [item]);
       expect(state.stopping, isEmpty);
+    });
+  });
+
+  test("a failed first load is tried again, so the button appears without a new signal", () {
+    fakeAsync((async) {
+      when(() => repository.listWatches()).thenAnswer(
+        (_) async => PullRequestWatchListFailure(error: NonSuccessCodeError(errorCode: 503, rawErrorString: null)),
+      );
+      final cubit = create();
+      async.flushMicrotasks();
+      expect(cubit.state, isA<PullRequestWatchListFailed>());
+
+      answerList([_item(number: 1)]);
+      async.elapse(const Duration(seconds: 5));
+
+      expect(watchesOf(cubit), hasLength(1));
+      verify(() => repository.listWatches()).called(2);
     });
   });
 }

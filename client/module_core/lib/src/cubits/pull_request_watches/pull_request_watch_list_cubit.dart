@@ -12,6 +12,7 @@ import "../../logging/logging.dart";
 import "../../repositories/models/pull_request_watch_list_result.dart";
 import "../../repositories/pull_request_watch_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../scheduled_tasks/scheduled_task_refresh.dart";
 import "pull_request_watch_list_state.dart";
 
 /// The current computer's watched pull requests, for the home button, the
@@ -31,8 +32,13 @@ class PullRequestWatchListCubit({
   /// The watches as the bridge last listed them.
   List<PullRequestWatchListItem> _watches = const [];
 
-  /// Each load's number; only the latest load's answer is applied.
+  /// Each load's number; a computer switch drops the answer of a load in
+  /// flight.
   int _loads = 0;
+
+  // Serializes loads, and retries a failed one a few times: the bridge only
+  // announces changes, so a missed load could otherwise stay stale.
+  late final ScheduledTaskRefreshDispatcher _queue = ScheduledTaskRefreshDispatcher(refresh: _load);
 
   /// Auto-merge positions sent but not yet answered. They override
   /// [_watches], so a reload that lands meanwhile does not flick the mark
@@ -57,8 +63,11 @@ class PullRequestWatchListCubit({
     unawaited(refresh());
   }
 
-  /// Reloads the list; the latest call's answer wins.
-  Future<void> refresh() async {
+  /// Reloads the list once any load in flight is done.
+  Future<void> refresh() => _queue.request();
+
+  /// Loads the list; false when nothing was applied, so the load is retried.
+  Future<bool> _load() async {
     final load = ++_loads;
     final PullRequestWatchListResult result;
     try {
@@ -68,19 +77,23 @@ class PullRequestWatchListCubit({
       if (!isClosed && load == _loads && state is PullRequestWatchListLoading) {
         emit(const PullRequestWatchListFailed());
       }
-      return;
+      return false;
     }
-    if (isClosed || load != _loads) return;
+    // After a computer switch, the reconnect that follows loads again.
+    if (isClosed || load != _loads) return true;
     switch (result) {
       case PullRequestWatchListSuccess(:final watches):
         _watches = watches;
         _emitLoaded();
+        return true;
       case PullRequestWatchListBridgeOutdated():
         emit(const PullRequestWatchListUnsupported());
+        return true;
       case PullRequestWatchListFailure(:final error):
         logw("Failed to load watched pull requests", error);
-        // Watches already shown stay until the next signal or retry.
+        // Watches already shown stay until a retry or the next signal.
         if (state is PullRequestWatchListLoading) emit(const PullRequestWatchListFailed());
+        return false;
     }
   }
 
@@ -185,6 +198,7 @@ class PullRequestWatchListCubit({
 
   @override
   Future<void> close() async {
+    _queue.dispose();
     await _signals.cancel();
     await _statuses.cancel();
     return await super.close();

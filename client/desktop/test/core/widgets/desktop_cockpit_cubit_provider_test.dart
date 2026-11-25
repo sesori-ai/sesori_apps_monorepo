@@ -46,6 +46,8 @@ void main() {
     // Register only owned fake-backed factories, never production DI/bootstrap.
     getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: MockSessionRepository()));
     getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
+    getIt.registerSingleton<PullRequestWatchRepository>(MockPullRequestWatchRepository());
+    getIt.registerSingleton<SessionRepository>(MockSessionRepository());
     getIt.registerSingleton<ConnectionService>(connection);
     getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
     getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
@@ -99,6 +101,8 @@ void main() {
       await getIt.unregister<SessionSendTracker>();
       await getIt.unregister<SessionCleanupService>();
       await getIt.unregister<RegisteredBridgesService>();
+      await getIt.unregister<PullRequestWatchRepository>();
+      await getIt.unregister<SessionRepository>();
       await getIt.unregister<ConnectionService>();
       await getIt.unregister<ActiveBridgeLocality>();
       await getIt.unregister<SelectedComputerService>();
