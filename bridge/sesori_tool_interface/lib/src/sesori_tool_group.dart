@@ -2,6 +2,7 @@ import "sesori_tool_argument_parser.dart" show InvalidToolArguments;
 import "sesori_tool_caller.dart";
 import "sesori_tool_definition.dart";
 import "sesori_tool_group_id.dart";
+import "sesori_tool_guide.dart";
 import "sesori_tool_result.dart";
 
 /// A set of tools with one purpose, served on Sesori's MCP server.
@@ -23,6 +24,9 @@ abstract interface class SesoriToolGroup() {
   String get instructions;
 
   List<SesoriToolDefinition> get tools;
+
+  /// The group's long how-to, or null when its tool descriptions say enough.
+  SesoriToolGuide? get guide;
 
   /// Begins the group's own work, such as resuming what it stored before a
   /// restart. The bridge calls it once, after its database opens; calls may

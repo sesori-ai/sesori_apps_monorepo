@@ -6,5 +6,4 @@ part of 'codex_thread_sample_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexThreadSampleDto _$CodexThreadSampleDtoFromJson(Map json) =>
-    _CodexThreadSampleDto(text: json['text'] as String?);
+_CodexThreadSampleDto _$CodexThreadSampleDtoFromJson(Map json) => _CodexThreadSampleDto(text: json['text'] as String?);

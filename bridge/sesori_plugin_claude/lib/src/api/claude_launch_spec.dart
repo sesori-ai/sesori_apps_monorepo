@@ -103,6 +103,11 @@ class ClaudeLaunchSpec({
   /// The config file that gives this launch Sesori's own MCP server, or null
   /// to inject none: agent tools are off, or the process is a catalog probe.
   required final ClaudeSesoriMcpConfigFile? sesoriMcp,
+
+  /// Sesori's skill bundle as a Claude plugin folder
+  /// (`SesoriSkillBundle.pluginRoot`), loaded beside [sesoriMcp] so its
+  /// skills surface as `sesori:<name>`; null to load none.
+  required final String? sesoriPluginDirectory,
   Map<String, String> environment = const {},
 }) {
   /// Extra environment entries merged over the bridge's own environment.
@@ -211,6 +216,8 @@ class ClaudeLaunchSpec({
     // own, and nothing reaches the user's configuration, so a later plain
     // `claude --resume` loads no Sesori server.
     if (sesoriMcp case final server?) ...["--mcp-config", server.path],
+    // For this process only: the user's own plugins stay as they are.
+    if (sesoriPluginDirectory case final directory?) ...["--plugin-dir", directory],
     if (purpose == ClaudeProcessPurpose.catalogProbe) ...catalogProbeIsolationArguments,
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI

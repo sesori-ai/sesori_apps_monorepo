@@ -21,8 +21,7 @@ CodexModelProviderNotConfiguredDto _$CodexModelProviderNotConfiguredDtoFromJson(
   $type: json['type'] as String?,
 );
 
-CodexModelProviderPolicyConflictDto
-_$CodexModelProviderPolicyConflictDtoFromJson(Map json) =>
+CodexModelProviderPolicyConflictDto _$CodexModelProviderPolicyConflictDtoFromJson(Map json) =>
     CodexModelProviderPolicyConflictDto(
       modelProvider: json['modelProvider'] as String,
       requiredModelProvider: json['requiredModelProvider'] as String,

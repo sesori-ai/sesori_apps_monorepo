@@ -90,9 +90,17 @@ String sesoriPageImagesDirectory() => path.join(_sesoriHomeDirectory(), "page-im
 /// [StateError] when the home environment variable is unset.
 String sesoriCommandOutputDirectory() => path.join(_sesoriHomeDirectory(), "command-output");
 
+/// The folder that holds the skills the bridge writes for its tool groups'
+/// guides, which harnesses load from there: `<home>/.sesori/agent-skills`.
+///
+/// Beside the uploads root and for the same reasons. Shared by every bridge
+/// data directory. Throws [StateError] when the home environment variable is
+/// unset.
+String sesoriAgentSkillsDirectory() => path.join(_sesoriHomeDirectory(), "agent-skills");
+
 /// `<home>/.sesori`, the one home folder that holds Sesori's worktrees,
-/// scratch folders, prompt uploads, sent transcripts, page images and command
-/// output.
+/// scratch folders, prompt uploads, sent transcripts, page images, command
+/// output and agent skills.
 String _sesoriHomeDirectory() => path.join(_requireUserHome(environment: Platform.environment), ".sesori");
 
 /// Resolves the persistent attachment root shared by every bridge data directory

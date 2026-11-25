@@ -570,6 +570,7 @@ class CodexSessionService({
     required bool fastMode,
   }) async {
     final sesoriMcp = _sesoriMcp.mint();
+    await _loadSesoriSkills();
     final thread = await _connectedThreadRepository.startThread(
       cwd: cwd,
       model: model,
@@ -593,6 +594,7 @@ class CodexSessionService({
     final cwd = (await _catalogRepository.findSessionById(sessionId: threadId))?.cwd;
     final sesoriMcp = _sesoriMcp.mint();
     if (sesoriMcp != null) _sesoriMcp.bind(launch: sesoriMcp, backendSessionId: threadId);
+    await _loadSesoriSkills();
     final resumed = await _connectedThreadRepository.resumeThread(
       threadId: threadId,
       developerInstructions: await _developerInstructions(cwd: cwd),
@@ -663,6 +665,7 @@ class CodexSessionService({
       messageId: throughMessageId,
     );
     final sesoriMcp = _sesoriMcp.mint();
+    await _loadSesoriSkills();
     final fork = await _connectedThreadRepository.forkThread(
       threadId: threadId,
       lastTurnId: lastTurnId,
@@ -1208,6 +1211,18 @@ class CodexSessionService({
       throw StateError("codex app-server API is not connected");
     }
     return repository;
+  }
+
+  /// Codex loads Sesori's skills from the app-server's extra skill roots,
+  /// which serve every thread, so each launch sets them: a group toggled since
+  /// the last launch reaches the next one. A failure leaves the thread with
+  /// `get_guide` alone.
+  Future<void> _loadSesoriSkills() async {
+    try {
+      await _connectedSkillRepository.setExtraRoots(roots: [?_sesoriMcp.skillBundle?.skillsRoot]);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] loading Sesori's skills failed", error, stackTrace);
+    }
   }
 
   CodexSkillRepository get _connectedSkillRepository {

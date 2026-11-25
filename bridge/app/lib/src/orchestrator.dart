@@ -34,6 +34,7 @@ import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
+import "api/sesori_skill_bundle_storage.dart";
 import "api/shell_command_api.dart";
 import "auth/access_token_provider.dart";
 import "auth/bridge_registration_service.dart";
@@ -57,6 +58,7 @@ import "listeners/plugin_event_listener.dart";
 import "listeners/plugin_warmup_setting_listener.dart";
 import "listeners/running_turn_listener.dart";
 import "listeners/scheduled_task_timer_listener.dart";
+import "listeners/sesori_skill_bundle_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_continuation_timer_listener.dart";
 import "listeners/session_mutation_listener.dart";
@@ -333,6 +335,7 @@ class Orchestrator({
   required final BridgeStartupRetryService _startupRetryService,
   required final Stream<SesoriMcpInboundRequest> _sesoriMcpRequests,
   required final SesoriMcpGrantRepository _sesoriMcpGrants,
+  required final SesoriSkillBundleStorage _skillBundles,
 }) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -1132,6 +1135,11 @@ class Orchestrator({
       sesoriMcpRequests: _sesoriMcpRequests,
       sesoriMcpRequestDispatcher: sesoriMcpRequestDispatcher,
       toolGroups: toolGroups,
+      skillBundleListener: SesoriSkillBundleListener(
+        settings: _bridgeSettingsRepository,
+        groups: toolGroups,
+        storage: _skillBundles,
+      ),
       toolGroupApprovalService: toolGroupApprovalService,
       agentApprovalRepository: agentApprovalRepository,
       agentPageRepository: agentPageRepository,
@@ -1285,6 +1293,7 @@ class OrchestratorSession._({
   required Stream<SesoriMcpInboundRequest> sesoriMcpRequests,
   required final SesoriMcpRequestDispatcher _sesoriMcpRequestDispatcher,
   required final List<SesoriToolGroup> _toolGroups,
+  required final SesoriSkillBundleListener _skillBundleListener,
   required final ToolGroupApprovalService _toolGroupApprovalService,
   required final AgentApprovalRepository _agentApprovalRepository,
   required final AgentPageRepository _agentPageRepository,
@@ -1521,6 +1530,7 @@ class OrchestratorSession._({
     _scheduledTaskTimer.start();
     _sessionWakeUpTimer.start();
     _toolGroupsStarted = _startToolGroups();
+    _skillBundleListener.start();
     // After the mutation listener, so a resolution's announcement reaches
     // clients.
     _interruptedTurnListener.start();
@@ -1855,6 +1865,7 @@ class OrchestratorSession._({
     await Future.wait([
       attempt(_pluginWarmupSettingListener.dispose),
       attempt(_viewedSessionPluginWarmupListener.dispose),
+      attempt(_skillBundleListener.dispose),
     ]);
     Log.v("[shutdown] maintenance + view listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the

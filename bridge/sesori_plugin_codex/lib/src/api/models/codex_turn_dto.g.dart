@@ -6,23 +6,21 @@ part of 'codex_turn_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexTurnStartResponseDto _$CodexTurnStartResponseDtoFromJson(Map json) =>
-    _CodexTurnStartResponseDto(
-      turn: json['turn'] == null
-          ? null
-          : CodexTurnDto.fromJson(
-              Map<String, dynamic>.from(json['turn'] as Map),
-            ),
-    );
+_CodexTurnStartResponseDto _$CodexTurnStartResponseDtoFromJson(Map json) => _CodexTurnStartResponseDto(
+  turn: json['turn'] == null
+      ? null
+      : CodexTurnDto.fromJson(
+          Map<String, dynamic>.from(json['turn'] as Map),
+        ),
+);
 
-_CodexThreadTurnsPageDto _$CodexThreadTurnsPageDtoFromJson(Map json) =>
-    _CodexThreadTurnsPageDto(
-      data: (json['data'] as List<dynamic>?)
-          ?.map(
-            (e) => CodexTurnDto.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList(),
-    );
+_CodexThreadTurnsPageDto _$CodexThreadTurnsPageDtoFromJson(Map json) => _CodexThreadTurnsPageDto(
+  data: (json['data'] as List<dynamic>?)
+      ?.map(
+        (e) => CodexTurnDto.fromJson(Map<String, dynamic>.from(e as Map)),
+      )
+      .toList(),
+);
 
 _CodexTurnDto _$CodexTurnDtoFromJson(Map json) => _CodexTurnDto(
   id: json['id'] as String?,

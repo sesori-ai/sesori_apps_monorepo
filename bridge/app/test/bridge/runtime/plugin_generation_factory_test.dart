@@ -19,6 +19,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_repository.dart";
+import "../../helpers/skill_bundle_test_support.dart";
 
 // The plugin-specific start flows (managed start, attach mode, ownership
 // records) live with OpenCodePluginDescriptor in sesori_plugin_opencode;
@@ -88,6 +89,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        skillBundles: temporarySkillBundleStorage(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       BridgePlugin? startedPlugin;
@@ -136,6 +138,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        skillBundles: temporarySkillBundleStorage(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
     }
@@ -425,6 +428,7 @@ void main() {
         settingsChanges: settingsChanges.stream,
         sesoriMcpUrl: Uri.parse("http://127.0.0.1:1/mcp"),
         sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+        skillBundles: temporarySkillBundleStorage(),
         enabledToolGroups: () => SesoriToolGroupIds.all.toSet(),
       );
       await factory.enforceBridgeOwnership();

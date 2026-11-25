@@ -4,10 +4,8 @@ part of 'session_options_cache_dao.dart';
 
 // ignore_for_file: type=lint
 mixin _$SessionOptionsCacheDaoMixin on DatabaseAccessor<AppDatabase> {
-  $SessionOptionsCacheTableTable get sessionOptionsCacheTable =>
-      attachedDatabase.sessionOptionsCacheTable;
-  SessionOptionsCacheDaoManager get managers =>
-      SessionOptionsCacheDaoManager(this);
+  $SessionOptionsCacheTableTable get sessionOptionsCacheTable => attachedDatabase.sessionOptionsCacheTable;
+  SessionOptionsCacheDaoManager get managers => SessionOptionsCacheDaoManager(this);
 }
 
 class SessionOptionsCacheDaoManager {

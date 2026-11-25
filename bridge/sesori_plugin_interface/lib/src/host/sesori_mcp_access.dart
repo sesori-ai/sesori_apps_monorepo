@@ -22,6 +22,18 @@ final class const SesoriMcpLaunch({
   String toString() => "SesoriMcpLaunch(serverName: $serverName, url: $url)";
 }
 
+/// The skills Sesori writes for its tool groups, one per enabled group with a
+/// guide, in two layouts of one folder. The paths stay the same while the
+/// bridge runs, and the files hold no secrets.
+final class const SesoriSkillBundle({
+  /// A Claude Code plugin named `sesori`, for `--plugin-dir`: its skills
+  /// surface as `sesori:<name>`.
+  required final String pluginRoot,
+
+  /// A plain skills folder holding one `sesori-<name>/SKILL.md` per skill.
+  required final String skillsRoot,
+});
+
 /// Per-launch access to Sesori's MCP server, offered to plugins through
 /// `PluginHost.sesoriMcp`.
 ///
@@ -36,4 +48,9 @@ abstract class SesoriMcpAccess() {
   /// Attributes [launch] to [backendSessionId], the id the harness uses for
   /// the session this launch serves.
   void bind({required SesoriMcpLaunch launch, required String backendSessionId});
+
+  /// The skills to load beside a launch's tools, or null when there are none:
+  /// agent tools are off, or no enabled group has a guide. Read it at each
+  /// launch, as [mint].
+  SesoriSkillBundle? get skillBundle;
 }

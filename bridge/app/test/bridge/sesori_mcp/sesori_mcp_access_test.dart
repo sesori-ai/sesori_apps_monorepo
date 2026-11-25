@@ -12,6 +12,7 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToo
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/skill_bundle_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -64,6 +65,7 @@ void main() {
         url: url,
         grants: grants,
         enabledToolGroups: () => tasksOnly,
+        skillBundles: temporarySkillBundleStorage(),
       );
 
       final launch = access.mint() ?? fail("a group is on, so a launch is minted");
@@ -89,6 +91,7 @@ void main() {
         url: url,
         grants: SesoriMcpGrantRepository(random: Random.secure()),
         enabledToolGroups: () => enabled,
+        skillBundles: temporarySkillBundleStorage(),
       );
 
       expect(access.mint(), isNull);
