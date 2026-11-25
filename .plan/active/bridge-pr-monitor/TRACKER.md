@@ -8,8 +8,8 @@
 | 4 | 🚧 Tool host: records, notices and approvals | Done | #2913 |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
-| 7 | 🚧 Watches: fan-out polling, delivery and restart | In review | #2916 |
-| 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
+| 7 | 🚧 Watches: fan-out polling, delivery and restart | Done | #2916 |
+| 8 | 🚧 Readiness, auto-merge, feedback and reply | In review | #2919, #2920 |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | In review | #2922. Every seam verified live; Grok uses `_meta.pluginDirs` and Oh My Pi `--plugin-dir` (see `HARNESS_CAPABILITIES.md`). |
@@ -54,6 +54,23 @@
     auto-merge run after a report; the idle reminder already skips a PR that
     has the ready label unless auto-merge is on.
   - No `watchesChanged` stream yet; step 12 adds what its projection needs.
+- Step 8 as built (8.a: GitHub writes, feedback and reply; 8.b: readiness):
+  - `PullRequestMergeService` is stateless; the runtime's in-memory
+    `PullRequestMergeState` holds the typed retry (`ready` plus the caught
+    exception) and the last `PullRequestMergeAttempt` (head and outcome).
+    `PullRequestReportBuilder` owns every readiness sentence, and the group
+    uses it for `mark_pr_ready` texts. A restart starts from the initial
+    state, so the first poll after it cannot invalidate a ready label.
+  - The baseline stores `ready`. There is no "merge stuck" state: the idle
+    reminder's stuck line covers it, and step 12 can derive it from
+    ready + auto-merge + open.
+  - A standalone (unwatched) mark or unmark only labels, with no runtime;
+    step 9 decides whether its auto-merge default applies there.
+    `get_pr_feedback` and `reply_on_pr` call GitHub outside the op queue.
+  - A merge result or new readiness failure reports to every watcher once;
+    a `get_pr_report` that shows it consumes it for all of them, and a
+    dropped report restores it. `get_pr_report` stays read-only: only a due
+    report labels or merges. Notice settlement runs in the PR's op queue.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.

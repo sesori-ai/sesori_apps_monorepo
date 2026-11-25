@@ -22,7 +22,9 @@ mixin _$PullRequestBaseline {
 /// reviewers.
  String get reviewSignature;/// Relevant comments only: the agent's prefixed replies are never news.
  Set<String> get issueCommentIds; int get issueCommentsTotal; Set<String> get reviewSummaryIds;/// Relevant comment ids per review thread id.
- Map<String, Set<String>> get threadCommentIds; Set<String> get resolvedThreadIds; int get unresolvedThreadCount;
+ Map<String, Set<String>> get threadCommentIds; Set<String> get resolvedThreadIds; int get unresolvedThreadCount;/// Whether the PR carried the ready label, so a label change alone, such
+/// as one the monitor made or one removed from outside, is reported.
+ bool get ready;
 /// Create a copy of PullRequestBaseline
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -36,20 +38,20 @@ $PullRequestBaselineCopyWith<PullRequestBaseline> get copyWith => _$PullRequestB
 @override
 bool operator ==(Object other) {
   final _this = this as PullRequestBaseline;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestBaseline&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.headSha, _this.headSha) || other.headSha == _this.headSha)&&(identical(other.mergeable, _this.mergeable) || other.mergeable == _this.mergeable)&&(identical(other.ciPhase, _this.ciPhase) || other.ciPhase == _this.ciPhase)&&const DeepCollectionEquality().equals(other.failedCheckIds, _this.failedCheckIds)&&(identical(other.reviewSignature, _this.reviewSignature) || other.reviewSignature == _this.reviewSignature)&&const DeepCollectionEquality().equals(other.issueCommentIds, _this.issueCommentIds)&&(identical(other.issueCommentsTotal, _this.issueCommentsTotal) || other.issueCommentsTotal == _this.issueCommentsTotal)&&const DeepCollectionEquality().equals(other.reviewSummaryIds, _this.reviewSummaryIds)&&const DeepCollectionEquality().equals(other.threadCommentIds, _this.threadCommentIds)&&const DeepCollectionEquality().equals(other.resolvedThreadIds, _this.resolvedThreadIds)&&(identical(other.unresolvedThreadCount, _this.unresolvedThreadCount) || other.unresolvedThreadCount == _this.unresolvedThreadCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PullRequestBaseline&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.headSha, _this.headSha) || other.headSha == _this.headSha)&&(identical(other.mergeable, _this.mergeable) || other.mergeable == _this.mergeable)&&(identical(other.ciPhase, _this.ciPhase) || other.ciPhase == _this.ciPhase)&&const DeepCollectionEquality().equals(other.failedCheckIds, _this.failedCheckIds)&&(identical(other.reviewSignature, _this.reviewSignature) || other.reviewSignature == _this.reviewSignature)&&const DeepCollectionEquality().equals(other.issueCommentIds, _this.issueCommentIds)&&(identical(other.issueCommentsTotal, _this.issueCommentsTotal) || other.issueCommentsTotal == _this.issueCommentsTotal)&&const DeepCollectionEquality().equals(other.reviewSummaryIds, _this.reviewSummaryIds)&&const DeepCollectionEquality().equals(other.threadCommentIds, _this.threadCommentIds)&&const DeepCollectionEquality().equals(other.resolvedThreadIds, _this.resolvedThreadIds)&&(identical(other.unresolvedThreadCount, _this.unresolvedThreadCount) || other.unresolvedThreadCount == _this.unresolvedThreadCount)&&(identical(other.ready, _this.ready) || other.ready == _this.ready));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PullRequestBaseline;
-  return Object.hash(runtimeType,_this.state,_this.headSha,_this.mergeable,_this.ciPhase,const DeepCollectionEquality().hash(_this.failedCheckIds),_this.reviewSignature,const DeepCollectionEquality().hash(_this.issueCommentIds),_this.issueCommentsTotal,const DeepCollectionEquality().hash(_this.reviewSummaryIds),const DeepCollectionEquality().hash(_this.threadCommentIds),const DeepCollectionEquality().hash(_this.resolvedThreadIds),_this.unresolvedThreadCount);
+  return Object.hash(runtimeType,_this.state,_this.headSha,_this.mergeable,_this.ciPhase,const DeepCollectionEquality().hash(_this.failedCheckIds),_this.reviewSignature,const DeepCollectionEquality().hash(_this.issueCommentIds),_this.issueCommentsTotal,const DeepCollectionEquality().hash(_this.reviewSummaryIds),const DeepCollectionEquality().hash(_this.threadCommentIds),const DeepCollectionEquality().hash(_this.resolvedThreadIds),_this.unresolvedThreadCount,_this.ready);
 }
 
 @override
 String toString() {
   final _this = this as PullRequestBaseline;
-  return 'PullRequestBaseline(state: ${_this.state}, headSha: ${_this.headSha}, mergeable: ${_this.mergeable}, ciPhase: ${_this.ciPhase}, failedCheckIds: ${_this.failedCheckIds}, reviewSignature: ${_this.reviewSignature}, issueCommentIds: ${_this.issueCommentIds}, issueCommentsTotal: ${_this.issueCommentsTotal}, reviewSummaryIds: ${_this.reviewSummaryIds}, threadCommentIds: ${_this.threadCommentIds}, resolvedThreadIds: ${_this.resolvedThreadIds}, unresolvedThreadCount: ${_this.unresolvedThreadCount})';
+  return 'PullRequestBaseline(state: ${_this.state}, headSha: ${_this.headSha}, mergeable: ${_this.mergeable}, ciPhase: ${_this.ciPhase}, failedCheckIds: ${_this.failedCheckIds}, reviewSignature: ${_this.reviewSignature}, issueCommentIds: ${_this.issueCommentIds}, issueCommentsTotal: ${_this.issueCommentsTotal}, reviewSummaryIds: ${_this.reviewSummaryIds}, threadCommentIds: ${_this.threadCommentIds}, resolvedThreadIds: ${_this.resolvedThreadIds}, unresolvedThreadCount: ${_this.unresolvedThreadCount}, ready: ${_this.ready})';
 }
 
 
@@ -60,7 +62,7 @@ abstract mixin class $PullRequestBaselineCopyWith<$Res>  {
   factory $PullRequestBaselineCopyWith(PullRequestBaseline value, $Res Function(PullRequestBaseline) _then) = _$PullRequestBaselineCopyWithImpl;
 @useResult
 $Res call({
- PullRequestState state, String headSha, PullRequestMergeable mergeable, PullRequestCiPhase ciPhase, Set<String> failedCheckIds, String reviewSignature, Set<String> issueCommentIds, int issueCommentsTotal, Set<String> reviewSummaryIds, Map<String, Set<String>> threadCommentIds, Set<String> resolvedThreadIds, int unresolvedThreadCount
+ PullRequestState state, String headSha, PullRequestMergeable mergeable, PullRequestCiPhase ciPhase, Set<String> failedCheckIds, String reviewSignature, Set<String> issueCommentIds, int issueCommentsTotal, Set<String> reviewSummaryIds, Map<String, Set<String>> threadCommentIds, Set<String> resolvedThreadIds, int unresolvedThreadCount, bool ready
 });
 
 
@@ -77,7 +79,7 @@ class _$PullRequestBaselineCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestBaseline
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? state = null,Object? headSha = null,Object? mergeable = null,Object? ciPhase = null,Object? failedCheckIds = null,Object? reviewSignature = null,Object? issueCommentIds = null,Object? issueCommentsTotal = null,Object? reviewSummaryIds = null,Object? threadCommentIds = null,Object? resolvedThreadIds = null,Object? unresolvedThreadCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? state = null,Object? headSha = null,Object? mergeable = null,Object? ciPhase = null,Object? failedCheckIds = null,Object? reviewSignature = null,Object? issueCommentIds = null,Object? issueCommentsTotal = null,Object? reviewSummaryIds = null,Object? threadCommentIds = null,Object? resolvedThreadIds = null,Object? unresolvedThreadCount = null,Object? ready = null,}) {
   return _then(PullRequestBaseline(
 state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PullRequestState,headSha: null == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
@@ -91,7 +93,8 @@ as int,reviewSummaryIds: null == reviewSummaryIds ? _self.reviewSummaryIds : rev
 as Set<String>,threadCommentIds: null == threadCommentIds ? _self.threadCommentIds : threadCommentIds // ignore: cast_nullable_to_non_nullable
 as Map<String, Set<String>>,resolvedThreadIds: null == resolvedThreadIds ? _self.resolvedThreadIds : resolvedThreadIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,unresolvedThreadCount: null == unresolvedThreadCount ? _self.unresolvedThreadCount : unresolvedThreadCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,ready: null == ready ? _self.ready : ready // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -103,7 +106,7 @@ as int,
 @JsonSerializable()
 
 class _PullRequestBaseline implements PullRequestBaseline {
-  const _PullRequestBaseline({required this.state, required this.headSha, required this.mergeable, required this.ciPhase, required  Set<String> failedCheckIds, required this.reviewSignature, required  Set<String> issueCommentIds, required this.issueCommentsTotal, required  Set<String> reviewSummaryIds, required  Map<String, Set<String>> threadCommentIds, required  Set<String> resolvedThreadIds, required this.unresolvedThreadCount}): _failedCheckIds = failedCheckIds,_issueCommentIds = issueCommentIds,_reviewSummaryIds = reviewSummaryIds,_threadCommentIds = threadCommentIds,_resolvedThreadIds = resolvedThreadIds;
+  const _PullRequestBaseline({required this.state, required this.headSha, required this.mergeable, required this.ciPhase, required  Set<String> failedCheckIds, required this.reviewSignature, required  Set<String> issueCommentIds, required this.issueCommentsTotal, required  Set<String> reviewSummaryIds, required  Map<String, Set<String>> threadCommentIds, required  Set<String> resolvedThreadIds, required this.unresolvedThreadCount, required this.ready}): _failedCheckIds = failedCheckIds,_issueCommentIds = issueCommentIds,_reviewSummaryIds = reviewSummaryIds,_threadCommentIds = threadCommentIds,_resolvedThreadIds = resolvedThreadIds;
   factory _PullRequestBaseline.fromJson(Map<String, dynamic> json) => _$PullRequestBaselineFromJson(json);
 
 @override final  PullRequestState state;
@@ -156,6 +159,9 @@ class _PullRequestBaseline implements PullRequestBaseline {
 }
 
 @override final  int unresolvedThreadCount;
+/// Whether the PR carried the ready label, so a label change alone, such
+/// as one the monitor made or one removed from outside, is reported.
+@override final  bool ready;
 
 /// Create a copy of PullRequestBaseline
 /// with the given fields replaced by the non-null parameter values.
@@ -170,18 +176,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestBaseline&&(identical(other.state, state) || other.state == state)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.ciPhase, ciPhase) || other.ciPhase == ciPhase)&&const DeepCollectionEquality().equals(other.failedCheckIds, _failedCheckIds)&&(identical(other.reviewSignature, reviewSignature) || other.reviewSignature == reviewSignature)&&const DeepCollectionEquality().equals(other.issueCommentIds, _issueCommentIds)&&(identical(other.issueCommentsTotal, issueCommentsTotal) || other.issueCommentsTotal == issueCommentsTotal)&&const DeepCollectionEquality().equals(other.reviewSummaryIds, _reviewSummaryIds)&&const DeepCollectionEquality().equals(other.threadCommentIds, _threadCommentIds)&&const DeepCollectionEquality().equals(other.resolvedThreadIds, _resolvedThreadIds)&&(identical(other.unresolvedThreadCount, unresolvedThreadCount) || other.unresolvedThreadCount == unresolvedThreadCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PullRequestBaseline&&(identical(other.state, state) || other.state == state)&&(identical(other.headSha, headSha) || other.headSha == headSha)&&(identical(other.mergeable, mergeable) || other.mergeable == mergeable)&&(identical(other.ciPhase, ciPhase) || other.ciPhase == ciPhase)&&const DeepCollectionEquality().equals(other.failedCheckIds, _failedCheckIds)&&(identical(other.reviewSignature, reviewSignature) || other.reviewSignature == reviewSignature)&&const DeepCollectionEquality().equals(other.issueCommentIds, _issueCommentIds)&&(identical(other.issueCommentsTotal, issueCommentsTotal) || other.issueCommentsTotal == issueCommentsTotal)&&const DeepCollectionEquality().equals(other.reviewSummaryIds, _reviewSummaryIds)&&const DeepCollectionEquality().equals(other.threadCommentIds, _threadCommentIds)&&const DeepCollectionEquality().equals(other.resolvedThreadIds, _resolvedThreadIds)&&(identical(other.unresolvedThreadCount, unresolvedThreadCount) || other.unresolvedThreadCount == unresolvedThreadCount)&&(identical(other.ready, ready) || other.ready == ready));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,state,headSha,mergeable,ciPhase,const DeepCollectionEquality().hash(_failedCheckIds),reviewSignature,const DeepCollectionEquality().hash(_issueCommentIds),issueCommentsTotal,const DeepCollectionEquality().hash(_reviewSummaryIds),const DeepCollectionEquality().hash(_threadCommentIds),const DeepCollectionEquality().hash(_resolvedThreadIds),unresolvedThreadCount);
+    return Object.hash(runtimeType,state,headSha,mergeable,ciPhase,const DeepCollectionEquality().hash(_failedCheckIds),reviewSignature,const DeepCollectionEquality().hash(_issueCommentIds),issueCommentsTotal,const DeepCollectionEquality().hash(_reviewSummaryIds),const DeepCollectionEquality().hash(_threadCommentIds),const DeepCollectionEquality().hash(_resolvedThreadIds),unresolvedThreadCount,ready);
 }
 
 @override
 String toString() {
-    return 'PullRequestBaseline(state: $state, headSha: $headSha, mergeable: $mergeable, ciPhase: $ciPhase, failedCheckIds: $failedCheckIds, reviewSignature: $reviewSignature, issueCommentIds: $issueCommentIds, issueCommentsTotal: $issueCommentsTotal, reviewSummaryIds: $reviewSummaryIds, threadCommentIds: $threadCommentIds, resolvedThreadIds: $resolvedThreadIds, unresolvedThreadCount: $unresolvedThreadCount)';
+    return 'PullRequestBaseline(state: $state, headSha: $headSha, mergeable: $mergeable, ciPhase: $ciPhase, failedCheckIds: $failedCheckIds, reviewSignature: $reviewSignature, issueCommentIds: $issueCommentIds, issueCommentsTotal: $issueCommentsTotal, reviewSummaryIds: $reviewSummaryIds, threadCommentIds: $threadCommentIds, resolvedThreadIds: $resolvedThreadIds, unresolvedThreadCount: $unresolvedThreadCount, ready: $ready)';
 }
 
 
@@ -192,7 +198,7 @@ abstract mixin class _$PullRequestBaselineCopyWith<$Res> implements $PullRequest
   factory _$PullRequestBaselineCopyWith(_PullRequestBaseline value, $Res Function(_PullRequestBaseline) _then) = __$PullRequestBaselineCopyWithImpl;
 @override @useResult
 $Res call({
- PullRequestState state, String headSha, PullRequestMergeable mergeable, PullRequestCiPhase ciPhase, Set<String> failedCheckIds, String reviewSignature, Set<String> issueCommentIds, int issueCommentsTotal, Set<String> reviewSummaryIds, Map<String, Set<String>> threadCommentIds, Set<String> resolvedThreadIds, int unresolvedThreadCount
+ PullRequestState state, String headSha, PullRequestMergeable mergeable, PullRequestCiPhase ciPhase, Set<String> failedCheckIds, String reviewSignature, Set<String> issueCommentIds, int issueCommentsTotal, Set<String> reviewSummaryIds, Map<String, Set<String>> threadCommentIds, Set<String> resolvedThreadIds, int unresolvedThreadCount, bool ready
 });
 
 
@@ -209,7 +215,7 @@ class __$PullRequestBaselineCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestBaseline
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? state = null,Object? headSha = null,Object? mergeable = null,Object? ciPhase = null,Object? failedCheckIds = null,Object? reviewSignature = null,Object? issueCommentIds = null,Object? issueCommentsTotal = null,Object? reviewSummaryIds = null,Object? threadCommentIds = null,Object? resolvedThreadIds = null,Object? unresolvedThreadCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? state = null,Object? headSha = null,Object? mergeable = null,Object? ciPhase = null,Object? failedCheckIds = null,Object? reviewSignature = null,Object? issueCommentIds = null,Object? issueCommentsTotal = null,Object? reviewSummaryIds = null,Object? threadCommentIds = null,Object? resolvedThreadIds = null,Object? unresolvedThreadCount = null,Object? ready = null,}) {
   return _then(_PullRequestBaseline(
 state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
 as PullRequestState,headSha: null == headSha ? _self.headSha : headSha // ignore: cast_nullable_to_non_nullable
@@ -223,7 +229,8 @@ as int,reviewSummaryIds: null == reviewSummaryIds ? _self._reviewSummaryIds : re
 as Set<String>,threadCommentIds: null == threadCommentIds ? _self._threadCommentIds : threadCommentIds // ignore: cast_nullable_to_non_nullable
 as Map<String, Set<String>>,resolvedThreadIds: null == resolvedThreadIds ? _self._resolvedThreadIds : resolvedThreadIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,unresolvedThreadCount: null == unresolvedThreadCount ? _self.unresolvedThreadCount : unresolvedThreadCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,ready: null == ready ? _self.ready : ready // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

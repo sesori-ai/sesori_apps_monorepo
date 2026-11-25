@@ -1,4 +1,6 @@
+import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_merge_outcome.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
+import "package:sesori_tool_pr_monitor/src/services/models/pull_request_merge_state.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_report_builder.dart";
 import "package:test/test.dart";
 
@@ -10,6 +12,8 @@ String report({required PullRequestSnapshot snapshot, required PullRequestSnapsh
   baseline: baseline == null ? null : activity.baselineOf(snapshot: baseline),
   forcedHoldMinutes: null,
   autoMergeEnabled: false,
+  readinessFailure: null,
+  mergeAttempt: null,
   opening: PullRequestReportOpening.ongoing,
 );
 
@@ -205,6 +209,8 @@ void main() {
           baseline: null,
           forcedHoldMinutes: forcedHoldMinutes,
           autoMergeEnabled: false,
+          readinessFailure: null,
+          mergeAttempt: null,
           opening: PullRequestReportOpening.ongoing,
         )
         .split("\n")[1];
@@ -280,14 +286,25 @@ void main() {
     );
   });
 
-  test("the auto-merge line appears when auto-merge is on", () {
+  test("the auto-merge line, a readiness failure and the merge result appear in the report", () {
     final text = reports.buildReport(
       target: target,
       snapshot: emptySnapshot,
       baseline: null,
       forcedHoldMinutes: null,
       autoMergeEnabled: true,
+      readinessFailure: PullRequestReadinessRetry(ready: true, baseline: emptySnapshot, cause: Exception("boom")),
+      mergeAttempt: const PullRequestMergeAttempt(headSha: "abc", outcome: PullRequestMerged(labelError: null)),
       opening: PullRequestReportOpening.ongoing,
+    );
+
+    expect(text, contains('- Readiness automation failed: could not add label "agent-ready": Exception: boom'));
+    expect(
+      text,
+      contains(
+        "\n- Auto-merge succeeded: squash-merged ${target.displayKey} at abc using only the PR title. Label "
+        '"automatically-merged" added.',
+      ),
     );
 
     expect(
@@ -307,12 +324,14 @@ void main() {
       snapshot: ready,
       idleMinutes: 25,
       autoMergeEnabled: true,
+      readinessFailure: null,
     );
     final unready = reports.buildIdleReminder(
       target: target,
       snapshot: emptySnapshot,
       idleMinutes: 25,
       autoMergeEnabled: false,
+      readinessFailure: null,
     );
 
     expect(reminder.split("\n").first, endsWith('— "test PR" — idle reminder'));

@@ -74,6 +74,7 @@ class const PullRequestActivityCalculator() {
         if (thread.isResolved) thread.id,
     },
     unresolvedThreadCount: snapshot.reviewThreads.where((thread) => !thread.isResolved).length,
+    ready: snapshot.labels.any((label) => label.toLowerCase() == agentReadyLabel),
   );
 
   /// True when [snapshot] holds nothing [baseline] did not: a report against
