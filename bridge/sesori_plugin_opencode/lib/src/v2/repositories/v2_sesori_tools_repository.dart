@@ -37,6 +37,17 @@ class V2SesoriToolsRepository({required final OpenCodeV2Api _api, required final
     };
   }
 
+  /// The top of [sessionId]'s tree: the session itself unless it is a
+  /// subagent's child session.
+  Future<String> rootSessionId({required String sessionId}) async {
+    var id = sessionId;
+    for (var parent = (await _api.getSession(sessionId: id)).parentID; parent != null;) {
+      id = parent;
+      parent = (await _api.getSession(sessionId: id)).parentID;
+    }
+    return id;
+  }
+
   /// The bridge's reply to [request] for [launch]'s token. Throws when the
   /// bridge does not answer.
   Future<String> forward({required V2ClientMcpRequest request, required SesoriMcpLaunch launch}) =>

@@ -15,7 +15,8 @@ import "../repositories/v2_sesori_tools_repository.dart";
 /// socket, and this relays its JSON-RPC to the bridge's loopback server.
 /// `initialize` and `tools/list` carry no session, so they use one grant
 /// minted per socket. `tools/call` carries OpenCode's session id in `_meta`,
-/// and each session gets its own grant, minted and bound on its first call.
+/// and each root session gets its own grant, minted and bound on its first
+/// call; a subagent's child session uses its root's.
 /// The tools vanish when the socket closes.
 ///
 /// A socket keeps its folder loaded in OpenCode, so a folder with no session
@@ -148,12 +149,9 @@ class V2SesoriToolsService({
     if (request == null) return;
     final String reply;
     switch (request) {
-      case V2ClientMcpSessionCall(:final sessionId):
+      case V2ClientMcpSessionCall():
         _folders[directory]?.lastActive = DateTime.now();
-        final launch = _sessionLaunch(sessionId: sessionId);
-        reply = launch == null
-            ? _repository.toolError(request: request, text: "Sesori's agent tools are turned off on this computer.")
-            : await _forward(request: request, launch: launch);
+        reply = await _sessionCall(request: request);
       case V2ClientMcpUnattributedCall():
         reply = _repository.toolError(request: request, text: "Sesori's tools work only inside an OpenCode session.");
       case V2ClientMcpListing() || V2ClientMcpOtherRequest():
@@ -171,13 +169,31 @@ class V2SesoriToolsService({
     if (request is V2ClientMcpListing && !listed.isCompleted) listed.complete();
   }
 
-  /// The grant that attributes calls to [sessionId], minted and bound once.
-  SesoriMcpLaunch? _sessionLaunch({required String sessionId}) {
+  Future<String> _sessionCall({required V2ClientMcpSessionCall request}) async {
+    final SesoriMcpLaunch? launch;
+    try {
+      launch = await _sessionLaunch(sessionId: request.sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode-v2] could not find the root session of ${request.sessionId}", error, stackTrace);
+      return _repository.unanswered(request: request);
+    }
+    if (launch == null) {
+      return _repository.toolError(request: request, text: "Sesori's agent tools are turned off on this computer.");
+    }
+    return await _forward(request: request, launch: launch);
+  }
+
+  /// The grant that attributes [sessionId]'s calls to its root session,
+  /// minted and bound once per root. A subagent's calls act as its root, as
+  /// they do on harnesses that hand subagents the parent's MCP config.
+  Future<SesoriMcpLaunch?> _sessionLaunch({required String sessionId}) async {
     final cached = _sessionLaunches[sessionId];
     if (cached != null) return cached;
-    final launch = _access.mint();
+    final rootId = await _repository.rootSessionId(sessionId: sessionId);
+    final launch = _sessionLaunches[rootId] ?? _access.mint();
     if (launch == null) return null;
-    _access.bind(launch: launch, backendSessionId: sessionId);
+    if (!_sessionLaunches.containsKey(rootId)) _access.bind(launch: launch, backendSessionId: rootId);
+    _sessionLaunches[rootId] = launch;
     return _sessionLaunches[sessionId] = launch;
   }
 

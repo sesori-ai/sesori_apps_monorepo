@@ -71,6 +71,25 @@ void main() {
     expect(access.bound, {"token-2": "ses_a", "token-3": "ses_b"});
   });
 
+  test("attributes a subagent's calls to its root session", () async {
+    fixture.parents.addAll({"ses_grandchild": "ses_child", "ses_child": "ses_a"});
+    await service.attach(directory: _directory);
+    final socket = fixture.sockets.single;
+
+    final child = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_grandchild"),
+    );
+    final root = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_a"),
+    );
+
+    expect(_text(child), "token-2 tools/call");
+    expect(_text(root), "token-2 tools/call");
+    expect(access.bound, {"token-2": "ses_a"});
+  });
+
   test("refuses a call without a session and one made while agent tools are off", () async {
     await service.attach(directory: _directory);
     final socket = fixture.sockets.single;
@@ -124,6 +143,21 @@ void main() {
   });
 }
 
+Map<String, Object?> _session({required String id, required String? parentId}) => {
+  "id": id,
+  "parentID": parentId,
+  "projectID": "prj_fixture",
+  "cost": 0,
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cache": {"read": 0, "write": 0},
+  },
+  "time": {"created": 0, "updated": 0},
+  "location": {"directory": _directory},
+};
+
 Map<String, Object?> _call({required String sessionId}) => {
   "name": "list_tasks",
   "arguments": <String, Object?>{},
@@ -140,6 +174,9 @@ String _text(String reply) => switch (jsonDecode(reply)) {
 class _Fixture({required final HttpServer _server}) {
   final List<_OpenCodeSocket> sockets = [];
   final List<String?> bridgeTokens = [];
+
+  /// Child session id to parent session id, as OpenCode reports them.
+  final Map<String, String> parents = {};
   final StreamController<void> _attaches = StreamController<void>.broadcast();
   var _handshakes = 0;
 
@@ -177,6 +214,14 @@ class _Fixture({required final HttpServer _server}) {
       await socket.handshake();
       _handshakes++;
       _attaches.add(null);
+      return;
+    }
+    if (request.uri.path.startsWith("/api/session/")) {
+      final id = request.uri.pathSegments.last;
+      request.response
+        ..headers.contentType = ContentType.json
+        ..write(jsonEncode({"data": _session(id: id, parentId: parents[id])}));
+      await request.response.close();
       return;
     }
     final token = request.headers.value(HttpHeaders.authorizationHeader)?.replaceFirst("Bearer ", "");

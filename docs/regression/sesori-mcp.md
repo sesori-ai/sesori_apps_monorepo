@@ -289,8 +289,7 @@ task to its start and compare it with the app's view of the session. Use fixture
   and older ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)); DeepSeek's adapter rejects MCP servers.
 - OpenCode older than 2.2.0 has no client-MCP socket and gets no tools, yet the plugin still declares
   `injectsSesoriTools`, so a scheduled run there gets the tool note without the tools.
-- On OpenCode, the socket rides an experimental endpoint and carries no MCP `instructions`. A subagent's calls
-  belong to its child session. A folder idle for an hour lets its socket go, so the first step of a turn started
+- On OpenCode, the socket rides an experimental endpoint and carries no MCP `instructions`. A folder idle for an hour lets its socket go, so the first step of a turn started
   from OpenCode's own app in it can miss the tools. With the shared service, an OpenCode restart longer than
   5 seconds brings the tools back only with the next Sesori request.
 - `update_task` and the scheduled-run note ask agents to leave out every field they are not changing, but a model
@@ -323,8 +322,9 @@ The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: C
   bridge and its app-server restart together.
 - OpenCode: one client-MCP WebSocket per folder in use (`V2SesoriToolsService`, `OpenCodeV2Api.connectClientMcp`,
   `SesoriBridgeMcpApi`), relaying JSON-RPC to the endpoint. `initialize` and `tools/list` use one unbound token per
-  socket; each `tools/call` uses its session's own token, bound to the `_meta` `ai.opencode/sessionID` on the
-  session's first call. A call without a session id or while agent tools are off gets a tool error. Sockets open on
+  socket; each `tools/call` uses its root session's own token: the plugin walks the `_meta`
+  `ai.opencode/sessionID` session's `parentID` up to the root, so a subagent acts as its root, and binds the token on
+  the root's first call. A call without a session id or while agent tools are off gets a tool error. Sockets open on
   session activity, before a Sesori prompt or command (waiting up to 5 seconds for the listing), and for every loaded
   folder when the event stream reconnects; they close on bridge shutdown or after an hour without activity.
   Covered by `v2_sesori_tools_service_test.dart` and the descriptor's 2.2.0 version gate.
