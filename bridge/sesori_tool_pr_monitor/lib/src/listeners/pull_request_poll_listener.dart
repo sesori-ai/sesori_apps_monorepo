@@ -40,16 +40,15 @@ class PullRequestPollListener({
     }
   }
 
-  /// Runs after any tick in flight, so polls never overlap.
+  /// Runs after any tick in flight, so polls never overlap. While the group
+  /// is off no tick is due; turning it on polls and restarts the ticks.
   void _onEnabledChanged(bool enabled) {
     final previous = _tick;
     _tick = () async {
       await previous;
+      _timer?.cancel();
       if (_disposed) return;
-      if (enabled) {
-        _timer?.cancel();
-        await _run();
-      }
+      if (enabled) await _run();
       try {
         await _service.announceAll();
       } on Object catch (error, stackTrace) {

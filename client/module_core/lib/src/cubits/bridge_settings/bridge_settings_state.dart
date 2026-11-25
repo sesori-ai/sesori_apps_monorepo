@@ -80,6 +80,3 @@ final class const AgentToolsMutationFailed({
 
 /// A save whose outcome is unknown, and the reload after it failed too.
 final class const AgentToolsMutationUncertain({required final ApiError refreshError}) extends AgentToolsMutationState;
-
-/// The bridge refused the change as a setting it does not know.
-final class const AgentToolsMutationUnsupported() extends AgentToolsMutationState;

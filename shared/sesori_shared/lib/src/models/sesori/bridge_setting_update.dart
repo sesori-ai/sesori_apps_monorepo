@@ -25,7 +25,7 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
   const factory warmUpPluginsOnSessionOpen({required bool enabled}) = WarmUpPluginsOnSessionOpenSettingUpdate;
 
   /// Turns Sesori's tools on or off as a whole; while they are off, no tool
-  /// group is served. An older bridge answers 400 with an unknown rejection.
+  /// group is served.
   @FreezedUnionValue("agentTools")
   const factory agentTools({required bool enabled}) = AgentToolsSettingUpdate;
 

@@ -112,8 +112,10 @@
   (`bool?`, null from v1.15.0 bridges) and `PATCH /settings` takes
   `BridgeSettingUpdate.agentTools`. `BridgeSettingsReady.agentTools` is null
   when the bridge sends no master or no groups (the section is hidden);
-  otherwise it holds the master, the groups and one mutation state, whose
-  `Unsupported` covers an older bridge's 400 or 404. `SessionViewService`
+  otherwise it holds the master, the groups and one mutation state (idle,
+  in progress, failed or uncertain, naming the switch where it applies).
+  There is no unsupported state: only bridges that send the master see the
+  switches. `SessionViewService`
   leaves watches out while `toolGroupEnabled(prMonitor)` is false (master
   included), and `PullRequestPollListener` republishes every watched session
   on each toggle, polling first when it comes back on. Step 14's list route

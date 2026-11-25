@@ -40,9 +40,6 @@ sealed class const AgentToolsSettingsMutationResult();
 final class const AgentToolsSettingsMutationCommitted({required final bool enabled})
     extends AgentToolsSettingsMutationResult;
 
-/// The bridge predates the setting and refused it, so it changed nothing.
-final class const AgentToolsSettingsMutationUnsupported() extends AgentToolsSettingsMutationResult;
-
 final class const AgentToolsSettingsMutationUncertain() extends AgentToolsSettingsMutationResult;
 
 final class const AgentToolsSettingsMutationFailure({required final ApiError error})

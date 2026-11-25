@@ -66,13 +66,11 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettings
     };
   }
 
-  /// A bridge that predates an update answers 400 with an unknown
-  /// rejection, and one without the settings route answers 404.
+  /// The app offers these switches only to bridges that send the master
+  /// switch, which all take both updates, so any refusal is a plain failure.
   AgentToolsSettingsMutationResult _agentToolsUncommitted({required BridgeSettingUpdateApiResult result}) {
     return switch (result) {
       BridgeSettingUpdateApiCommitted() => const AgentToolsSettingsMutationUncertain(),
-      BridgeSettingUpdateApiFailure(error: NonSuccessCodeError(errorCode: 400 || 404)) =>
-        const AgentToolsSettingsMutationUnsupported(),
       BridgeSettingUpdateApiFailure(isCommitUncertain: true) => const AgentToolsSettingsMutationUncertain(),
       BridgeSettingUpdateApiFailure(:final error) => AgentToolsSettingsMutationFailure(error: error),
     };

@@ -194,7 +194,7 @@ class BridgeSettingsCubit({
     final agentTools = current.agentTools;
     if (agentTools == null) return;
     switch (agentTools.mutation) {
-      case AgentToolsMutationInProgress() || AgentToolsMutationUncertain() || AgentToolsMutationUnsupported():
+      case AgentToolsMutationInProgress() || AgentToolsMutationUncertain():
         return;
       case AgentToolsMutationIdle() || AgentToolsMutationFailed():
         break;
@@ -222,13 +222,6 @@ class BridgeSettingsCubit({
             _withAgentTools(
               state: current,
               agentTools: _withSwitch(agentTools: agentTools, target: target, enabled: enabled),
-            ),
-          );
-        case AgentToolsSettingsMutationUnsupported():
-          emit(
-            _withAgentTools(
-              state: current,
-              agentTools: _withMutation(agentTools: agentTools, mutation: const AgentToolsMutationUnsupported()),
             ),
           );
         case AgentToolsSettingsMutationFailure(:final error):
