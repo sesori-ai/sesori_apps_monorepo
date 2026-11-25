@@ -6,16 +6,17 @@ part of 'product_analytics_preference_storage.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-StoredProductAnalyticsSynced _$StoredProductAnalyticsSyncedFromJson(Map json) => StoredProductAnalyticsSynced(
-  userId: json['userId'] as String,
-  revision: (json['revision'] as num).toInt(),
-  userKey: json['userKey'] as String,
-  preference: $enumDecode(
-    _$ProductAnalyticsPreferenceEnumMap,
-    json['preference'],
-  ),
-  $type: json['kind'] as String?,
-);
+StoredProductAnalyticsSynced _$StoredProductAnalyticsSyncedFromJson(Map json) =>
+    StoredProductAnalyticsSynced(
+      userId: json['userId'] as String,
+      revision: (json['revision'] as num).toInt(),
+      userKey: json['userKey'] as String,
+      preference: $enumDecode(
+        _$ProductAnalyticsPreferenceEnumMap,
+        json['preference'],
+      ),
+      $type: json['kind'] as String?,
+    );
 
 Map<String, dynamic> _$StoredProductAnalyticsSyncedToJson(
   StoredProductAnalyticsSynced instance,
@@ -32,7 +33,8 @@ const _$ProductAnalyticsPreferenceEnumMap = {
   ProductAnalyticsPreference.disabled: 'disabled',
 };
 
-StoredProductAnalyticsPendingDisable _$StoredProductAnalyticsPendingDisableFromJson(Map json) =>
+StoredProductAnalyticsPendingDisable
+_$StoredProductAnalyticsPendingDisableFromJson(Map json) =>
     StoredProductAnalyticsPendingDisable(
       userId: json['userId'] as String,
       revision: (json['revision'] as num).toInt(),
@@ -51,7 +53,8 @@ Map<String, dynamic> _$StoredProductAnalyticsPendingDisableToJson(
   'kind': instance.$type,
 };
 
-StoredProductAnalyticsPendingEnable _$StoredProductAnalyticsPendingEnableFromJson(Map json) =>
+StoredProductAnalyticsPendingEnable
+_$StoredProductAnalyticsPendingEnableFromJson(Map json) =>
     StoredProductAnalyticsPendingEnable(
       userId: json['userId'] as String,
       revision: (json['revision'] as num).toInt(),

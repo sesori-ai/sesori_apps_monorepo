@@ -6,7 +6,8 @@ part of 'product_analytics_preference_api.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_ProductAnalyticsPreferenceApiRecord _$ProductAnalyticsPreferenceApiRecordFromJson(Map json) =>
+_ProductAnalyticsPreferenceApiRecord
+_$ProductAnalyticsPreferenceApiRecordFromJson(Map json) =>
     _ProductAnalyticsPreferenceApiRecord(
       preference: $enumDecode(
         _$ProductAnalyticsPreferenceEnumMap,
@@ -29,7 +30,8 @@ const _$ProductAnalyticsPreferenceEnumMap = {
   ProductAnalyticsPreference.disabled: 'disabled',
 };
 
-_ProductAnalyticsPreferenceConflictResponse _$ProductAnalyticsPreferenceConflictResponseFromJson(Map json) =>
+_ProductAnalyticsPreferenceConflictResponse
+_$ProductAnalyticsPreferenceConflictResponseFromJson(Map json) =>
     _ProductAnalyticsPreferenceConflictResponse(
       error: $enumDecode(
         _$ProductAnalyticsPreferenceConflictErrorEnumMap,

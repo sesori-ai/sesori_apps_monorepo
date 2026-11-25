@@ -6,14 +6,15 @@ part of 'local_notification_payload.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_LocalNotificationPayload _$LocalNotificationPayloadFromJson(Map json) => _LocalNotificationPayload(
-  sessionId: json['sessionId'] as String?,
-  projectId: json['projectId'] as String?,
-  sessionTitle: json['sessionTitle'] as String?,
-  taskId: json['taskId'] as String?,
-  accountId: json['accountId'] as String?,
-  bridgeId: json['bridgeId'] as String?,
-);
+_LocalNotificationPayload _$LocalNotificationPayloadFromJson(Map json) =>
+    _LocalNotificationPayload(
+      sessionId: json['sessionId'] as String?,
+      projectId: json['projectId'] as String?,
+      sessionTitle: json['sessionTitle'] as String?,
+      taskId: json['taskId'] as String?,
+      accountId: json['accountId'] as String?,
+      bridgeId: json['bridgeId'] as String?,
+    );
 
 Map<String, dynamic> _$LocalNotificationPayloadToJson(
   _LocalNotificationPayload instance,
