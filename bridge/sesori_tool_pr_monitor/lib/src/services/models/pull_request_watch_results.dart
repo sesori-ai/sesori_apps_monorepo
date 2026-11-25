@@ -1,6 +1,8 @@
 import "../../models/gh_cli_exception.dart";
 import "../../models/pull_request_target.dart";
+import "../../repositories/models/pull_request_monitor_config.dart";
 import "../../repositories/models/pull_request_snapshot.dart";
+import "pull_request_config_change.dart";
 import "pull_request_merge_state.dart";
 
 /// How a request to watch a PR ended.
@@ -74,6 +76,7 @@ final class const PullRequestWatchStatuses({
 
   /// Every PR this bridge polls, for any session.
   required final int watchedPullRequests,
+  required final PullRequestMonitorConfig config,
 });
 
 /// What `mark_pr_ready` or `unmark_pr_ready` changed.
@@ -101,3 +104,23 @@ final class const PullRequestAutoMergeSet({
   /// Turning auto-merge on removed a ready label the PR already carried.
   required final bool readyLabelRemoved,
 }) extends PullRequestAutoMergeResult;
+
+/// How `configure_pr_monitor` ended. Each [config] is the settings now in
+/// effect.
+sealed class const PullRequestConfigureResult();
+
+final class const PullRequestConfigApplied({required final PullRequestMonitorConfig config})
+    extends PullRequestConfigureResult;
+
+/// [autoMerge] waits for the user's Allow; the rest of the change applied.
+final class const PullRequestConfigAwaitingApproval({
+  required final PullRequestMonitorConfig config,
+  required final PullRequestAutoMergeDefaultChange autoMerge,
+}) extends PullRequestConfigureResult;
+
+/// The Allow request for [autoMerge] could not be shown, so it did not
+/// apply; the rest of the change did.
+final class const PullRequestConfigApprovalDropped({
+  required final PullRequestMonitorConfig config,
+  required final PullRequestAutoMergeDefaultChange autoMerge,
+}) extends PullRequestConfigureResult;

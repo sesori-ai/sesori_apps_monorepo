@@ -2,12 +2,32 @@ import "package:sesori_shared/sesori_shared.dart" show SessionPullRequestWatch;
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
 import "../models/pull_request_target.dart";
+import "models/pull_request_monitor_config.dart";
 import "models/stored_pull_request_watch.dart";
 
 /// The watches in the group's store: one session record per watching
 /// session and PR, keyed by the PR's lowercased `owner/repo#n`. A session's
-/// watches are deleted with it.
+/// watches are deleted with it. The settings are the group's one bridge
+/// record.
 class PullRequestWatchRepository({required final SesoriToolStore _store}) {
+  static const String _configKey = "config";
+
+  /// The stored settings, or the defaults when none are stored or the
+  /// record no longer parses (logged).
+  Future<PullRequestMonitorConfig> loadConfig() async {
+    final record = await _store.getRecord(key: _configKey);
+    if (record == null) return PullRequestMonitorConfig.defaults;
+    try {
+      return PullRequestMonitorConfig.fromJson(record);
+    } on Object catch (error, stackTrace) {
+      Log.w("PR monitor: unreadable settings, using the defaults", error, stackTrace);
+      return PullRequestMonitorConfig.defaults;
+    }
+  }
+
+  Future<void> saveConfig({required PullRequestMonitorConfig config}) =>
+      _store.putRecord(key: _configKey, value: config.toJson());
+
   /// Every stored watch. A record that no longer parses is logged and left
   /// out.
   Future<List<({String sessionId, StoredPullRequestWatch watch})>> loadAll() async {

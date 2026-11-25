@@ -12,6 +12,7 @@ export "src/repositories/pull_request_watch_repository.dart" show PullRequestWat
 export "src/services/models/pull_request_watch_results.dart"
     show PullRequestAutoMergeNotWatched, PullRequestAutoMergeResult;
 export "src/services/pull_request_activity_calculator.dart" show PullRequestActivityCalculator;
+export "src/services/pull_request_config_description_builder.dart" show PullRequestConfigDescriptionBuilder;
 export "src/services/pull_request_feedback_builder.dart" show PullRequestFeedbackBuilder;
 export "src/services/pull_request_merge_service.dart" show PullRequestMergeService;
 export "src/services/pull_request_readiness_calculator.dart" show PullRequestReadinessCalculator;

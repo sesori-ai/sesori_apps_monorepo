@@ -10,10 +10,10 @@
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Done | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Done | #2919, #2920 |
-| 9 | ⚙️ `configure_pr_monitor` | Not started | |
+| 9 | ⚙️ `configure_pr_monitor` | In review | #2921 |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
-| 12 | ⚙️ Bridge projection, status and app actions | In review | #2923 |
+| 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Not started | |
 | 14 | ⚙️ App: watched-PR list | Not started | |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
@@ -74,6 +74,21 @@
     a `get_pr_report` that shows it consumes it for all of them, and a
     dropped report restores it. `get_pr_report` stays read-only: only a due
     report labels or merges. Notice settlement runs in the PR's op queue.
+- Step 9 as built:
+  - `PullRequestWatchService` owns `PullRequestMonitorConfig` (the group's
+    bridge record `config`, loaded in `resume`). `watch_pr` without
+    `auto_merge` takes the repo override, else the global default.
+  - `SesoriToolHost.requestApproval` now returns `SesoriToolApproval`:
+    `Allowed` (approve everything, no card), `Dropped`, or `Shown` with the
+    answer's future, so the tool can answer at once under YOLO and say
+    "Sent to the user" otherwise. An allowed answer applies on top of the
+    settings at that time, and the session gets an allowed or declined
+    notice.
+  - A call that widens applies its timings at once and only its auto-merge
+    part waits. Idle reminders off is a null `idleReminderMinutes`.
+    Clearing a repo's `off` override under a global `on` counts as widening.
+  - A standalone (unwatched) `mark_pr_ready` stays label-only: the default
+    applies to new watches only.
 - Step 12 as built (#2923):
   - `Session.pullRequestWatches` (repository, number, title, url, autoMerge,
     status). The red count is a `PullRequestWatchStatusNeedsYou`; its reasons

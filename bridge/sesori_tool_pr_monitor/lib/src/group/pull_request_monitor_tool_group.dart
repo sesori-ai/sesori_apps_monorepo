@@ -3,7 +3,9 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "../listeners/pull_request_poll_listener.dart";
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_snapshot.dart";
+import "../services/models/pull_request_config_change.dart";
 import "../services/models/pull_request_watch_results.dart";
+import "../services/pull_request_config_description_builder.dart";
 import "../services/pull_request_report_builder.dart";
 import "../services/pull_request_watch_service.dart";
 import "pull_request_monitor_guide.dart";
@@ -15,6 +17,7 @@ class PullRequestMonitorToolGroup({
   required final PullRequestWatchService _watches,
   required final PullRequestPollListener _poller,
   required final PullRequestReportBuilder _reports,
+  required final PullRequestConfigDescriptionBuilder _configDescriptions,
 }) implements SesoriToolGroup {
   static const SesoriToolGroupId groupId = SesoriToolGroupId("pr_monitor");
 
@@ -65,7 +68,7 @@ class PullRequestMonitorToolGroup({
           result: await _watches.watch(
             sessionId: sessionId,
             target: target,
-            autoMerge: _flag(value: arguments["auto_merge"], field: "auto_merge") ?? false,
+            requestedAutoMerge: _flag(value: arguments["auto_merge"], field: "auto_merge"),
           ),
         ),
       ),
@@ -152,8 +155,92 @@ class PullRequestMonitorToolGroup({
           );
         },
       ),
+      PullRequestMonitorTool.configurePrMonitor => _configure(
+        askingSessionId: caller.sessionId,
+        sessionId: sessionId,
+        change: _configChange(arguments: arguments),
+      ),
     };
   }
+
+  Future<SesoriToolResult> _configure({
+    required String askingSessionId,
+    required String sessionId,
+    required PullRequestConfigChange change,
+  }) => _attempt(
+    failure: "Cannot change the PR monitor settings",
+    run: () async => switch (await _watches.configure(
+      askingSessionId: askingSessionId,
+      sessionId: sessionId,
+      change: change,
+    )) {
+      PullRequestConfigApplied(:final config) => "Saved. ${_configDescriptions.settingsText(config: config)}",
+      PullRequestConfigAwaitingApproval(:final config) =>
+        "Sent to the user for approval: turning auto-merge on by default needs their Allow. A message tells "
+            "this session their answer; end your turn instead of waiting. Until then: "
+            "${_configDescriptions.settingsText(config: config)}",
+      PullRequestConfigApprovalDropped(:final config) =>
+        "Auto-merge by default is unchanged: the request for the user's Allow could not be shown, as the "
+            "bridge is stopping or this session is gone. ${_configDescriptions.settingsText(config: config)}",
+    },
+  );
+
+  /// The `configure_pr_monitor` arguments as one change, or why they are
+  /// invalid. Strict-schema providers may send "" for a field left out.
+  PullRequestConfigChange _configChange({required Map<String, Object?> arguments}) {
+    final autoMerge = switch (arguments["auto_merge"]) {
+      null || "" => null,
+      "on" => true,
+      "off" => false,
+      _ => throw const InvalidToolArguments(reason: "auto_merge must be on or off."),
+    };
+    final repository = switch (_text(value: arguments["repository"], field: "repository")) {
+      null || "" => null,
+      final input => _repositoryKey(input: input),
+    };
+    final clear = _flag(value: arguments["clear_repository"], field: "clear_repository") ?? false;
+    final autoMergeChange = switch ((autoMerge, repository, clear)) {
+      (_, null, true) => throw const InvalidToolArguments(reason: "clear_repository needs repository."),
+      (_?, _, true) => throw const InvalidToolArguments(
+        reason: "Give either auto_merge or clear_repository, not both.",
+      ),
+      (null, _?, false) => throw const InvalidToolArguments(reason: "repository needs auto_merge or clear_repository."),
+      (null, final repositoryKey?, true) => PullRequestRepositoryAutoMergeCleared(repositoryKey: repositoryKey),
+      (final enabled?, final repositoryKey?, false) => PullRequestRepositoryAutoMerge(
+        repositoryKey: repositoryKey,
+        enabled: enabled,
+      ),
+      (final enabled?, null, false) => PullRequestGlobalAutoMerge(enabled: enabled),
+      (null, null, false) => null,
+    };
+    return PullRequestConfigChange(
+      autoMerge: autoMergeChange,
+      quietMinutes: _minutes(value: arguments["quiet_minutes"], field: "quiet_minutes", min: 1, max: 60),
+      ciWaitMinutes: _minutes(value: arguments["ci_wait_minutes"], field: "ci_wait_minutes", min: 5, max: 240),
+      idleReminder: switch (arguments["idle_reminder_minutes"]) {
+        0 => const PullRequestIdleRemindersOff(),
+        final value => switch (_minutes(value: value, field: "idle_reminder_minutes", min: 5, max: 240)) {
+          final minutes? => PullRequestIdleRemindersAfter(minutes: minutes),
+          null => null,
+        },
+      },
+    );
+  }
+
+  String _repositoryKey({required String input}) {
+    try {
+      return PullRequestTarget.parseRepositoryKey(input: input);
+    } on FormatException catch (error) {
+      throw InvalidToolArguments(reason: error.message);
+    }
+  }
+
+  /// A whole number of minutes from [min] to [max], or null when absent.
+  int? _minutes({required Object? value, required String field, required int min, required int max}) => switch (value) {
+    null || "" => null,
+    final int minutes when minutes >= min && minutes <= max => minutes,
+    _ => throw InvalidToolArguments(reason: "$field must be a whole number from $min to $max."),
+  };
 
   /// [run]'s text, or a failure saying why: every exception on these paths
   /// (`gh`, pagination, a PR that is not open) has actionable text.
@@ -288,8 +375,9 @@ class PullRequestMonitorToolGroup({
     final polled =
         "This computer polls ${statuses.watchedPullRequests} watched PR${statuses.watchedPullRequests == 1 ? "" : "s"} "
         "once a minute.";
-    if (statuses.watches.isEmpty) return "This session watches no PRs. $polled";
-    return [for (final status in statuses.watches) _statusLine(status: status), polled].join("\n");
+    final settings = _configDescriptions.settingsText(config: statuses.config);
+    if (statuses.watches.isEmpty) return "This session watches no PRs. $polled\n$settings";
+    return [for (final status in statuses.watches) _statusLine(status: status), polled, settings].join("\n");
   }
 
   /// `owner/repo#N — watching, quiet, last report 3m ago, ready: no`.

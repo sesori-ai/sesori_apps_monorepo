@@ -102,11 +102,14 @@ class MemoryStore() implements SesoriToolStore {
         SesoriToolSessionRecord(sessionId: sessionId, key: key, value: value),
   ];
 
-  @override
-  Future<Map<String, Object?>?> getRecord({required String key}) => throw UnimplementedError();
+  /// The group's bridge records, by key.
+  final Map<String, Map<String, Object?>> records = {};
 
   @override
-  Future<void> putRecord({required String key, required Map<String, Object?> value}) => throw UnimplementedError();
+  Future<Map<String, Object?>?> getRecord({required String key}) async => records[key];
+
+  @override
+  Future<void> putRecord({required String key, required Map<String, Object?> value}) async => records[key] = value;
 
   @override
   Future<bool> deleteRecord({required String key}) => throw UnimplementedError();
@@ -125,13 +128,24 @@ class SentNotice({
   String toString() => "$sessionId: $summary";
 }
 
+/// An Allow request shown to the user; [answer] answers it.
+class AskedApproval({
+  required final String sessionId,
+  required final String title,
+  required final String body,
+  required final Completer<SesoriToolApprovalOutcome> answer,
+});
+
 /// Delivers each notice at once, running its claim, unless [hold] is set:
-/// then the notice waits until [release].
+/// then the notice waits until [release]. Shows each Allow request in
+/// [asked], unless [approvesEverything].
 class FakeHost({required final MemoryStore records}) implements SesoriToolHost {
   final Map<String, SesoriToolSession> knownSessions = {};
   final List<SentNotice> sent = [];
   final List<SesoriToolNoticeOutcome> outcomes = [];
   bool hold = false;
+  bool approvesEverything = false;
+  final List<AskedApproval> asked = [];
   SesoriToolNoticeOutcome? forcedOutcome;
   final List<void Function()> _held = [];
 
@@ -192,11 +206,16 @@ class FakeHost({required final MemoryStore records}) implements SesoriToolHost {
   };
 
   @override
-  Future<SesoriToolApprovalOutcome> requestApproval({
+  Future<SesoriToolApproval> requestApproval({
     required String sessionId,
     required String title,
     required String body,
-  }) => throw UnimplementedError();
+  }) async {
+    if (approvesEverything) return const SesoriToolApprovalAllowed();
+    final answer = Completer<SesoriToolApprovalOutcome>();
+    asked.add(AskedApproval(sessionId: sessionId, title: title, body: body, answer: answer));
+    return SesoriToolApprovalShown(answer: answer.future);
+  }
 
   @override
   SesoriToolStore get store => records;
