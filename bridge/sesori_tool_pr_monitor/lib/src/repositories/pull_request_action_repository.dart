@@ -138,7 +138,8 @@ class PullRequestActionRepository({required final GhCliApi _api}) {
   }
 
   /// Creating fails when the label exists, which keeps the repository's own
-  /// version; a real failure shows on the add that follows.
+  /// version; the add that follows still runs, and fails on its own if the
+  /// label is truly missing.
   Future<void> _ensureLabel({
     required PullRequestTarget target,
     required String name,
@@ -147,8 +148,10 @@ class PullRequestActionRepository({required final GhCliApi _api}) {
   }) async {
     try {
       await _api.createLabel(target: target, name: name, color: color, description: description);
-    } on GhCliException {
-      // Usually 422 already_exists.
+    } on GhCliException catch (error, stackTrace) {
+      // 422 means the label already exists.
+      if (error case GhCliCommandFailedException(httpStatus: 422)) return;
+      Log.w('PR monitor: could not create label "$name" on ${target.displayKey}', error, stackTrace);
     }
   }
 }

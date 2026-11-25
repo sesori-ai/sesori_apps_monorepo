@@ -68,7 +68,9 @@
     step 9 decides whether its auto-merge default applies there.
     `get_pr_feedback` and `reply_on_pr` call GitHub outside the op queue.
   - A merge result or new readiness failure reports to every watcher once;
-    a `get_pr_report` that shows it consumes it for all of them.
+    a `get_pr_report` that shows it consumes it for all of them, and a
+    dropped report restores it. `get_pr_report` stays read-only: only a due
+    report labels or merges. Notice settlement runs in the PR's op queue.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
   summary, enabled) and `PATCH /settings` takes `BridgeSettingUpdate.toolGroup`.
   An older bridge omits the list and answers the update with 400 `unknown`.

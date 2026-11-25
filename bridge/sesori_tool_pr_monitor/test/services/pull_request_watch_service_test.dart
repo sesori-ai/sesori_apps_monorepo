@@ -269,6 +269,7 @@ void main() {
 
     h.host.hold = false;
     h.host.release();
+    await pumpEventQueue();
     await h.poll();
     expect(h.host.sent.map((notice) => notice.summary), [
       "PR monitor: sesori/example#42 — 1 new comment",
@@ -427,15 +428,50 @@ void main() {
     test("a get_pr_report that shows the merge result is not followed by a report repeating it", () async {
       await h.watch(sessionId: "s1", autoMerge: true);
       h.actions.mergeOutcome = const PullRequestMergeRejected(reason: "Required review is missing", cause: null);
+      // The first report waits for its session; the merge comes later.
+      h.host.hold = true;
+      await settle(snapshot: passing.copyWith(mergeable: PullRequestMergeable.unknown));
+      await settle(snapshot: passing);
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+
+      h.snapshots.enqueue(ready);
+      final fetched = await h.service.report(sessionId: "s1", target: target);
+      expect((fetched as PullRequestReportFresh).report, contains("Auto-merge failed after the ready label was added"));
+      h.host
+        ..hold = false
+        ..release();
+      await pumpEventQueue();
+      await h.poll(after: const Duration(minutes: 2));
+
+      expect(h.host.sent, isEmpty, reason: "the held report lost its claim to the fetched one");
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+    });
+
+    test("get_pr_report is read-only: an eligible PR is labelled by the next due report", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
       h.snapshots.enqueue(passing);
       await h.poll();
 
       final fetched = await h.service.report(sessionId: "s1", target: target);
-      expect((fetched as PullRequestReportFresh).report, contains("Auto-merge failed after the ready label was added"));
+      expect((fetched as PullRequestReportFresh).report, contains('- Ready: NO'));
+      expect(h.actions.calls, isEmpty);
+      await h.poll(after: const Duration(minutes: 2));
+
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+      expect(h.host.sent.single.guidance, contains("Auto-merge succeeded"));
+    });
+
+    test("a dropped report's merge result goes out with the next report", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
+      h.actions.mergeOutcome = const PullRequestMergeRejected(reason: "Required review is missing", cause: null);
+      h.host.forcedOutcome = SesoriToolNoticeOutcome.dropped;
+      await settle(snapshot: passing);
+      await pumpEventQueue();
+      h.host.forcedOutcome = null;
       h.snapshots.enqueue(ready);
       await h.poll(after: const Duration(minutes: 2));
 
-      expect(h.host.sent, isEmpty);
+      expect(h.host.sent.last.guidance, contains("Auto-merge failed after the ready label was added"));
       expect(h.actions.calls, ["add label", "merge head-1"]);
     });
 
