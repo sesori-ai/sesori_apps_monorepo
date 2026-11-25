@@ -367,6 +367,8 @@ List<RouteBase> _buildAppRoutes({
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           sessionSendTracker: getIt<SessionSendTracker>(),
+          pullRequestWatchRepository: getIt<PullRequestWatchRepository>(),
+          sessionRepository: getIt<SessionRepository>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           // The home and Archived both name the computer they reach.

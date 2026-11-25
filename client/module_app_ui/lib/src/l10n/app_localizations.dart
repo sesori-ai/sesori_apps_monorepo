@@ -6547,18 +6547,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 pull request} other{{count} pull requests}}'**
   String sessionPullRequestWatchesChip(int count);
 
-  /// Heading of the menu section listing the pull requests the session's agent watches.
-  ///
-  /// In en, this message translates to:
-  /// **'Watched pull requests'**
-  String get sessionPullRequestWatchesTitle;
-
-  /// Button on one watched pull request in the session's menu; the agent stops getting reports on it.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop watching'**
-  String get sessionPullRequestWatchStop;
-
   /// No description provided for @sessionPullRequestWatchStopFailed.
   ///
   /// In en, this message translates to:
@@ -6594,6 +6582,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'status unknown'**
   String get pullRequestWatchStatusUnknown;
+
+  /// Title of the list of pull requests that agents on this computer watch, and of its home button and desktop sidebar row.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull requests'**
+  String get pullRequestWatchesTitle;
+
+  /// Screen-reader label of the home pull-request button while some watched pull requests need the user.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Pull requests, 1 needs you} other{Pull requests, {count} need you}}'**
+  String pullRequestWatchesButtonNeedsYou(int count);
+
+  /// No description provided for @pullRequestWatchesGroupNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get pullRequestWatchesGroupNeedsYou;
+
+  /// No description provided for @pullRequestWatchesGroupWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get pullRequestWatchesGroupWaiting;
+
+  /// No description provided for @pullRequestWatchesGroupReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get pullRequestWatchesGroupReady;
+
+  /// Heading of the pull requests merged since the computer's local midnight.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged today'**
+  String get pullRequestWatchesGroupMergedToday;
+
+  /// No description provided for @pullRequestWatchNeedCiFailing.
+  ///
+  /// In en, this message translates to:
+  /// **'CI failing'**
+  String get pullRequestWatchNeedCiFailing;
+
+  /// No description provided for @pullRequestWatchNeedConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'conflict'**
+  String get pullRequestWatchNeedConflict;
+
+  /// No description provided for @pullRequestWatchNeedNewReviewComments.
+  ///
+  /// In en, this message translates to:
+  /// **'new review comments'**
+  String get pullRequestWatchNeedNewReviewComments;
+
+  /// Why a watched pull request needs the user: it is ready, and nobody turned on auto-merge, so the user merges it.
+  ///
+  /// In en, this message translates to:
+  /// **'ready to merge'**
+  String get pullRequestWatchNeedReadyWithoutAutoMerge;
+
+  /// Mark on a watched pull request that the bridge merges once it is ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-merge'**
+  String get pullRequestWatchAutoMergeMark;
+
+  /// Swipe action on a watched pull request: the bridge merges it once it is ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-merge'**
+  String get pullRequestWatchAutoMergeOn;
+
+  /// Swipe action on a watched pull request with auto-merge on: turns it off, so the user merges it.
+  ///
+  /// In en, this message translates to:
+  /// **'No auto-merge'**
+  String get pullRequestWatchAutoMergeOff;
+
+  /// No description provided for @pullRequestWatchAutoMergeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change auto-merge. Reconnect and try again.'**
+  String get pullRequestWatchAutoMergeFailed;
+
+  /// Swipe action on a watched pull request: the agent stops watching it.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get pullRequestWatchStop;
+
+  /// No description provided for @pullRequestWatchesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No pull requests are watched on this computer. Ask an agent to watch one.'**
+  String get pullRequestWatchesEmpty;
+
+  /// No description provided for @pullRequestWatchesLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the pull requests.'**
+  String get pullRequestWatchesLoadFailed;
+
+  /// No description provided for @pullRequestWatchesRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get pullRequestWatchesRetry;
+
+  /// No description provided for @pullRequestWatchesUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori on this computer to see its pull requests.'**
+  String get pullRequestWatchesUnsupported;
 
   /// Screen-reader wording for the session-row mark of a session whose agent watches pull requests: the one that needs the user most, its status, and how many more.
   ///

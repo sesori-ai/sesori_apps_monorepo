@@ -38,6 +38,7 @@ import "../repositories/permission_repository.dart";
 import "../repositories/plugin_preference_repository.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
+import "../repositories/pull_request_watch_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_launch_repository.dart";
 import "../repositories/session_repository.dart";
@@ -267,6 +268,8 @@ class MockProjectRepository() extends Mock implements ProjectRepository;
 class MockSessionApi() extends Mock implements SessionApi;
 
 class MockSessionRepository() extends Mock implements SessionRepository;
+
+class MockPullRequestWatchRepository() extends Mock implements PullRequestWatchRepository;
 
 class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 

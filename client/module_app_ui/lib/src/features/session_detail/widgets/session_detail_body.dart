@@ -520,12 +520,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 5),
       ),
-      SessionDetailPullRequestWatchStopFailed() => (
-        context.loc.sessionPullRequestWatchStopFailed,
-        null,
-        PregoPopupAlertsNotificationsVariant.error,
-        const Duration(seconds: 5),
-      ),
       SessionDetailApprovalUpdateFailed() => (
         context.loc.sessionApprovalUpdateFailed,
         null,

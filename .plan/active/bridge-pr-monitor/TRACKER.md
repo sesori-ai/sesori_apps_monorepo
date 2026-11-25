@@ -16,7 +16,7 @@
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Done | #2926 (13.a), #2927 (13.b) |
-| 14 | ⚙️ App: watched-PR list | Not started | |
+| 14 | ⚙️ App: watched-PR list | In review | 14.a (phone), 14.b (desktop) |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
 | 17 | 🌿 Verify and retire | Not started | |
@@ -127,6 +127,16 @@
   and `SessionApi.stopPullRequestWatch` exist; step 14 adds the auto-merge
   route. The Agent tools section lives inside `BridgeSettingsSection`, so
   both surfaces get it.
+- Step 14 as built: `PullRequestWatchListCubit` lives in `SessionScope`
+  (one fetch for the home button, the sheet and the desktop row) and owns
+  the computer-switch reset; `arrangePullRequestWatches` holds rows in
+  place while a list stays open and applies the session filter. The sheet
+  shows no "checked N ago" or per-row age: the wire has no poll time. No
+  product analytics event: the list is a view, and its actions already
+  reach the bridge as user actions. Step 16 should check the home,
+  desktop sidebar and sesori-mcp regression docs agree after 14.b; step 17
+  should check the button's fade and the badge roll on a device, and the
+  list in dark mode.
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The

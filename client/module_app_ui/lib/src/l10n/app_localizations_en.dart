@@ -3842,12 +3842,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionPullRequestWatchesTitle => 'Watched pull requests';
-
-  @override
-  String get sessionPullRequestWatchStop => 'Stop watching';
-
-  @override
   String get sessionPullRequestWatchStopFailed => 'Could not stop watching the pull request. Reconnect and try again.';
 
   @override
@@ -3864,6 +3858,71 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pullRequestWatchStatusUnknown => 'status unknown';
+
+  @override
+  String get pullRequestWatchesTitle => 'Pull requests';
+
+  @override
+  String pullRequestWatchesButtonNeedsYou(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Pull requests, $count need you',
+      one: 'Pull requests, 1 needs you',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pullRequestWatchesGroupNeedsYou => 'Needs you';
+
+  @override
+  String get pullRequestWatchesGroupWaiting => 'Waiting';
+
+  @override
+  String get pullRequestWatchesGroupReady => 'Ready';
+
+  @override
+  String get pullRequestWatchesGroupMergedToday => 'Merged today';
+
+  @override
+  String get pullRequestWatchNeedCiFailing => 'CI failing';
+
+  @override
+  String get pullRequestWatchNeedConflict => 'conflict';
+
+  @override
+  String get pullRequestWatchNeedNewReviewComments => 'new review comments';
+
+  @override
+  String get pullRequestWatchNeedReadyWithoutAutoMerge => 'ready to merge';
+
+  @override
+  String get pullRequestWatchAutoMergeMark => 'Auto-merge';
+
+  @override
+  String get pullRequestWatchAutoMergeOn => 'Auto-merge';
+
+  @override
+  String get pullRequestWatchAutoMergeOff => 'No auto-merge';
+
+  @override
+  String get pullRequestWatchAutoMergeFailed => 'Could not change auto-merge. Reconnect and try again.';
+
+  @override
+  String get pullRequestWatchStop => 'Stop';
+
+  @override
+  String get pullRequestWatchesEmpty => 'No pull requests are watched on this computer. Ask an agent to watch one.';
+
+  @override
+  String get pullRequestWatchesLoadFailed => 'Could not load the pull requests.';
+
+  @override
+  String get pullRequestWatchesRetry => 'Retry';
+
+  @override
+  String get pullRequestWatchesUnsupported => 'Update Sesori on this computer to see its pull requests.';
 
   @override
   String sessionListWatchingPullRequests(int others, String number, String status) {

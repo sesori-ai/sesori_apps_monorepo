@@ -71,6 +71,20 @@ class SessionRepository({
     return _api.stopPullRequestWatch(sessionId: sessionId, repository: repository, number: number);
   }
 
+  Future<ApiResponse<Session>> setPullRequestWatchAutoMerge({
+    required String sessionId,
+    required String repository,
+    required int number,
+    required bool enabled,
+  }) {
+    return _api.setPullRequestWatchAutoMerge(
+      sessionId: sessionId,
+      repository: repository,
+      number: number,
+      enabled: enabled,
+    );
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,

@@ -19,11 +19,25 @@ class const HomeScreen({super.key}) extends StatelessWidget {
       connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
       onSwitchComputer: switchComputer,
       onManageComputers: manageComputers,
+      onOpenPullRequestSession: openPullRequestWatchSession(context: context),
     ),
     onNewSession: ({required context, required projectId, required projectName, required entry}) =>
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),
   );
 }
+
+/// Opens the session watching a pull request picked in the list.
+OpenPullRequestWatchSession openPullRequestWatchSession({required BuildContext context}) =>
+    ({required projectId, required projectName, required sessionId, required sessionTitle}) => context.goRoute(
+      AppRoute.sessionDetail(
+        projectId: projectId,
+        projectName: projectName,
+        sessionId: sessionId,
+        sessionTitle: sessionTitle,
+        readOnly: false,
+        fromLaunch: false,
+      ),
+    );
 
 /// The wide layout's sidebar body: the home's list beside the open page.
 /// [HomeSidebarFooter] holds the computer switcher and Settings.

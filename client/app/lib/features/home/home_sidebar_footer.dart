@@ -1,13 +1,16 @@
+import "dart:async";
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/routing/app_router.dart";
+import "home_screen.dart";
 import "onboarding/bridge_onboarding.dart";
 
 /// The phone and tablet sidebar's footer (D10): the computer switcher, then
-/// Settings and collapse. Archived opens from Settings.
+/// pull requests while some are watched, Settings and collapse. Archived opens from Settings.
 class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -24,6 +27,16 @@ class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse
         children: [
           Expanded(
             child: Align(alignment: AlignmentDirectional.centerStart, child: computer ?? const SizedBox.shrink()),
+          ),
+          PullRequestWatchesButton(
+            size: PregoButtonsIconGlassSize.md,
+            onPressed: () => unawaited(
+              showPullRequestWatchesSheet(
+                context: context,
+                sessionId: null,
+                onOpenSession: openPullRequestWatchSession(context: context),
+              ),
+            ),
           ),
           PregoButtonsIconGlass(
             key: const Key("home-settings"),

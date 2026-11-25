@@ -4,7 +4,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../widgets/pull_request_watch_look.dart";
 import "transcript_motion.dart";
 
 /// Chip in the session's model row for what will wake the session's agent:
@@ -13,7 +12,8 @@ import "transcript_motion.dart";
 /// pull-request glyph and their count. It cross-fades in place between the
 /// two. Its menu lists each wake-up with its time and label, a repeat mark
 /// when it repeats and a terminal mark when it runs a command, with Cancel,
-/// then each watched pull request with its status, with Stop watching.
+/// then a row opening the session's pull requests. With only watches, a tap
+/// opens them directly.
 class const SessionWakeUpChip({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
@@ -27,7 +27,9 @@ class const SessionWakeUpChip({
   /// Touch rows show only the glyph, which keeps the pickers readable.
   required final bool showLabel,
   required final ValueChanged<String> onCancel,
-  required final ValueChanged<SessionPullRequestWatch> onStopWatching,
+
+  /// Opens the list of the session's watched pull requests.
+  required final VoidCallback onOpenPullRequests,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -60,7 +62,7 @@ class const SessionWakeUpChip({
               showLabel: showLabel,
               isWarning: false,
               surfaceStyle: surfaceStyle,
-              onPressed: toggle,
+              onPressed: wakeUps.isEmpty ? onOpenPullRequests : toggle,
             ),
           ),
         ),
@@ -79,17 +81,15 @@ class const SessionWakeUpChip({
               },
             ),
           ),
-        if (pullRequestWatches.isNotEmpty) PregoMenuLabel(text: loc.sessionPullRequestWatchesTitle),
-        for (final watch in pullRequestWatches)
-          PregoMenuCustom(
-            height: 0,
-            builder: (context, close) => _PullRequestWatchRow(
-              watch: watch,
-              onStop: () {
-                close();
-                onStopWatching(watch);
-              },
-            ),
+        if (pullRequestWatches.isNotEmpty)
+          PregoMenuItem(
+            key: const Key("session-pull-request-watches"),
+            leadingIcon: TablerRegular.git_pull_request,
+            title: loc.sessionPullRequestWatchesChip(pullRequestWatches.length),
+            subtitle: null,
+            isSelected: false,
+            shortcutLabel: null,
+            onTap: onOpenPullRequests,
           ),
       ],
     );
@@ -172,70 +172,6 @@ class const _WakeUpRow({required final SessionWakeUp wakeUp, required final Void
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.xs,
             onPressed: onCancel,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One watched pull request in the chip's menu: its glyph in its status
-/// colour, its number and title over its repository and status, and its
-/// Stop watching button.
-class const _PullRequestWatchRow({required final SessionPullRequestWatch watch, required final VoidCallback onStop})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final loc = context.loc;
-    final secondary = prego.colors.textSecondary;
-    final look = pullRequestWatchLook(context: context, status: watch.status);
-    final key = "${watch.repository}#${watch.number}";
-    return Padding(
-      key: Key("session-pull-request-watch-$key"),
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 12, 8),
-      child: Row(
-        spacing: 12,
-        children: [
-          ExcludeSemantics(child: Icon(TablerRegular.git_pull_request, size: 20, color: look.color)),
-          Expanded(
-            child: Semantics(
-              label: "#${watch.number} ${watch.title}, ${look.words}, ${watch.repository}",
-              excludeSemantics: true,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: "#${watch.number} ",
-                          style: TextStyle(color: look.color),
-                        ),
-                        TextSpan(text: watch.title),
-                      ],
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-                  ),
-                  Text(
-                    "${look.words} · ${watch.repository}",
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textXs.regular.copyWith(color: secondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          PregoButtonsSolid(
-            key: Key("session-pull-request-watch-stop-$key"),
-            label: loc.sessionPullRequestWatchStop,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.xs,
-            onPressed: onStop,
           ),
         ],
       ),

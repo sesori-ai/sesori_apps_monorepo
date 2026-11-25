@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -8,6 +10,8 @@ import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/computer_menu.dart";
 import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
+import "../pull_request_watches/pull_request_watches_button.dart";
+import "../pull_request_watches/pull_request_watches_list.dart";
 import "../session_list/all_sessions_list.dart";
 import "../session_list/session_empty_state.dart";
 import "../session_list/session_list_action_dispatcher.dart";
@@ -41,6 +45,9 @@ final class const SessionsHomePage({
 
   /// Opens the Computers page from the computer button's menu.
   required final HomeAction onManageComputers,
+
+  /// Opens the session watching a pull request picked in the list.
+  required final OpenPullRequestWatchSession onOpenPullRequestSession,
 }) extends SessionsHomePresentation;
 
 /// The wide layout's sidebar body: New session, then the list with the project
@@ -205,7 +212,17 @@ class const SessionsHomeView({
       ),
       banner: _bannerFor(context: context, state: projects, page: page),
       actions: [
-        // In the wide sidebar footer's order: computer, Settings.
+        // In the wide sidebar footer's order: pull requests, computer, Settings.
+        PullRequestWatchesButton(
+          size: PregoButtonsIconGlassSize.lg,
+          onPressed: () => unawaited(
+            showPullRequestWatchesSheet(
+              context: context,
+              sessionId: null,
+              onOpenSession: page.onOpenPullRequestSession,
+            ),
+          ),
+        ),
         _HomeComputerButton(onSwitchComputer: page.onSwitchComputer, onManageComputers: page.onManageComputers),
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
