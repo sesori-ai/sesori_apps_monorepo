@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:http/http.dart" as http;
 import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -19,6 +18,7 @@ import "repositories/opencode_v2_compaction_tracker.dart";
 import "repositories/opencode_v2_repository.dart";
 import "repositories/v2_message_mapper.dart";
 import "repositories/v2_model_mapper.dart";
+import "repositories/v2_sesori_tools_repository.dart";
 import "services/opencode_v2_service.dart";
 import "services/v2_mcp_authentication_service.dart";
 import "services/v2_sesori_tools_service.dart";
@@ -54,8 +54,9 @@ class OpenCodeV2Plugin._({
     final httpClient = io.HttpClient()..maxConnectionsPerHost = openCodeMaxConnectionsPerHost;
     final modelMapper = V2ModelMapper(pluginId: _id);
     const messageMapper = V2MessageMapper();
+    final client = IOClient(httpClient);
     final api = OpenCodeV2Api(
-      client: OpenCodeRawHttpClient(serverURL: serverUrl, password: password, client: IOClient(httpClient)),
+      client: OpenCodeRawHttpClient(serverURL: serverUrl, password: password, client: client),
     );
     final repository = OpenCodeV2Repository(api: api, modelMapper: modelMapper, messageMapper: messageMapper);
     return OpenCodeV2Plugin._(
@@ -72,8 +73,10 @@ class OpenCodeV2Plugin._({
         sesoriTools: sesoriMcp == null
             ? null
             : V2SesoriToolsService(
-                api: api,
-                bridge: SesoriBridgeMcpApi(client: http.Client()),
+                repository: V2SesoriToolsRepository(
+                  api: api,
+                  bridge: SesoriBridgeMcpApi(client: client),
+                ),
                 access: sesoriMcp,
                 idleRelease: const Duration(hours: 1),
                 retryDelay: const Duration(seconds: 30),

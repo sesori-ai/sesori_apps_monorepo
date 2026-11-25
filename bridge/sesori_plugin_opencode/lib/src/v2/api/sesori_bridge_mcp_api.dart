@@ -19,6 +19,4 @@ class SesoriBridgeMcpApi({required final http.Client _client}) {
     }
     return response.body;
   }
-
-  void close() => _client.close();
 }

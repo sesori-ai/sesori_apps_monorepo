@@ -6,6 +6,7 @@ import "package:http/http.dart" as http;
 import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
 import "package:opencode_plugin/src/v2/api/sesori_bridge_mcp_api.dart";
+import "package:opencode_plugin/src/v2/repositories/v2_sesori_tools_repository.dart";
 import "package:opencode_plugin/src/v2/services/v2_sesori_tools_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -19,10 +20,12 @@ void main() {
   late V2SesoriToolsService service;
 
   V2SesoriToolsService build({Duration idleRelease = const Duration(hours: 1)}) => V2SesoriToolsService(
-    api: OpenCodeV2Api(
-      client: OpenCodeRawHttpClient(serverURL: fixture.url, password: "secret", client: http.Client()),
+    repository: V2SesoriToolsRepository(
+      api: OpenCodeV2Api(
+        client: OpenCodeRawHttpClient(serverURL: fixture.url, password: "secret", client: http.Client()),
+      ),
+      bridge: SesoriBridgeMcpApi(client: http.Client()),
     ),
-    bridge: SesoriBridgeMcpApi(client: http.Client()),
     access: access,
     idleRelease: idleRelease,
     retryDelay: const Duration(minutes: 1),
@@ -49,9 +52,18 @@ void main() {
     expect(fixture.bridgeTokens, ["token-1", "token-1"]);
     expect(access.bound, isEmpty);
 
-    final first = await socket.request(method: "tools/call", params: _call(sessionId: "ses_a"));
-    final second = await socket.request(method: "tools/call", params: _call(sessionId: "ses_b"));
-    final again = await socket.request(method: "tools/call", params: _call(sessionId: "ses_a"));
+    final first = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_a"),
+    );
+    final second = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_b"),
+    );
+    final again = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_a"),
+    );
 
     expect(_text(first), "token-2 tools/call");
     expect(_text(second), "token-3 tools/call");
@@ -65,7 +77,10 @@ void main() {
 
     final unattributed = await socket.request(method: "tools/call", params: {"name": "list_tasks"});
     access.enabled = false;
-    final off = await socket.request(method: "tools/call", params: _call(sessionId: "ses_a"));
+    final off = await socket.request(
+      method: "tools/call",
+      params: _call(sessionId: "ses_a"),
+    );
 
     expect(_text(unattributed), contains("only inside an OpenCode session"));
     expect(_text(off), contains("turned off"));

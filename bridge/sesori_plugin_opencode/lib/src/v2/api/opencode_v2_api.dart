@@ -206,7 +206,10 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   /// While the socket is open, OpenCode keeps the folder loaded.
   Future<WebSocket> connectClientMcp({required String directory, required String name}) => _client.connectWebSocket(
     path: "/api/experimental/client-mcp",
-    queryParameters: {..._location(directory: directory), "name": name},
+    queryParameters: {
+      ..._location(directory: directory),
+      "name": name,
+    },
   );
 
   Future<List<Project>> listProjects() async {

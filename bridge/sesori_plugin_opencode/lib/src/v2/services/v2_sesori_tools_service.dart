@@ -1,11 +1,10 @@
 import "dart:async";
-import "dart:convert";
 import "dart:io" show WebSocket;
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../api/opencode_v2_api.dart";
-import "../api/sesori_bridge_mcp_api.dart";
+import "../models/v2_client_mcp_frame.dart";
+import "../repositories/v2_sesori_tools_repository.dart";
 
 /// Gives every OpenCode session Sesori's MCP tools, through OpenCode's
 /// client-MCP WebSocket rather than any launch-time config: OpenCode's server
@@ -22,8 +21,7 @@ import "../api/sesori_bridge_mcp_api.dart";
 /// A socket keeps its folder loaded in OpenCode, so a folder with no session
 /// activity for [_idleRelease] lets its socket go, as OpenCode would unload it.
 class V2SesoriToolsService({
-  required final OpenCodeV2Api _api,
-  required final SesoriBridgeMcpApi _bridge,
+  required final V2SesoriToolsRepository _repository,
   required final SesoriMcpAccess _access,
 
   /// How long a folder keeps its socket after its last session activity.
@@ -36,9 +34,6 @@ class V2SesoriToolsService({
   /// How long a prompt waits for a connecting folder's tools.
   required final Duration _attachWait,
 }) {
-  static const String _sessionIdMetaKey = "ai.opencode/sessionID";
-  static const int _internalError = -32603;
-
   final Map<String, _Folder> _folders = {};
   final Map<String, SesoriMcpLaunch> _sessionLaunches = {};
   Timer? _sweep;
@@ -71,7 +66,6 @@ class V2SesoriToolsService({
     ];
     _folders.clear();
     await Future.wait([for (final socket in sockets) socket.close()]);
-    _bridge.close();
   }
 
   Future<void> _link({required String directory, required bool retryNow}) {
@@ -107,7 +101,7 @@ class V2SesoriToolsService({
     final listed = connecting.listed;
     final WebSocket socket;
     try {
-      socket = await _api.connectClientMcp(directory: directory, name: sesoriMcpServerName);
+      socket = await _repository.connect(directory: directory);
     } on Object catch (error, stackTrace) {
       Log.w("[opencode-v2] could not attach Sesori tools to $directory", error, stackTrace);
       _close(folder: folder, link: connecting);
@@ -149,25 +143,21 @@ class V2SesoriToolsService({
     required Object? frame,
     required Completer<void> listed,
   }) async {
-    if (frame is! String) return;
-    final Object? message;
-    try {
-      message = jsonDecode(frame);
-    } on FormatException {
-      return;
-    }
     // Notifications and replies to nothing this side asked need no answer.
-    if (message is! Map<String, dynamic>) return;
-    final Object? id = message["id"];
-    final Object? method = message["method"];
-    if (id == null || method is! String) return;
-
+    final request = _repository.parse(frame: frame);
+    if (request == null) return;
     final String reply;
-    if (method == "tools/call") {
-      _folders[directory]?.lastActive = DateTime.now();
-      reply = await _call(id: id, message: message, frame: frame);
-    } else {
-      reply = await _forward(id: id, method: method, launch: folderLaunch, frame: frame);
+    switch (request) {
+      case V2ClientMcpSessionCall(:final sessionId):
+        _folders[directory]?.lastActive = DateTime.now();
+        final launch = _sessionLaunch(sessionId: sessionId);
+        reply = launch == null
+            ? _repository.toolError(request: request, text: "Sesori's agent tools are turned off on this computer.")
+            : await _forward(request: request, launch: launch);
+      case V2ClientMcpUnattributedCall():
+        reply = _repository.toolError(request: request, text: "Sesori's tools work only inside an OpenCode session.");
+      case V2ClientMcpListing() || V2ClientMcpOtherRequest():
+        reply = await _forward(request: request, launch: folderLaunch);
     }
     try {
       socket.add(reply);
@@ -178,19 +168,7 @@ class V2SesoriToolsService({
       return;
     }
     // OpenCode registers the tools once it has listed them.
-    if (method == "tools/list" && !listed.isCompleted) listed.complete();
-  }
-
-  Future<String> _call({required Object id, required Map<String, dynamic> message, required String frame}) async {
-    final String sessionId;
-    if (message case {"params": {"_meta": {_sessionIdMetaKey: final String meta}}}) {
-      sessionId = meta;
-    } else {
-      return _toolError(id: id, text: "Sesori's tools work only inside an OpenCode session.");
-    }
-    final launch = _sessionLaunch(sessionId: sessionId);
-    if (launch == null) return _toolError(id: id, text: "Sesori's agent tools are turned off on this computer.");
-    return await _forward(id: id, method: "tools/call", launch: launch, frame: frame);
+    if (request is V2ClientMcpListing && !listed.isCompleted) listed.complete();
   }
 
   /// The grant that attributes calls to [sessionId], minted and bound once.
@@ -203,34 +181,14 @@ class V2SesoriToolsService({
     return _sessionLaunches[sessionId] = launch;
   }
 
-  Future<String> _forward({
-    required Object id,
-    required String method,
-    required SesoriMcpLaunch launch,
-    required String frame,
-  }) async {
+  Future<String> _forward({required V2ClientMcpRequest request, required SesoriMcpLaunch launch}) async {
     try {
-      return await _bridge.send(launch: launch, message: frame);
+      return await _repository.forward(request: request, launch: launch);
     } on Object catch (error, stackTrace) {
-      Log.w("[opencode-v2] the Sesori bridge did not answer $method", error, stackTrace);
-      return jsonEncode({
-        "jsonrpc": "2.0",
-        "id": id,
-        "error": {"code": _internalError, "message": "The Sesori bridge did not answer."},
-      });
+      Log.w("[opencode-v2] the Sesori bridge did not answer", error, stackTrace);
+      return _repository.unanswered(request: request);
     }
   }
-
-  String _toolError({required Object id, required String text}) => jsonEncode({
-    "jsonrpc": "2.0",
-    "id": id,
-    "result": {
-      "content": [
-        {"type": "text", "text": text},
-      ],
-      "isError": true,
-    },
-  });
 
   void _releaseIdle() {
     final cutoff = DateTime.now().subtract(_idleRelease);
