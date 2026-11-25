@@ -103,8 +103,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Check CI"), findsOneWidget);
     expect(find.text("WATCHED PULL REQUESTS"), findsOneWidget);
-    expect(find.text("acme/app · needs you"), findsOneWidget);
-    expect(find.text("acme/app · waiting"), findsOneWidget);
+    expect(find.text("needs you · acme/app"), findsOneWidget);
+    expect(find.text("waiting · acme/app"), findsOneWidget);
 
     await tester.tap(find.byKey(const Key("session-pull-request-watch-stop-acme/app#15")));
     await tester.pumpAndSettle();

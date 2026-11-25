@@ -200,7 +200,7 @@ class const _PullRequestWatchRow({required final SessionPullRequestWatch watch, 
           ExcludeSemantics(child: Icon(TablerRegular.git_pull_request, size: 20, color: look.color)),
           Expanded(
             child: Semantics(
-              label: "#${watch.number} ${watch.title}, ${watch.repository}, ${look.words}",
+              label: "#${watch.number} ${watch.title}, ${look.words}, ${watch.repository}",
               excludeSemantics: true,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -221,7 +221,7 @@ class const _PullRequestWatchRow({required final SessionPullRequestWatch watch, 
                     style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
                   ),
                   Text(
-                    "${watch.repository} · ${look.words}",
+                    "${look.words} · ${watch.repository}",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: prego.textTheme.textXs.regular.copyWith(color: secondary),
