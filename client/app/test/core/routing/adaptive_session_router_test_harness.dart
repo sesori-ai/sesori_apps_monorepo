@@ -249,6 +249,7 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionRepository>(sessionRepository);
+    getIt.registerSingleton<PullRequestWatchRepository>(noPullRequestWatches());
     getIt.registerSingleton<SessionAbortService>(SessionAbortService(repository: sessionRepository));
     getIt.registerSingleton<SessionAutoContinuationService>(
       SessionAutoContinuationService(repository: sessionRepository),
