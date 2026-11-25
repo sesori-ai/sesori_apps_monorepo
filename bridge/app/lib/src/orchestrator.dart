@@ -490,9 +490,11 @@ class Orchestrator({
       dao: SesoriToolRecordDao(database: _database),
       clock: clock,
     );
-    final pullRequestWatches = PullRequestWatchRepository(
-      store: BridgeSesoriToolStoreImpl(groupId: SesoriToolGroupIds.prMonitor, records: sesoriToolRecords),
+    final pullRequestMonitorStore = BridgeSesoriToolStoreImpl(
+      groupId: SesoriToolGroupIds.prMonitor,
+      records: sesoriToolRecords,
     );
+    final pullRequestWatches = PullRequestWatchRepository(store: pullRequestMonitorStore);
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
@@ -962,7 +964,7 @@ class Orchestrator({
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final pullRequestMonitorHost = BridgeSesoriToolHostImpl(
       groupId: SesoriToolGroupIds.prMonitor,
-      records: sesoriToolRecords,
+      store: pullRequestMonitorStore,
       notices: sessionNoticeService,
       sessions: sessionRepository,
       settings: _bridgeSettingsRepository,

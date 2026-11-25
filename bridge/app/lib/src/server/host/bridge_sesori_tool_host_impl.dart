@@ -4,24 +4,22 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../repositories/models/session_notice.dart";
 import "../../repositories/models/session_operation.dart";
-import "../../repositories/sesori_tool_record_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_notice_service.dart";
 import "../../services/tool_group_approval_service.dart";
-import "bridge_sesori_tool_store_impl.dart";
 
-/// One tool group's [SesoriToolHost]: its records, toggle, notices,
+/// One tool group's [SesoriToolHost]: its [store], toggle, notices,
 /// sessions and approvals, all scoped to [_groupId].
 class BridgeSesoriToolHostImpl({
   required final SesoriToolGroupId _groupId,
-  required final SesoriToolRecordRepository _records,
+  required final SesoriToolStore _store,
   required final SessionNoticeService _notices,
   required final SessionRepository _sessions,
   required final BridgeSettingsRepository _settings,
   required final ToolGroupApprovalService _approvals,
 }) implements SesoriToolHost {
   @override
-  late final SesoriToolStore store = BridgeSesoriToolStoreImpl(groupId: _groupId, records: _records);
+  SesoriToolStore get store => _store;
 
   @override
   bool get enabled => _settings.currentSettings.toolGroupEnabled(id: _groupId);

@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/repositories/sesori_tool_record_repository.dar
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/server/host/bridge_sesori_tool_host_impl.dart";
+import "package:sesori_bridge/src/server/host/bridge_sesori_tool_store_impl.dart";
 import "package:sesori_bridge/src/services/session_notice_service.dart";
 import "package:sesori_bridge/src/services/tool_group_approval_service.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
@@ -32,9 +33,12 @@ void main() {
 
   BridgeSesoriToolHostImpl hostFor({required SesoriToolGroupId groupId}) => BridgeSesoriToolHostImpl(
     groupId: groupId,
-    records: SesoriToolRecordRepository(
-      dao: SesoriToolRecordDao(database: db),
-      clock: const Clock(),
+    store: BridgeSesoriToolStoreImpl(
+      groupId: groupId,
+      records: SesoriToolRecordRepository(
+        dao: SesoriToolRecordDao(database: db),
+        clock: const Clock(),
+      ),
     ),
     notices: notices,
     sessions: sessions,

@@ -31,6 +31,7 @@ import "package:sesori_bridge/src/routing/sesori_mcp/groups/tasks/scheduled_task
 import "package:sesori_bridge/src/routing/sesori_mcp/groups/wake_ups/wake_up_tool_group.dart";
 import "package:sesori_bridge/src/routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
 import "package:sesori_bridge/src/server/host/bridge_sesori_tool_host_impl.dart";
+import "package:sesori_bridge/src/server/host/bridge_sesori_tool_store_impl.dart";
 import "package:sesori_bridge/src/services/scheduled_task_agent_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_change_description_builder.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -198,9 +199,12 @@ void main() {
         _pullRequestMonitorGroup(
           host: BridgeSesoriToolHostImpl(
             groupId: SesoriToolGroupIds.prMonitor,
-            records: SesoriToolRecordRepository(
-              dao: SesoriToolRecordDao(database: db),
-              clock: const Clock(),
+            store: BridgeSesoriToolStoreImpl(
+              groupId: SesoriToolGroupIds.prMonitor,
+              records: SesoriToolRecordRepository(
+                dao: SesoriToolRecordDao(database: db),
+                clock: const Clock(),
+              ),
             ),
             notices: notices,
             sessions: sessions,
