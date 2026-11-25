@@ -40,8 +40,9 @@ enum PullRequestMonitorTool({
           "type": "boolean",
           "description":
               "Only when the user asked for this PR to be merged without human review: marking it ready then "
-              "squash-merges it once. Leave it out for the user's default from configure_pr_monitor, which is "
-              "off unless they changed it.",
+              "squash-merges it once. Where the default is off, the watch starts without it and the user is asked "
+              "to allow it. Leave it out for the user's default from configure_pr_monitor, which is off unless "
+              "they changed it.",
         },
       },
       "required": ["pr"],
@@ -124,8 +125,9 @@ enum PullRequestMonitorTool({
     readOnly: false,
     description:
         "Turn auto-merge on or off for a PR this session watches, only when the user asks. With it on, the ready "
-        "label is the merge approval: Sesori squash-merges the PR once it is marked ready. Turning it on removes a "
-        "ready label the PR already carries, so it is merged only after a fresh judgment.",
+        "label is the merge approval: Sesori squash-merges the PR once it is marked ready. Turning it on asks the "
+        "user to allow it where the default is off, and removes a ready label the PR already carries, so it is "
+        "merged only after a fresh judgment.",
     inputSchema: {
       "type": "object",
       "properties": {

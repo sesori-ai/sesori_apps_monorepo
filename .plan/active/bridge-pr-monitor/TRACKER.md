@@ -10,7 +10,8 @@
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Done | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Done | #2919, #2920 |
-| 9 | ⚙️ `configure_pr_monitor` | In review | #2921 |
+| 9 | ⚙️ `configure_pr_monitor` | Done | #2921 |
+| 9.b | 🌿 Allow for an agent's per-PR auto-merge | In review | #2925 |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |

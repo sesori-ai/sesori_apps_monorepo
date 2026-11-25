@@ -105,6 +105,19 @@ final class const PullRequestAutoMergeSet({
   required final bool readyLabelRemoved,
 }) extends PullRequestAutoMergeResult;
 
+/// How an agent's request to turn auto-merge on for its watch ended.
+sealed class const PullRequestAutoMergeRequest();
+
+/// It needed no Allow, or the session approves everything.
+final class const PullRequestAutoMergeRequestApplied({required final PullRequestAutoMergeResult result})
+    extends PullRequestAutoMergeRequest;
+
+/// It waits for the user's Allow; auto-merge stays off until then.
+final class const PullRequestAutoMergeAwaitingApproval() extends PullRequestAutoMergeRequest;
+
+/// The Allow request could not be shown, so auto-merge stays off.
+final class const PullRequestAutoMergeApprovalDropped() extends PullRequestAutoMergeRequest;
+
 /// How `configure_pr_monitor` ended. Each [config] is the settings now in
 /// effect.
 sealed class const PullRequestConfigureResult();

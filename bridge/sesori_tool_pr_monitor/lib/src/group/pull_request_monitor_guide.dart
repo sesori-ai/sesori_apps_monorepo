@@ -36,9 +36,11 @@ restarts, and ends by itself when the PR is merged or closed. Don't watch it aga
 
 Auto-merge is off unless the user turned it on with `configure_pr_monitor` for every repository or this one. Pass
 `auto_merge` to `watch_pr`, or call `set_pr_auto_merge` on a watched PR, only when the user explicitly asks for it on
-this PR. With auto-merge on, the user has chosen to merge without waiting for a human: `mark_pr_ready` is the merge
-approval. Call it once checks and automated reviews have settled, CI is green, the PR is mergeable and nothing
-actionable remains; never hold it back so that a human can look first.
+this PR. Where the default is off, the user may be asked to allow it; the result says so. Until they answer, the PR
+has no auto-merge, and a message tells you their answer, so end your turn instead of waiting. With auto-merge on, the
+user has chosen to merge without waiting for a human: `mark_pr_ready` is the merge approval. Call it once checks and
+automated reviews have settled, CI is green, the PR is mergeable and nothing actionable remains; never hold it back so
+that a human can look first.
 
 ## 2. Assess the first report
 

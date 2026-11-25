@@ -483,9 +483,14 @@ non-read-only tool, as recorded in `HARNESS_CAPABILITIES.md`.
   `host.requestApproval`. The card names the scope. The tool returns "Sent to
   the user for approval…" and the session hears the outcome through the
   usual notice. With YOLO on there is no card: the change applies at once
-  and the tool says so. Narrowing changes and timeouts apply at once. Per-PR
-  opt-in through `watch_pr` and `set_pr_auto_merge` stays as today, with no
-  Allow.
+  and the tool says so. Narrowing changes and timeouts apply at once.
+- **Per-PR auto-merge (owner decision, 2026-11-25, step 9.b).** An agent
+  turning auto-merge on for one PR (`watch_pr(auto_merge: true)`, or
+  `set_pr_auto_merge` turning it on) also asks the calling session's user
+  through `requestApproval` while the repo's default is off; YOLO applies it
+  at once. The watch starts at once without auto-merge, and the Allow
+  applies only to the watch the card was for; the root session hears the
+  answer. Turning it off never asks, and neither does the app's own toggle.
 
 ### Wire and app
 
@@ -931,7 +936,9 @@ asking.
 - Auto-merge keeps the per-PR opt-in.
 - A `configure` tool sets auto-merge globally or per repo, and changes
   timeouts. Only widening auto-merge shows an Allow card, and YOLO skips the
-  card. Narrowing and timeouts apply directly; per-PR opt-in needs no Allow.
+  card. Narrowing and timeouts apply directly. An agent's per-PR opt-in also
+  needs an Allow while the default is off (step 9.b); the user's own toggle
+  in the app does not.
 - Auto-merge defaults to off everywhere, with no import or migration of the
   plugin's config or `.pr-monitor.json`.
 - New groups are on by default, the PR monitor included.
