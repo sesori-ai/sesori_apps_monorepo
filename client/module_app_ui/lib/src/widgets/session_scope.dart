@@ -41,7 +41,8 @@ class const SessionScope({
 
   /// The current computer's watched pull requests, for the home button, the
   /// list and the desktop row.
-  required final PullRequestWatchListCubit Function() createPullRequestWatchListCubit,
+  required final PullRequestWatchRepository pullRequestWatchRepository,
+  required final SessionRepository sessionRepository,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -75,7 +76,13 @@ class const SessionScope({
           ),
           BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
           BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
-          BlocProvider(create: (_) => createPullRequestWatchListCubit()),
+          BlocProvider(
+            create: (_) => PullRequestWatchListCubit(
+              repository: pullRequestWatchRepository,
+              sessionRepository: sessionRepository,
+              connectionService: connectionService,
+            ),
+          ),
           BlocProvider(
             create: (context) => createAllSessionsCubit(
               context: context,

@@ -33,11 +33,8 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     sseEventTracker: getIt<SseEventTracker>(),
     sessionUnseenTracker: getIt<SessionUnseenTracker>(),
     sessionSendTracker: getIt<SessionSendTracker>(),
-    createPullRequestWatchListCubit: () => PullRequestWatchListCubit(
-      repository: getIt<PullRequestWatchRepository>(),
-      sessionRepository: getIt<SessionRepository>(),
-      connectionService: getIt<ConnectionService>(),
-    ),
+    pullRequestWatchRepository: getIt<PullRequestWatchRepository>(),
+    sessionRepository: getIt<SessionRepository>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [

@@ -228,11 +228,8 @@ Widget testHome() {
   when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
   return SessionScope(
     sessionSendTracker: SessionSendTracker(),
-    createPullRequestWatchListCubit: () => PullRequestWatchListCubit(
-      repository: _noPullRequestWatches(),
-      sessionRepository: MockSessionRepository(),
-      connectionService: getIt<ConnectionService>(),
-    ),
+    pullRequestWatchRepository: _noPullRequestWatches(),
+    sessionRepository: MockSessionRepository(),
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
