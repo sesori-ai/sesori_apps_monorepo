@@ -8,7 +8,8 @@ import "request_handler.dart";
 /// Handles `POST /permission/reply` — replies to a pending permission request.
 ///
 /// The [reply] field accepts "once", "always", or "reject". An agent's task
-/// approval, for a task or a wake-up command, is settled by the bridge; every other request goes to its plugin.
+/// approval, for a task, a wake-up command or a tool group's change, is settled by the bridge; every other request
+/// goes to its plugin.
 class ReplyToPermissionHandler({
   required final ScheduledTaskAgentService _scheduledTaskAgentService,
   required final PendingInteractionService _pendingInteractionService,
@@ -51,6 +52,7 @@ class ReplyToPermissionHandler({
         );
       case AgentApprovalAnswered(outcome: AgentApprovalApplied() || AgentApprovalCreated() || AgentApprovalRejected()):
       case WakeUpCommandAnswered():
+      case ToolGroupChangeAnswered():
         break;
     }
 

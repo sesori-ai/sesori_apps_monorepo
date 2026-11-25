@@ -35,8 +35,10 @@ import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/sesori_mcp_access_service.dart";
 import "package:sesori_bridge/src/services/session_wake_up_description_builder.dart";
 import "package:sesori_bridge/src/services/session_wake_up_service.dart";
+import "package:sesori_bridge/src/services/tool_group_approval_service.dart";
 import "package:sesori_bridge/src/services/wake_up_command_description_builder.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_interface/sesori_tool_interface.dart" show SesoriToolApprovalOutcome, SesoriToolGroupId;
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
@@ -89,6 +91,7 @@ void main() {
   late FakeAutoApproval autoApproval;
   late RecordingScheduledCommands commands;
   late SesoriMcpAccessService access;
+  late ToolGroupApprovalService toolGroupApprovals;
   var nextId = 1;
 
   setUpAll(tz_data.initializeTimeZones);
@@ -157,6 +160,11 @@ void main() {
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
       notices: notices,
       wakeUps: wakeUpService,
+      toolGroupApprovals: toolGroupApprovals = ToolGroupApprovalService(
+        approvals: approvals,
+        sessions: sessions,
+        autoApproval: autoApproval,
+      ),
     );
     access = SesoriMcpAccessService(grants: grants, sessions: sessions);
     final dispatcher = SesoriMcpRequestDispatcher(
@@ -289,6 +297,7 @@ void main() {
       switch (await agent.settle(requestId: requestId, reply: reply)) {
         AgentApprovalAnswered(:final outcome) => outcome,
         WakeUpCommandAnswered() => fail("$requestId is a wake-up command approval"),
+        ToolGroupChangeAnswered() => fail("$requestId is a tool group approval"),
         NotAgentApproval() => fail("$requestId is not an agent approval"),
       };
 
@@ -1870,6 +1879,22 @@ void main() {
       expect(await wakeUps.exists(id: theirs.id), isTrue);
       expect((await call(tool: "list_wakeups", arguments: {})).text, "This session has no wake-ups.");
     });
+  });
+
+  test("the user's reply to a tool group's request reaches the group waiting on it", () async {
+    final outcome = toolGroupApprovals.request(
+      groupId: const SesoriToolGroupId("pr_monitor"),
+      sessionId: "s1",
+      title: "Sesori: PR monitor auto-merge",
+      body: "Turn auto-merge on for every repository?",
+    );
+    await pumpEventQueue();
+    final asked = approvalEvents.whereType<AgentApprovalAsked>().single.permission;
+    expect(asked.tool, "Sesori: PR monitor auto-merge");
+
+    expect(await agent.settle(requestId: asked.id, reply: PermissionReply.once), isA<ToolGroupChangeAnswered>());
+    expect(await outcome, SesoriToolApprovalOutcome.allowed);
+    expect(notices.delivered, isEmpty, reason: "the group tells the session itself");
   });
 }
 

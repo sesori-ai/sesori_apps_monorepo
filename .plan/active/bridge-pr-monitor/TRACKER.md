@@ -4,10 +4,10 @@
 |---|---|---|---|
 | 1 | 🌱 Raise the plan | Done | #2908 |
 | 2 | ⚙️ Tool-group interface and grouped MCP server | Done | #2909 |
-| 3 | 🌿 Per-group toggles and leaner task text | In review | |
-| 4 | 🚧 Tool host: records, notices and approvals | Not started | |
+| 3 | 🌿 Per-group toggles and leaner task text | Done | #2911 |
+| 4 | 🚧 Tool host: records, notices and approvals | In review | #2913 |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
-| 6 | ⚙️ PR monitor rules | In review | |
+| 6 | ⚙️ PR monitor rules | Done | #2912 |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Not started | |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
@@ -32,9 +32,24 @@
   including sessions started in OpenCode's own app — gets a token bound to
   its `_meta` session id on first call, so the tools work for all sessions
   with no "is this a Sesori session" detection.
-- Step 4 adds `start`, `dispose`, the host and the `sesori_plugin_interface`
-  dependency to the interface (update `bridge/AGENTS.md`'s module order line,
-  which says "no internal deps"), and step 10 adds `guide`.
+- Step 4 added `start`, `dispose` and `SesoriToolHost` (with `SesoriToolStore`)
+  to the interface, which now depends on `sesori_plugin_interface` and
+  re-exports `Log`. Step 10 adds `guide`.
+- For step 7, from step 4 as built:
+  - The orchestrator already builds `ToolGroupApprovalService` and starts and
+    disposes every group (`OrchestratorSession._startToolGroups`, after the
+    MCP drain on shutdown). No host exists yet: step 7 builds one
+    `SesoriToolRecordRepository(dao: SesoriToolRecordDao(...), clock: clock)`
+    and a `BridgeSesoriToolHostImpl` for the PR monitor group.
+  - Store values are JSON maps; `put…` replaces by key, and a session record
+    for an unstored session throws (foreign key). A claim that must not
+    resurrect an ended watch should check the record inside the claim.
+  - `host.enabled` is false while either the group's toggle or the
+    `agent-tools` master switch is off; `enabledChanges` emits only this
+    group's flips.
+  - `requestApproval` skips the card only when both the caller and its root
+    session approve everything, as wake-up commands do, and returns
+    `dropped` for an unstored session or at bridge stop.
 - Group ids live in `bridge/app/lib/src/repositories/models/sesori_tool_group_ids.dart`
   (`SesoriToolGroupIds.all`), because launches, the CLI and scheduled runs
   read them before the groups are built. Step 7 adds the PR monitor's id there,

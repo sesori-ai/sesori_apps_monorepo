@@ -47,6 +47,13 @@ class WakeUpToolGroup({required final SessionWakeUpService _wakeUps}) implements
   @override
   List<SesoriToolDefinition> get tools => [for (final tool in WakeUpTool.values) tool.definition];
 
+  /// Nothing to start: the app's own services run any background work.
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> dispose() async {}
+
   @override
   Future<SesoriToolResult> call({
     required String tool,

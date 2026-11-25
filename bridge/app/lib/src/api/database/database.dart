@@ -23,6 +23,8 @@ import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/scheduled_task_runs_table.dart";
 import "tables/scheduled_tasks_table.dart";
+import "tables/sesori_tool_records_table.dart";
+import "tables/sesori_tool_session_records_table.dart";
 import "tables/session_continuation_table.dart";
 import "tables/session_interruptions_table.dart";
 import "tables/session_options_cache_table.dart";
@@ -53,6 +55,8 @@ part "database.g.dart";
     SessionInterruptionsTable,
     AgentPagesTable,
     SessionWakeUpsTable,
+    SesoriToolSessionRecordsTable,
+    SesoriToolRecordsTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -60,7 +64,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 34;
+  int get schemaVersion => 35;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -431,6 +435,12 @@ class AppDatabase(super.e) extends _$AppDatabase {
       from33To34: (m, schema) async {
         // A new nullable column: existing tasks run no command.
         await m.addColumn(schema.scheduledTasks, schema.scheduledTasks.command);
+      },
+      from34To35: (m, schema) async {
+        // No tool group stored a record before v35, so both tables start empty.
+        await m.createTable(schema.sesoriToolSessionRecords);
+        await m.createIndex(schema.idxSesoriToolSessionRecordsSession);
+        await m.createTable(schema.sesoriToolRecords);
       },
     ),
     beforeOpen: (details) async {

@@ -8121,6 +8121,734 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
   }
 }
 
+mixin $SesoriToolSessionRecordsTableTableToColumns
+    implements Insertable<SesoriToolSessionRecordDto> {
+  String get groupId;
+  String get sessionId;
+  String get recordKey;
+
+  /// A JSON object in the group's own format.
+  String get valueJson;
+
+  /// UTC milliseconds.
+  int get updatedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['session_id'] = Variable<String>(sessionId);
+    map['record_key'] = Variable<String>(recordKey);
+    map['value_json'] = Variable<String>(valueJson);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+}
+
+class $SesoriToolSessionRecordsTableTable extends SesoriToolSessionRecordsTable
+    with
+        TableInfo<
+          $SesoriToolSessionRecordsTableTable,
+          SesoriToolSessionRecordDto
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SesoriToolSessionRecordsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _recordKeyMeta = const VerificationMeta(
+    'recordKey',
+  );
+  @override
+  late final GeneratedColumn<String> recordKey = GeneratedColumn<String>(
+    'record_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueJsonMeta = const VerificationMeta(
+    'valueJson',
+  );
+  @override
+  late final GeneratedColumn<String> valueJson = GeneratedColumn<String>(
+    'value_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    sessionId,
+    recordKey,
+    valueJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sesori_tool_session_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SesoriToolSessionRecordDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('record_key')) {
+      context.handle(
+        _recordKeyMeta,
+        recordKey.isAcceptableOrUnknown(data['record_key']!, _recordKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordKeyMeta);
+    }
+    if (data.containsKey('value_json')) {
+      context.handle(
+        _valueJsonMeta,
+        valueJson.isAcceptableOrUnknown(data['value_json']!, _valueJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, sessionId, recordKey};
+  @override
+  SesoriToolSessionRecordDto map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SesoriToolSessionRecordDto(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      recordKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_key'],
+      )!,
+      valueJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SesoriToolSessionRecordsTableTable createAlias(String alias) {
+    return $SesoriToolSessionRecordsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SesoriToolSessionRecordDto extends DataClass
+    with $SesoriToolSessionRecordsTableTableToColumns {
+  @override
+  final String groupId;
+  @override
+  final String sessionId;
+  @override
+  final String recordKey;
+
+  /// A JSON object in the group's own format.
+  @override
+  final String valueJson;
+
+  /// UTC milliseconds.
+  @override
+  final int updatedAt;
+  const SesoriToolSessionRecordDto({
+    required this.groupId,
+    required this.sessionId,
+    required this.recordKey,
+    required this.valueJson,
+    required this.updatedAt,
+  });
+  SesoriToolSessionRecordsTableCompanion toCompanion(bool nullToAbsent) {
+    return SesoriToolSessionRecordsTableCompanion(
+      groupId: Value(groupId),
+      sessionId: Value(sessionId),
+      recordKey: Value(recordKey),
+      valueJson: Value(valueJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SesoriToolSessionRecordDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SesoriToolSessionRecordDto(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      recordKey: serializer.fromJson<String>(json['recordKey']),
+      valueJson: serializer.fromJson<String>(json['valueJson']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'recordKey': serializer.toJson<String>(recordKey),
+      'valueJson': serializer.toJson<String>(valueJson),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  SesoriToolSessionRecordDto copyWith({
+    String? groupId,
+    String? sessionId,
+    String? recordKey,
+    String? valueJson,
+    int? updatedAt,
+  }) => SesoriToolSessionRecordDto(
+    groupId: groupId ?? this.groupId,
+    sessionId: sessionId ?? this.sessionId,
+    recordKey: recordKey ?? this.recordKey,
+    valueJson: valueJson ?? this.valueJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SesoriToolSessionRecordDto copyWithCompanion(
+    SesoriToolSessionRecordsTableCompanion data,
+  ) {
+    return SesoriToolSessionRecordDto(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      recordKey: data.recordKey.present ? data.recordKey.value : this.recordKey,
+      valueJson: data.valueJson.present ? data.valueJson.value : this.valueJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SesoriToolSessionRecordDto(')
+          ..write('groupId: $groupId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('recordKey: $recordKey, ')
+          ..write('valueJson: $valueJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(groupId, sessionId, recordKey, valueJson, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SesoriToolSessionRecordDto &&
+          other.groupId == this.groupId &&
+          other.sessionId == this.sessionId &&
+          other.recordKey == this.recordKey &&
+          other.valueJson == this.valueJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SesoriToolSessionRecordsTableCompanion
+    extends UpdateCompanion<SesoriToolSessionRecordDto> {
+  final Value<String> groupId;
+  final Value<String> sessionId;
+  final Value<String> recordKey;
+  final Value<String> valueJson;
+  final Value<int> updatedAt;
+  const SesoriToolSessionRecordsTableCompanion({
+    this.groupId = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.recordKey = const Value.absent(),
+    this.valueJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SesoriToolSessionRecordsTableCompanion.insert({
+    required String groupId,
+    required String sessionId,
+    required String recordKey,
+    required String valueJson,
+    required int updatedAt,
+  }) : groupId = Value(groupId),
+       sessionId = Value(sessionId),
+       recordKey = Value(recordKey),
+       valueJson = Value(valueJson),
+       updatedAt = Value(updatedAt);
+  static Insertable<SesoriToolSessionRecordDto> custom({
+    Expression<String>? groupId,
+    Expression<String>? sessionId,
+    Expression<String>? recordKey,
+    Expression<String>? valueJson,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (sessionId != null) 'session_id': sessionId,
+      if (recordKey != null) 'record_key': recordKey,
+      if (valueJson != null) 'value_json': valueJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SesoriToolSessionRecordsTableCompanion copyWith({
+    Value<String>? groupId,
+    Value<String>? sessionId,
+    Value<String>? recordKey,
+    Value<String>? valueJson,
+    Value<int>? updatedAt,
+  }) {
+    return SesoriToolSessionRecordsTableCompanion(
+      groupId: groupId ?? this.groupId,
+      sessionId: sessionId ?? this.sessionId,
+      recordKey: recordKey ?? this.recordKey,
+      valueJson: valueJson ?? this.valueJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (recordKey.present) {
+      map['record_key'] = Variable<String>(recordKey.value);
+    }
+    if (valueJson.present) {
+      map['value_json'] = Variable<String>(valueJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SesoriToolSessionRecordsTableCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('recordKey: $recordKey, ')
+          ..write('valueJson: $valueJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $SesoriToolRecordsTableTableToColumns
+    implements Insertable<SesoriToolRecordDto> {
+  String get groupId;
+  String get recordKey;
+
+  /// A JSON object in the group's own format.
+  String get valueJson;
+
+  /// UTC milliseconds.
+  int get updatedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['group_id'] = Variable<String>(groupId);
+    map['record_key'] = Variable<String>(recordKey);
+    map['value_json'] = Variable<String>(valueJson);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+}
+
+class $SesoriToolRecordsTableTable extends SesoriToolRecordsTable
+    with TableInfo<$SesoriToolRecordsTableTable, SesoriToolRecordDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SesoriToolRecordsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _recordKeyMeta = const VerificationMeta(
+    'recordKey',
+  );
+  @override
+  late final GeneratedColumn<String> recordKey = GeneratedColumn<String>(
+    'record_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueJsonMeta = const VerificationMeta(
+    'valueJson',
+  );
+  @override
+  late final GeneratedColumn<String> valueJson = GeneratedColumn<String>(
+    'value_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    groupId,
+    recordKey,
+    valueJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sesori_tool_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SesoriToolRecordDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('record_key')) {
+      context.handle(
+        _recordKeyMeta,
+        recordKey.isAcceptableOrUnknown(data['record_key']!, _recordKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_recordKeyMeta);
+    }
+    if (data.containsKey('value_json')) {
+      context.handle(
+        _valueJsonMeta,
+        valueJson.isAcceptableOrUnknown(data['value_json']!, _valueJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {groupId, recordKey};
+  @override
+  SesoriToolRecordDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SesoriToolRecordDto(
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      recordKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}record_key'],
+      )!,
+      valueJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SesoriToolRecordsTableTable createAlias(String alias) {
+    return $SesoriToolRecordsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SesoriToolRecordDto extends DataClass
+    with $SesoriToolRecordsTableTableToColumns {
+  @override
+  final String groupId;
+  @override
+  final String recordKey;
+
+  /// A JSON object in the group's own format.
+  @override
+  final String valueJson;
+
+  /// UTC milliseconds.
+  @override
+  final int updatedAt;
+  const SesoriToolRecordDto({
+    required this.groupId,
+    required this.recordKey,
+    required this.valueJson,
+    required this.updatedAt,
+  });
+  SesoriToolRecordsTableCompanion toCompanion(bool nullToAbsent) {
+    return SesoriToolRecordsTableCompanion(
+      groupId: Value(groupId),
+      recordKey: Value(recordKey),
+      valueJson: Value(valueJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SesoriToolRecordDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SesoriToolRecordDto(
+      groupId: serializer.fromJson<String>(json['groupId']),
+      recordKey: serializer.fromJson<String>(json['recordKey']),
+      valueJson: serializer.fromJson<String>(json['valueJson']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'groupId': serializer.toJson<String>(groupId),
+      'recordKey': serializer.toJson<String>(recordKey),
+      'valueJson': serializer.toJson<String>(valueJson),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  SesoriToolRecordDto copyWith({
+    String? groupId,
+    String? recordKey,
+    String? valueJson,
+    int? updatedAt,
+  }) => SesoriToolRecordDto(
+    groupId: groupId ?? this.groupId,
+    recordKey: recordKey ?? this.recordKey,
+    valueJson: valueJson ?? this.valueJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SesoriToolRecordDto copyWithCompanion(SesoriToolRecordsTableCompanion data) {
+    return SesoriToolRecordDto(
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      recordKey: data.recordKey.present ? data.recordKey.value : this.recordKey,
+      valueJson: data.valueJson.present ? data.valueJson.value : this.valueJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SesoriToolRecordDto(')
+          ..write('groupId: $groupId, ')
+          ..write('recordKey: $recordKey, ')
+          ..write('valueJson: $valueJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(groupId, recordKey, valueJson, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SesoriToolRecordDto &&
+          other.groupId == this.groupId &&
+          other.recordKey == this.recordKey &&
+          other.valueJson == this.valueJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SesoriToolRecordsTableCompanion
+    extends UpdateCompanion<SesoriToolRecordDto> {
+  final Value<String> groupId;
+  final Value<String> recordKey;
+  final Value<String> valueJson;
+  final Value<int> updatedAt;
+  const SesoriToolRecordsTableCompanion({
+    this.groupId = const Value.absent(),
+    this.recordKey = const Value.absent(),
+    this.valueJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  SesoriToolRecordsTableCompanion.insert({
+    required String groupId,
+    required String recordKey,
+    required String valueJson,
+    required int updatedAt,
+  }) : groupId = Value(groupId),
+       recordKey = Value(recordKey),
+       valueJson = Value(valueJson),
+       updatedAt = Value(updatedAt);
+  static Insertable<SesoriToolRecordDto> custom({
+    Expression<String>? groupId,
+    Expression<String>? recordKey,
+    Expression<String>? valueJson,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (groupId != null) 'group_id': groupId,
+      if (recordKey != null) 'record_key': recordKey,
+      if (valueJson != null) 'value_json': valueJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  SesoriToolRecordsTableCompanion copyWith({
+    Value<String>? groupId,
+    Value<String>? recordKey,
+    Value<String>? valueJson,
+    Value<int>? updatedAt,
+  }) {
+    return SesoriToolRecordsTableCompanion(
+      groupId: groupId ?? this.groupId,
+      recordKey: recordKey ?? this.recordKey,
+      valueJson: valueJson ?? this.valueJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (recordKey.present) {
+      map['record_key'] = Variable<String>(recordKey.value);
+    }
+    if (valueJson.present) {
+      map['value_json'] = Variable<String>(valueJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SesoriToolRecordsTableCompanion(')
+          ..write('groupId: $groupId, ')
+          ..write('recordKey: $recordKey, ')
+          ..write('valueJson: $valueJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8153,6 +8881,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $SessionWakeUpsTableTable sessionWakeUpsTable =
       $SessionWakeUpsTableTable(this);
+  late final $SesoriToolSessionRecordsTableTable sesoriToolSessionRecordsTable =
+      $SesoriToolSessionRecordsTableTable(this);
+  late final $SesoriToolRecordsTableTable sesoriToolRecordsTable =
+      $SesoriToolRecordsTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -8201,6 +8933,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_session_wake_ups_session',
     'CREATE INDEX idx_session_wake_ups_session ON session_wake_ups (session_id)',
   );
+  late final Index idxSesoriToolSessionRecordsSession = Index(
+    'idx_sesori_tool_session_records_session',
+    'CREATE INDEX idx_sesori_tool_session_records_session ON sesori_tool_session_records (session_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
@@ -8226,6 +8962,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionInterruptionsTable,
     agentPagesTable,
     sessionWakeUpsTable,
+    sesoriToolSessionRecordsTable,
+    sesoriToolRecordsTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
@@ -8238,6 +8976,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxAgentPagesStatusRoot,
     idxSessionWakeUpsNextDue,
     idxSessionWakeUpsSession,
+    idxSesoriToolSessionRecordsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -8331,6 +9070,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('session_wake_ups', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('sesori_tool_session_records', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -9975,6 +10723,38 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $SesoriToolSessionRecordsTableTable,
+    List<SesoriToolSessionRecordDto>
+  >
+  _sesoriToolSessionRecordsTableRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.sesoriToolSessionRecordsTable,
+    aliasName:
+        'sessions_table__session_id__sesori_tool_session_records__session_id',
+  );
+
+  $$SesoriToolSessionRecordsTableTableProcessedTableManager
+  get sesoriToolSessionRecordsTableRefs {
+    final manager =
+        $$SesoriToolSessionRecordsTableTableTableManager(
+          $_db,
+          $_db.sesoriToolSessionRecordsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sesoriToolSessionRecordsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -10409,6 +11189,35 @@ class $$SessionTableTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> sesoriToolSessionRecordsTableRefs(
+    Expression<bool> Function(
+      $$SesoriToolSessionRecordsTableTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$SesoriToolSessionRecordsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sesoriToolSessionRecordsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SesoriToolSessionRecordsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sesoriToolSessionRecordsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -11051,6 +11860,35 @@ class $$SessionTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> sesoriToolSessionRecordsTableRefs<T extends Object>(
+    Expression<T> Function(
+      $$SesoriToolSessionRecordsTableTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$SesoriToolSessionRecordsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sesoriToolSessionRecordsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SesoriToolSessionRecordsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sesoriToolSessionRecordsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -11079,6 +11917,7 @@ class $$SessionTableTableTableManager
             bool sessionInterruptionsTableRefs,
             bool agentPagesTableRefs,
             bool sessionWakeUpsTableRefs,
+            bool sesoriToolSessionRecordsTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -11236,6 +12075,7 @@ class $$SessionTableTableTableManager
                 sessionInterruptionsTableRefs = false,
                 agentPagesTableRefs = false,
                 sessionWakeUpsTableRefs = false,
+                sesoriToolSessionRecordsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -11251,6 +12091,8 @@ class $$SessionTableTableTableManager
                       db.sessionInterruptionsTable,
                     if (agentPagesTableRefs) db.agentPagesTable,
                     if (sessionWakeUpsTableRefs) db.sessionWakeUpsTable,
+                    if (sesoriToolSessionRecordsTableRefs)
+                      db.sesoriToolSessionRecordsTable,
                   ],
                   addJoins:
                       <
@@ -11477,6 +12319,26 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (sesoriToolSessionRecordsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          SesoriToolSessionRecordDto,
+                          $SesoriToolSessionRecordsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sesoriToolSessionRecordsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sesoriToolSessionRecordsTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -11510,6 +12372,7 @@ typedef $$SessionTableTableProcessedTableManager =
         bool sessionInterruptionsTableRefs,
         bool agentPagesTableRefs,
         bool sessionWakeUpsTableRefs,
+        bool sesoriToolSessionRecordsTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -15290,6 +16153,554 @@ typedef $$SessionWakeUpsTableTableProcessedTableManager =
       SessionWakeUpDto,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$SesoriToolSessionRecordsTableTableCreateCompanionBuilder =
+    SesoriToolSessionRecordsTableCompanion Function({
+      required String groupId,
+      required String sessionId,
+      required String recordKey,
+      required String valueJson,
+      required int updatedAt,
+    });
+typedef $$SesoriToolSessionRecordsTableTableUpdateCompanionBuilder =
+    SesoriToolSessionRecordsTableCompanion Function({
+      Value<String> groupId,
+      Value<String> sessionId,
+      Value<String> recordKey,
+      Value<String> valueJson,
+      Value<int> updatedAt,
+    });
+
+final class $$SesoriToolSessionRecordsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SesoriToolSessionRecordsTableTable,
+          SesoriToolSessionRecordDto
+        > {
+  $$SesoriToolSessionRecordsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'sesori_tool_session_records__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SesoriToolSessionRecordsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SesoriToolSessionRecordsTableTable> {
+  $$SesoriToolSessionRecordsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordKey => $composableBuilder(
+    column: $table.recordKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get valueJson => $composableBuilder(
+    column: $table.valueJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SesoriToolSessionRecordsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SesoriToolSessionRecordsTableTable> {
+  $$SesoriToolSessionRecordsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordKey => $composableBuilder(
+    column: $table.recordKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get valueJson => $composableBuilder(
+    column: $table.valueJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SesoriToolSessionRecordsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SesoriToolSessionRecordsTableTable> {
+  $$SesoriToolSessionRecordsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get recordKey =>
+      $composableBuilder(column: $table.recordKey, builder: (column) => column);
+
+  GeneratedColumn<String> get valueJson =>
+      $composableBuilder(column: $table.valueJson, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SesoriToolSessionRecordsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SesoriToolSessionRecordsTableTable,
+          SesoriToolSessionRecordDto,
+          $$SesoriToolSessionRecordsTableTableFilterComposer,
+          $$SesoriToolSessionRecordsTableTableOrderingComposer,
+          $$SesoriToolSessionRecordsTableTableAnnotationComposer,
+          $$SesoriToolSessionRecordsTableTableCreateCompanionBuilder,
+          $$SesoriToolSessionRecordsTableTableUpdateCompanionBuilder,
+          (
+            SesoriToolSessionRecordDto,
+            $$SesoriToolSessionRecordsTableTableReferences,
+          ),
+          SesoriToolSessionRecordDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SesoriToolSessionRecordsTableTableTableManager(
+    _$AppDatabase db,
+    $SesoriToolSessionRecordsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SesoriToolSessionRecordsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SesoriToolSessionRecordsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SesoriToolSessionRecordsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> groupId = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> recordKey = const Value.absent(),
+                Value<String> valueJson = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => SesoriToolSessionRecordsTableCompanion(
+                groupId: groupId,
+                sessionId: sessionId,
+                recordKey: recordKey,
+                valueJson: valueJson,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupId,
+                required String sessionId,
+                required String recordKey,
+                required String valueJson,
+                required int updatedAt,
+              }) => SesoriToolSessionRecordsTableCompanion.insert(
+                groupId: groupId,
+                sessionId: sessionId,
+                recordKey: recordKey,
+                valueJson: valueJson,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SesoriToolSessionRecordsTableTable,
+                    SesoriToolSessionRecordDto
+                  >(table),
+                  $$SesoriToolSessionRecordsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$SesoriToolSessionRecordsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SesoriToolSessionRecordsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SesoriToolSessionRecordsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SesoriToolSessionRecordsTableTable,
+      SesoriToolSessionRecordDto,
+      $$SesoriToolSessionRecordsTableTableFilterComposer,
+      $$SesoriToolSessionRecordsTableTableOrderingComposer,
+      $$SesoriToolSessionRecordsTableTableAnnotationComposer,
+      $$SesoriToolSessionRecordsTableTableCreateCompanionBuilder,
+      $$SesoriToolSessionRecordsTableTableUpdateCompanionBuilder,
+      (
+        SesoriToolSessionRecordDto,
+        $$SesoriToolSessionRecordsTableTableReferences,
+      ),
+      SesoriToolSessionRecordDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
+typedef $$SesoriToolRecordsTableTableCreateCompanionBuilder =
+    SesoriToolRecordsTableCompanion Function({
+      required String groupId,
+      required String recordKey,
+      required String valueJson,
+      required int updatedAt,
+    });
+typedef $$SesoriToolRecordsTableTableUpdateCompanionBuilder =
+    SesoriToolRecordsTableCompanion Function({
+      Value<String> groupId,
+      Value<String> recordKey,
+      Value<String> valueJson,
+      Value<int> updatedAt,
+    });
+
+class $$SesoriToolRecordsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+  $$SesoriToolRecordsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordKey => $composableBuilder(
+    column: $table.recordKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get valueJson => $composableBuilder(
+    column: $table.valueJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SesoriToolRecordsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+  $$SesoriToolRecordsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordKey => $composableBuilder(
+    column: $table.recordKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get valueJson => $composableBuilder(
+    column: $table.valueJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SesoriToolRecordsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+  $$SesoriToolRecordsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get recordKey =>
+      $composableBuilder(column: $table.recordKey, builder: (column) => column);
+
+  GeneratedColumn<String> get valueJson =>
+      $composableBuilder(column: $table.valueJson, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SesoriToolRecordsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SesoriToolRecordsTableTable,
+          SesoriToolRecordDto,
+          $$SesoriToolRecordsTableTableFilterComposer,
+          $$SesoriToolRecordsTableTableOrderingComposer,
+          $$SesoriToolRecordsTableTableAnnotationComposer,
+          $$SesoriToolRecordsTableTableCreateCompanionBuilder,
+          $$SesoriToolRecordsTableTableUpdateCompanionBuilder,
+          (
+            SesoriToolRecordDto,
+            BaseReferences<
+              _$AppDatabase,
+              $SesoriToolRecordsTableTable,
+              SesoriToolRecordDto
+            >,
+          ),
+          SesoriToolRecordDto,
+          PrefetchHooks Function()
+        > {
+  $$SesoriToolRecordsTableTableTableManager(
+    _$AppDatabase db,
+    $SesoriToolRecordsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SesoriToolRecordsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SesoriToolRecordsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SesoriToolRecordsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> groupId = const Value.absent(),
+                Value<String> recordKey = const Value.absent(),
+                Value<String> valueJson = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => SesoriToolRecordsTableCompanion(
+                groupId: groupId,
+                recordKey: recordKey,
+                valueJson: valueJson,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String groupId,
+                required String recordKey,
+                required String valueJson,
+                required int updatedAt,
+              }) => SesoriToolRecordsTableCompanion.insert(
+                groupId: groupId,
+                recordKey: recordKey,
+                valueJson: valueJson,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SesoriToolRecordsTableTable,
+                    SesoriToolRecordDto
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SesoriToolRecordsTableTable,
+                    SesoriToolRecordDto
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SesoriToolRecordsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SesoriToolRecordsTableTable,
+      SesoriToolRecordDto,
+      $$SesoriToolRecordsTableTableFilterComposer,
+      $$SesoriToolRecordsTableTableOrderingComposer,
+      $$SesoriToolRecordsTableTableAnnotationComposer,
+      $$SesoriToolRecordsTableTableCreateCompanionBuilder,
+      $$SesoriToolRecordsTableTableUpdateCompanionBuilder,
+      (
+        SesoriToolRecordDto,
+        BaseReferences<
+          _$AppDatabase,
+          $SesoriToolRecordsTableTable,
+          SesoriToolRecordDto
+        >,
+      ),
+      SesoriToolRecordDto,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15348,4 +16759,15 @@ class $AppDatabaseManager {
       $$AgentPagesTableTableTableManager(_db, _db.agentPagesTable);
   $$SessionWakeUpsTableTableTableManager get sessionWakeUpsTable =>
       $$SessionWakeUpsTableTableTableManager(_db, _db.sessionWakeUpsTable);
+  $$SesoriToolSessionRecordsTableTableTableManager
+  get sesoriToolSessionRecordsTable =>
+      $$SesoriToolSessionRecordsTableTableTableManager(
+        _db,
+        _db.sesoriToolSessionRecordsTable,
+      );
+  $$SesoriToolRecordsTableTableTableManager get sesoriToolRecordsTable =>
+      $$SesoriToolRecordsTableTableTableManager(
+        _db,
+        _db.sesoriToolRecordsTable,
+      );
 }

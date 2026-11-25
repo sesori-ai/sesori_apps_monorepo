@@ -7,7 +7,8 @@ import "sesori_tool_result.dart";
 /// A set of tools with one purpose, served on Sesori's MCP server.
 ///
 /// The bridge lists [tools] and routes each call of one of them to [call].
-/// Dependencies arrive through the group's constructor.
+/// Dependencies, the bridge's `SesoriToolHost` among them, arrive through the
+/// group's constructor.
 abstract interface class SesoriToolGroup() {
   SesoriToolGroupId get id;
 
@@ -23,6 +24,11 @@ abstract interface class SesoriToolGroup() {
 
   List<SesoriToolDefinition> get tools;
 
+  /// Begins the group's own work, such as resuming what it stored before a
+  /// restart. The bridge calls it once, after its database opens; calls may
+  /// arrive before it completes.
+  Future<void> start();
+
   /// Runs [tool], one of [tools] by name.
   ///
   /// Throws [InvalidToolArguments] for arguments that do not fit the tool's
@@ -33,4 +39,10 @@ abstract interface class SesoriToolGroup() {
     required SesoriToolCaller caller,
     required Map<String, Object?> arguments,
   });
+
+  /// Stops the group's own work. The bridge calls it once no [call] is
+  /// running, before its database closes. Every host approval has ended
+  /// (`dropped`) by then, but a host notice may still be waiting for its
+  /// session: abandon it rather than await it.
+  Future<void> dispose();
 }

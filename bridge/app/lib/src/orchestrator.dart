@@ -272,6 +272,7 @@ import "services/session_view_tracker.dart";
 import "services/session_wake_up_description_builder.dart";
 import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
+import "services/tool_group_approval_service.dart";
 import "services/tool_group_settings_service.dart";
 import "services/wake_up_command_description_builder.dart";
 import "services/worktree_service.dart";
@@ -920,6 +921,11 @@ class Orchestrator({
       localTimeZone: () => readLocalTimeZone(environment: Platform.environment),
       clock: clock,
     );
+    final toolGroupApprovalService = ToolGroupApprovalService(
+      approvals: agentApprovalRepository,
+      sessions: sessionRepository,
+      autoApproval: permissionAutoApprovalService,
+    );
     final scheduledTaskAgentService = ScheduledTaskAgentService(
       tasks: scheduledTaskService,
       runner: scheduledTaskRunService,
@@ -931,6 +937,7 @@ class Orchestrator({
       descriptions: const ScheduledTaskChangeDescriptionBuilder(),
       notices: sessionNoticeService,
       wakeUps: sessionWakeUpService,
+      toolGroupApprovals: toolGroupApprovalService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
     final toolGroups = <SesoriToolGroup>[
@@ -1090,6 +1097,8 @@ class Orchestrator({
       chatHistoryActivityListener: chatHistoryActivityListener,
       sesoriMcpRequests: _sesoriMcpRequests,
       sesoriMcpRequestDispatcher: sesoriMcpRequestDispatcher,
+      toolGroups: toolGroups,
+      toolGroupApprovalService: toolGroupApprovalService,
       agentApprovalRepository: agentApprovalRepository,
       agentPageRepository: agentPageRepository,
       runningTurnListener: runningTurnListener,
@@ -1241,6 +1250,8 @@ class OrchestratorSession._({
   required final ChatHistoryActivityListener _chatHistoryActivityListener,
   required Stream<SesoriMcpInboundRequest> sesoriMcpRequests,
   required final SesoriMcpRequestDispatcher _sesoriMcpRequestDispatcher,
+  required final List<SesoriToolGroup> _toolGroups,
+  required final ToolGroupApprovalService _toolGroupApprovalService,
   required final AgentApprovalRepository _agentApprovalRepository,
   required final AgentPageRepository _agentPageRepository,
   required final RunningTurnListener _runningTurnListener,
@@ -1312,6 +1323,9 @@ class OrchestratorSession._({
   Future<void> _projectsSummaryTail = Future<void>.value();
   final Random _backoffJitter = Random();
   Future<void>? _lifecycleFuture;
+
+  /// Completes once every tool group's [SesoriToolGroup.start] has returned.
+  Future<void>? _toolGroupsStarted;
   RelayConnection? _relayConnection;
   Future<void>? _shutdownRelayCloseFuture;
 
@@ -1472,6 +1486,7 @@ class OrchestratorSession._({
     _sessionContinuationTimer.start();
     _scheduledTaskTimer.start();
     _sessionWakeUpTimer.start();
+    _toolGroupsStarted = _startToolGroups();
     // After the mutation listener, so a resolution's announcement reaches
     // clients.
     _interruptedTurnListener.start();
@@ -1482,6 +1497,29 @@ class OrchestratorSession._({
     _lifecycleFuture = lifecycleFuture;
     lifecycleFuture.ignore();
     return readiness.future;
+  }
+
+  /// Starts the groups in order, so one that fails to start leaves the
+  /// others working.
+  Future<void> _startToolGroups() async {
+    for (final group in _toolGroups) {
+      try {
+        await group.start();
+      } on Object catch (error, stackTrace) {
+        Log.e("Tool group ${group.id.value} failed to start", error, stackTrace);
+      }
+    }
+  }
+
+  Future<void> _disposeToolGroups() async {
+    await _toolGroupsStarted;
+    for (final group in _toolGroups) {
+      try {
+        await group.dispose();
+      } on Object catch (error, stackTrace) {
+        Log.w("Tool group ${group.id.value} failed to stop", error, stackTrace);
+      }
+    }
   }
 
   Future<void> waitUntilStopped() {
@@ -1687,6 +1725,9 @@ class OrchestratorSession._({
     _sessionCreationService.beginShutdown();
     _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
+    // First, so a tool call or group waiting on the user's Allow ends now
+    // instead of holding up the drains below.
+    _toolGroupApprovalService.dispose();
     final teardownSw = Stopwatch()..start();
     (Object, StackTrace)? firstTeardownFailure;
 
@@ -1725,6 +1766,9 @@ class OrchestratorSession._({
       attempt(_inFlightRelayCompletions.drain),
       attempt(_sesoriMcpRequestDispatcher.drain),
     ]);
+    // After the drain, so no tool call is still running in a group, and
+    // before the database closes.
+    await attempt(_disposeToolGroups);
     await Future.wait([
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),

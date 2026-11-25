@@ -41,6 +41,13 @@ class PageToolGroup({required final AgentPageService _pages}) implements SesoriT
   @override
   List<SesoriToolDefinition> get tools => [for (final tool in PageTool.values) tool.definition];
 
+  /// Nothing to start: the app's own services run any background work.
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> dispose() async {}
+
   @override
   Future<SesoriToolResult> call({
     required String tool,
