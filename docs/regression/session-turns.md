@@ -637,6 +637,13 @@ defaults and queued client sends coherent.
   was. A user prompt that merely quotes a notice stays user input. While the
   agent works on a notice, the Working timer counts from the notice, not from
   the earlier user prompt.
+- On Claude Code, every prompt Sesori wrote or relayed (notices, wake-ups, PR
+  Monitor reports, scheduled runs, quota continuations, send-to-session
+  messages) is sent as synthetic, so the model does not read it as the user's.
+  It keeps its Sesori Automation look live and after a reload, whether it
+  opened a turn or a running turn absorbed it, and the CLI's non-user prefix
+  never shows. The expanded body of a slash command Sesori sent stays hidden.
+  A prompt the user typed is never marked.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized

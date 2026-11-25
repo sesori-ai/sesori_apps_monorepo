@@ -1,7 +1,8 @@
 import "dart:async";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginPromptOrigin, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/deliverable_prompt_part.dart";
@@ -137,6 +138,8 @@ class SessionCreationService({
         worktreeResult: worktreeResult,
       );
     }
+    // A scheduled run's prompt is the user's saved text, but Sesori sends it.
+    final origin = scheduledRun == null ? PluginPromptOrigin.user : PluginPromptOrigin.sesori;
     final created = await _sessionRepository.createSession(
       reservedSessionId: reservedSessionId,
       pluginId: request.pluginId,
@@ -149,6 +152,7 @@ class SessionCreationService({
         command: normalizedCommand,
         runContext: runContext,
       ),
+      origin: origin,
       userVisibleText: normalizedCommand == null ? userVisibleText : null,
       variant: normalizedCommand == null || normalizedCommand.isEmpty ? request.variant : null,
       fastMode: request.fastMode,
@@ -171,6 +175,7 @@ class SessionCreationService({
           worktreeResult: worktreeResult,
         ),
         userVisibleArguments: firstText,
+        origin: origin,
         variant: request.variant,
         fastMode: request.fastMode,
         agent: request.agent,
@@ -265,6 +270,7 @@ class SessionCreationService({
     required String? command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -280,6 +286,7 @@ class SessionCreationService({
       command: command,
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,
+      origin: origin,
       variant: variant,
       fastMode: fastMode,
       agent: agent,

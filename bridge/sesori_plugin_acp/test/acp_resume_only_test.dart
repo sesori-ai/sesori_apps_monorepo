@@ -62,6 +62,7 @@ void main() {
     }
 
     Future<void> sendPrompt(String promptId, String text) => plugin.sendPrompt(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       promptId: promptId,
       sessionId: "old-1",

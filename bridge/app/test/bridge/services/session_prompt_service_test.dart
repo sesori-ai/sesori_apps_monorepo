@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart"
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/trackers/prompt_stamp.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
@@ -17,7 +18,12 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show PluginPromptPart, PluginPromptPartFileData, PluginPromptPartText, PluginStaleOptionsException;
+    show
+        PluginPromptOrigin,
+        PluginPromptPart,
+        PluginPromptPartFileData,
+        PluginPromptPartText,
+        PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -185,12 +191,31 @@ void main() {
         await send(byUser: true);
 
         expect(await tasks.isUnattendedRun(sessionId: "s1"), isFalse);
+        expect(plugin.lastSendPromptOrigin, PluginPromptOrigin.user);
       });
 
       test("the bridge's own send leaves the run unattended", () async {
         await send(byUser: false);
 
         expect(await tasks.isUnattendedRun(sessionId: "s1"), isTrue);
+        expect(plugin.lastSendPromptOrigin, PluginPromptOrigin.sesori);
+      });
+
+      test("a marked prompt is Sesori's even when a person's action sent it", () async {
+        await service.sendPrompt(
+          sessionId: "s1",
+          promptId: "prompt-marked",
+          parts: const [PromptPart.text(text: "Bridge-written text")],
+          variant: null,
+          fastMode: false,
+          agent: null,
+          model: null,
+          command: null,
+          commandSource: null,
+          mark: const PromptStampNotice(),
+        );
+
+        expect(plugin.lastSendPromptOrigin, PluginPromptOrigin.sesori);
       });
 
       test("a run note leads the bridge's text prompt for the harness only", () async {

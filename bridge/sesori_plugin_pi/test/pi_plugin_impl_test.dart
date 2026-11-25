@@ -20,6 +20,7 @@ void main() {
 
     test("creates a lazy session and buffers creation before any backend output", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -54,6 +55,7 @@ void main() {
       harness.writeSession(id: "session", parentPath: null);
       await harness.plugin.getSessions(projectId: harness.project.path);
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session",
         promptId: "prompt",
@@ -90,6 +92,7 @@ void main() {
       harness.writeSession(id: "session", parentPath: null);
       await harness.plugin.getSessions(projectId: harness.project.path);
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session",
         promptId: "prompt",
@@ -114,6 +117,7 @@ void main() {
 
     test("buffers created before busy when the first turn starts", () async {
       await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -149,6 +153,7 @@ void main() {
 
       await expectLater(
         harness.plugin.createSession(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           directory: harness.project.path,
           parentSessionId: null,
@@ -170,6 +175,7 @@ void main() {
         await harness.plugin.getSessions(projectId: harness.project.path);
 
         await harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           sessionId: "session",
           promptId: "continuation",
           parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -182,6 +188,7 @@ void main() {
         expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
         await expectLater(
           harness.plugin.sendPrompt(
+            origin: PluginPromptOrigin.user,
             sessionId: "session",
             promptId: "invalid-variant",
             parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -210,6 +217,7 @@ void main() {
       expect(options.providers.providers.single.models.single.variants, isEmpty);
 
       await partial.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         sessionId: "session",
         promptId: "continuation",
         parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -235,6 +243,7 @@ void main() {
       harness.catalogModelReasoning = true;
       harness.failThinkingDiscovery = true;
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         sessionId: "session",
         promptId: "cached-capability",
         parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -252,6 +261,7 @@ void main() {
       );
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           sessionId: "session",
           promptId: "refreshed-capability",
           parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -271,6 +281,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           sessionId: "session",
           promptId: "continuation",
           parts: const [PluginPromptPart.text(text: "Continue.")],
@@ -311,6 +322,7 @@ void main() {
 
     test("reports a command missing from the current catalog as stale options", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -323,6 +335,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendCommand(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           sessionId: session.id,
           promptId: "prompt-unsupported",
@@ -346,6 +359,7 @@ void main() {
       final partial = _Harness(failCommandDiscovery: true);
       addTearDown(partial.dispose);
       final session = await partial.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: partial.project.path,
         parentSessionId: null,
@@ -358,6 +372,7 @@ void main() {
 
       await expectLater(
         partial.plugin.sendCommand(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           sessionId: session.id,
           promptId: "prompt-review",
@@ -379,6 +394,7 @@ void main() {
 
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -390,6 +406,7 @@ void main() {
       );
 
       final accepted = harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-1",
@@ -419,6 +436,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           sessionId: "missing",
           promptId: "prompt-2",
@@ -442,6 +460,7 @@ void main() {
       );
       expect(compaction.description, isNotNull);
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -456,6 +475,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final accepted = harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-compact",
@@ -495,6 +515,7 @@ void main() {
 
     test("compactSession runs RPC compact on a quiet session and refuses while it works", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -526,6 +547,7 @@ void main() {
 
     test("native compaction settles before the session goes idle", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -539,6 +561,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       final accepted = harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-compact",
@@ -589,6 +612,7 @@ void main() {
 
     test("a rejected native compaction reports only its failure note", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -602,6 +626,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       final accepted = harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-failed-compact",
@@ -660,6 +685,7 @@ void main() {
       expect(commands, hasLength(1));
       expect(commands.single.description, isNull);
       final session = await custom.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: custom.project.path,
         parentSessionId: null,
@@ -671,6 +697,7 @@ void main() {
       );
 
       final accepted = custom.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-custom-compact",
@@ -703,6 +730,7 @@ void main() {
 
     test("wrapped command failures retain the backend stack", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -713,6 +741,7 @@ void main() {
         model: null,
       );
       final command = harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-3",
@@ -738,6 +767,7 @@ void main() {
 
     test("maps questions and toasts while permissions remain unsupported", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -794,6 +824,7 @@ void main() {
 
     test("archiving a session cancels its pending dialog and invalidates the summary", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -840,6 +871,7 @@ void main() {
       harness.writeSession(id: "child", parentPath: rootPath);
       await harness.plugin.listAllSessions(knownDirectories: {harness.project.path});
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "child",
         promptId: "prompt-4",
@@ -898,6 +930,7 @@ void main() {
 
     test("disposal rejects dialogs before closing events", () async {
       await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
@@ -933,6 +966,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,
@@ -955,6 +989,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,

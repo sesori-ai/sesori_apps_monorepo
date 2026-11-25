@@ -148,6 +148,7 @@ final class ClaudePlugin({
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -182,6 +183,7 @@ final class ClaudePlugin({
           agent: agent,
           model: model,
           operation: "createSession",
+          isSynthetic: origin == PluginPromptOrigin.sesori,
         );
         _unstartedSessions.remove(sessionId);
       } on Object {
@@ -298,6 +300,7 @@ final class ClaudePlugin({
     required String sessionId,
     required String promptId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -321,6 +324,7 @@ final class ClaudePlugin({
       displayText: _displayText(parts),
       command: null,
       attachmentCount: _attachmentCount(parts),
+      isSynthetic: origin == PluginPromptOrigin.sesori,
     );
   }
 
@@ -412,6 +416,7 @@ final class ClaudePlugin({
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -442,6 +447,7 @@ final class ClaudePlugin({
       displayText: visible == null || visible.isEmpty ? null : visible,
       command: command,
       attachmentCount: 0,
+      isSynthetic: origin == PluginPromptOrigin.sesori,
     );
   }
 
@@ -502,6 +508,7 @@ final class ClaudePlugin({
       displayText: null,
       command: command,
       attachmentCount: 0,
+      isSynthetic: false,
     );
     return PluginCompactionResult.accepted;
   }
@@ -825,6 +832,7 @@ final class ClaudePlugin({
     required String? displayText,
     required String? command,
     required int attachmentCount,
+    required bool isSynthetic,
   }) async {
     final (:effort, :permissionMode) = _queuedSelections(
       sessionId: sessionId,
@@ -846,9 +854,12 @@ final class ClaudePlugin({
       displayText: displayText,
       command: command,
       attachmentCount: attachmentCount,
+      isSynthetic: isSynthetic,
     );
   }
 
+  /// [isSynthetic] marks a prompt Sesori wrote, so Claude Code tells the model
+  /// it is not user input.
   Future<void> _enqueueResolved({
     required String sessionId,
     required String directory,
@@ -862,6 +873,7 @@ final class ClaudePlugin({
     required String? displayText,
     required String? command,
     required int attachmentCount,
+    required bool isSynthetic,
   }) async {
     try {
       await _sessions.enqueueTurn(
@@ -877,6 +889,7 @@ final class ClaudePlugin({
         displayText: displayText,
         command: command,
         attachmentCount: attachmentCount,
+        isSynthetic: isSynthetic,
       );
     } on PluginOperationException {
       rethrow;
@@ -921,6 +934,7 @@ final class ClaudePlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
     required String operation,
+    required bool isSynthetic,
   }) async {
     _validateModel(model, operation: operation, staleOptions: false);
     final effort = _effort(variant, operation: operation, staleOptions: false);
@@ -941,6 +955,7 @@ final class ClaudePlugin({
         effort: effort,
         permissionMode: permissionMode,
         fastMode: fastMode,
+        isSynthetic: isSynthetic,
       );
     } on PluginOperationException {
       rethrow;

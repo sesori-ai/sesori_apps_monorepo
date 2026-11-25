@@ -74,6 +74,7 @@ void main() {
     Future<PluginSession> create(String id) async {
       final expected = frames(AcpMethods.sessionNew).length + 1;
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -89,6 +90,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,
@@ -109,6 +111,7 @@ void main() {
       String text, {
       ({String providerID, String modelID})? model,
     }) => plugin.sendPrompt(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       promptId: promptId,
       sessionId: sessionId,
@@ -223,6 +226,7 @@ void main() {
     test("refuses a send whose model OMP no longer offers before accepting it", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -249,6 +253,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "session-1",
@@ -266,6 +271,7 @@ void main() {
     test("forgets the session it created when the create's selection is refused as stale", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -299,6 +305,7 @@ void main() {
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -326,6 +333,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "session-1",
@@ -603,6 +611,7 @@ void main() {
       final session = await create("session");
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -614,6 +623,7 @@ void main() {
       final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,

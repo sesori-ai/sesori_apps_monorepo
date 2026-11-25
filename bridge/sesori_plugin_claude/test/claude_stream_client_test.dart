@@ -442,6 +442,7 @@ void main() {
       addTearDown(connected.client.dispose);
 
       connected.client.sendUserMessage(
+        isSynthetic: false,
         content: [
           {"type": "text", "text": "hello"},
         ],
@@ -455,6 +456,23 @@ void main() {
       final message = frame.field<Map<String, Object?>>("message");
       expect(message["role"], "user");
       expect(message.field<List<Object?>>("content").single, {"type": "text", "text": "hello"});
+      expect(frame.containsKey("isSynthetic"), isFalse);
+    });
+
+    test("marks a synthetic user turn beside its message", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      connected.client.sendUserMessage(
+        isSynthetic: true,
+        content: [
+          {"type": "text", "text": "[SESORI NOTICE]\nA page was answered."},
+        ],
+        uuid: "prompt-uuid-3",
+      );
+      final frame = await waitForFrame(connected.fake, "user");
+
+      expect(frame["isSynthetic"], isTrue);
     });
 
     test("fails a user turn after the process exits", () async {
@@ -464,7 +482,7 @@ void main() {
       await pump(10);
 
       expect(
-        () => connected.client.sendUserMessage(content: const [], uuid: "prompt-uuid-2"),
+        () => connected.client.sendUserMessage(isSynthetic: false, content: const [], uuid: "prompt-uuid-2"),
         throwsA(isA<ClaudeControlException>()),
       );
     });
@@ -505,6 +523,7 @@ void main() {
       final before = connected.fake.written.length;
 
       connected.client.sendUserMessage(
+        isSynthetic: false,
         content: [
           {"type": "text", "text": "late"},
         ],

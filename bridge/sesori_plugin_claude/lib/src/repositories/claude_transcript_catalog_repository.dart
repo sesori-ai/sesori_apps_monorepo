@@ -583,7 +583,8 @@ final RegExp _whitespace = RegExp(r"\s+");
 /// outcomes and slash-command envelopes.
 String? _promptTitle(ClaudeTranscriptUserRecord record) {
   if (record.isMeta || record.isCompactSummary || record.isVisibleInTranscriptOnly) return null;
-  if (record.originKind != ClaudeMessageOriginKind.unknown) return null;
+  // A scheduled run opens with the user's saved prompt, sent as Sesori's.
+  if (record.originKind case ClaudeMessageOriginKind.peer || ClaudeMessageOriginKind.taskNotification) return null;
   const mapper = ClaudeContentMapper();
   final blocks = mapper.map(content: record.content);
   if (mapper.containsInternalCommandOutput(blocks: blocks) ||
@@ -781,6 +782,23 @@ bool _isPrompt(ClaudeTranscriptRecordDto record) =>
 
 const String _lastPromptType = "last-prompt";
 
+const String _hostSyntheticTurnOrigin = "host_synthetic";
+
+/// What Claude Code puts before the text of an `isSynthetic` message that opens
+/// a turn (verified on 2.1.332). The live echo has none, so history drops it too.
+const String _nonUserSourcePrefix = "[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]\n";
+
+Object? _withoutNonUserSourcePrefix({required Object? content}) => switch (content) {
+  final String text when text.startsWith(_nonUserSourcePrefix) => text.substring(_nonUserSourcePrefix.length),
+  [{"type": "text", "text": final String text} && final first, ...final rest]
+      when text.startsWith(_nonUserSourcePrefix) =>
+    [
+      {...first, "text": text.substring(_nonUserSourcePrefix.length)},
+      ...rest,
+    ],
+  _ => content,
+};
+
 /// Maps the generated API DTO into the closed variants the repository uses.
 ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   final type = dto.type;
@@ -791,14 +809,19 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
   if (type == ClaudeTranscriptUserRecord.wireType) {
     final id = trimmedOrNull(value: dto.uuid);
     if (id != null) {
+      // A slash command the bridge sent marks its expanded body `unclassified`
+      // too, but only the message it sent carries `host_synthetic`; the body
+      // stays hidden like any command body.
+      final isHost =
+          dto.originKind == ClaudeMessageOriginKind.unclassified && dto.turnOrigin == _hostSyntheticTurnOrigin;
       return ClaudeTranscriptUserRecord(
         id: id,
-        content: dto.message?.content,
+        content: isHost ? _withoutNonUserSourcePrefix(content: dto.message?.content) : dto.message?.content,
         isMeta: dto.isMeta ?? false,
         isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly ?? false,
         isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
-        originKind: dto.originKind,
+        originKind: isHost ? ClaudeMessageOriginKind.host : dto.originKind,
         isUnattributedSdkRecord: dto.entrypoint == _sdkEntrypoint && dto.turnAttributionKey == null,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
@@ -851,9 +874,12 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {
         prompt: attachment.prompt,
         isMeta: attachment.isMeta ?? false,
         // The command mode shares the origin vocabulary (`task-notification`).
-        originKind: attachment.originKind == ClaudeMessageOriginKind.unknown
-            ? ClaudeMessageOriginKind.parse(kind: attachment.commandMode)
-            : attachment.originKind,
+        // The attachment is the queued message itself, never a command body.
+        originKind: switch (attachment.originKind) {
+          ClaudeMessageOriginKind.unknown => ClaudeMessageOriginKind.parse(kind: attachment.commandMode),
+          ClaudeMessageOriginKind.unclassified => ClaudeMessageOriginKind.host,
+          final kind => kind,
+        },
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,

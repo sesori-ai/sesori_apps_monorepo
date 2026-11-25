@@ -190,6 +190,7 @@ void main() {
     final promptGate = Completer<void>();
     server.promptGate = promptGate;
     final sending = plugin.sendPrompt(
+      origin: PluginPromptOrigin.user,
       sessionId: _sessionId,
       promptId: "fixture-prompt",
       parts: const [PluginPromptPart.text(text: "Fixture")],
@@ -330,6 +331,7 @@ void main() {
   test("a folder OpenCode is still loading accepts a model it offers", () async {
     server.folderLoaded = false;
     await plugin.createSession(
+      origin: PluginPromptOrigin.user,
       directory: _directory,
       parentSessionId: null,
       parts: const [],

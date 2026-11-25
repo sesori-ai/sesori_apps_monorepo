@@ -3,7 +3,12 @@ import "dart:math";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginBranchPointUnavailableException, PluginRefusalException, PluginStaleOptionsException;
+    show
+        Log,
+        PluginBranchPointUnavailableException,
+        PluginPromptOrigin,
+        PluginRefusalException,
+        PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/accepted_prompts_repository.dart";
@@ -303,12 +308,20 @@ class SessionPromptService({
       Log.i("Ignoring repeated prompt $promptId for session $sessionId: it was already accepted");
       return;
     }
+    // A marked prompt is one the bridge wrote, even when a person's action
+    // sent it (a send-to-session message).
+    final origin = switch (send) {
+      _PromptSendPrompt(mark: _?) => PluginPromptOrigin.sesori,
+      _ when !byUser => PluginPromptOrigin.sesori,
+      _ => PluginPromptOrigin.user,
+    };
     // Built before the quota cancellation below, so an edit its own checks
     // refuse leaves a pending continuation alone.
     final sendToPlugin = switch (send) {
       _PromptSendPrompt(:final mark, :final runContext) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
+        origin: origin,
         parts: await _withFirstPromptContext(
           sessionId: sessionId,
           parts: [
@@ -335,6 +348,7 @@ class SessionPromptService({
           command: command,
           arguments: await _withFirstCommandContext(sessionId: sessionId, arguments: arguments ?? ''),
           userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+          origin: origin,
           variant: variant,
           fastMode: fastMode,
           agent: agent,

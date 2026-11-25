@@ -198,7 +198,11 @@ class ClaudeStreamClient({
   /// Throws [ClaudeControlException] when the process has already exited or the
   /// frame cannot be written. Calls after explicit teardown remain a no-op so a
   /// late UI callback cannot revive a disposed session.
-  void sendUserMessage({required List<Map<String, Object?>> content, required String uuid}) {
+  void sendUserMessage({
+    required List<Map<String, Object?>> content,
+    required String uuid,
+    required bool isSynthetic,
+  }) {
     final process = _process;
     if (process == null) return;
     if (_exited.isCompleted) {
@@ -214,6 +218,8 @@ class ClaudeStreamClient({
         "message": {"role": "user", "content": content},
         "session_id": _launchSpec.launch.sessionId,
         "uuid": uuid,
+        // Text Sesori wrote, not the user: the model is told so (CLI 2.1.332).
+        if (isSynthetic) "isSynthetic": true,
         // Claude absorbs `next` messages at the next tool boundary when a turn
         // is active, without interrupting the model response currently streaming.
         "priority": "next",

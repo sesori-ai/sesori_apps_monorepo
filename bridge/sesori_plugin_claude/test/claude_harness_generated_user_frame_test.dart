@@ -137,6 +137,66 @@ void main() {
     expect(subtask.taskState?.output, "Synthetic result");
   });
 
+  // Claude Code 2.1.332 records a message sent with `isSynthetic` as metadata
+  // labelled `unclassified`, behind its non-user prefix.
+  group("a prompt Sesori sent as synthetic", () {
+    const notice = "[SESORI NOTICE]\nA page was answered.";
+
+    test("replays as the user message the bridge sent, without the CLI's prefix", () async {
+      final stored = await replay(
+        records: [
+          {
+            ..._user(
+              uuid: "notice",
+              content: const [
+                {"type": "text", "text": "[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]\n$notice"},
+              ],
+              origin: const {"kind": "unclassified"},
+            ),
+            "isMeta": true,
+            "turnOrigin": "host_synthetic",
+          },
+        ],
+      );
+      expect(stored.single.info, isA<PluginMessageUser>());
+      expect(stored.single.parts.single.text, notice);
+    });
+
+    test("replays when a running turn absorbed it as a queued command", () async {
+      final stored = await replay(
+        records: [
+          {
+            "type": "attachment",
+            "sessionId": _sessionId,
+            "uuid": "attachment-1",
+            "timestamp": _timestamp,
+            "isSidechain": false,
+            "attachment": {
+              "type": "queued_command",
+              "prompt": const [
+                {"type": "text", "text": notice},
+              ],
+              "source_uuid": "notice",
+              "origin": const {"kind": "unclassified"},
+              "isMeta": true,
+            },
+          },
+        ],
+      );
+      expect(stored.single.info.id, "notice");
+      expect(stored.single.parts.single.text, notice);
+    });
+
+    test("keeps the expanded body of its slash command hidden, live and after replay", () async {
+      final body = {
+        ..._user(uuid: "command-body", content: _skillBody, origin: const {"kind": "unclassified"}),
+        "isMeta": true,
+      };
+      expect(mapLive(frames: [body]), isEmpty);
+      expect(await replay(records: [body]), isEmpty);
+    });
+  });
+
   test("still renders an unflagged typed prompt, live and after replay", () async {
     final frame = _user(uuid: "typed-prompt", content: "Run the fixture skill", origin: null);
     final events = mapLive(frames: [frame]);

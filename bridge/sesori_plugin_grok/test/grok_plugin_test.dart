@@ -126,6 +126,7 @@ void main() {
     Future<Map<String, dynamic>> startPrompt({required String sessionId}) async {
       plugin.primeSessionDirectory(sessionId: sessionId, directory: "/repo");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-$sessionId",
         sessionId: sessionId,
@@ -500,6 +501,7 @@ void main() {
     test("selected model and reasoning effort are applied before create completes", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -529,6 +531,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "stored",
@@ -560,6 +563,7 @@ void main() {
       await connect();
       plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "stored",
@@ -638,6 +642,7 @@ void main() {
     test("two sessions dispatch independently through the shared ACP lanes", () async {
       await connect();
       final creatingFirst = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -653,6 +658,7 @@ void main() {
       );
       await creatingFirst;
       final creatingSecond = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -669,6 +675,7 @@ void main() {
       await creatingSecond;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "s1",
@@ -678,6 +685,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p2",
         sessionId: "s2",
@@ -704,6 +712,7 @@ void main() {
     test("a busy follow-up cancels before replacement prompt dispatch", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -720,6 +729,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "s1",
@@ -730,6 +740,7 @@ void main() {
       );
       final first = await waitForFrame(method: AcpMethods.sessionPrompt);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p2",
         sessionId: "s1",
@@ -762,6 +773,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -777,6 +789,7 @@ void main() {
       );
       await creating;
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "s1",
@@ -1122,6 +1135,7 @@ void main() {
       await spawnChild(parentSessionId: "root", childSessionId: "sibling");
       plugin.primeSessionDirectory(sessionId: "unrelated", directory: "/repo");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "queued-unrelated",
         sessionId: "unrelated",
@@ -1200,6 +1214,7 @@ void main() {
     test("deletion closes only the resident process session", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -1225,6 +1240,7 @@ void main() {
     test("stale agent, provider, model, and effort fail before turn acceptance", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -1254,6 +1270,7 @@ void main() {
       for (final selection in staleSelections) {
         await expectLater(
           plugin.sendPrompt(
+            origin: PluginPromptOrigin.user,
             fastMode: false,
             promptId: "stale-${staleSelections.indexOf(selection)}",
             sessionId: "s1",
@@ -1529,6 +1546,7 @@ void main() {
     test("a rejected selection fails the accepted turn before prompt dispatch", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -1546,6 +1564,7 @@ void main() {
       final failed = plugin.events.where((event) => event is BridgeSseSessionError).first;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "p1",
         sessionId: "s1",

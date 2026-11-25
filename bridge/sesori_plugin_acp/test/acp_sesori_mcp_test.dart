@@ -85,6 +85,7 @@ void main() {
 
     Future<Map<String, dynamic>> create(String sessionId) async {
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -140,6 +141,7 @@ void main() {
       await connect();
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-1",

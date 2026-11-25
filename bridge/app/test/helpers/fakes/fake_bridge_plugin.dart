@@ -81,6 +81,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginPromptPart>? lastSendPromptParts;
   String? lastSendPromptVariant;
   bool? lastSendPromptFastMode;
+  PluginPromptOrigin? lastSendPromptOrigin;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastSendCommandSessionId;
@@ -169,6 +170,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -253,6 +255,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -261,6 +264,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     if (sendPromptError case final error?) throw error;
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
+    lastSendPromptOrigin = origin;
     lastSendPromptVariant = variant?.id;
     lastSendPromptFastMode = fastMode;
     lastSendPromptAgent = agent;
@@ -274,6 +278,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,

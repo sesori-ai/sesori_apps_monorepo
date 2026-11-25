@@ -306,6 +306,7 @@ void main() {
       ]);
 
       final session = await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -353,6 +354,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: true,
         directory: "/work/sample",
         parentSessionId: null,
@@ -394,6 +396,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -425,6 +428,7 @@ void main() {
           ),
         ]);
         await plugin.createSession(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           directory: "/work/sample",
           parentSessionId: null,
@@ -452,6 +456,7 @@ void main() {
           ),
         ]);
         await plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: threadId,
@@ -543,6 +548,7 @@ void main() {
           ]);
 
           await plugin.createSession(
+            origin: PluginPromptOrigin.user,
             fastMode: false,
             directory: "/work/sample",
             parentSessionId: null,
@@ -589,6 +595,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -656,6 +663,7 @@ void main() {
       for (final part in invalidParts) {
         await expectLater(
           plugin.sendPrompt(
+            origin: PluginPromptOrigin.user,
             fastMode: false,
             promptId: "prompt-1",
             sessionId: "t-invalid-image",
@@ -728,6 +736,7 @@ void main() {
 
       final commands = await plugin.getCommands(projectId: "/work/sample");
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing",
@@ -739,6 +748,7 @@ void main() {
         model: null,
       );
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing",
@@ -792,6 +802,7 @@ void main() {
           .cast<BridgeSsePromptSettled>()
           .first;
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-compact",
@@ -890,6 +901,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/other/proj",
         parentSessionId: null,
@@ -924,6 +936,7 @@ void main() {
       ]);
 
       final created = await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample/packages/core",
         parentSessionId: null,
@@ -977,6 +990,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -1079,6 +1093,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing-child",
@@ -1217,6 +1232,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-default-mode",
@@ -1255,6 +1271,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_1",
         sessionId: "t-client-id",
@@ -1283,6 +1300,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_joined",
         sessionId: "t-joined",
@@ -1369,6 +1387,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await resolvedPlugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -1411,6 +1430,7 @@ void main() {
       ]);
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-command",
@@ -1443,6 +1463,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-command-force",
@@ -1493,6 +1514,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "t-rejected",
@@ -1524,6 +1546,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "t-other-provider",
@@ -1561,6 +1584,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-delayed",
@@ -1605,6 +1629,7 @@ void main() {
       };
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-early-complete",
@@ -1636,6 +1661,7 @@ void main() {
       };
 
       final send = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-deleted",
@@ -1671,6 +1697,7 @@ void main() {
         ),
       ]);
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -1734,6 +1761,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-terminal",
@@ -1792,6 +1820,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -1802,6 +1831,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-fresh",
@@ -1842,6 +1872,7 @@ void main() {
 
       // createSession with no parts marks t-dropped as loaded.
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
@@ -1852,6 +1883,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-dropped",
@@ -2206,6 +2238,7 @@ void main() {
       await plugin.initialize();
       fake.holdNextResponse("turn/start");
       final send = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-pending-turn",
         sessionId: "root-pending-turn",
@@ -2287,6 +2320,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-1",
@@ -2350,6 +2384,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -2436,6 +2471,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-force",
@@ -2487,6 +2523,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-overlap",
@@ -2511,6 +2548,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-overlap",
@@ -2563,6 +2601,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-steered",
@@ -2587,6 +2626,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: "t-steered",
@@ -2629,6 +2669,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-provisional",
@@ -2669,6 +2710,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-stale-active",
@@ -2691,6 +2733,7 @@ void main() {
         if (method == "turn/start" && !freshTurnRequested.isCompleted) freshTurnRequested.complete();
       };
       final secondPrompt = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: "t-stale-active",
@@ -2767,6 +2810,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -2864,6 +2908,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -2940,6 +2985,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-abort-race",
@@ -3005,6 +3051,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "t-whitespace",
@@ -3062,6 +3109,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -3226,6 +3274,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -3745,6 +3794,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-effort",
@@ -3800,6 +3850,7 @@ void main() {
       }
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-effort",
@@ -3811,6 +3862,7 @@ void main() {
       expect(await liveVariant(itemId: "i-1"), "medium");
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: "t-effort",
@@ -3838,6 +3890,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-default",
@@ -3866,6 +3919,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: true,
         promptId: "prompt-1",
         sessionId: "t-fast-prompt",
@@ -3894,6 +3948,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-standard-prompt",
@@ -3923,6 +3978,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,

@@ -135,6 +135,7 @@ void main() {
     Future<PluginSession> create(String id) async {
       final expectedFrame = frames(AcpMethods.sessionNew).length + 1;
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -150,6 +151,7 @@ void main() {
     }
 
     Future<void> send(String sessionId, String text) => plugin.sendPrompt(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,

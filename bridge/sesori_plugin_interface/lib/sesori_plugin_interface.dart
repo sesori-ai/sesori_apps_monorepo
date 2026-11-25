@@ -58,6 +58,7 @@ export "src/models/plugin_pending_permission.dart";
 export "src/models/plugin_pending_question.dart";
 export "src/models/plugin_project.dart";
 export "src/models/plugin_project_activity_summary.dart";
+export "src/models/plugin_prompt_origin.dart";
 export "src/models/plugin_prompt_part.dart";
 export "src/models/plugin_provider.dart";
 export "src/models/plugin_queued_prompt.dart";

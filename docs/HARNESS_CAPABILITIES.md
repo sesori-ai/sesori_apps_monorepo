@@ -169,6 +169,18 @@ resolves relative file paths.
 | GitHub Copilot | ⬜ `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`, unverified whether it adds to the user's instructions. Checked on 1.0.80, 2026-11-07. |
 | Cursor, Hermes, Antigravity | 🚫 No system-prompt input on the ACP seam Sesori drives. Checked on Cursor 2026.07.23 and Hermes 0.21.5, 2026-11-07; Antigravity in plugin code only. |
 
+## Sesori-written prompts marked as not user input
+
+The bridge tells a plugin when Sesori wrote or relayed a prompt: a notice, a
+wake-up, a PR Monitor report, a scheduled run, a quota continuation or a
+send-to-session message. A harness that can tell the model such text is not
+the user's gets it marked that way; the app still shows it as Sesori Automation.
+
+| Harness | Sesori availability |
+|---|---|
+| Claude Code | ✅ Sent with `isSynthetic: true` beside the stdin `message`. The CLI then echoes the text only when a running turn absorbs it, so the plugin shows it at dispatch. The transcript stores it as metadata with `origin.kind: unclassified`, `turnOrigin: host_synthetic` and a `[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]` prefix, which history removes. Verified live on 2.1.332, 2026-11-26. |
+| Other harnesses | ⬜ Not checked: they get the prompt as ordinary user text. |
+
 ## Sesori agent tools
 
 Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with

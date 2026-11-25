@@ -538,6 +538,7 @@ class FakeSessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required ScheduledRunSessionLink? scheduledRun,
+    required PluginPromptOrigin origin,
   }) async => const Session(
     approvalOverride: null,
     autoContinuation: null,
@@ -901,6 +902,7 @@ class FakeSessionRepository({
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -908,6 +910,7 @@ class FakeSessionRepository({
     required CommandSource? commandSource,
   }) async {
     await _plugin.sendCommand(
+      origin: origin,
       fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,
@@ -944,8 +947,10 @@ class FakeSessionRepository({
     required String? agent,
     required PromptModel? model,
     required BridgePromptMark? mark,
+    required PluginPromptOrigin origin,
   }) async {
     await _plugin.sendPrompt(
+      origin: origin,
       fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,

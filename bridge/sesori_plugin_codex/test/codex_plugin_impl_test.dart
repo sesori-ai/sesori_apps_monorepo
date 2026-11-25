@@ -657,6 +657,7 @@ void main() {
       await plugin.initialize();
       final socket = await socketReady.future;
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "child-1",
         promptId: "prompt-1",

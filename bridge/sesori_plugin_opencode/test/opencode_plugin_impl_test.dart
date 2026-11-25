@@ -247,6 +247,7 @@ void main() {
       server.requestLog.clear();
 
       final session = await plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: "s-root",
@@ -277,6 +278,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
@@ -309,6 +311,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_1",
         sessionId: "s-root",
@@ -446,6 +449,7 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
@@ -475,6 +479,7 @@ void main() {
       await server.waitForSseConnection();
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
@@ -593,6 +598,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "s-root",
@@ -644,6 +650,7 @@ void main() {
         await expectLater(
           operation == "sendPrompt"
               ? plugin.sendPrompt(
+                  origin: PluginPromptOrigin.user,
                   fastMode: false,
                   promptId: "prompt-stale-agent",
                   sessionId: "s-root",
@@ -653,6 +660,7 @@ void main() {
                   model: null,
                 )
               : plugin.sendCommand(
+                  origin: PluginPromptOrigin.user,
                   fastMode: false,
                   promptId: "prompt-stale-agent",
                   sessionId: "s-root",
@@ -683,6 +691,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-build",
         sessionId: "s-root",
@@ -707,6 +716,7 @@ void main() {
 
         await expectLater(
           plugin.sendCommand(
+            origin: PluginPromptOrigin.user,
             fastMode: false,
             promptId: "prompt-stale-${testCase.name}",
             sessionId: "s-root",
@@ -748,6 +758,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-backend-failure",
           sessionId: "s-root",
@@ -791,6 +802,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
@@ -855,6 +867,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-ambiguous",
           sessionId: "s-root",
@@ -905,6 +918,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-compact",
         sessionId: "s-root",
@@ -975,6 +989,7 @@ void main() {
       server.requestLog.clear();
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-compact",
         sessionId: "s-root",
@@ -1012,6 +1027,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-compact",
           sessionId: "s-root",
@@ -1038,6 +1054,7 @@ void main() {
 
       await expectLater(
         plugin.sendCommand(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-compact",
           sessionId: "s-root",
@@ -1064,6 +1081,7 @@ void main() {
       server.holdCommand = holdCommand;
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",
@@ -1284,6 +1302,7 @@ void main() {
       addTearDown(subscription.cancel);
       await initialProjectUpdated.future;
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-root",

@@ -55,6 +55,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -79,6 +80,7 @@ void main() {
       // Dispatch a prompt and withhold the session/prompt response so the turn
       // stays in flight (ACP has no turn-complete event: busy == future pending).
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,

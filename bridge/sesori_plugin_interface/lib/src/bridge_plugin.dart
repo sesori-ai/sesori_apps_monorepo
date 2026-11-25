@@ -9,6 +9,7 @@ import "models/plugin_pending_permission.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_project.dart";
 import "models/plugin_project_activity_summary.dart";
+import "models/plugin_prompt_origin.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_queued_prompt.dart";
@@ -67,10 +68,13 @@ sealed class BridgePluginApi() {
   /// or `null` when no user text should be rendered. Implementations that
   /// synthesize a client-facing user message MUST use [userVisibleText], never
   /// infer it from [parts].
+  ///
+  /// [origin] says who wrote [parts]' first prompt; see [PluginPromptOrigin].
   Future<PluginSession> createSession({
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -175,10 +179,13 @@ sealed class BridgePluginApi() {
   /// started by [createSession] and [sendCommand]) to run in the backend's
   /// fast mode. The bridge sends it on every call; a plugin whose models never
   /// advertise [PluginModel.fastMode] ignores it.
+  ///
+  /// [origin] says who wrote the prompt; see [PluginPromptOrigin].
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -208,12 +215,15 @@ sealed class BridgePluginApi() {
   /// bridge-owned context. [userVisibleArguments] is only the user-authored
   /// portion, or `null` when none was supplied. Implementations that synthesize
   /// a client-facing command message MUST use that value, never [arguments].
+  ///
+  /// [origin] says who sent the command; see [PluginPromptOrigin].
   Future<void> sendCommand({
     required String sessionId,
     required String promptId,
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,

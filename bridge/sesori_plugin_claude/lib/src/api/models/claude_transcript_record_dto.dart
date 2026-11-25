@@ -69,6 +69,9 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     /// Unknown provenance never promotes ordinary user input to automation.
     @JsonKey(name: "origin", fromJson: _originKind) required ClaudeMessageOriginKind originKind,
 
+    /// `host_synthetic` on the record of a message sent with `isSynthetic`.
+    @JsonKey(fromJson: _stringOrNull) required String? turnOrigin,
+
     /// The payload of an `attachment` record.
     @JsonKey(fromJson: _attachmentOrNull) required ClaudeTranscriptAttachmentDto? attachment,
 

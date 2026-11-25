@@ -48,6 +48,7 @@ void main() {
       });
       expect(await connecting, isTrue);
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -136,6 +137,7 @@ void main() {
     test("a running turn is busy: nothing is queued and the turn is not cancelled", () async {
       final sessionId = await connectWithSession(commands: ["compact"]);
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,

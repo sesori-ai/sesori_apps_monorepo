@@ -432,6 +432,7 @@ void main() {
       expect(harness.specs.single.launch, isA<ClaudeNewSession>());
 
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -504,12 +505,14 @@ void main() {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
       final first = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
         promptId: "prompt-first",
       );
       final second = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
@@ -530,6 +533,71 @@ void main() {
       expect(await second.outcome, isA<ClaudeTurnCompleted>());
     });
 
+    test("echoes a synthetic prompt at once, as the CLI never echoes one opening a turn", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final echoes = <(String?, String?)>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .listen((event) {
+            if (event.message case ClaudeUserMessage(isReplay: true, :final uuid)) echoes.add((uuid, event.promptId));
+          });
+      final turn = repository.sendTurn(
+        isSynthetic: true,
+        sessionId: testSessionId,
+        echoAtOnce: false,
+        parts: const [PluginPromptPart.text(text: "[SESORI NOTICE]\nA page was answered.")],
+        promptId: "prompt-notice",
+      );
+      await _waitForUserFrames(process, 1);
+      final frame = _userFrames(process).single;
+      expect(frame["isSynthetic"], isTrue);
+      await pump();
+      expect(echoes, [(turn.messageId, "prompt-notice")]);
+
+      process.emit(_result());
+      expect(await turn.outcome, isA<ClaudeTurnCompleted>());
+      await subscription.cancel();
+    });
+
+    test("drops the CLI's echo of a synthetic prompt a running turn absorbed", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final echoes = <String?>[];
+      final subscription = repository.events
+          .where((event) => event is ClaudeSessionProcessMessage)
+          .cast<ClaudeSessionProcessMessage>()
+          .listen((event) {
+            if (event.message case ClaudeUserMessage(isReplay: true)) echoes.add(event.promptId);
+          });
+      final first = repository.sendTurn(
+        isSynthetic: false,
+        sessionId: testSessionId,
+        echoAtOnce: false,
+        parts: const [PluginPromptPart.text(text: "first")],
+        promptId: "prompt-first",
+      );
+      final notice = repository.sendTurn(
+        isSynthetic: true,
+        sessionId: testSessionId,
+        echoAtOnce: false,
+        parts: const [PluginPromptPart.text(text: "[SESORI NOTICE]\nA page was answered.")],
+        promptId: "prompt-notice",
+      );
+      await _waitForUserFrames(process, 2);
+
+      process.emit(_replayOf(_userFrames(process)[0], uuid: first.messageId));
+      process.emit({..._replayOf(_userFrames(process)[1], uuid: notice.messageId), "isSynthetic": true});
+      process.emit(_result());
+
+      expect(await first.outcome, isA<ClaudeTurnCompleted>());
+      expect(await notice.outcome, isA<ClaudeTurnCompleted>());
+      await pump();
+      expect(echoes, ["prompt-notice", "prompt-first"]);
+      await subscription.cancel();
+    });
+
     test("one result settles steering messages absorbed into the active turn", () async {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
@@ -543,12 +611,14 @@ void main() {
             }
           });
       final first = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
         promptId: "prompt-first",
       );
       final second = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
@@ -578,6 +648,7 @@ void main() {
           .where((event) => event.message is ClaudeUserMessage)
           .listen((event) => promptIds.add(event.promptId));
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [
@@ -608,6 +679,7 @@ void main() {
           .listen((event) => promptIds.add(event.promptId));
       const text = "/Users/dev/Downloads/clip.mov convert this to mp4";
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: text)],
@@ -637,6 +709,7 @@ void main() {
           .where((event) => event.message is ClaudeUserMessage)
           .listen((event) => promptIds.add(event.promptId));
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "ordinary text")],
@@ -657,6 +730,7 @@ void main() {
       await _ensure(repository, createNew: true);
       final process = harness.processes.single;
       final first = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
@@ -668,6 +742,7 @@ void main() {
 
       process.emit(_replayOf(firstFrame, uuid: "late-first"));
       final second = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
@@ -685,6 +760,7 @@ void main() {
 
       expect(
         () => repository.sendTurn(
+          isSynthetic: false,
           sessionId: testSessionId,
           echoAtOnce: false,
           parts: const [PluginPromptPart.text(text: "fails")],
@@ -693,6 +769,7 @@ void main() {
         throwsA(isA<ClaudeControlException>()),
       );
       final next = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "next")],
@@ -720,6 +797,7 @@ void main() {
     test("classifies a successful result with permission denials as a completed transport turn", () async {
       await _ensure(repository, createNew: true);
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -745,6 +823,7 @@ void main() {
           .listen(exits.add);
 
       final turn = repository.sendTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -765,6 +844,7 @@ void main() {
 
       expect(
         () => repository.sendTurn(
+          isSynthetic: false,
           sessionId: testSessionId,
           echoAtOnce: false,
           parts: const [PluginPromptPart.fileData(mime: "application/pdf", base64: "secret", filename: "a.pdf")],

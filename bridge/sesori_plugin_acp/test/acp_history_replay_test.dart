@@ -422,6 +422,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = createdPlugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,

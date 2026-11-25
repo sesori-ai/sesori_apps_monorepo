@@ -2126,12 +2126,14 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
     required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
     await super.sendPrompt(
+      origin: PluginPromptOrigin.user,
       promptId: promptId,
       sessionId: sessionId,
       parts: parts,

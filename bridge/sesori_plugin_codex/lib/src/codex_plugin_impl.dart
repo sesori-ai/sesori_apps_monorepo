@@ -1036,6 +1036,7 @@ class CodexPlugin._({
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -1094,6 +1095,7 @@ class CodexPlugin._({
     required String sessionId,
     required String promptId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -1198,6 +1200,7 @@ class CodexPlugin._({
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -1270,6 +1273,7 @@ class CodexPlugin._({
       return PluginCompactionResult.sessionBusy;
     }
     await sendCommand(
+      origin: PluginPromptOrigin.user,
       sessionId: sessionId,
       promptId: promptId,
       command: CodexSessionService.compactionCommandName,

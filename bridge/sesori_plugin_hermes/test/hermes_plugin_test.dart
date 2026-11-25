@@ -187,6 +187,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -201,6 +202,7 @@ void main() {
       expect(session.id, "s1");
 
       final prompting = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -246,6 +248,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -259,6 +262,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -270,6 +274,7 @@ void main() {
       final firstPrompt = await waitForFrame(method: "session/prompt");
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,
@@ -310,6 +315,7 @@ void main() {
     test("a stop reaches Hermes only while a turn runs", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -335,6 +341,7 @@ void main() {
       expect(cancels(), isEmpty);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -352,6 +359,7 @@ void main() {
       await connect();
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -378,6 +386,7 @@ void main() {
       await connect();
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -429,6 +438,7 @@ void main() {
     test("a rejected model switch fails the turn before session/prompt", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -463,6 +473,7 @@ void main() {
       final failedTurn = plugin.events.where((event) => event is BridgeSseSessionError).first;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",

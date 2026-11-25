@@ -158,6 +158,7 @@ void main() {
 
     Future<String> createSession(String directory, String sessionId) async {
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: directory,
         parentSessionId: null,
@@ -177,6 +178,7 @@ void main() {
     Future<String> sendPrompt(String sessionId, String text) async {
       final promptId = "prompt-${++promptSequence}";
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: promptId,
         sessionId: sessionId,
@@ -279,6 +281,7 @@ void main() {
       emitted.clear();
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-joined",
         sessionId: sessionId,
@@ -695,6 +698,7 @@ void main() {
       emitted.clear();
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -744,6 +748,7 @@ void main() {
       await connect();
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -776,6 +781,7 @@ void main() {
           emitted.clear();
 
           final creating = plugin.createSession(
+            origin: PluginPromptOrigin.user,
             fastMode: false,
             directory: cwd,
             parentSessionId: null,
@@ -821,6 +827,7 @@ void main() {
       emitted.clear();
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
@@ -1012,6 +1019,7 @@ void main() {
       await sendPrompt(sessionId, "first");
       await waitForFrame("session/prompt");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-queued-note",
         sessionId: sessionId,
@@ -1311,6 +1319,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = gated.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -1329,6 +1338,7 @@ void main() {
       final gate = Completer<void>();
       gated.selectionGate = gate;
       await gated.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -1595,6 +1605,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = respawning.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: cwd,
         parentSessionId: null,
@@ -1614,6 +1625,7 @@ void main() {
 
       var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
