@@ -1,8 +1,22 @@
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_baseline.dart";
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "pull_request_activity_calculator.dart";
 import "pull_request_readiness_calculator.dart";
+
+/// Which report of a watch this is.
+enum PullRequestReportOpening() {
+  /// Any report after the watch's first.
+  ongoing,
+
+  /// The first report of a new watch, where every existing comment is new.
+  watchStarted,
+
+  /// The first report after the bridge restarted, covering changes since the
+  /// last report before it stopped.
+  resumed,
+}
 
 /// Renders the report and idle-reminder texts (spec §5). Reports never carry
 /// comment bodies or advice about a review's substance.
@@ -20,6 +34,7 @@ class const PullRequestReportBuilder({
     required PullRequestBaseline? baseline,
     required int? forcedHoldMinutes,
     required bool autoMergeEnabled,
+    required PullRequestReportOpening opening,
   }) {
     final stateSuffix = switch (snapshot.state) {
       PullRequestState.open => "",
@@ -30,6 +45,8 @@ class const PullRequestReportBuilder({
     final newReviewSummaries = _newSince(comments: snapshot.reviewSummaries, seenIds: baseline?.reviewSummaryIds);
     return [
       "${_header(target: target, snapshot: snapshot)}$stateSuffix",
+      if (opening == PullRequestReportOpening.resumed)
+        "- Resumed after the bridge restarted; this covers changes since the last report.",
       _ciLine(snapshot: snapshot, forcedHoldMinutes: forcedHoldMinutes),
       _mergeableLine(snapshot: snapshot),
       _reviewLine(snapshot: snapshot),
@@ -46,8 +63,72 @@ class const PullRequestReportBuilder({
         PullRequestState.merged => "- Monitor stopped: PR merged",
         PullRequestState.closed => "- Monitor stopped: PR closed",
       },
+      if (opening != PullRequestReportOpening.ongoing && snapshot.state == PullRequestState.open)
+        _startupAssessmentLine(target: target),
     ].join("\n");
   }
+
+  /// The line the user sees beside a report, such as
+  /// `PR monitor: owner/repo#12 — 2 new comments, CI failing`.
+  String buildReportSummary({
+    required PullRequestTarget target,
+    required PullRequestSnapshot snapshot,
+    required PullRequestBaseline? baseline,
+  }) {
+    final newComments = [
+      ..._newSince(comments: snapshot.issueComments, seenIds: baseline?.issueCommentIds),
+      ..._newSince(comments: snapshot.reviewSummaries, seenIds: baseline?.reviewSummaryIds),
+      for (final thread in snapshot.reviewThreads)
+        ..._newSince(
+          comments: thread.comments,
+          seenIds: baseline == null ? null : baseline.threadCommentIds[thread.id] ?? const {},
+        ),
+    ];
+    final failing = snapshot.checks.any((check) => check.outcome == PullRequestCheckOutcome.failure);
+    final reasons = [
+      ?switch (snapshot.state) {
+        PullRequestState.open => null,
+        PullRequestState.merged => "merged",
+        PullRequestState.closed => "closed",
+      },
+      if (newComments.isNotEmpty) _countLabel(count: newComments.length, singular: "new comment"),
+      if (snapshot.state == PullRequestState.open && snapshot.mergeable == PullRequestMergeable.conflicting)
+        "merge conflict",
+      ?switch (_activity.ciPhase(snapshot: snapshot)) {
+        PullRequestCiPhase.none => null,
+        PullRequestCiPhase.running => failing ? "CI failing" : null,
+        PullRequestCiPhase.concluded => failing ? "CI failing" : "CI passing",
+      },
+    ];
+    return _summary(target: target, reason: reasons.isEmpty ? "PR updated" : reasons.join(", "));
+  }
+
+  String buildIdleReminderSummary({required PullRequestTarget target}) =>
+      _summary(target: target, reason: "idle reminder");
+
+  String buildStopSummary({required PullRequestTarget target}) => _summary(target: target, reason: "monitor stopped");
+
+  /// Tells a watcher its watch ended without a terminal report, such as after
+  /// [reason] `Monitor stopped: PR not found …`. The readiness lines come
+  /// from [snapshot], the last successful poll, when there was one.
+  String buildStopNotice({
+    required PullRequestTarget target,
+    required PullRequestSnapshot? snapshot,
+    required String reason,
+    required bool autoMergeEnabled,
+  }) => [
+    "[PR Monitor] [${target.displayKey}](${target.url}) — $reason",
+    if (snapshot != null) ..._readinessLines(target: target, snapshot: snapshot, autoMergeEnabled: autoMergeEnabled),
+  ].join("\n");
+
+  String _startupAssessmentLine({required PullRequestTarget target}) =>
+      "- Startup/restart assessment: inspect the current head's checks, expected automated reviews, and existing "
+      "feedback now. If already settled with nothing left to do, call ${_markReadyCall(target: target)} without "
+      "waiting for a new event. Empty results after creation or a fresh push do not prove readiness; PR age alone "
+      "is insufficient.";
+
+  String _summary({required PullRequestTarget target, required String reason}) =>
+      "PR monitor: ${target.displayKey} — $reason";
 
   /// A short nudge for an open PR with no activity and no report for
   /// [idleMinutes]: current state only, nothing "new since".

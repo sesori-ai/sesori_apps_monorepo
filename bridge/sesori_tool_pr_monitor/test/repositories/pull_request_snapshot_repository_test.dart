@@ -1,7 +1,7 @@
 import "dart:convert";
 
 import "package:sesori_tool_pr_monitor/src/api/gh_cli_api.dart";
-import "package:sesori_tool_pr_monitor/src/api/gh_cli_exception.dart";
+import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/models/pull_request_target.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_snapshot_repository.dart";

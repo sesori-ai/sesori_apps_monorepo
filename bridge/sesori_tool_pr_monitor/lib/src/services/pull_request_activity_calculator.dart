@@ -1,15 +1,6 @@
+import "../repositories/models/pull_request_baseline.dart";
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
-
-enum PullRequestCiPhase() {
-  /// The head commit has no checks.
-  none,
-
-  /// At least one check is still pending.
-  running,
-
-  /// Every check finished.
-  concluded,
-}
 
 /// Decides whether two consecutive polls of a PR differ in a way worth
 /// reporting (spec §4).
@@ -66,6 +57,43 @@ class const PullRequestActivityCalculator() {
     return failing.any((check) => !before.contains(check.id));
   }
 
+  /// What a report on [snapshot] covers, as a watch stores it.
+  PullRequestBaseline baselineOf({required PullRequestSnapshot snapshot}) => PullRequestBaseline(
+    state: snapshot.state,
+    headSha: snapshot.headSha,
+    mergeable: snapshot.mergeable,
+    ciPhase: ciPhase(snapshot: snapshot),
+    failedCheckIds: _failedCheckIds(snapshot: snapshot).toSet(),
+    reviewSignature: _reviewSignature(snapshot: snapshot),
+    issueCommentIds: _relevantIds(comments: snapshot.issueComments),
+    issueCommentsTotal: snapshot.issueCommentsTotal,
+    reviewSummaryIds: _relevantIds(comments: snapshot.reviewSummaries),
+    threadCommentIds: {for (final thread in snapshot.reviewThreads) thread.id: _relevantIds(comments: thread.comments)},
+    resolvedThreadIds: {
+      for (final thread in snapshot.reviewThreads)
+        if (thread.isResolved) thread.id,
+    },
+    unresolvedThreadCount: snapshot.reviewThreads.where((thread) => !thread.isResolved).length,
+  );
+
+  /// True when [snapshot] holds nothing [baseline] did not: a report against
+  /// it would say nothing new. Mergeability GitHub has not computed yet is
+  /// not a change.
+  bool covers({required PullRequestBaseline baseline, required PullRequestSnapshot snapshot}) {
+    final fresh = baselineOf(snapshot: snapshot);
+    return baseline ==
+        (fresh.mergeable == PullRequestMergeable.unknown ? fresh.copyWith(mergeable: baseline.mergeable) : fresh);
+  }
+
+  /// [hasNewCiFailure] against a stored [baseline] instead of the previous
+  /// poll, for the first poll after a restart.
+  bool hasNewCiFailureSince({required PullRequestBaseline baseline, required PullRequestSnapshot next}) {
+    final failing = _failedCheckIds(snapshot: next);
+    if (failing.isEmpty) return false;
+    if (baseline.headSha != next.headSha) return true;
+    return failing.any((id) => !baseline.failedCheckIds.contains(id));
+  }
+
   /// True when something report-worthy changed between consecutive polls.
   bool detectActivity({
     required PullRequestSnapshot previous,
@@ -99,15 +127,6 @@ class const PullRequestActivityCalculator() {
     return lastDefiniteMergeable != next.mergeable;
   }
 
-  String _reviewSignature({required PullRequestSnapshot snapshot}) {
-    final states = [
-      for (final review in snapshot.reviews)
-        "${review.login}=${review.state.name}@${review.submittedAt.toUtc().toIso8601String()}",
-    ]..sort();
-    final pending = [...snapshot.pendingReviewers]..sort();
-    return "${states.join(",")}|${pending.join(",")}";
-  }
-
   bool _reviewThreadsChanged({
     required List<PullRequestReviewThread> previous,
     required List<PullRequestReviewThread> next,
@@ -122,6 +141,21 @@ class const PullRequestActivityCalculator() {
           hasAddedRelevantComment(previous: earlier.comments, next: thread.comments);
     });
   }
+
+  /// A change here is review activity: a new or changed review, or a
+  /// reviewer requested or removed.
+  String _reviewSignature({required PullRequestSnapshot snapshot}) {
+    final states = [
+      for (final review in snapshot.reviews)
+        "${review.login}=${review.state.name}@${review.submittedAt.toUtc().toIso8601String()}",
+    ]..sort();
+    final pending = [...snapshot.pendingReviewers]..sort();
+    return "${states.join(",")}|${pending.join(",")}";
+  }
+
+  Set<String> _relevantIds({required List<PullRequestComment> comments}) => {
+    for (final comment in relevantComments(comments: comments)) comment.id,
+  };
 
   Iterable<String> _failedCheckIds({required PullRequestSnapshot snapshot}) =>
       snapshot.checks.where((check) => check.outcome == PullRequestCheckOutcome.failure).map((check) => check.id);
