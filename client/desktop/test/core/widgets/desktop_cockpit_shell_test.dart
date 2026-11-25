@@ -1955,7 +1955,8 @@ BridgeSummary _computer({required String id, required String name, required Brid
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 
-class _MockPullRequestWatchListCubit() extends MockCubit<PullRequestWatchListState>
+class _MockPullRequestWatchListCubit()
+    extends MockCubit<PullRequestWatchListState>
     implements PullRequestWatchListCubit;
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
