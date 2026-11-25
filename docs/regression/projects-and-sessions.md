@@ -341,7 +341,7 @@ state.
   only closes. This is the filter Archived shares; it resets on restart, on a computer switch, on sign-out, so signing
   in again opens on "All projects" like a launch, and when its project leaves the list. The bar holds the computer
   button and Settings, with the pull-request button left of them while PRs are watched
-  ([Sesori MCP](sesori-mcp.md)), and a round glass + for New session floats at the bottom
+  ([pull request monitor](pull-request-monitor.md)), and a round glass + for New session floats at the bottom
   right, above the home indicator, holding still while the list scrolls under it. New session grows out of the + as a
   circle over the still home and shrinks back into it on Back ([navigation transitions](navigation-transitions.md)).
   It opens in the filtered project, else "No project", else the project of the newest session, else asks for a project,
@@ -597,7 +597,9 @@ state.
   session that is not running, whose turn a bridge stop cut off, until the user
   opens it or sends to it), then the scheduled mark, ellipsizing with the line: an accent "<name> · next <time>"
   with a repeat glyph for a session a wake-up or task will wake again, a grey "from <task>" for a task's run that
-  nothing will wake again, or the task glyph and name from an older bridge (see scheduled-tasks.md), then the project
+  nothing will wake again, or the task glyph and name from an older bridge (see scheduled-tasks.md); a session with
+  watched PRs and no timed wake-up shows the lead PR's `#number` in its status colour and `+N` instead (see
+  pull-request-monitor.md), then the project
   when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide

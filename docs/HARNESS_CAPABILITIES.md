@@ -172,8 +172,9 @@ resolves relative file paths.
 ## Sesori agent tools
 
 Sessions Sesori starts can get Sesori's own MCP server, `sesori_bridge`, with
-tools for scheduled tasks (see
-[Sesori MCP regression coverage](regression/sesori-mcp.md)). Each plugin hands
+tool groups for scheduled tasks, question pages, wake-ups and the PR monitor (see
+[Sesori MCP regression coverage](regression/sesori-mcp.md) and
+[the PR monitor's](regression/pull-request-monitor.md)). Each plugin hands
 it to its harness through a per-session launch seam (OpenCode: a per-folder
 socket, below), never through user configuration, and declares
 `injectsSesoriTools` once it does.
@@ -245,6 +246,22 @@ took a one-shot and answered its notice, and ran `every 2` twice before
 Claude Code and Grok. Oh My Pi reaches the tools through its `xd://` file and
 Grok through tool search, as for pages.
 
+PR monitor: every harness that gets the server can use the `pr_monitor`
+tools with no harness-specific code; only the guide's delivery differs (below).
+A report uses the outcome notice's timing: Claude Code, Codex, Pi, Oh My Pi and
+OpenCode take it into a running turn, Grok and GitHub Copilot hear it once the
+turn ends, and a scheduled run's session always hears it after the turn. Idle
+reminders wait for the turn on every harness. GitHub Copilot asks its own
+permission before each PR monitor tool that is not read-only (`watch_pr`,
+`unwatch_pr`, `reply_on_pr`, `mark_pr_ready`, `unmark_pr_ready`,
+`set_pr_auto_merge`, `configure_pr_monitor`), so an unattended Copilot session
+waits for the user there, and for an auto-merge Allow it waits twice;
+`pr_watch_status`, `get_pr_report`, `get_pr_feedback` and `get_guide` run
+without a prompt. The Grok plugin answers Grok's own prompt for these tools.
+Verified live on 2026-11-25: on every harness with a skill seam the agent
+loaded the guide and called `watch_pr` (table below). Report delivery and its
+timing per harness are not yet verified live.
+
 Tool-group guides: a group with a long how-to (today the PR monitor) gives
 agents two ways to read it. Every harness that gets the server can call
 `get_guide`. Harnesses that can load extra skills per process also get the
@@ -259,7 +276,9 @@ directory while the group is on.
 | Oh My Pi | ✅ `--plugin-dir <pluginRoot>` on every `omp acp` spawn, read at spawn time, so a toggle applies when the process restarts. The catalog lease gets it too, so the command list shows `skill:pr-monitor` (OMP drops the plugin prefix). Verified live on 19.1.1, 2026-11-25: on "watch this PR", the agent read `skill://pr-monitor` from the bundle, then called `watch_pr`. |
 | Grok | ✅ `_meta.pluginDirs` on `session/new`, `session/load` and `session/resume`, which loads the plugin for that session only. `agent --plugin-dir` is not used: a Grok without it would refuse to start, while it ignores an unknown `_meta` field. The command list, filled from a live session's commands, shows `pr-monitor`. Verified live on 1.0.30, 2026-11-25: on "watch this PR", the agent read the skill's `SKILL.md`, found `watch_pr` through tool search and called it. |
 | GitHub Copilot | ✅ `--plugin-dir <pluginRoot>` on every spawn, read at spawn time, including the catalog probe, so the command list shows `sesori:pr-monitor`. Verified live on 1.0.115, 2026-11-25: on "watch this PR", the agent invoked the skill and then called `watch_pr`. |
-| Other harnesses | ⬜ `get_guide` only for now. |
+| OpenCode | 🚫 No seam: one OpenCode server is shared with the user's own OpenCode apps and Sesori adds nothing to its configuration, so it cannot add a skill for its sessions. `get_guide` is the only guide path, and its own description says when to read it, since OpenCode also gives the socket-attached server no `instructions`. Checked on 2.4.1, 2026-11-25. |
+| Hermes | ⬜ No skill seam is wired. Once Hermes gets the server (above), `get_guide` will be its only guide path. |
+| Antigravity, Cursor, DeepSeek | Not applicable: they get no Sesori server. |
 
 ## Transcript turn boundaries
 

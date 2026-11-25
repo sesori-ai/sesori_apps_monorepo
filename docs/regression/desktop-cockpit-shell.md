@@ -78,8 +78,9 @@ The main pane hosts one full-width routed page.
   A failed transcription leaves a card over the composer saying the recording is saved, with Discard and Retry.
 - New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects at
   all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
-  opens in New session. Search under it opens the command palette, and Archived sessions under Search opens the
-  Archived page; neither shows a selected state. Below them the project filter, "All projects
+  opens in New session. Search under it opens the command palette, Archived sessions under Search opens the
+  Archived page, and Scheduled and Pull requests follow; none shows a selected state. Pull requests always shows,
+  with a red count of the PRs that need the user at its end ([pull request monitor](pull-request-monitor.md)). Below them the project filter, "All projects
   ▾", "No project ▾" or the chosen project's name, heads the shared all-projects session list beside Refresh: it
   opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
@@ -114,8 +115,8 @@ The main pane hosts one full-width routed page.
   shows the shortcut. Windows and Linux retain native window chrome.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
-  while the window is wide enough to expand it; Settings; Go back; each with its shortcut; and Archived sessions,
-  without one, which reaches Archived while a narrow window hides the sidebar), every Project, then Sessions last,
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut; and Archived sessions and
+  Pull requests, without one, which reach those pages while a narrow window hides the sidebar), every Project, then Sessions last,
   each with its project: before typing, the 20 newest active sessions of every project, whatever the sidebar list's
   filter, search and chip. The rows the sidebar's list has loaded show at once while one 20-row page request asks
   the bridge, whose answer then settles them; clearing a typed query brings that answer back at once. Typing narrows commands and projects by title words,
@@ -172,6 +173,9 @@ The main pane hosts one full-width routed page.
   returns to the page it opened over, or home when there is none, and opening Archived while it is the top page
   does nothing. The row stays enabled while the computer is disconnected: the page then lists nothing, and the
   connection pill and the footer's recovery card say why.
+- The sidebar's Pull requests row, and the palette's command, open the watched-PR list as a page over the main pane
+  the same way, with a close button and pull-to-refresh; a row opens its session over the page, so back returns to
+  the list ([pull request monitor](pull-request-monitor.md)).
 - Hovering a list row, or moving keyboard focus into it, swaps its time for Mark read/unread and Archive
   without changing the row's height; an archived row offers no Archive.
 - Every enabled control that acts on a click shows the hand cursor on hover: buttons, menu items, list
