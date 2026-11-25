@@ -8,4 +8,8 @@ class const BridgeConfig({
   /// Whether permission requests are approved at the bridge instead of being
   /// forwarded to clients.
   required final bool yolo,
+
+  /// Whether this install updates itself, so that it follows the release
+  /// track in the bridge settings.
+  required final bool updatesItself,
 });

@@ -7,9 +7,11 @@ import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
+import "package:sesori_bridge/src/services/release_track_settings_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/tool_group_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
+import "package:sesori_bridge/src/updater/foundation/release_track.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:test/test.dart";
@@ -23,6 +25,7 @@ void main() {
     late BridgeSettingsRepository repository;
     late YoloSettingsService service;
     late ToolGroupSettingsService toolGroups;
+    late ReleaseTrackSettingsService releaseTrack;
     late PatchBridgeSettingsHandler patchHandler;
 
     setUp(() async {
@@ -35,6 +38,7 @@ void main() {
         sessionMutationDispatcher: _FakeSessionMutationDispatcher(),
       );
       toolGroups = ToolGroupSettingsService(settings: repository, groups: [_FakeToolGroup()]);
+      releaseTrack = ReleaseTrackSettingsService(settings: repository, updatesItself: true);
       patchHandler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: PullRequestRefreshSettingsService(
           bridgeSettingsRepository: repository,
@@ -44,6 +48,7 @@ void main() {
           bridgeSettingsRepository: repository,
         ),
         toolGroupSettingsService: toolGroups,
+        releaseTrackSettingsService: releaseTrack,
       );
     });
 
@@ -54,6 +59,7 @@ void main() {
           await GetBridgeSettingsHandler(
             settingsRepository: repository,
             toolGroupSettingsService: toolGroups,
+            releaseTrackSettingsService: releaseTrack,
           ).routeForTest(
             makeRequest("GET", "/settings"),
           );
@@ -69,6 +75,7 @@ void main() {
           toolGroups: [
             BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: true),
           ],
+          releaseTrack: BridgeReleaseTrack.stable,
         ),
       );
     });
@@ -153,10 +160,61 @@ void main() {
       final settings = await GetBridgeSettingsHandler(
         settingsRepository: repository,
         toolGroupSettingsService: toolGroups,
+        releaseTrackSettingsService: releaseTrack,
       ).routeForTest(makeRequest("GET", "/settings"));
       final read = BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body")));
       expect(read.agentToolsEnabled, isFalse);
       expect(read.toolGroups.single.enabled, isTrue);
+    });
+
+    test("PATCH stores the release track and GET reports it", () async {
+      final response = await patchHandler.routeForTest(
+        makeRequest(
+          "PATCH",
+          "/settings",
+          body: jsonEncode(const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.internal).toJson()),
+        ),
+      );
+
+      expect(response.status, 200);
+      expect(
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
+        const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.internal),
+      );
+      expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["releaseTrack"], "internal");
+      final settings = await GetBridgeSettingsHandler(
+        settingsRepository: repository,
+        toolGroupSettingsService: toolGroups,
+        releaseTrackSettingsService: releaseTrack,
+      ).routeForTest(makeRequest("GET", "/settings"));
+      expect(
+        BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body"))).releaseTrack,
+        BridgeReleaseTrack.internal,
+      );
+    });
+
+    test("PATCH refuses a release track this bridge does not know and stores nothing", () async {
+      final response = await patchHandler.routeForTest(
+        makeRequest("PATCH", "/settings", body: jsonEncode(const {"type": "releaseTrack", "track": "beta"})),
+      );
+
+      expect(response.status, 400);
+      expect(
+        BridgeSettingUpdateRejection.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
+        const BridgeSettingUpdateRejection.unknown(),
+      );
+      expect(repository.currentSettings.releaseTrack, ReleaseTrack.stable);
+    });
+
+    test("GET leaves the release track out on an install that does not update itself", () async {
+      final settings = await GetBridgeSettingsHandler(
+        settingsRepository: repository,
+        toolGroupSettingsService: toolGroups,
+        releaseTrackSettingsService: ReleaseTrackSettingsService(settings: repository, updatesItself: false),
+      ).routeForTest(makeRequest("GET", "/settings"));
+
+      final body = jsonDecodeMap(settings.body ?? fail("missing body"));
+      expect(body.containsKey("releaseTrack"), isFalse);
     });
 
     test("PATCH refuses a tool group this bridge does not serve and stores nothing", () async {

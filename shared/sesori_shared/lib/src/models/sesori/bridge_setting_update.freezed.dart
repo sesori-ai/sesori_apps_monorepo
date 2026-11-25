@@ -36,6 +36,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return ToolGroupSettingUpdate.fromJson(
             json
           );
+                case 'releaseTrack':
+          return ReleaseTrackSettingUpdate.fromJson(
+            json
+          );
         
           default:
             return UnknownBridgeSettingUpdate.fromJson(
@@ -273,6 +277,47 @@ int get hashCode {
 @override
 String toString() {
     return 'BridgeSettingUpdate.toolGroup(id: $id, enabled: $enabled)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class ReleaseTrackSettingUpdate implements BridgeSettingUpdate {
+  const ReleaseTrackSettingUpdate({@JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required this.track,  String? $type}): $type = $type ?? 'releaseTrack';
+  factory ReleaseTrackSettingUpdate.fromJson(Map<String, dynamic> json) => _$ReleaseTrackSettingUpdateFromJson(json);
+
+@JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) final  BridgeReleaseTrack track;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ReleaseTrackSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleaseTrackSettingUpdate&&(identical(other.track, track) || other.track == track));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,track);
+}
+
+@override
+String toString() {
+    return 'BridgeSettingUpdate.releaseTrack(track: $track)';
 }
 
 

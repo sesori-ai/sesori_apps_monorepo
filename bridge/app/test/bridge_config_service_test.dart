@@ -92,6 +92,7 @@ class _FakeBridgeSettingsRepository({
     yolo: YoloSettingsResponse(enabled: settings.yolo),
     warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
     agentToolsEnabled: settings.agentTools,
+    releaseTrack: null,
   );
 
   @override
@@ -113,7 +114,9 @@ class _FakeBridgeSettingsRepository({
   }
 
   @override
-  Future<void> updateReleaseTrack({required ReleaseTrack track}) async {}
+  Future<BridgeSettings> updateReleaseTrack({required ReleaseTrack track}) async {
+    return settings = settings.copyWith(releaseTrack: track);
+  }
 
   @override
   Future<void> updateYolo({required bool enabled}) async {}

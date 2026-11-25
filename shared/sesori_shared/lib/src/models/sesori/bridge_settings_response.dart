@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "bridge_release_track.dart";
 import "bridge_tool_group_setting.dart";
 import "pull_request_refresh_settings.dart";
 import "yolo_settings.dart";
@@ -31,6 +32,15 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
     // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before tool groups omit this list, and the app hides the section
     // when it is empty. Remove @Default and require the field once the minimum supported bridge always sends it.
     @Default(<BridgeToolGroupSetting>[]) List<BridgeToolGroupSetting> toolGroups,
+
+    /// The release channel the bridge's auto-updater follows, or null for a
+    /// bridge that does not update itself (one run by the desktop app, an npm
+    /// payload, a development build, or updates turned off), which leaves the
+    /// setting out.
+    // COMPATIBILITY 2026-11-25 (v1.16.0): v1.15.0 bridges omit the track even when they update themselves, so the app
+    // hides the setting for them too. Null keeps its meaning for bridges that do not update themselves; drop this note
+    // once the minimum supported bridge sends the track.
+    @JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required BridgeReleaseTrack? releaseTrack,
   }) = _BridgeSettingsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);

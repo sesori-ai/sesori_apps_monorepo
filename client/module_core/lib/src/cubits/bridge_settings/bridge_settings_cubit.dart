@@ -315,6 +315,100 @@ class BridgeSettingsCubit({
     required AgentToolsMutationState mutation,
   }) => AgentToolsSettings(enabled: agentTools.enabled, groups: agentTools.groups, mutation: mutation);
 
+  /// Follows internal pre-releases too, or stable releases only, from the
+  /// bridge's next start.
+  Future<void> updateReleaseTrack({required bool internalBuilds, required BridgeSettingsReady expectedState}) async {
+    if (_operationInProgress || !_connected || isClosed) return;
+    final current = state;
+    if (current is! BridgeSettingsReady || !identical(current, expectedState)) return;
+    final releaseTrack = current.releaseTrack;
+    if (releaseTrack == null || releaseTrack.internalBuilds == internalBuilds) return;
+    switch (releaseTrack.mutation) {
+      case ReleaseTrackMutationInProgress() || ReleaseTrackMutationUncertain():
+        return;
+      case ReleaseTrackMutationIdle() || ReleaseTrackMutationFailed():
+        break;
+    }
+
+    _operationInProgress = true;
+    final operationEpoch = _connectionEpoch;
+    final currentInternalBuilds = releaseTrack.internalBuilds;
+    emit(
+      _withReleaseTrack(
+        state: current,
+        internalBuilds: currentInternalBuilds,
+        mutation: const ReleaseTrackMutationInProgress(),
+      ),
+    );
+    try {
+      final result = await _service.updateReleaseTrack(internalBuilds: internalBuilds);
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      switch (result) {
+        case ReleaseTrackSettingsMutationCommitted(internalBuilds: final committed):
+          emit(
+            _withReleaseTrack(
+              state: current,
+              internalBuilds: committed,
+              mutation: const ReleaseTrackMutationIdle(),
+            ),
+          );
+        case ReleaseTrackSettingsMutationFailure(:final error):
+          emit(
+            _withReleaseTrack(
+              state: current,
+              internalBuilds: currentInternalBuilds,
+              mutation: ReleaseTrackMutationFailed(error: error),
+            ),
+          );
+        case ReleaseTrackSettingsMutationUncertain():
+          await _reconcileReleaseTrack(
+            current: current,
+            currentInternalBuilds: currentInternalBuilds,
+            operationEpoch: operationEpoch,
+          );
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      emit(
+        _withReleaseTrack(
+          state: current,
+          internalBuilds: currentInternalBuilds,
+          mutation: ReleaseTrackMutationFailed(error: ApiError.dartHttpClient(error)),
+        ),
+      );
+    } finally {
+      _finishOperation();
+    }
+  }
+
+  Future<void> _reconcileReleaseTrack({
+    required BridgeSettingsReady current,
+    required bool currentInternalBuilds,
+    required int operationEpoch,
+  }) async {
+    ApiError refreshError;
+    try {
+      final result = await _service.load();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      if (result case BridgeSettingsLoadFailure(:final error)) {
+        refreshError = error;
+      } else {
+        _publishLoad(result: result);
+        return;
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      refreshError = ApiError.dartHttpClient(error);
+    }
+    emit(
+      _withReleaseTrack(
+        state: current,
+        internalBuilds: currentInternalBuilds,
+        mutation: ReleaseTrackMutationUncertain(refreshError: refreshError),
+      ),
+    );
+  }
+
   Future<void> _reconcileYolo({required BridgeSettingsReady current, required int operationEpoch}) async {
     try {
       final result = await _service.load();
@@ -391,6 +485,18 @@ class BridgeSettingsCubit({
                 AgentToolsSettings(enabled: enabled, groups: toolGroups, mutation: const AgentToolsMutationIdle()),
               BridgeSettingsResponse() => null,
             },
+            // A track this app does not know is left out like a missing one.
+            releaseTrack: switch (response.releaseTrack) {
+              BridgeReleaseTrack.stable => const ReleaseTrackSettings(
+                internalBuilds: false,
+                mutation: ReleaseTrackMutationIdle(),
+              ),
+              BridgeReleaseTrack.internal => const ReleaseTrackSettings(
+                internalBuilds: true,
+                mutation: ReleaseTrackMutationIdle(),
+              ),
+              BridgeReleaseTrack.unknown || null => null,
+            },
           ),
         );
       case BridgeSettingsLoadUnsupported():
@@ -410,6 +516,7 @@ class BridgeSettingsCubit({
       yoloMutation: mutation,
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: state.agentTools,
+      releaseTrack: state.releaseTrack,
     );
   }
 
@@ -422,6 +529,7 @@ class BridgeSettingsCubit({
       yoloMutation: state.yoloMutation,
       pluginWarmupMutation: mutation,
       agentTools: state.agentTools,
+      releaseTrack: state.releaseTrack,
     );
   }
 
@@ -431,6 +539,21 @@ class BridgeSettingsCubit({
       yoloMutation: state.yoloMutation,
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: agentTools,
+      releaseTrack: state.releaseTrack,
+    );
+  }
+
+  BridgeSettingsReady _withReleaseTrack({
+    required BridgeSettingsReady state,
+    required bool internalBuilds,
+    required ReleaseTrackMutationState mutation,
+  }) {
+    return BridgeSettingsReady(
+      yoloEnabled: state.yoloEnabled,
+      yoloMutation: state.yoloMutation,
+      pluginWarmupMutation: state.pluginWarmupMutation,
+      agentTools: state.agentTools,
+      releaseTrack: ReleaseTrackSettings(internalBuilds: internalBuilds, mutation: mutation),
     );
   }
 

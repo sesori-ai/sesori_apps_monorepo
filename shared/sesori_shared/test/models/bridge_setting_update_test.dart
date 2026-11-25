@@ -80,6 +80,20 @@ void main() {
       expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
     });
 
+    test("release track variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.internal);
+
+      expect(update.toJson(), {"type": "releaseTrack", "track": "internal"});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
+    test("release track a build does not know decodes as unknown", () {
+      expect(
+        BridgeSettingUpdate.fromJson(const {"type": "releaseTrack", "track": "beta"}),
+        const BridgeSettingUpdate.releaseTrack(track: BridgeReleaseTrack.unknown),
+      );
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

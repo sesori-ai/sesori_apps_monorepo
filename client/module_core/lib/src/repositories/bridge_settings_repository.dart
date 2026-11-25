@@ -66,6 +66,23 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettings
     };
   }
 
+  /// Makes the bridge's auto-updater follow internal pre-releases too, or
+  /// stable releases only, from its next start. The app offers this only to
+  /// bridges that report their track, which all take the update, so any
+  /// refusal is a plain failure.
+  Future<ReleaseTrackSettingsMutationResult> updateReleaseTrack({required bool internalBuilds}) async {
+    final track = internalBuilds ? BridgeReleaseTrack.internal : BridgeReleaseTrack.stable;
+    return switch (await _bridgeSettingsApi.update(update: BridgeSettingUpdate.releaseTrack(track: track))) {
+      BridgeSettingUpdateApiCommitted(update: ReleaseTrackSettingUpdate(track: BridgeReleaseTrack.internal)) =>
+        const ReleaseTrackSettingsMutationCommitted(internalBuilds: true),
+      BridgeSettingUpdateApiCommitted(update: ReleaseTrackSettingUpdate(track: BridgeReleaseTrack.stable)) =>
+        const ReleaseTrackSettingsMutationCommitted(internalBuilds: false),
+      BridgeSettingUpdateApiCommitted() => const ReleaseTrackSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(isCommitUncertain: true) => const ReleaseTrackSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(:final error) => ReleaseTrackSettingsMutationFailure(error: error),
+    };
+  }
+
   /// The app offers these switches only to bridges that send the master
   /// switch, which all take both updates, so any refusal is a plain failure.
   AgentToolsSettingsMutationResult _agentToolsUncommitted({required BridgeSettingUpdateApiResult result}) {

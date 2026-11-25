@@ -36,6 +36,7 @@ void main() {
         authBackendURL: "https://api.sesori.test",
         sseReplayWindow: Duration(minutes: 5),
         yolo: false,
+        updatesItself: false,
       ),
       client: RelayClient(
         relayURL: "ws://127.0.0.1:9999",

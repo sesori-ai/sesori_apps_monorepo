@@ -11,6 +11,7 @@ void main() {
       toolGroups: [
         BridgeToolGroupSetting(id: "tasks", title: "Scheduled tasks", summary: "Read tasks.", enabled: false),
       ],
+      releaseTrack: BridgeReleaseTrack.internal,
     );
 
     expect(response.toJson(), {
@@ -21,6 +22,7 @@ void main() {
       "toolGroups": [
         {"id": "tasks", "title": "Scheduled tasks", "summary": "Read tasks.", "enabled": false},
       ],
+      "releaseTrack": "internal",
     });
     expect(BridgeSettingsResponse.fromJson(response.toJson()), response);
   });
@@ -34,6 +36,16 @@ void main() {
     expect(response.warmUpPluginsOnSessionOpen, isNull);
     expect(response.agentToolsEnabled, isNull);
     expect(response.toolGroups, isEmpty);
+    expect(response.releaseTrack, isNull);
+  });
+
+  test("BridgeSettingsResponse reads a release track it does not know as unknown", () {
+    final response = BridgeSettingsResponse.fromJson(const {
+      "yolo": {"enabled": false},
+      "releaseTrack": "beta",
+    });
+
+    expect(response.releaseTrack, BridgeReleaseTrack.unknown);
   });
 
   test("BridgeSettingsResponse accepts a bridge that omits the pull request interval", () {

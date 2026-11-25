@@ -64,6 +64,29 @@ Map<String, dynamic> _$ToolGroupSettingUpdateToJson(
   'type': instance.$type,
 };
 
+ReleaseTrackSettingUpdate _$ReleaseTrackSettingUpdateFromJson(Map json) =>
+    ReleaseTrackSettingUpdate(
+      track: $enumDecode(
+        _$BridgeReleaseTrackEnumMap,
+        json['track'],
+        unknownValue: BridgeReleaseTrack.unknown,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$ReleaseTrackSettingUpdateToJson(
+  ReleaseTrackSettingUpdate instance,
+) => <String, dynamic>{
+  'track': _$BridgeReleaseTrackEnumMap[instance.track]!,
+  'type': instance.$type,
+};
+
+const _$BridgeReleaseTrackEnumMap = {
+  BridgeReleaseTrack.stable: 'stable',
+  BridgeReleaseTrack.internal: 'internal',
+  BridgeReleaseTrack.unknown: 'unknown',
+};
+
 UnknownBridgeSettingUpdate _$UnknownBridgeSettingUpdateFromJson(Map json) =>
     UnknownBridgeSettingUpdate($type: json['type'] as String?);
 

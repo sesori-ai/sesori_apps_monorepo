@@ -1291,6 +1291,36 @@ abstract class AppLocalizations {
   /// **'Retry harness warm-up setting'**
   String get settingsPluginWarmupRetry;
 
+  /// Settings toggle that makes the connected bridge also update itself to internal pre-release builds.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal builds'**
+  String get settingsReleaseTrackTitle;
+
+  /// Footnote under the Internal builds toggle: what it does, and that the bridge only reads it when it starts.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates the bridge to pre-release builds too, which may be unstable. Applies the next time the bridge starts.'**
+  String get settingsReleaseTrackDescription;
+
+  /// No description provided for @settingsReleaseTrackUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsReleaseTrackUncertain;
+
+  /// No description provided for @settingsReleaseTrackUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsReleaseTrackUpdateFailed;
+
+  /// No description provided for @settingsReleaseTrackRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry internal builds setting'**
+  String get settingsReleaseTrackRetry;
+
   /// No description provided for @harnessManagementDefaultsSection.
   ///
   /// In en, this message translates to:

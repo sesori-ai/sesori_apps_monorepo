@@ -52,6 +52,8 @@ class BridgeSettingsRepository({
       yolo: YoloSettingsResponse(enabled: settings.yolo, supportsSessionOverride: true),
       warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
       agentToolsEnabled: settings.agentTools,
+      // ReleaseTrackSettingsService adds it for an install that updates itself.
+      releaseTrack: null,
     );
   }
 
@@ -121,8 +123,10 @@ class BridgeSettingsRepository({
     );
   }
 
-  Future<void> updateReleaseTrack({required ReleaseTrack track}) async {
-    await mutateSettings(mutation: ({required current}) => current.copyWith(releaseTrack: track));
+  Future<BridgeSettings> updateReleaseTrack({required ReleaseTrack track}) {
+    return mutateSettings(
+      mutation: ({required current}) => current.releaseTrack == track ? current : current.copyWith(releaseTrack: track),
+    );
   }
 
   Future<void> updateYolo({required bool enabled}) async {

@@ -237,6 +237,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       ),
     );
@@ -536,6 +537,89 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isFalse);
   });
 
+  testWidgets("a bridge that does not update itself has no Internal builds row", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsOneWidget);
+    expect(find.byKey(const Key("release_track_setting")), findsNothing);
+  });
+
+  testWidgets("toggles Internal builds for a bridge that updates itself", (tester) async {
+    _useTallSurface(tester);
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: BridgeReleaseTrack.stable,
+        ),
+      ),
+    );
+    when(() => bridgeSettingsService.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+      (_) async => const ReleaseTrackSettingsMutationCommitted(internalBuilds: true),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Internal builds"), findsOneWidget);
+    expect(
+      find.text(
+        "Updates the bridge to pre-release builds too, which may be unstable. Applies the next time the bridge starts.",
+      ),
+      findsOneWidget,
+    );
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isFalse);
+
+    await tester.tap(find.byKey(const Key("release_track_setting")));
+    await tester.pumpAndSettle();
+
+    verify(() => bridgeSettingsService.updateReleaseTrack(internalBuilds: true)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isTrue);
+  });
+
+  testWidgets("an unreconciled Internal builds save keeps its row while the retry reloads", (tester) async {
+    _useTallSurface(tester);
+    var loads = 0;
+    final retriedLoad = Completer<void>();
+    when(bridgeSettingsService.load).thenAnswer((_) async {
+      loads++;
+      if (loads == 2) return BridgeSettingsLoadFailure(error: ApiError.generic());
+      if (loads == 3) await retriedLoad.future;
+      return BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: const YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: loads > 1 ? BridgeReleaseTrack.internal : BridgeReleaseTrack.stable,
+        ),
+      );
+    });
+    when(() => bridgeSettingsService.updateReleaseTrack(internalBuilds: true)).thenAnswer(
+      (_) async => const ReleaseTrackSettingsMutationUncertain(),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("release_track_switch")));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("release_track_switch")), findsNothing);
+    await tester.tap(find.byKey(const Key("release_track_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("release_track_setting")), findsOneWidget);
+    retriedLoad.complete();
+    await tester.pumpAndSettle();
+
+    expect(loads, 3);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isTrue);
+  });
+
   testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
     _useTallSurface(tester);
     final mutation = Completer<YoloSettingsMutationResult>();
@@ -586,6 +670,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: null,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       ),
     );
@@ -608,6 +693,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: loads > 1),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       );
     });
@@ -636,6 +722,7 @@ void main() {
           yolo: YoloSettingsResponse(enabled: loads > 1),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
+          releaseTrack: null,
         ),
       );
     });
@@ -734,6 +821,7 @@ void main() {
                 yolo: YoloSettingsResponse(enabled: false),
                 warmUpPluginsOnSessionOpen: true,
                 agentToolsEnabled: null,
+                releaseTrack: null,
               ),
             );
     });
