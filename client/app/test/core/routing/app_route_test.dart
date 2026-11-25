@@ -265,12 +265,14 @@ void main() {
   });
 
   group("buildAppRoutes", () {
-    test("explicit route table covers every AppRouteDef exactly once", () {
+    test("explicit route table covers every phone AppRouteDef exactly once", () {
       final routes = buildAppRoutes();
       final registeredPaths = _collectAbsoluteRoutePaths(routes: routes);
+      // The phone shows pull requests in a sheet; only the desktop has the page.
+      final phoneDefs = AppRouteDef.values.where((def) => def != AppRouteDef.pullRequests);
 
-      expect(registeredPaths, hasLength(AppRouteDef.values.length));
-      expect(registeredPaths.toSet(), equals(AppRouteDef.values.map((def) => def.path).toSet()));
+      expect(registeredPaths, hasLength(phoneDefs.length));
+      expect(registeredPaths.toSet(), equals(phoneDefs.map((def) => def.path).toSet()));
     });
 
     test("nested session route segments compose to AppRouteDef templates", () {

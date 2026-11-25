@@ -412,6 +412,11 @@ void main() {
 
       await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
       await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(of: find.byKey(const Key("desktop-command-palette")), matching: find.byType(TextField)),
+        "switch",
+      );
+      await tester.pump();
       expect(find.textContaining("Switch to this computer"), findsOneWidget);
       expect(find.textContaining("Switch to gpu-box"), findsOneWidget);
       expect(find.textContaining("Switch to Studio Mac"), findsNothing);
@@ -1707,6 +1712,7 @@ void main() {
     var archivedOpens = 0;
     var newTasks = 0;
     var scheduledOpens = 0;
+    var pullRequestOpens = 0;
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1724,7 +1730,7 @@ void main() {
             onOpenSettings: _noOp,
             onOpenArchived: () => archivedOpens++,
             onOpenScheduled: () => scheduledOpens++,
-            onOpenPullRequests: _noOp,
+            onOpenPullRequests: () => pullRequestOpens++,
             onNewTask: () => newTasks++,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),
@@ -1825,6 +1831,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(newTasks, 1);
 
+    // Pull requests too, for a window too narrow to show the sidebar.
+    await press(LogicalKeyboardKey.keyK);
+    await type("pull requests");
+    expect(inPalette("Pull requests"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(pullRequestOpens, 1);
+
     // A project filters the sidebar's list, and a hidden sidebar opens to show it.
     await press(LogicalKeyboardKey.keyK);
     await type("sesori");
@@ -1876,10 +1890,19 @@ void main() {
     expect(inPalette("Note 0"), findsNothing);
     final blankBuildTop = tester.getTopLeft(inPalette("Fix the build")).dy;
     await tester.pumpAndSettle();
-    expect(find.descendant(of: palette, matching: find.text("Note 0")), findsOneWidget);
-    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
     expect(tester.getTopLeft(inPalette("Fix the build")).dy, blankBuildTop);
-    expect(tester.getTopLeft(inPalette("Note 0")).dy, greaterThan(blankBuildTop));
+    // The bridge's rows start below the fold, under the commands.
+    final paletteList = find.descendant(
+      of: palette,
+      matching: find.byWidgetPredicate((widget) => widget is Scrollable && widget.axisDirection == AxisDirection.down),
+    );
+    final note = find.descendant(of: palette, matching: find.text("Note 0"));
+    await tester.scrollUntilVisible(note, 40, scrollable: paletteList);
+    expect(note, findsOneWidget);
+    expect(tester.getTopLeft(note).dy, greaterThan(tester.getTopLeft(inPalette("Fix the build")).dy));
+    await tester.drag(paletteList, const Offset(0, 1000));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
 
     await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), "i");
     await tester.pump();

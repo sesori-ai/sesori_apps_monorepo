@@ -191,6 +191,12 @@ class const DesktopCockpitShell({
             run: onOpenArchived,
           ),
           DesktopCommand(
+            label: loc.pullRequestWatchesTitle,
+            icon: TablerRegular.git_pull_request,
+            shortcut: null,
+            run: onOpenPullRequests,
+          ),
+          DesktopCommand(
             label: loc.desktopGoBack,
             icon: TablerRegular.arrow_left,
             shortcut: desktopShortcut(key: LogicalKeyboardKey.bracketLeft),
