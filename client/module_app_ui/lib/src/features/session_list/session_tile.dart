@@ -7,6 +7,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../widgets/pull_request_watch_look.dart";
 import "../session_detail/widgets/transcript_motion.dart";
 import "session_scheduled_resume.dart";
 
@@ -823,6 +824,31 @@ class const SessionTile({
               ],
             ),
           ),
+        );
+      case SessionScheduledMarkWatchingPullRequests(:final lead, :final others):
+        final look = pullRequestWatchLook(context: context, status: lead.status);
+        final accent = style.copyWith(color: look.color, fontWeight: FontWeight.w500);
+        // One paragraph, so the glyph sits in the text's own line box; the
+        // count after the lead clips with the line when it runs out of room.
+        mark = Text.rich(
+          TextSpan(
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                  child: Icon(TablerRegular.git_pull_request, size: _backgroundTasksGlyphSize, color: look.color),
+                ),
+              ),
+              TextSpan(text: "#${lead.number}", style: accent),
+              if (others > 0) TextSpan(text: " +$others"),
+            ],
+          ),
+          semanticsLabel: loc.sessionListWatchingPullRequests(others, "${lead.number}", look.words),
+          style: style,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.clip,
         );
     }
     return AnimatedSize(

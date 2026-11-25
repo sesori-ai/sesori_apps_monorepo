@@ -9,6 +9,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../widgets/bridge_update_sheet.dart";
 import "../../../widgets/computer_menu.dart";
 import "../../session_detail/widgets/yolo_chip.dart";
+import "agent_tools_settings_section.dart";
 import "computer_settings_entry.dart";
 import "settings_section.dart";
 
@@ -16,7 +17,7 @@ import "settings_section.dart";
 const double _offlineRowsOpacity = 0.4;
 
 /// The computer the app works on, followed by the settings that apply to that
-/// computer only.
+/// computer only, then its agent tools.
 class const BridgeSettingsSection({
   super.key,
   required final String title,
@@ -143,6 +144,7 @@ class const BridgeSettingsSection({
               ),
             ],
           ),
+          const AgentToolsSettingsSection(),
         ],
       ),
     );

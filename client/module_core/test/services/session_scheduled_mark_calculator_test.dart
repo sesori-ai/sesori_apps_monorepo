@@ -38,6 +38,74 @@ void main() {
     );
   });
 
+  group("watched pull requests", () {
+    SessionPullRequestWatch watch({required int number, required PullRequestWatchStatus status}) =>
+        SessionPullRequestWatch(
+          repository: "octo/repo",
+          number: number,
+          title: "PR $number",
+          url: "https://github.com/octo/repo/pull/$number",
+          autoMerge: false,
+          status: status,
+        );
+
+    SessionScheduledMark watchingMark({
+      required SessionArming arming,
+      required List<SessionPullRequestWatch> watches,
+    }) => calculator.mark(
+      session: testSession(id: "s-1").copyWith(arming: arming, scheduledTask: task, pullRequestWatches: watches),
+    );
+
+    test("lead with the PR that needs the user most, and count the others", () {
+      final waiting = watch(number: 3, status: const PullRequestWatchStatus.waiting());
+      final ready = watch(number: 9, status: const PullRequestWatchStatus.ready());
+      final needsYou = watch(
+        number: 12,
+        status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
+      );
+      final merged = watch(number: 1, status: const PullRequestWatchStatus.merged(mergedAt: 5));
+
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, needsYou, ready]),
+        SessionScheduledMark.watchingPullRequests(lead: needsYou, others: 3),
+      );
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, ready]),
+        SessionScheduledMark.watchingPullRequests(lead: ready, others: 2),
+      );
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [merged, waiting]),
+        SessionScheduledMark.watchingPullRequests(lead: waiting, others: 1),
+      );
+    });
+
+    test("ties go to the lower number", () {
+      final later = watch(number: 20, status: const PullRequestWatchStatus.waiting());
+      final earlier = watch(number: 4, status: const PullRequestWatchStatus.waiting());
+
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [later, earlier]),
+        SessionScheduledMark.watchingPullRequests(lead: earlier, others: 1),
+      );
+    });
+
+    test("a timed wake-up wins over watches, and watches win over the task mark", () {
+      final waiting = watch(number: 3, status: const PullRequestWatchStatus.waiting());
+
+      expect(
+        watchingMark(
+          arming: const SessionArming.armed(name: "Check CI", nextAt: 9000),
+          watches: [waiting],
+        ),
+        const SessionScheduledMark.armed(name: "Check CI", nextAt: 9000),
+      );
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting]),
+        SessionScheduledMark.watchingPullRequests(lead: waiting, others: 0),
+      );
+    });
+  });
+
   test("a session the user started, that nothing wakes, has no mark", () {
     for (final arming in const [SessionArming.notArmed(), SessionArming.unreported()]) {
       expect(markOf(arming: arming, task: null), const SessionScheduledMark.none());

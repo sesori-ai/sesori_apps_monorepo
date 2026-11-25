@@ -748,6 +748,102 @@ void main() {
     });
   });
 
+  group("watched pull requests", () {
+    SessionPullRequestWatch watch({required int number, required PullRequestWatchStatus status}) =>
+        SessionPullRequestWatch(
+          repository: "acme/app",
+          number: number,
+          title: "Change $number",
+          url: "https://github.com/acme/app/pull/$number",
+          autoMerge: false,
+          status: status,
+        );
+
+    for (final brightness in Brightness.values) {
+      testWidgets("the lead pull request is coloured by its status, then a quiet count, in ${brightness.name}", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        final themeColors = brightness == Brightness.light
+            ? PregoDesignSystem.light.colors
+            : PregoDesignSystem.dark.colors;
+        await pumpTile(
+          tester,
+          tile(
+            session: testSession(title: "My Session").copyWith(
+              arming: const SessionArming.notArmed(),
+              pullRequestWatches: [
+                watch(number: 7, status: const PullRequestWatchStatus.waiting()),
+                watch(
+                  number: 12,
+                  status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.conflict]),
+                ),
+              ],
+            ),
+            projectLabel: "demo-app",
+          ),
+          brightness: brightness,
+        );
+
+        final mark = find.byWidgetPredicate(
+          (widget) => widget is RichText && widget.text.toPlainText().contains("#12"),
+        );
+        expect(mark, findsOneWidget);
+        final spans = <TextSpan>[];
+        tester.widget<RichText>(mark).text.visitChildren((span) {
+          if (span is TextSpan && span.text != null) spans.add(span);
+          return true;
+        });
+        expect(spans.map((span) => span.text), ["#12", " +1"]);
+        expect(spans.first.style?.color, themeColors.textErrorPrimary);
+        expect(find.byIcon(TablerRegular.git_pull_request), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp("Watching pull request 12, needs you, and 1 more")), findsOneWidget);
+        expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+        semantics.dispose();
+      });
+    }
+
+    testWidgets("a timed wake-up wins over the watched pull requests", (tester) async {
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session").copyWith(
+            arming: SessionArming.armed(name: "Check CI", nextAt: now + 3600000),
+            pullRequestWatches: [watch(number: 7, status: const PullRequestWatchStatus.ready())],
+          ),
+        ),
+      );
+
+      expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
+      expect(find.byIcon(TablerRegular.git_pull_request), findsNothing);
+    });
+
+    testWidgets("a status change cross-fades the mark in place", (tester) async {
+      final session = testSession(title: "My Session").copyWith(
+        arming: const SessionArming.notArmed(),
+        pullRequestWatches: [watch(number: 7, status: const PullRequestWatchStatus.waiting())],
+      );
+      await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
+      final project = find.text("demo-app");
+      final before = tester.getTopLeft(project).dx;
+
+      await pumpTile(
+        tester,
+        tile(
+          session: session.copyWith(
+            pullRequestWatches: [watch(number: 7, status: const PullRequestWatchStatus.ready())],
+          ),
+          projectLabel: "demo-app",
+        ),
+      );
+      expect(find.byIcon(TablerRegular.git_pull_request), findsNWidgets(2));
+      expect(tester.getTopLeft(project).dx, before);
+      await tester.pumpAndSettle();
+      expect(find.byIcon(TablerRegular.git_pull_request), findsOneWidget);
+      expect(tester.getTopLeft(project).dx, before);
+    });
+  });
+
   testWidgets("retrying leads the meta line in its colour", (tester) async {
     await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, isRetrying: true));
     expect(tester.widget<Text>(find.text("Running (retrying)")).style?.color, colors.fgErrorPrimary);

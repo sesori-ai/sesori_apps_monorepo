@@ -630,6 +630,41 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isFalse);
   });
 
+  testWidgets("Bridge lists the agent tools after the connected bridge's settings, and the master switch saves", (
+    tester,
+  ) async {
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: true,
+          toolGroups: [
+            BridgeToolGroupSetting(id: "tasks", title: "Tasks", summary: "Agents can manage tasks.", enabled: true),
+          ],
+          releaseTrack: null,
+        ),
+      ),
+    );
+    when(
+      () => bridgeSettingsService.updateAgentTools(enabled: false),
+    ).thenAnswer((_) async => const AgentToolsSettingsMutationCommitted(enabled: false));
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+
+    expect(find.text("Agent tools"), findsOneWidget);
+    expect(find.text("Tasks"), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Agent tools")).dy,
+      greaterThan(tester.getTopLeft(find.text("Warm harness on session open")).dy),
+    );
+    await tester.ensureVisible(find.byKey(const Key("agent_tools_setting")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("agent_tools_setting")));
+    await tester.pumpAndSettle();
+    verify(() => bridgeSettingsService.updateAgentTools(enabled: false)).called(1);
+  });
+
   testWidgets("a bridge without /settings shows the bridge settings as unsupported", (tester) async {
     when(bridgeSettingsService.load).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
     await open(tester: tester, tab: DesktopSettingsTab.bridge);

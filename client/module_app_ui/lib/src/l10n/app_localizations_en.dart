@@ -708,6 +708,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsReleaseTrackRetry => 'Retry internal builds setting';
 
   @override
+  String get settingsAgentToolsSection => 'Agent tools';
+
+  @override
+  String get settingsAgentToolsTitle => 'Sesori tools';
+
+  @override
+  String get settingsAgentToolsDescription => 'Lets agents on this computer use the tools below.';
+
+  @override
+  String get settingsAgentToolsFootnote => 'Changes apply to sessions started or resumed afterwards.';
+
+  @override
+  String settingsAgentToolsOff(String group) {
+    return 'Turn on Sesori tools to use $group.';
+  }
+
+  @override
+  String get settingsAgentToolsUpdateFailed => 'Couldn\'t save the change. Check your connection and try again.';
+
+  @override
+  String get settingsAgentToolsUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsAgentToolsRetry => 'Refresh agent tool settings';
+
+  @override
   String get harnessManagementDefaultsSection => 'Global harness settings';
 
   @override
@@ -3803,6 +3829,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionWakeUpCancelFailed => 'Could not cancel the wake-up. It may still run. Reconnect and try again.';
+
+  @override
+  String sessionPullRequestWatchesChip(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pull requests',
+      one: '1 pull request',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionPullRequestWatchesTitle => 'Watched pull requests';
+
+  @override
+  String get sessionPullRequestWatchStop => 'Stop watching';
+
+  @override
+  String get sessionPullRequestWatchStopFailed => 'Could not stop watching the pull request. Reconnect and try again.';
+
+  @override
+  String get pullRequestWatchStatusNeedsYou => 'needs you';
+
+  @override
+  String get pullRequestWatchStatusReady => 'ready';
+
+  @override
+  String get pullRequestWatchStatusWaiting => 'waiting';
+
+  @override
+  String get pullRequestWatchStatusMerged => 'merged';
+
+  @override
+  String get pullRequestWatchStatusUnknown => 'status unknown';
+
+  @override
+  String sessionListWatchingPullRequests(int others, String number, String status) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: 'Watching pull request $number, $status, and $others more',
+      one: 'Watching pull request $number, $status, and 1 more',
+      zero: 'Watching pull request $number, $status',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get sessionAutoContinuationAlreadySubmitted =>

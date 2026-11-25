@@ -620,6 +620,95 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("release_track_switch"))).value, isTrue);
   });
 
+  group("agent tools", () {
+    void loadAgentTools({required bool enabled}) {
+      when(bridgeSettingsService.load).thenAnswer(
+        (_) async => BridgeSettingsLoadSupported(
+          response: BridgeSettingsResponse(
+            pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+            yolo: const YoloSettingsResponse(enabled: false),
+            warmUpPluginsOnSessionOpen: true,
+            agentToolsEnabled: enabled,
+            toolGroups: const [
+              BridgeToolGroupSetting(
+                id: "pr_monitor",
+                title: "PR monitor",
+                summary: "Agents can watch pull requests.",
+                enabled: true,
+              ),
+            ],
+            releaseTrack: null,
+          ),
+        ),
+      );
+    }
+
+    testWidgets("a bridge that sends no master switch shows no Agent tools section", (tester) async {
+      _useTallSurface(tester);
+      await tester.pumpWidget(_app(appearance: appearance));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Agent tools"), findsNothing);
+      expect(find.byKey(const Key("agent_tools_setting")), findsNothing);
+    });
+
+    testWidgets("the master switch turns the tools off, and a dimmed group answers a tap with why", (tester) async {
+      _useTallSurface(tester);
+      loadAgentTools(enabled: true);
+      when(
+        () => bridgeSettingsService.updateAgentTools(enabled: false),
+      ).thenAnswer((_) async => const AgentToolsSettingsMutationCommitted(enabled: false));
+      await tester.pumpWidget(_app(appearance: appearance));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Agent tools"), findsOneWidget);
+      final group = find.byKey(const Key("agent_tool_group_pr_monitor"));
+      expect(tester.widget<AnimatedOpacity>(group).opacity, 1);
+
+      await tester.tap(find.byKey(const Key("agent_tools_setting")));
+      await tester.pumpAndSettle();
+      verify(() => bridgeSettingsService.updateAgentTools(enabled: false)).called(1);
+      expect(tester.widget<AnimatedOpacity>(group).opacity, lessThan(1));
+
+      await tester.tap(find.descendant(of: group, matching: find.byType(PregoSwitch)), warnIfMissed: false);
+      await tester.pump();
+      expect(find.text("Turn on Sesori tools to use PR monitor."), findsOneWidget);
+      verifyNever(
+        () => bridgeSettingsService.updateToolGroup(
+          id: any(named: "id"),
+          enabled: any(named: "enabled"),
+        ),
+      );
+      await tester.pumpAndSettle(const Duration(seconds: 6));
+    });
+
+    testWidgets("a group switch saves that group, and a failed save says so on its row", (tester) async {
+      _useTallSurface(tester);
+      loadAgentTools(enabled: true);
+      when(() => bridgeSettingsService.updateToolGroup(id: "pr_monitor", enabled: false)).thenAnswer(
+        (_) async => AgentToolsSettingsMutationFailure(
+          error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null),
+        ),
+      );
+      await tester.pumpWidget(_app(appearance: appearance));
+      await tester.pumpAndSettle();
+
+      final group = find.byKey(const Key("agent_tool_group_pr_monitor"));
+      await tester.tap(find.descendant(of: group, matching: find.byType(PregoSwitch)));
+      await tester.pumpAndSettle();
+
+      verify(() => bridgeSettingsService.updateToolGroup(id: "pr_monitor", enabled: false)).called(1);
+      expect(
+        find.descendant(
+          of: group,
+          matching: find.text("Couldn't save the change. Check your connection and try again."),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.widget<PregoSwitch>(find.descendant(of: group, matching: find.byType(PregoSwitch))).value, isTrue);
+    });
+  });
+
   testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
     _useTallSurface(tester);
     final mutation = Completer<YoloSettingsMutationResult>();
