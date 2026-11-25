@@ -46,33 +46,24 @@ class const BridgeSettingsSection({
 
   /// Opens the Computers page from the computer entry's menu.
   required final VoidCallback onManageComputers,
-}) extends StatefulWidget {
-  @override
-  State<BridgeSettingsSection> createState() => _BridgeSettingsSectionState();
-}
-
-class _BridgeSettingsSectionState() extends State<BridgeSettingsSection> {
-  /// Whether the last loaded settings had a release track. The row stays
-  /// through a reload or a dropped connection instead of closing and opening
-  /// again under the finger.
-  bool _showReleaseTrack = false;
-
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
-    switch (state) {
-      case BridgeSettingsReady(:final releaseTrack):
-        _showReleaseTrack = releaseTrack != null;
-      case BridgeSettingsUnsupported():
-        _showReleaseTrack = false;
-      case BridgeSettingsLoading() || BridgeSettingsDisconnected() || BridgeSettingsFailure():
-        break;
-    }
+    // The row waits out a reload or a dropped connection instead of closing
+    // and opening again under the finger.
+    final showReleaseTrack = switch (state) {
+      BridgeSettingsReady(:final releaseTrack) => releaseTrack != null,
+      BridgeSettingsLoading(:final hasReleaseTrack) ||
+      BridgeSettingsDisconnected(:final hasReleaseTrack) ||
+      BridgeSettingsFailure(:final hasReleaseTrack) => hasReleaseTrack,
+      BridgeSettingsUnsupported() => false,
+    };
     final offline = state is BridgeSettingsDisconnected;
-    final onOpenHarnesses = widget.onOpenHarnesses;
-    final onOpenProjects = widget.onOpenProjects;
-    final onOpenArchived = widget.onOpenArchived;
-    final onOpenScheduled = widget.onOpenScheduled;
+    final onOpenHarnesses = this.onOpenHarnesses;
+    final onOpenProjects = this.onOpenProjects;
+    final onOpenArchived = this.onOpenArchived;
+    final onOpenScheduled = this.onOpenScheduled;
     // Keyed, so a row that comes with the loaded settings, such as Internal
     // builds, opens in place instead of snapping in.
     final bridgeRows = <(String, Widget)>[
@@ -121,18 +112,18 @@ class _BridgeSettingsSectionState() extends State<BridgeSettingsSection> {
         ),
       ("yolo", const _YoloSettingsRow()),
       ("plugin_warmup", const _PluginWarmupSettingsRow()),
-      if (_showReleaseTrack) ("release_track", const _ReleaseTrackSettingsRow()),
+      if (showReleaseTrack) ("release_track", const _ReleaseTrackSettingsRow()),
     ];
     // Offline, one line above the group says why every row, Harnesses,
     // Projects, Archived and Scheduled included, is dimmed and disabled, in place of the
     // rows each saying it.
-    final description = offline ? context.loc.settingsBridgeOffline : widget.description;
+    final description = offline ? context.loc.settingsBridgeOffline : this.description;
     return SettingsSection(
-      title: widget.title,
+      title: title,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ComputerSettingsEntry(onSwitchComputer: widget.onSwitchComputer, onManageComputers: widget.onManageComputers),
+          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
           if (description != null) ...[
             Text(
               description,

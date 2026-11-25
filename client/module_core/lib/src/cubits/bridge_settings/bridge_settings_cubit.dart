@@ -17,8 +17,8 @@ class BridgeSettingsCubit({
   this
     : super(
         connectionService.currentStatus is ConnectionConnected
-            ? const BridgeSettingsLoading()
-            : const BridgeSettingsDisconnected(),
+            ? const BridgeSettingsLoading(hasReleaseTrack: false)
+            : const BridgeSettingsDisconnected(hasReleaseTrack: false),
       ) {
     _connectionStatusSubscription = connectionService.status.skip(1).listen(_onConnectionStatus);
     if (_connected) unawaited(refresh());
@@ -39,14 +39,14 @@ class BridgeSettingsCubit({
     _operationInProgress = true;
     _refreshPending = false;
     final operationEpoch = _connectionEpoch;
-    emit(const BridgeSettingsLoading());
+    emit(BridgeSettingsLoading(hasReleaseTrack: _hasReleaseTrack));
     try {
       final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       _publishLoad(result: result);
     } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error)));
+      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error), hasReleaseTrack: _hasReleaseTrack));
     } finally {
       _finishOperation();
     }
@@ -470,7 +470,7 @@ class BridgeSettingsCubit({
 
   void _publishLoad({required BridgeSettingsLoadResult result}) {
     switch (result) {
-      case BridgeSettingsLoadSupported(:final response):
+      case BridgeSettingsLoadSupported(:final response, :final releaseTrackInternalBuilds):
         emit(
           BridgeSettingsReady(
             yoloEnabled: response.yolo.enabled,
@@ -485,24 +485,19 @@ class BridgeSettingsCubit({
                 AgentToolsSettings(enabled: enabled, groups: toolGroups, mutation: const AgentToolsMutationIdle()),
               BridgeSettingsResponse() => null,
             },
-            // A track this app does not know is left out like a missing one.
-            releaseTrack: switch (response.releaseTrack) {
-              BridgeReleaseTrack.stable => const ReleaseTrackSettings(
-                internalBuilds: false,
-                mutation: ReleaseTrackMutationIdle(),
+            releaseTrack: switch (releaseTrackInternalBuilds) {
+              final bool internalBuilds => ReleaseTrackSettings(
+                internalBuilds: internalBuilds,
+                mutation: const ReleaseTrackMutationIdle(),
               ),
-              BridgeReleaseTrack.internal => const ReleaseTrackSettings(
-                internalBuilds: true,
-                mutation: ReleaseTrackMutationIdle(),
-              ),
-              BridgeReleaseTrack.unknown || null => null,
+              null => null,
             },
           ),
         );
       case BridgeSettingsLoadUnsupported():
         emit(const BridgeSettingsUnsupported());
       case BridgeSettingsLoadFailure(:final error):
-        emit(BridgeSettingsFailure(error: error));
+        emit(BridgeSettingsFailure(error: error, hasReleaseTrack: _hasReleaseTrack));
     }
   }
 
@@ -562,9 +557,24 @@ class BridgeSettingsCubit({
     _connectionEpoch++;
     _connected = status is ConnectionConnected;
     _refreshPending = false;
-    emit(_connected ? const BridgeSettingsLoading() : const BridgeSettingsDisconnected());
+    final hasReleaseTrack = _hasReleaseTrack;
+    emit(
+      _connected
+          ? BridgeSettingsLoading(hasReleaseTrack: hasReleaseTrack)
+          : BridgeSettingsDisconnected(hasReleaseTrack: hasReleaseTrack),
+    );
     if (_connected) unawaited(refresh());
   }
+
+  /// Whether the last loaded settings reported a release track, carried
+  /// through a reload or a dropped connection.
+  bool get _hasReleaseTrack => switch (state) {
+    BridgeSettingsReady(:final releaseTrack) => releaseTrack != null,
+    BridgeSettingsLoading(:final hasReleaseTrack) ||
+    BridgeSettingsDisconnected(:final hasReleaseTrack) ||
+    BridgeSettingsFailure(:final hasReleaseTrack) => hasReleaseTrack,
+    BridgeSettingsUnsupported() => false,
+  };
 
   bool _canPublish({required int operationEpoch}) => !isClosed && _connected && operationEpoch == _connectionEpoch;
 

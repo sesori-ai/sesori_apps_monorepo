@@ -3,13 +3,25 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const BridgeSettingsState();
 
-final class const BridgeSettingsLoading() extends BridgeSettingsState;
+final class const BridgeSettingsLoading({
+  /// Whether the last loaded settings reported a release track, so its row
+  /// can wait out the load instead of closing.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
-final class const BridgeSettingsDisconnected() extends BridgeSettingsState;
+final class const BridgeSettingsDisconnected({
+  /// Whether the last loaded settings reported a release track.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
 final class const BridgeSettingsUnsupported() extends BridgeSettingsState;
 
-final class const BridgeSettingsFailure({required final ApiError error}) extends BridgeSettingsState;
+final class const BridgeSettingsFailure({
+  required final ApiError error,
+
+  /// Whether the last loaded settings reported a release track.
+  required final bool hasReleaseTrack,
+}) extends BridgeSettingsState;
 
 final class const BridgeSettingsReady({
   required final bool yoloEnabled,

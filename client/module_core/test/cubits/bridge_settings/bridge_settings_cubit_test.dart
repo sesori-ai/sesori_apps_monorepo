@@ -199,6 +199,26 @@ void main() {
       expect(_releaseTrackOf(cubit).mutation, isA<ReleaseTrackMutationIdle>());
     });
 
+    test("remembers the track through a reload, a failed load and a dropped connection", () async {
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(yoloEnabled: false, releaseTrack: BridgeReleaseTrack.stable),
+      );
+      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+      addTearDown(cubit.close);
+      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isFalse);
+      await _waitForState<BridgeSettingsReady>(cubit);
+
+      when(service.load).thenAnswer((_) async => BridgeSettingsLoadFailure(error: ApiError.generic()));
+      final reloading = cubit.refresh();
+      expect((cubit.state as BridgeSettingsLoading).hasReleaseTrack, isTrue);
+      await reloading;
+      expect((cubit.state as BridgeSettingsFailure).hasReleaseTrack, isTrue);
+
+      connection.emitStatus(const ConnectionStatus.connectionLost(config: _config));
+      await _waitForState<BridgeSettingsDisconnected>(cubit);
+      expect((cubit.state as BridgeSettingsDisconnected).hasReleaseTrack, isTrue);
+    });
+
     test("commits a change without reloading the bridge", () async {
       _stubLoad(service, yoloEnabled: false);
       when(() => service.updateReleaseTrack(internalBuilds: true)).thenAnswer(

@@ -4,7 +4,15 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class const BridgeSettingsLoadResult();
 
 final class const BridgeSettingsLoadSupported({required final BridgeSettingsResponse response})
-    extends BridgeSettingsLoadResult;
+    extends BridgeSettingsLoadResult {
+  /// Whether the bridge's auto-updater also takes internal pre-releases, or
+  /// null when it reports no track or one this app does not know.
+  bool? get releaseTrackInternalBuilds => switch (response.releaseTrack) {
+    BridgeReleaseTrack.stable => false,
+    BridgeReleaseTrack.internal => true,
+    BridgeReleaseTrack.unknown || null => null,
+  };
+}
 
 final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResult;
 
