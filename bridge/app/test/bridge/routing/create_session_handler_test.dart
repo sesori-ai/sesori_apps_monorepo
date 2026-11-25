@@ -1362,6 +1362,7 @@ class _ThrowingCreateSessionPlugin({required final Object error}) extends _OpenC
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -1392,6 +1393,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -1403,6 +1405,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,

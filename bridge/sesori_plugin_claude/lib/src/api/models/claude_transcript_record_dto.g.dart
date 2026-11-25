@@ -32,6 +32,7 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       message: _messageOrNull(json['message']),
       toolUseResult: ClaudeToolUseResult.parse(json['toolUseResult']),
       originKind: _originKind(json['origin']),
+      turnOrigin: _stringOrNull(json['turnOrigin']),
       attachment: _attachmentOrNull(json['attachment']),
       subtype: _stringOrNull(json['subtype']),
       compactMetadata: _compactMetadataOrNull(json['compactMetadata']),

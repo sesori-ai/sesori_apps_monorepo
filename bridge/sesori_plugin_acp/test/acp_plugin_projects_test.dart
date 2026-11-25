@@ -398,6 +398,7 @@ void main() {
       expect(s1.projectID, home);
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -441,6 +442,7 @@ void main() {
     test("a session/prompt rejection after dispatch surfaces its backend detail inline", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -458,6 +460,7 @@ void main() {
       addTearDown(sub.cancel);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -495,6 +498,7 @@ void main() {
     test("a prompt that fails after a halt notice shows only that notice", () async {
       await connect();
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -512,6 +516,7 @@ void main() {
       addTearDown(sub.cancel);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -565,6 +570,7 @@ void main() {
       const opened = "/Users/x/kustos";
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: opened,
         parentSessionId: null,
@@ -582,6 +588,7 @@ void main() {
 
       // A running turn surfaces under that project's activity row, not the CWD.
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -615,6 +622,7 @@ void main() {
       expect(sessions.single.projectID, opened);
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-s",
@@ -650,6 +658,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
@@ -692,6 +701,7 @@ void main() {
         },
       );
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
@@ -722,6 +732,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
@@ -774,6 +785,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
@@ -810,6 +822,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
 
       final sending = plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-s",

@@ -446,6 +446,7 @@ void main() {
         lastAgentModel: null,
       );
       await repository.sendCommand(
+        origin: PluginPromptOrigin.user,
         sessionId: "s1",
         promptId: "sent",
         command: "review",
@@ -495,6 +496,7 @@ void main() {
         lastAgentModel: null,
       );
       await repository.sendCommand(
+        origin: PluginPromptOrigin.user,
         sessionId: "s1",
         promptId: "sent",
         command: "review",
@@ -516,6 +518,7 @@ void main() {
         plugin.sendCommandError = error;
         await expectLater(
           repository.sendCommand(
+            origin: PluginPromptOrigin.user,
             sessionId: "s1",
             promptId: promptId,
             command: "review",
@@ -581,6 +584,7 @@ void main() {
         lastAgentModel: null,
       );
       await repository.sendPrompt(
+        origin: PluginPromptOrigin.user,
         sessionId: "s1",
         promptId: "notice",
         parts: const [DeliverablePromptPart.text(text: "Fixture notice")],
@@ -660,6 +664,7 @@ void main() {
       );
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
       Future<void> sendPrompt({required String promptId}) => repository.sendPrompt(
+        origin: PluginPromptOrigin.user,
         sessionId: "s1",
         promptId: promptId,
         parts: const [DeliverablePromptPart.text(text: "Fixture request")],
@@ -846,6 +851,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        origin: PluginPromptOrigin.user,
         reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: plugin.id,
@@ -921,6 +927,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        origin: PluginPromptOrigin.user,
         reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: derivedPlugin.id,
@@ -990,6 +997,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        origin: PluginPromptOrigin.user,
         reservedSessionId: "ses_reserved",
         fastMode: false,
         pluginId: plugin.id,
@@ -1033,6 +1041,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.createSession(
+          origin: PluginPromptOrigin.user,
           reservedSessionId: await repository.reserveSessionId(),
           fastMode: false,
           pluginId: plugin.id,
@@ -1073,6 +1082,7 @@ void main() {
 
       await expectLater(
         repository.createSession(
+          origin: PluginPromptOrigin.user,
           reservedSessionId: "ses_reserved",
           fastMode: false,
           pluginId: "other-plugin",
@@ -1256,6 +1266,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
@@ -1269,6 +1280,7 @@ void main() {
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
 
         await repository.sendCommand(
+          origin: PluginPromptOrigin.user,
           commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
@@ -1297,6 +1309,7 @@ void main() {
 
       await expectLater(
         repository.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "missing",
@@ -1324,6 +1337,7 @@ void main() {
       );
       await expectLater(
         repository.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "wrong-plugin",
@@ -2343,6 +2357,7 @@ void main() {
 
       // The worktree session primes with its worktree path...
       await repository.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "w1",
@@ -2359,6 +2374,7 @@ void main() {
       expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
 
       await repository.sendCommand(
+        origin: PluginPromptOrigin.user,
         commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
@@ -2377,6 +2393,7 @@ void main() {
       final sendsBefore = plugin.sendPromptCalls;
       await expectLater(
         repository.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "ghost",
@@ -2671,6 +2688,7 @@ void main() {
 
       final guardedOperations = <Future<void> Function()>[
         () => repository.sendCommand(
+          origin: PluginPromptOrigin.user,
           commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
@@ -2683,6 +2701,7 @@ void main() {
           model: null,
         ),
         () => repository.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "gone",
@@ -3104,6 +3123,7 @@ class _FakeDerivedPlugin({
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -3150,6 +3170,7 @@ class _FakeDerivedPlugin({
     required String promptId,
     required String sessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -3165,6 +3186,7 @@ class _FakeDerivedPlugin({
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,

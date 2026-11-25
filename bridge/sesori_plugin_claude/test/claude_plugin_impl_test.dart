@@ -121,6 +121,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
@@ -155,11 +156,57 @@ void main() {
       await subscription.cancel();
     });
 
+    test("marks only a Sesori-origin prompt synthetic, and shows it as it is written", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
+        fastMode: false,
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "first prompt")],
+        userVisibleText: "first prompt",
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      final process = harness.processes.single;
+      process.emit(_replayOf(await waitForFrame(process, "user"), uuid: "first"));
+      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      await pump();
+
+      await harness.plugin.sendPrompt(
+        sessionId: testSessionId,
+        promptId: "prompt-notice",
+        parts: const [PluginPromptPart.text(text: "[SESORI NOTICE]\nA page was answered.")],
+        origin: PluginPromptOrigin.sesori,
+        variant: null,
+        fastMode: false,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      for (var attempt = 0; attempt < 100 && _userFrames(process).length < 2; attempt++) {
+        await pump();
+      }
+      final frames = _userFrames(process);
+      expect(frames.first.containsKey("isSynthetic"), isFalse);
+      expect(frames.last["isSynthetic"], isTrue);
+      await pump();
+      // The CLI does not echo a synthetic message that opens a turn.
+      final uuid = frames.last.field<String>("uuid");
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info.id == uuid).single.info,
+        isA<PluginMessageUser>(),
+      );
+      await subscription.cancel();
+    });
+
     test("shows a new session's prompt as it is written, before the starting CLI echoes it", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
@@ -253,6 +300,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
@@ -275,6 +323,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: testSessionId,
@@ -295,6 +344,7 @@ void main() {
     test("rejects unsupported selections on session creation", () async {
       await expectLater(
         harness.plugin.createSession(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           directory: "/tmp/project",
           parentSessionId: null,
@@ -322,6 +372,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -349,6 +400,7 @@ void main() {
       first.emit(_result());
       await pump();
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: testSessionId,
@@ -374,6 +426,7 @@ void main() {
       first.emit(_result());
       await pump();
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -417,6 +470,7 @@ void main() {
 
     test("a side question on a session with no turn yet refuses without a process", () async {
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
@@ -445,6 +499,7 @@ void main() {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
       final session = await harness.plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/tmp/project",
         parentSessionId: null,
@@ -460,6 +515,7 @@ void main() {
       // Accepted at enqueue: the spawn failure surfaces on the event stream
       // (queue removal plus session error), not as a send failure.
       await harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -487,6 +543,7 @@ void main() {
       for (final command in ["model", "effort", "fast"]) {
         await expectLater(
           harness.plugin.sendCommand(
+            origin: PluginPromptOrigin.user,
             fastMode: true,
             promptId: "prompt-$command",
             sessionId: testSessionId,
@@ -513,6 +570,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -547,6 +605,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -594,6 +653,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_image",
         sessionId: testSessionId,
@@ -633,6 +693,7 @@ void main() {
       const note = 'Attached file "notes.txt": `/uploads/notes.txt`';
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_note",
         sessionId: testSessionId,
@@ -658,6 +719,7 @@ void main() {
 
       // Accepted instantly while the first turn is still running.
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_steer",
         sessionId: testSessionId,
@@ -721,6 +783,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_cmd",
         sessionId: testSessionId,
@@ -772,6 +835,7 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_unmappable",
         sessionId: testSessionId,
@@ -810,6 +874,7 @@ void main() {
       await pump();
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_aborted",
         sessionId: testSessionId,
@@ -849,6 +914,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prm_cancel",
         sessionId: testSessionId,
@@ -873,6 +939,7 @@ void main() {
       await waitForFrame(first, "user");
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -899,6 +966,7 @@ void main() {
     test("throws not found instead of creating a process for an unknown session", () async {
       await expectLater(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: otherTestSessionId,
@@ -937,6 +1005,7 @@ void main() {
       expect(File("${harness.temporary.path}/projects/project/$testSessionId.jsonl").existsSync(), isTrue);
 
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -972,6 +1041,7 @@ void main() {
 
       expect(await harness.plugin.getSessionMessages(otherTestSessionId), isEmpty);
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: otherTestSessionId,
@@ -1094,6 +1164,7 @@ void main() {
       final last = (await harness.plugin.getSessionMessages(testSessionId)).last.info;
       if (last case PluginMessageError(:final agent, :final providerID?, :final modelID?, :final variant)) {
         await harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "continuation",
           sessionId: testSessionId,
@@ -1520,6 +1591,7 @@ void main() {
         process,
       ).where((subtype) => subtype == "set_permission_mode").length;
       await harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: testSessionId,
@@ -1578,6 +1650,7 @@ void main() {
       await pump();
 
       Future<void> send({required String text, required String agent}) => harness.plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-$text",
         sessionId: testSessionId,
@@ -1704,6 +1777,7 @@ void main() {
       // read before teardown; Turn off lands while teardown holds.
       unawaited(
         harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-deeper",
           sessionId: testSessionId,
@@ -2178,6 +2252,7 @@ void main() {
         first.exit(0);
         await pump();
         await harness.plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           promptId: "prompt-resume",
           sessionId: testSessionId,
@@ -2351,6 +2426,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
 
   Future<PluginSession> createSession() async {
     final session = await plugin.createSession(
+      origin: PluginPromptOrigin.user,
       fastMode: false,
       directory: "/tmp/project",
       parentSessionId: null,
@@ -2463,6 +2539,9 @@ Map<String, Object?> _request(Map<String, Object?> frame) => frame.field<Map<Str
 Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
     .where((frame) => frame["type"] == "control_request")
     .map((frame) => _request(frame)["subtype"] as String?);
+
+List<Map<String, Object?>> _userFrames(FakeClaudeProcess process) =>
+    process.written.where((frame) => frame["type"] == "user").toList(growable: false);
 
 List<String> _userTexts(FakeClaudeProcess process) => [
   for (final frame in process.written)

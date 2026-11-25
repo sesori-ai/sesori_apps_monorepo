@@ -6,11 +6,16 @@
 enum ClaudeMessageOriginKind() {
   peer,
   taskNotification,
+
+  /// Text the bridge sent with `isSynthetic: true`, which Claude Code labels
+  /// `unclassified` (verified on 2.1.332). Shown as Sesori wrote it.
+  host,
   unknown;
 
   static ClaudeMessageOriginKind parse({required Object? kind}) => switch (kind) {
     "peer" => peer,
     "task-notification" => taskNotification,
+    "unclassified" => host,
     _ => unknown,
   };
 }

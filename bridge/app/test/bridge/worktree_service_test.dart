@@ -1018,6 +1018,7 @@ class _FakeBridgePluginApi() extends FakeBridgePlugin {
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,

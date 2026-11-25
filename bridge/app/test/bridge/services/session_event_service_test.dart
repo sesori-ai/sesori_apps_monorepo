@@ -128,6 +128,7 @@ void main() {
     test("names a sent command on its user turn and queued prompt, through terminal handoffs too", () async {
       await _insertRoot(database: database, pluginId: plugin.id, sessionId: "s1", backendSessionId: "backend-s1");
       await repository.sendCommand(
+        origin: PluginPromptOrigin.user,
         sessionId: "s1",
         promptId: "p1",
         command: "review",
@@ -1860,6 +1861,7 @@ class _EventPlugin() implements NativeProjectsPluginApi {
     required String command,
     required String arguments,
     required String? userVisibleArguments,
+    required PluginPromptOrigin origin,
     required PluginSessionVariant? variant,
     required bool fastMode,
     required String? agent,

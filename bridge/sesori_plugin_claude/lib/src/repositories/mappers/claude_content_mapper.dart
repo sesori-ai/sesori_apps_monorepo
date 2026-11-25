@@ -131,7 +131,7 @@ final class const ClaudeContentMapper() {
   bool hidesHarnessGeneratedUserTurn({
     required bool isHarnessGenerated,
     required ClaudeMessageOriginKind originKind,
-  }) => isHarnessGenerated && originKind != ClaudeMessageOriginKind.peer;
+  }) => isHarnessGenerated && originKind != ClaudeMessageOriginKind.peer && originKind != ClaudeMessageOriginKind.host;
 
   /// The user records the CLI writes when a user interrupt ends a turn, the
   /// second when the stop cut a tool off (observed on 2.1.325).

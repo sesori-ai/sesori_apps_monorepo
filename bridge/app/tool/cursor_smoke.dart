@@ -41,6 +41,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln("connected: ${await plugin.ensureConnected()}");
 
   final session = await plugin.createSession(
+    origin: PluginPromptOrigin.user,
     fastMode: false,
     directory: cwd,
     parentSessionId: null,

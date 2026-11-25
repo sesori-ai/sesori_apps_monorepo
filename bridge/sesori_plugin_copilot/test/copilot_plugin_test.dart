@@ -266,6 +266,7 @@ void main() {
       await refreshing;
       await expectLater(
         plugin.sendPrompt(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           sessionId: "session",
           promptId: "stale-selection",
@@ -468,6 +469,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -486,6 +488,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-1",
@@ -496,6 +499,7 @@ void main() {
       );
       final first = await waitForFrame(process: fake, method: "session/prompt");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-2",

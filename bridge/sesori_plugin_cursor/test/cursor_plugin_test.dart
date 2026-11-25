@@ -162,6 +162,7 @@ void main() {
       });
       expect(await connecting, isTrue);
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -174,6 +175,7 @@ void main() {
       await respond("session/new", {"sessionId": sessionId});
       final session = await creating;
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: session.id,
         promptId: "prompt-$sessionId",
@@ -320,6 +322,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -333,6 +336,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendCommand(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -377,6 +381,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -390,6 +395,7 @@ void main() {
       final session = await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
@@ -401,6 +407,7 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: session.id,
@@ -453,6 +460,7 @@ void main() {
 
       Future<String> createSession({required String sessionId}) async {
         final creating = plugin.createSession(
+          origin: PluginPromptOrigin.user,
           fastMode: false,
           directory: "/repo",
           parentSessionId: null,
@@ -469,6 +477,7 @@ void main() {
       final firstSessionId = await createSession(sessionId: "s-first");
       final secondSessionId = await createSession(sessionId: "s-second");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-first",
         sessionId: firstSessionId,
@@ -479,6 +488,7 @@ void main() {
       );
       final firstPrompt = await waitForFrame("session/prompt");
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         promptId: "prompt-second",
         sessionId: secondSessionId,

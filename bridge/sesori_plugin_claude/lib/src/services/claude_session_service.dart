@@ -252,6 +252,7 @@ final class ClaudeSessionService({
     required String? displayText,
     required String? command,
     required int attachmentCount,
+    required bool isSynthetic,
   }) {
     if (_disposed || parts.isEmpty) {
       return Future.error(StateError("Claude session cannot accept the turn"));
@@ -283,6 +284,7 @@ final class ClaudeSessionService({
         state: state,
         generation: generation,
         mode: _QueuedTurnMode(entry: entry),
+        isSynthetic: isSynthetic,
       ),
     );
     return Future.value();
@@ -300,6 +302,7 @@ final class ClaudeSessionService({
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
     required bool fastMode,
+    required bool isSynthetic,
   }) {
     if (_disposed || parts.isEmpty) {
       return Future.error(StateError("Claude session cannot accept the turn"));
@@ -321,6 +324,7 @@ final class ClaudeSessionService({
         state: state,
         generation: generation,
         mode: _BlockingTurnMode(acceptance: acceptance),
+        isSynthetic: isSynthetic,
       ),
     );
     return acceptance.future;
@@ -426,6 +430,8 @@ final class ClaudeSessionService({
         state: state,
         generation: generation,
         mode: mode,
+        // Only the user edits a message.
+        isSynthetic: false,
       ),
       // The caller receives the respawn's failure below.
       onError: (Object _) {},
@@ -504,6 +510,7 @@ final class ClaudeSessionService({
     required _SessionTurnState state,
     required int generation,
     required _TurnMode mode,
+    required bool isSynthetic,
   }) async {
     if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
         _isCancelled(mode: mode, state: state)) {
@@ -566,6 +573,7 @@ final class ClaudeSessionService({
         parts: parts,
         promptId: mode.replayPromptId,
         echoAtOnce: mode.echoesAtOnce,
+        isSynthetic: isSynthetic,
       );
       final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {

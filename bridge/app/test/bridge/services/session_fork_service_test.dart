@@ -670,6 +670,7 @@ class _FakeForkPlugin() extends FakeBridgePlugin implements SessionForkPluginApi
     required String directory,
     required String? parentSessionId,
     required List<PluginPromptPart> parts,
+    required PluginPromptOrigin origin,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
     required bool fastMode,
@@ -677,6 +678,7 @@ class _FakeForkPlugin() extends FakeBridgePlugin implements SessionForkPluginApi
     required ({String providerID, String modelID})? model,
   }) async {
     await super.createSession(
+      origin: PluginPromptOrigin.user,
       directory: directory,
       parentSessionId: parentSessionId,
       parts: parts,

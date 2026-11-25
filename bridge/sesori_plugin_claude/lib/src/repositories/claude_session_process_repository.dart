@@ -452,11 +452,16 @@ final class ClaudeSessionProcessRepository({
   /// echoed right away, under the uuid it is sent with, exactly as the CLI
   /// will echo it, and the CLI's own echo is dropped: a new process echoes
   /// only once it has started up, seconds later.
+  ///
+  /// An [isSynthetic] turn is sent with `isSynthetic: true`, so the model reads
+  /// it as not typed by the user. Claude Code 2.1.332 echoes such a message
+  /// only when a running turn absorbs it, so a prompt's is always echoed at once.
   ClaudeTurnDispatch sendTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? promptId,
     required bool echoAtOnce,
+    required bool isSynthetic,
   }) {
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
@@ -479,14 +484,15 @@ final class ClaudeSessionProcessRepository({
     process.pendingTurns.addLast(pending);
     if (pending.started) process.turnActive = true;
     try {
-      process.client.sendUserMessage(content: content, uuid: pending.messageId);
+      process.client.sendUserMessage(content: content, uuid: pending.messageId, isSynthetic: isSynthetic);
     } on Object {
       process.pendingTurns.remove(pending);
       process.turnActive = turnWasActive;
       rethrow;
     }
     _startedSessions.add(sessionId);
-    if (echoAtOnce && !_events.isClosed) {
+    // A command's row comes from its dispatch, and its echo still arrives.
+    if ((echoAtOnce || (isSynthetic && promptId != null)) && !_events.isClosed) {
       if (_earlyEcho(sessionId: sessionId, process: process, pending: pending, content: content) case final echo?) {
         _events.add(
           ClaudeSessionProcessMessage(

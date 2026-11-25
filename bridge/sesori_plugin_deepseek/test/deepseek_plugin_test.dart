@@ -90,6 +90,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -142,6 +143,7 @@ void main() {
         ].forEach(fake.emit);
       };
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-1",
@@ -222,6 +224,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = plugin.createSession(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         directory: "/repo",
         parentSessionId: null,
@@ -240,6 +243,7 @@ void main() {
       await creating;
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-1",
@@ -251,6 +255,7 @@ void main() {
       final first = await waitForFrame(method: AcpMethods.sessionPrompt);
 
       await plugin.sendPrompt(
+        origin: PluginPromptOrigin.user,
         fastMode: false,
         sessionId: "session-1",
         promptId: "prompt-2",

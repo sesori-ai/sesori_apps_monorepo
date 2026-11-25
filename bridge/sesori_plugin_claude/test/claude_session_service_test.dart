@@ -228,6 +228,7 @@ void main() {
 
     test("a rejected fast-mode setting fails the blocking initial turn's acceptance", () async {
       final acceptance = harness.service.enqueueInitialTurn(
+        isSynthetic: false,
         sessionId: testSessionId,
         directory: "/tmp/project",
         createNew: true,
@@ -859,6 +860,7 @@ void main() {
       var accepted = false;
       final acceptance = harness.service
           .enqueueInitialTurn(
+            isSynthetic: false,
             sessionId: testSessionId,
             directory: "/tmp/project",
             createNew: true,
@@ -1683,6 +1685,7 @@ final class _ServiceHarness({
   }) {
     return service
         .enqueueTurn(
+          isSynthetic: false,
           sessionId: testSessionId,
           directory: "/tmp/project",
           createNew: true,
