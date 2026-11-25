@@ -320,7 +320,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   still in the new one, and diff the `subtype:<fn>("<name>")` literal sets for
   new or removed control requests and system messages.
   The `side_question` control request is undocumented, so every refresh runs a
-  live side-question probe (mid-turn, and after a cold `--resume`). It checks
+  live side-question probe (mid-turn, and after a cold `--resume`) when a
+  signed-in test account is available; otherwise it carries over as a plan
+  follow-up. Never use the owner's account for it. It checks
   that the session `.jsonl` gains no question or answer record (a cold resume
   may append a `cost-state` accounting record) and the
   `{response, synthetic, refusal_fallback}` reply shape.
@@ -518,8 +520,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `__omp_worker_mnemopi_embed_server`; 19.0.0 runs them under the daemon)
   detached. The bridge's stop skips them by those arguments on POSIX and
   Windows (`OmpBinary.sharedHelperArguments`). On each bump, grep the source for
-  detached spawns (`spawnDetached`, `detached: true`) that ACP mode reaches,
-  and confirm each helper's argument and idle exit (19.0.0 daemon: 3 s after
+  detached spawns (`spawnDetached`, `detached: true`) that ACP mode reaches
+  (search the saved tag-to-tag diff; `git grep` over a fresh clone can exceed
+  the tool time limit). The language-server fallback in `lsp/client.ts` (its own
+  process group since 19.2.0) is an expected hit: it stays a child of `omp`, so
+  the stop's process-table walk ends it. Confirm each helper's argument and idle exit (19.0.0 daemon: 3 s after
   nothing is connected and no persistent unit runs). Live probe: let Sesori's
   `omp acp` start a named service, join from a second `omp acp` that starts
   another, stop Sesori's process mid tool call, and check with `ps` that the
