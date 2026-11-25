@@ -68,7 +68,9 @@
     step 9 decides whether its auto-merge default applies there.
     `get_pr_feedback` and `reply_on_pr` call GitHub outside the op queue.
   - A merge result or new readiness failure reports to every watcher once;
-    a `get_pr_report` that shows it consumes it for all of them.
+    a `get_pr_report` that shows it consumes it for all of them, and a
+    dropped report restores it. `get_pr_report` stays read-only: only a due
+    report labels or merges. Notice settlement runs in the PR's op queue.
 - Step 9 as built:
   - `PullRequestWatchService` owns `PullRequestMonitorConfig` (the group's
     bridge record `config`, loaded in `resume`). `watch_pr` without
@@ -76,11 +78,12 @@
   - `SesoriToolHost.requestApproval` now returns `SesoriToolApproval`:
     `Allowed` (approve everything, no card), `Dropped`, or `Shown` with the
     answer's future, so the tool can answer at once under YOLO and say
-    "Sent to the user" otherwise. An allowed answer applies on top of the settings at
-    that time, and the session gets an allowed or declined notice.
+    "Sent to the user" otherwise. An allowed answer applies on top of the
+    settings at that time, and the session gets an allowed or declined
+    notice.
   - A call that widens applies its timings at once and only its auto-merge
-    part waits. Idle reminders off is a null `idleReminderMinutes`. Clearing a repo's `off` override under a global `on` counts
-    as widening.
+    part waits. Idle reminders off is a null `idleReminderMinutes`.
+    Clearing a repo's `off` override under a global `on` counts as widening.
   - A standalone (unwatched) `mark_pr_ready` stays label-only: the default
     applies to new watches only.
 - Step 13's wire is in place: `GET /settings` sends `toolGroups` (id, title,
