@@ -50,6 +50,13 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
   on when it was minted, and `mint()` returns null when none is. `tools/list` and the `initialize` instructions cover
   only those groups, and a call to another group's tool is the same -32602 "Unknown tool" as a name that does not
   exist. A change applies to launches after it. With the `tasks` group off, scheduled runs get no improvement note.
+- A group with a guide (today `pr_monitor`) adds `get_guide` to `tools/list`, whose `topic` enum names only the token's
+  groups that have one; an unknown topic is an `isError` result, and a token without such a group lists no `get_guide`.
+  The `initialize` instructions name the matching skill (`sesori-pr-monitor`, or `sesori:pr-monitor` in Claude Code).
+  While a group with a guide is on, the bridge keeps `~/.sesori/agent-skills/` holding it as a Claude plugin skill and
+  a plain skill, rewrites the folder when a setting turns such a group on or off, and removes it when none is on.
+  Claude Code sessions get `--plugin-dir` and Codex gets `skills/extraRoots/set` (see
+  [harness capabilities](../HARNESS_CAPABILITIES.md)).
 - `initialize` echoes a supported protocol version (`2024-11-05` through `2025-11-25`) and otherwise offers the newest.
   Notifications get 202 with no body. Malformed JSON is -32700, an unknown method -32601, an unknown tool -32602.
 - Tool failures an agent can act on (bad arguments, an unknown task or run, a run without a session) come back as
