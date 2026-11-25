@@ -349,6 +349,20 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Stops watching one of a root session's pull requests. The bridge
+  /// answers with the session, also when the watch was already gone.
+  Future<ApiResponse<Session>> stopPullRequestWatch({
+    required String sessionId,
+    required String repository,
+    required int number,
+  }) {
+    return _client.post(
+      "/session/pull-request-watch/stop",
+      fromJson: Session.fromJson,
+      body: StopPullRequestWatchRequest(sessionId: sessionId, repository: repository, number: number),
+    );
+  }
+
   Future<ApiResponse<Session>> setApprovalOverride({
     required String sessionId,
     required SessionApprovalMode? approvalOverride,

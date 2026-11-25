@@ -2188,6 +2188,27 @@ class SessionDetailCubit(
     }
   }
 
+  /// Stops watching one of the session's pull requests. The session the
+  /// bridge answers with drops it; a failure keeps it and says why.
+  Future<void> stopPullRequestWatch({required SessionPullRequestWatch watch}) async {
+    if (isClosed) return;
+    try {
+      final updated = switch (await _sessionRepository.stopPullRequestWatch(
+        sessionId: _sessionId,
+        repository: watch.repository,
+        number: watch.number,
+      )) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+    } on Object catch (error, stackTrace) {
+      loge("Failed to stop watching ${watch.repository}#${watch.number} for session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailPullRequestWatchStopFailed());
+    }
+  }
+
   /// Asks the bridge to answer this session's permission requests in [mode].
   /// The acknowledged session carries the new override.
   Future<void> setApprovalMode({required SessionApprovalMode mode}) async {
