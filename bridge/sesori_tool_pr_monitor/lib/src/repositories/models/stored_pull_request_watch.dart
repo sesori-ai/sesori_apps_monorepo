@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "pull_request_baseline.dart";
 
@@ -20,6 +21,10 @@ sealed class StoredPullRequestWatch with _$StoredPullRequestWatch {
     /// What the last report to this session covered.
     required PullRequestBaseline baseline,
     required DateTime lastReportAt,
+
+    /// What the app shows for the watch, as of the PR's last poll. A merged
+    /// watch no longer polls and stays until local midnight.
+    required PullRequestWatchStatus status,
   }) = _StoredPullRequestWatch;
 
   factory fromJson(Map<String, dynamic> json) => _$StoredPullRequestWatchFromJson(json);

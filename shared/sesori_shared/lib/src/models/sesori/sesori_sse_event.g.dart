@@ -99,6 +99,14 @@ Map<String, dynamic> _$SesoriScheduledTasksChangedToJson(
   SesoriScheduledTasksChanged instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+SesoriPullRequestWatchesChanged _$SesoriPullRequestWatchesChangedFromJson(
+  Map json,
+) => SesoriPullRequestWatchesChanged($type: json['type'] as String?);
+
+Map<String, dynamic> _$SesoriPullRequestWatchesChangedToJson(
+  SesoriPullRequestWatchesChanged instance,
+) => <String, dynamic>{'type': instance.$type};
+
 SesoriPluginInstallProgress _$SesoriPluginInstallProgressFromJson(Map json) =>
     SesoriPluginInstallProgress(
       pluginId: json['pluginId'] as String,

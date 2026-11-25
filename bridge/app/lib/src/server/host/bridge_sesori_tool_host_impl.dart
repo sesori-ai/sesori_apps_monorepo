@@ -8,6 +8,7 @@ import "../../repositories/sesori_tool_record_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_notice_service.dart";
 import "../../services/tool_group_approval_service.dart";
+import "bridge_sesori_tool_store_impl.dart";
 
 /// One tool group's [SesoriToolHost]: its records, toggle, notices,
 /// sessions and approvals, all scoped to [_groupId].
@@ -20,7 +21,7 @@ class BridgeSesoriToolHostImpl({
   required final ToolGroupApprovalService _approvals,
 }) implements SesoriToolHost {
   @override
-  late final SesoriToolStore store = _GroupStore(groupId: _groupId, records: _records);
+  late final SesoriToolStore store = BridgeSesoriToolStoreImpl(groupId: _groupId, records: _records);
 
   @override
   bool get enabled => _settings.currentSettings.toolGroupEnabled(id: _groupId);
@@ -94,44 +95,4 @@ class BridgeSesoriToolHostImpl({
     required String title,
     required String body,
   }) => _approvals.request(groupId: _groupId, sessionId: sessionId, title: title, body: body);
-}
-
-class _GroupStore({
-  required final SesoriToolGroupId _groupId,
-  required final SesoriToolRecordRepository _records,
-}) implements SesoriToolStore {
-  @override
-  Future<Map<String, Object?>?> getSessionRecord({required String sessionId, required String key}) =>
-      _records.getSessionRecord(groupId: _groupId, sessionId: sessionId, key: key);
-
-  @override
-  Future<void> putSessionRecord({
-    required String sessionId,
-    required String key,
-    required Map<String, Object?> value,
-  }) => _records.putSessionRecord(groupId: _groupId, sessionId: sessionId, key: key, value: value);
-
-  @override
-  Future<bool> deleteSessionRecord({required String sessionId, required String key}) =>
-      _records.deleteSessionRecord(groupId: _groupId, sessionId: sessionId, key: key);
-
-  @override
-  Future<Map<String, Map<String, Object?>>> listRecordsOfSession({required String sessionId}) =>
-      _records.listRecordsOfSession(groupId: _groupId, sessionId: sessionId);
-
-  @override
-  Future<List<SesoriToolSessionRecord>> listSessionRecords() => _records.listSessionRecords(groupId: _groupId);
-
-  @override
-  Future<Map<String, Object?>?> getRecord({required String key}) => _records.getRecord(groupId: _groupId, key: key);
-
-  @override
-  Future<void> putRecord({required String key, required Map<String, Object?> value}) =>
-      _records.putRecord(groupId: _groupId, key: key, value: value);
-
-  @override
-  Future<bool> deleteRecord({required String key}) => _records.deleteRecord(groupId: _groupId, key: key);
-
-  @override
-  Future<Map<String, Map<String, Object?>>> listRecords() => _records.listRecords(groupId: _groupId);
 }

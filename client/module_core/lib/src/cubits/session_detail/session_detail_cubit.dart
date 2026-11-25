@@ -1913,6 +1913,7 @@ class SessionDetailCubit(
       SesoriMcpInventoryChanged() ||
       SesoriMcpAuthenticationChanged() ||
       SesoriScheduledTasksChanged() ||
+      SesoriPullRequestWatchesChanged() ||
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
@@ -1993,6 +1994,7 @@ class SessionDetailCubit(
             SesoriMcpInventoryChanged() ||
             SesoriMcpAuthenticationChanged() ||
             SesoriScheduledTasksChanged() ||
+            SesoriPullRequestWatchesChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

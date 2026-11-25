@@ -80,6 +80,7 @@ export "src/models/sesori/project_kind.dart";
 export "src/models/sesori/project_name.dart";
 export "src/models/sesori/provider_info.dart";
 export "src/models/sesori/pull_request_refresh_settings.dart";
+export "src/models/sesori/pull_request_watch.dart";
 export "src/models/sesori/question.dart";
 export "src/models/sesori/queued_prompt.dart";
 export "src/models/sesori/rename_project_request.dart";

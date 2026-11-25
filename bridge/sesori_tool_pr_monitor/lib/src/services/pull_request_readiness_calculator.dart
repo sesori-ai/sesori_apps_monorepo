@@ -1,4 +1,5 @@
 import "package:meta/meta.dart";
+import "package:sesori_shared/sesori_shared.dart" show PullRequestWatchNeed, PullRequestWatchStatus;
 
 import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
@@ -64,6 +65,24 @@ class const PullRequestReadinessCalculator({required final PullRequestActivityCa
       awaitingThreadReplies: awaitingThreadReplies,
       awaitingUnthreadedReply: awaitingUnthreadedReply,
     );
+  }
+
+  /// What the app shows for an open PR. It needs the user while CI fails, it
+  /// conflicts, feedback awaits a reply, or it is ready with no watch's
+  /// [autoMerge] to merge it; those reasons win over ready.
+  PullRequestWatchStatus watchStatus({required PullRequestSnapshot snapshot, required bool autoMerge}) {
+    final assessment = assess(snapshot: snapshot);
+    final ready = hasReadyLabel(snapshot: snapshot);
+    final reasons = [
+      if (_activity.ciPhase(snapshot: snapshot) == PullRequestCiPhase.concluded && !ciIsReady(snapshot: snapshot))
+        PullRequestWatchNeed.ciFailing,
+      if (snapshot.mergeable == PullRequestMergeable.conflicting) PullRequestWatchNeed.conflict,
+      if (assessment.awaitingThreadReplies > 0 || assessment.awaitingUnthreadedReply)
+        PullRequestWatchNeed.newReviewComments,
+      if (ready && !autoMerge) PullRequestWatchNeed.readyWithoutAutoMerge,
+    ];
+    if (reasons.isNotEmpty) return PullRequestWatchStatus.needsYou(reasons: reasons);
+    return ready ? const PullRequestWatchStatus.ready() : const PullRequestWatchStatus.waiting();
   }
 
   /// GitHub label names are case-insensitive.

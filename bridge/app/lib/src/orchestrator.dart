@@ -154,6 +154,7 @@ import "routing/get_plugins_handler.dart";
 import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
 import "routing/get_pull_request_refresh_settings_handler.dart";
+import "routing/get_pull_request_watches_handler.dart";
 import "routing/get_queued_prompts_handler.dart";
 import "routing/get_scheduled_task_runs_handler.dart";
 import "routing/get_scheduled_tasks_handler.dart";
@@ -212,17 +213,20 @@ import "routing/sesori_mcp/groups/tasks/scheduled_task_tool_result_formatter.dar
 import "routing/sesori_mcp/groups/wake_ups/wake_up_tool_group.dart";
 import "routing/sesori_mcp/sesori_mcp_request_dispatcher.dart";
 import "routing/set_base_branch_handler.dart";
+import "routing/set_pull_request_watch_auto_merge_handler.dart";
 import "routing/set_scheduled_task_enabled_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
 import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/stop_accepting_edits_handler.dart";
+import "routing/stop_pull_request_watch_handler.dart";
 import "routing/submit_page_handler.dart";
 import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "server/host/bridge_sesori_tool_host_impl.dart";
+import "server/host/bridge_sesori_tool_store_impl.dart";
 import "services/agent_page_answer_notice_builder.dart";
 import "services/agent_page_service.dart";
 import "services/archived_session_validator.dart";
@@ -482,12 +486,20 @@ class Orchestrator({
       interruptions: sessionInterruptions,
     );
     final sessionWakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: _database));
+    final sesoriToolRecords = SesoriToolRecordRepository(
+      dao: SesoriToolRecordDao(database: _database),
+      clock: clock,
+    );
+    final pullRequestWatches = PullRequestWatchRepository(
+      store: BridgeSesoriToolStoreImpl(groupId: SesoriToolGroupIds.prMonitor, records: sesoriToolRecords),
+    );
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
       scheduledTasks: scheduledTaskRepository,
       interruptions: sessionInterruptions,
       wakeUps: sessionWakeUps,
+      pullRequestWatches: pullRequestWatches,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
@@ -948,10 +960,6 @@ class Orchestrator({
       toolGroupApprovals: toolGroupApprovalService,
     );
     final sessionWakeUpTimer = SessionWakeUpTimerListener(service: sessionWakeUpService);
-    final sesoriToolRecords = SesoriToolRecordRepository(
-      dao: SesoriToolRecordDao(database: _database),
-      clock: clock,
-    );
     final pullRequestMonitorHost = BridgeSesoriToolHostImpl(
       groupId: SesoriToolGroupIds.prMonitor,
       records: sesoriToolRecords,
@@ -968,7 +976,7 @@ class Orchestrator({
     final pullRequestWatchService = PullRequestWatchService(
       snapshots: PullRequestSnapshotRepository(api: ghCliApi),
       actions: pullRequestActions,
-      watches: PullRequestWatchRepository(store: pullRequestMonitorHost.store),
+      watches: pullRequestWatches,
       host: pullRequestMonitorHost,
       activity: pullRequestActivity,
       readiness: pullRequestReadiness,
@@ -1052,6 +1060,9 @@ class Orchestrator({
         SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
         SetSessionPinnedHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         CancelSessionWakeUpHandler(wakeUps: sessionWakeUpService, sessionViews: sessionViews),
+        StopPullRequestWatchHandler(watches: pullRequestWatchService, sessionViews: sessionViews),
+        SetPullRequestWatchAutoMergeHandler(watches: pullRequestWatchService, sessionViews: sessionViews),
+        GetPullRequestWatchesHandler(sessionViews: sessionViews),
         MoveSessionPinHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
@@ -1178,6 +1189,7 @@ class Orchestrator({
       mcpAuthenticationService: mcpAuthenticationService,
       scheduledTaskService: scheduledTaskService,
       scheduledTaskRunService: scheduledTaskRunService,
+      pullRequestWatchesChanged: pullRequestWatchService.watchesChanged,
       scheduledTaskTimer: scheduledTaskTimer,
       scheduledTaskFailurePushListener: scheduledTaskFailurePushListener,
       localWireEventsController: localWireEventsController,
@@ -1330,6 +1342,7 @@ class OrchestratorSession._({
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
   required final ScheduledTaskRunService _scheduledTaskRunService,
+  required Stream<Set<String>> pullRequestWatchesChanged,
   required final ScheduledTaskTimerListener _scheduledTaskTimer,
   required final ScheduledTaskFailurePushListener _scheduledTaskFailurePushListener,
   required Stream<CatalogImportProgress> catalogImportProgress,
@@ -1404,6 +1417,16 @@ class OrchestratorSession._({
         .addTo(_subscriptions);
     Rx.merge([_scheduledTaskService.changes, _scheduledTaskRunService.changes])
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.scheduledTasksChanged()))
+        .addTo(_subscriptions);
+    // The PR monitor cannot reach the session mutations, so its sessions'
+    // marks follow from here, as wake-ups' do from their service.
+    pullRequestWatchesChanged
+        .listen((sessionIds) {
+          for (final sessionId in sessionIds) {
+            unawaited(_sessionMutationDispatcher.armingUpdated(sessionId: sessionId));
+          }
+          _enqueueWireEvent(const SesoriSseEvent.pullRequestWatchesChanged());
+        })
         .addTo(_subscriptions);
     _mcpAuthenticationService.inventoryChanges
         .listen(
@@ -2459,6 +2482,7 @@ class OrchestratorSession._({
       SesoriMcpInventoryChanged() ||
       SesoriMcpAuthenticationChanged() ||
       SesoriScheduledTasksChanged() ||
+      SesoriPullRequestWatchesChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
       SesoriSessionOptionsUpdated() ||
@@ -2758,6 +2782,7 @@ class OrchestratorSession._({
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
           SesoriScheduledTasksChanged() ||
+          SesoriPullRequestWatchesChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||
