@@ -42,6 +42,27 @@ void main() {
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
   });
 
+  test("a running backend too old for Sesori's tools overrides its descriptor's claim", () async {
+    for (final (carries, expected) in [(null, true), (true, true), (false, false)]) {
+      final runtime = _runtime(
+        factory: _FakeGenerationFactory(
+          startGate: Future<void>.value(),
+          pluginFactory: (_) => _FakePlugin(api: carries == null ? _FakeApi() : _SesoriToolsApi(carries: carries)),
+        ),
+        descriptor: const _SesoriToolsDescriptor(),
+      );
+      addTearDown(runtime.dispose);
+      expect(runtime.injectsSesoriTools(pluginId: "one"), isTrue, reason: "declared before start");
+
+      await runtime.startEager(pluginIds: const ["one"]);
+
+      expect(runtime.injectsSesoriTools(pluginId: "one"), expected, reason: "running backend carries: $carries");
+    }
+    final undeclared = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(undeclared.dispose);
+    expect(undeclared.injectsSesoriTools(pluginId: "one"), isFalse);
+  });
+
   test("a started generation runs its warm-up exactly once", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
@@ -2606,6 +2627,16 @@ class _FakeGenerationFactory({
     plugins.add(plugin);
     yield PluginGenerationStarted(plugin: plugin);
   }
+}
+
+class const _SesoriToolsDescriptor() extends _FakeDescriptor {
+  @override
+  bool get injectsSesoriTools => true;
+}
+
+class _SesoriToolsApi({required final bool carries}) extends _FakeApi implements SesoriToolsPluginApi {
+  @override
+  bool get carriesSesoriTools => carries;
 }
 
 class const _NeverCancelled() implements PluginCatalogCancellationSignal {

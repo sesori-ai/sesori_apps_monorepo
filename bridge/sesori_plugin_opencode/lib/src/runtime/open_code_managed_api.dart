@@ -1,4 +1,5 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show NativeProjectsPluginApi;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show NativeProjectsPluginApi, SesoriToolsPluginApi;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimeApi;
 
 /// The plugin-API object the [OpenCodePluginDescriptor] drives during `start()`.
@@ -9,7 +10,11 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRu
 /// a failure as a degraded status) before returning. Keeping this as a small
 /// interface — rather than the concrete `OpenCodePlugin` — lets the descriptor's
 /// API construction be a test seam without forcing real HTTP/SSE in unit tests.
-abstract interface class OpenCodeManagedApi() implements NativeProjectsPluginApi, ManagedRuntimeApi {
+///
+/// It is a [SesoriToolsPluginApi] because only OpenCode 2.2.0 and newer carry
+/// Sesori's tools.
+abstract interface class OpenCodeManagedApi()
+    implements NativeProjectsPluginApi, ManagedRuntimeApi, SesoriToolsPluginApi {
   /// Hydrates the session tracker from the server and starts the SSE stream.
   ///
   /// Idempotent: repeated calls share a single in-flight cold-start. Rethrows a
