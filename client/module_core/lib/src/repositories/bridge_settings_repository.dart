@@ -43,4 +43,38 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettings
       BridgeSettingUpdateApiFailure(:final error) => PluginWarmupSettingsMutationFailure(error: error),
     };
   }
+
+  /// Turns Sesori's tools on or off as a whole.
+  Future<AgentToolsSettingsMutationResult> updateAgentTools({required bool enabled}) async {
+    return switch (await _bridgeSettingsApi.update(update: BridgeSettingUpdate.agentTools(enabled: enabled))) {
+      BridgeSettingUpdateApiCommitted(update: AgentToolsSettingUpdate(:final enabled)) =>
+        AgentToolsSettingsMutationCommitted(enabled: enabled),
+      final uncommitted => _agentToolsUncommitted(result: uncommitted),
+    };
+  }
+
+  /// Turns the tool group [id] on or off. Its switch keeps its state while
+  /// Sesori's tools are off as a whole.
+  Future<AgentToolsSettingsMutationResult> updateToolGroup({required String id, required bool enabled}) async {
+    return switch (await _bridgeSettingsApi.update(
+      update: BridgeSettingUpdate.toolGroup(id: id, enabled: enabled),
+    )) {
+      BridgeSettingUpdateApiCommitted(update: ToolGroupSettingUpdate(id: final committedId, :final enabled))
+          when committedId == id =>
+        AgentToolsSettingsMutationCommitted(enabled: enabled),
+      final uncommitted => _agentToolsUncommitted(result: uncommitted),
+    };
+  }
+
+  /// A bridge that predates an update answers 400 with an unknown
+  /// rejection, and one without the settings route answers 404.
+  AgentToolsSettingsMutationResult _agentToolsUncommitted({required BridgeSettingUpdateApiResult result}) {
+    return switch (result) {
+      BridgeSettingUpdateApiCommitted() => const AgentToolsSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(error: NonSuccessCodeError(errorCode: 400 || 404)) =>
+        const AgentToolsSettingsMutationUnsupported(),
+      BridgeSettingUpdateApiFailure(isCommitUncertain: true) => const AgentToolsSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(:final error) => AgentToolsSettingsMutationFailure(error: error),
+    };
+  }
 }

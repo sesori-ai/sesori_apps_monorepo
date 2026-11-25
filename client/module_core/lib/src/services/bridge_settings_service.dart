@@ -63,6 +63,12 @@ class BridgeSettingsService({
   Future<PluginWarmupSettingsMutationResult> updatePluginWarmup({required bool enabled}) =>
       _repository.updatePluginWarmup(enabled: enabled);
 
+  Future<AgentToolsSettingsMutationResult> updateAgentTools({required bool enabled}) =>
+      _repository.updateAgentTools(enabled: enabled);
+
+  Future<AgentToolsSettingsMutationResult> updateToolGroup({required String id, required bool enabled}) =>
+      _repository.updateToolGroup(id: id, enabled: enabled);
+
   void _onConnectionStatus(ConnectionStatus status) {
     if (status is ConnectionConnected) unawaited(_loadOnConnect());
   }

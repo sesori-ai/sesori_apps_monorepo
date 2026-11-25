@@ -27,6 +27,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/in_memory_bridge_settings_api.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
@@ -66,6 +67,7 @@ void main() {
       continuations: records,
       interruptions: const NoSessionInterruptions(),
       pullRequestWatches: createTestPullRequestWatches(database: db),
+      settings: await loadTestBridgeSettings(config: null),
       resetBuffer: const Duration(minutes: 2),
     );
     now = observed;
@@ -395,6 +397,7 @@ void main() {
       continuations: records,
       interruptions: interruptions,
       pullRequestWatches: createTestPullRequestWatches(database: db),
+      settings: await loadTestBridgeSettings(config: null),
       resetBuffer: const Duration(minutes: 2),
     );
     Future<List<SessionInterruption?>> project() async {

@@ -2,6 +2,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart" show PullRequestWatchRepository;
 
+import "../repositories/bridge_settings_repository.dart";
+import "../repositories/models/sesori_tool_group_ids.dart";
 import "../repositories/models/session_continuation_record.dart";
 import "../repositories/models/session_wake_up.dart";
 import "../repositories/scheduled_task_repository.dart";
@@ -12,7 +14,8 @@ import "../repositories/session_wake_up_repository.dart";
 
 /// Projects bridge-owned continuation, interruption and wake-up state,
 /// scheduled-run marks, arming and watched PRs onto existing session
-/// responses.
+/// responses. Watched PRs are left out while the user has the PR monitor
+/// off, since their statuses stop following GitHub then.
 class const SessionViewService({
   required final SessionRepository _sessions,
   required final SessionContinuationRepository _continuations,
@@ -20,6 +23,7 @@ class const SessionViewService({
   required final SessionInterruptionRepository _interruptions,
   required final SessionWakeUpRepository _wakeUps,
   required final PullRequestWatchRepository _pullRequestWatches,
+  required final BridgeSettingsRepository _settings,
   required final Duration _resetBuffer,
 }) {
   Future<Session> get({required String sessionId}) async {
@@ -39,7 +43,7 @@ class const SessionViewService({
     final interruptions = await _interruptions.readMany(sessionIds: sessionIds);
     final wakeUps = await _wakeUps.forSessions(sessionIds: sessionIds);
     final upcomingRuns = await _scheduledTasks.upcomingRunsInSessions(sessionIds: sessionIds);
-    final pullRequestWatches = await _pullRequestWatches.watchesBySession();
+    final pullRequestWatches = await _shownPullRequestWatches();
     return [
       for (final session in sessions)
         session.copyWith(
@@ -76,7 +80,7 @@ class const SessionViewService({
   /// is gone is left out.
   Future<PullRequestWatchListResponse> pullRequestWatches() async => PullRequestWatchListResponse(
     watches: [
-      for (final MapEntry(key: sessionId, value: watches) in (await _pullRequestWatches.watchesBySession()).entries)
+      for (final MapEntry(key: sessionId, value: watches) in (await _shownPullRequestWatches()).entries)
         if (await _sessions.getCatalogSession(sessionId: sessionId) case final session?)
           for (final watch in watches)
             PullRequestWatchListItem(
@@ -87,6 +91,13 @@ class const SessionViewService({
             ),
     ],
   );
+
+  /// The stored watches by session, or none while the PR monitor is off.
+  /// The monitor republishes their sessions when it is turned on or off.
+  Future<Map<String, List<SessionPullRequestWatch>>> _shownPullRequestWatches() async {
+    if (!_settings.currentSettings.toolGroupEnabled(id: SesoriToolGroupIds.prMonitor)) return const {};
+    return await _pullRequestWatches.watchesBySession();
+  }
 
   /// The soonest of the session's wake-ups and the next run of a task that
   /// continues in it. An archived session is not armed: a task starts a fresh

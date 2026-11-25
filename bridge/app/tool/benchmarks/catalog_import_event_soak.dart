@@ -7,6 +7,7 @@ import "package:args/args.dart";
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
@@ -20,6 +21,7 @@ import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
@@ -118,6 +120,12 @@ class const _BenchmarkConfiguration({
 class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _configuration}) {
   Future<Map<String, Object?>> run() async {
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-catalog-import-event-soak-");
+    // Default settings, so the PR monitor counts as on.
+    final bridgeSettings = BridgeSettingsRepository(
+      api: BridgeSettingsApi(homeDirectory: temporaryDirectory.path),
+      defaultEditorApi: null,
+    );
+    await bridgeSettings.loadSettings();
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     final releaseEnumeration = Completer<void>();
     final releaseWriter = Completer<void>();
@@ -206,6 +214,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
               ),
             ),
           ),
+          settings: bridgeSettings,
           resetBuffer: const Duration(minutes: 2),
         ),
         sessionPromptService: const _UnusedSessionPromptService(),

@@ -52,6 +52,9 @@ class PatchBridgeSettingsHandler({
       case WarmUpPluginsOnSessionOpenSettingUpdate(:final enabled):
         final committed = await _pluginWarmupSettingsService.update(enabled: enabled);
         return BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: committed);
+      case AgentToolsSettingUpdate(:final enabled):
+        final committed = await _toolGroupSettingsService.updateAgentTools(enabled: enabled);
+        return BridgeSettingUpdate.agentTools(enabled: committed);
       case ToolGroupSettingUpdate(:final id, :final enabled):
         final groupId = SesoriToolGroupIds.parse(value: id);
         if (groupId == null) {

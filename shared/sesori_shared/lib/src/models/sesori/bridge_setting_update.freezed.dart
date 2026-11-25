@@ -28,6 +28,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return WarmUpPluginsOnSessionOpenSettingUpdate.fromJson(
             json
           );
+                case 'agentTools':
+          return AgentToolsSettingUpdate.fromJson(
+            json
+          );
                 case 'toolGroup':
           return ToolGroupSettingUpdate.fromJson(
             json
@@ -186,6 +190,47 @@ int get hashCode {
 @override
 String toString() {
     return 'BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: $enabled)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class AgentToolsSettingUpdate implements BridgeSettingUpdate {
+  const AgentToolsSettingUpdate({required this.enabled,  String? $type}): $type = $type ?? 'agentTools';
+  factory AgentToolsSettingUpdate.fromJson(Map<String, dynamic> json) => _$AgentToolsSettingUpdateFromJson(json);
+
+ final  bool enabled;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AgentToolsSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentToolsSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,enabled);
+}
+
+@override
+String toString() {
+    return 'BridgeSettingUpdate.agentTools(enabled: $enabled)';
 }
 
 

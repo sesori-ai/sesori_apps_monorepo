@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/api/bridge_settings_api.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 
 class InMemoryBridgeSettingsApi({
   required var String? config,
@@ -23,4 +24,11 @@ class InMemoryBridgeSettingsApi({
     config = jsonContent;
     writeCount++;
   }
+}
+
+/// A loaded settings repository over [config], the defaults when null.
+Future<BridgeSettingsRepository> loadTestBridgeSettings({required String? config}) async {
+  final repository = BridgeSettingsRepository(api: InMemoryBridgeSettingsApi(config: config), defaultEditorApi: null);
+  await repository.loadSettings();
+  return repository;
 }

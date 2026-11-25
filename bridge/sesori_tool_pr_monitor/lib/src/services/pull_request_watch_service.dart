@@ -901,6 +901,11 @@ class PullRequestWatchService({
     _announce(sessionIds: changed);
   }
 
+  /// Announces every session with a stored watch, merged ones included, so
+  /// the app's views follow the group being turned on or off.
+  Future<void> announceAll() async =>
+      _announce(sessionIds: {for (final (:sessionId, watch: _) in await _watches.loadAll()) sessionId});
+
   void _announce({required Set<String> sessionIds}) {
     if (sessionIds.isNotEmpty) _watchesChanged.add(sessionIds);
   }

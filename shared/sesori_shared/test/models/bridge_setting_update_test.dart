@@ -73,6 +73,13 @@ void main() {
       expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
     });
 
+    test("agent tools variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.agentTools(enabled: false);
+
+      expect(update.toJson(), {"type": "agentTools", "enabled": false});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

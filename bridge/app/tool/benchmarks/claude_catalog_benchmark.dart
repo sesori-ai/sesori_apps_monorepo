@@ -22,6 +22,7 @@ import "package:args/args.dart";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
@@ -34,6 +35,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
@@ -98,6 +100,12 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
   if (launchDirectory == null) throw StateError("fixture $fixture holds no Claude sessions");
 
   final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-claude-catalog-");
+  // Default settings, so the PR monitor counts as on.
+  final bridgeSettings = BridgeSettingsRepository(
+    api: BridgeSettingsApi(homeDirectory: temporaryDirectory.path),
+    defaultEditorApi: null,
+  );
+  await bridgeSettings.loadSettings();
   final database = AppDatabase.openFile(file: File(p.join(temporaryDirectory.path, "benchmark.sqlite")));
   try {
     final plugin = _ClaudeCatalogPlugin(catalog: catalog, launchDirectory: launchDirectory);
@@ -175,6 +183,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
           ),
         ),
       ),
+      settings: bridgeSettings,
       resetBuffer: const Duration(minutes: 2),
     );
     var totalBytes = 0;

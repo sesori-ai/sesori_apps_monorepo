@@ -91,6 +91,7 @@ class _FakeBridgeSettingsRepository({
     ),
     yolo: YoloSettingsResponse(enabled: settings.yolo),
     warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
+    agentToolsEnabled: settings.agentTools,
   );
 
   @override
@@ -118,7 +119,9 @@ class _FakeBridgeSettingsRepository({
   Future<void> updateYolo({required bool enabled}) async {}
 
   @override
-  Future<void> updateAgentTools({required bool enabled}) async {}
+  Future<BridgeSettings> updateAgentTools({required bool enabled}) async {
+    return settings = settings.copyWith(agentTools: enabled);
+  }
 
   @override
   Future<BridgeSettings> updateToolGroup({required SesoriToolGroupId id, required bool enabled}) async {

@@ -65,6 +65,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: true,
           toolGroups: [
             BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: true),
           ],
@@ -132,6 +133,30 @@ void main() {
       expect(await toolGroups.list(), [
         const BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: false),
       ]);
+    });
+
+    test("PATCH turns agent tools off, keeps each group's own switch, and GET reports it", () async {
+      final response = await patchHandler.routeForTest(
+        makeRequest(
+          "PATCH",
+          "/settings",
+          body: jsonEncode(const BridgeSettingUpdate.agentTools(enabled: false).toJson()),
+        ),
+      );
+
+      expect(response.status, 200);
+      expect(
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
+        const BridgeSettingUpdate.agentTools(enabled: false),
+      );
+      expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["agentTools"], isFalse);
+      final settings = await GetBridgeSettingsHandler(
+        settingsRepository: repository,
+        toolGroupSettingsService: toolGroups,
+      ).routeForTest(makeRequest("GET", "/settings"));
+      final read = BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body")));
+      expect(read.agentToolsEnabled, isFalse);
+      expect(read.toolGroups.single.enabled, isTrue);
     });
 
     test("PATCH refuses a tool group this bridge does not serve and stores nothing", () async {

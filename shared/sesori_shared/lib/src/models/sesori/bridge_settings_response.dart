@@ -19,6 +19,13 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
     // once those bridges are no longer supported.
     required bool? warmUpPluginsOnSessionOpen,
 
+    /// The master switch for Sesori's tools: while it is off, sessions get
+    /// none of [toolGroups], whatever their own switches say.
+    // COMPATIBILITY 2026-11-25 (v1.16.0): v1.15.0 bridges omit the master switch along with toolGroups, so its state
+    // is unknown, and the app hides the Agent tools section for them. Remove null handling and require a bool once
+    // the minimum supported bridge always sends it.
+    required bool? agentToolsEnabled,
+
     /// The bridge's Sesori tool groups, in the order it serves them. A new
     /// session or resume picks up a change.
     // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before tool groups omit this list, and the app hides the section

@@ -7,6 +7,7 @@ void main() {
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
       yolo: YoloSettingsResponse(enabled: true),
       warmUpPluginsOnSessionOpen: true,
+      agentToolsEnabled: false,
       toolGroups: [
         BridgeToolGroupSetting(id: "tasks", title: "Scheduled tasks", summary: "Read tasks.", enabled: false),
       ],
@@ -16,6 +17,7 @@ void main() {
       "pullRequestRefresh": {"intervalSeconds": 45},
       "yolo": {"enabled": true, "supportsSessionOverride": false},
       "warmUpPluginsOnSessionOpen": true,
+      "agentToolsEnabled": false,
       "toolGroups": [
         {"id": "tasks", "title": "Scheduled tasks", "summary": "Read tasks.", "enabled": false},
       ],
@@ -30,6 +32,7 @@ void main() {
     });
 
     expect(response.warmUpPluginsOnSessionOpen, isNull);
+    expect(response.agentToolsEnabled, isNull);
     expect(response.toolGroups, isEmpty);
   });
 

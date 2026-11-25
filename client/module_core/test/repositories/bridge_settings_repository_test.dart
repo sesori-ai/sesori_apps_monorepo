@@ -22,6 +22,7 @@ void main() {
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       yolo: YoloSettingsResponse(enabled: true),
       warmUpPluginsOnSessionOpen: true,
+      agentToolsEnabled: true,
     );
     when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.success(response));
 
@@ -46,6 +47,41 @@ void main() {
     final result = await repository.load();
 
     expect((result as BridgeSettingsLoadFailure).error, same(error));
+  });
+
+  test("maps the agent tools updates, and an older bridge's 400 as unsupported", () async {
+    when(() => api.update(update: const BridgeSettingUpdate.agentTools(enabled: false))).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.agentTools(enabled: false)),
+    );
+    when(() => api.update(update: const BridgeSettingUpdate.toolGroup(id: "pr_monitor", enabled: true))).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(
+        update: BridgeSettingUpdate.toolGroup(id: "pr_monitor", enabled: true),
+      ),
+    );
+    when(() => api.update(update: const BridgeSettingUpdate.agentTools(enabled: true))).thenAnswer(
+      (_) async => BridgeSettingUpdateApiFailure(
+        error: ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"type":"unknown"}'),
+      ),
+    );
+    when(() => api.update(update: const BridgeSettingUpdate.toolGroup(id: "tasks", enabled: false))).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(
+        update: BridgeSettingUpdate.toolGroup(id: "pages", enabled: false),
+      ),
+    );
+
+    expect(
+      await repository.updateAgentTools(enabled: false),
+      isA<AgentToolsSettingsMutationCommitted>().having((result) => result.enabled, "enabled", isFalse),
+    );
+    expect(
+      await repository.updateToolGroup(id: "pr_monitor", enabled: true),
+      isA<AgentToolsSettingsMutationCommitted>().having((result) => result.enabled, "enabled", isTrue),
+    );
+    expect(await repository.updateAgentTools(enabled: true), isA<AgentToolsSettingsMutationUnsupported>());
+    expect(
+      await repository.updateToolGroup(id: "tasks", enabled: false),
+      isA<AgentToolsSettingsMutationUncertain>(),
+    );
   });
 
   test("maps every setting mutation response", () async {

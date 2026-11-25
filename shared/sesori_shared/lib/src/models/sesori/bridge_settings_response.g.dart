@@ -17,6 +17,7 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
         Map<String, dynamic>.from(json['yolo'] as Map),
       ),
       warmUpPluginsOnSessionOpen: json['warmUpPluginsOnSessionOpen'] as bool?,
+      agentToolsEnabled: json['agentToolsEnabled'] as bool?,
       toolGroups:
           (json['toolGroups'] as List<dynamic>?)
               ?.map(
@@ -34,5 +35,6 @@ Map<String, dynamic> _$BridgeSettingsResponseToJson(
   'pullRequestRefresh': ?instance.pullRequestRefresh?.toJson(),
   'yolo': instance.yolo.toJson(),
   'warmUpPluginsOnSessionOpen': ?instance.warmUpPluginsOnSessionOpen,
+  'agentToolsEnabled': ?instance.agentToolsEnabled,
   'toolGroups': instance.toolGroups.map((e) => e.toJson()).toList(),
 };

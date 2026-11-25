@@ -502,6 +502,7 @@ class Orchestrator({
       interruptions: sessionInterruptions,
       wakeUps: sessionWakeUps,
       pullRequestWatches: pullRequestWatches,
+      settings: _bridgeSettingsRepository,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);

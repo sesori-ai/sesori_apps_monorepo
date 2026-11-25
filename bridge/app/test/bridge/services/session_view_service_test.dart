@@ -2,14 +2,18 @@ import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
+import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/models/session_wake_up.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_wake_up_repository.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart" show PullRequestWatchRepository;
 import "package:test/test.dart";
 
+import "../../helpers/in_memory_bridge_settings_api.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
@@ -37,12 +41,14 @@ void main() {
   late _CountingTasks tasks;
   late SessionViewService views;
   late SessionWakeUpRepository wakeUps;
+  late BridgeSettingsRepository settings;
 
-  setUp(() {
+  setUp(() async {
     db = createTestDatabase();
     addTearDown(db.close);
     tasks = _CountingTasks(dao: ScheduledTaskDao(database: db));
     wakeUps = SessionWakeUpRepository(dao: SessionWakeUpDao(database: db));
+    settings = await loadTestBridgeSettings(config: null);
     views = SessionViewService(
       wakeUps: wakeUps,
       sessions: FakeSessionRepository(plugin: FakeBridgePlugin()),
@@ -53,6 +59,7 @@ void main() {
       scheduledTasks: tasks,
       interruptions: const NoSessionInterruptions(),
       pullRequestWatches: createTestPullRequestWatches(database: db),
+      settings: settings,
       resetBuffer: const Duration(minutes: 2),
     );
   });
@@ -74,6 +81,58 @@ void main() {
       );
     }
   }
+
+  group("watched PRs", () {
+    const watch = SessionPullRequestWatch(
+      repository: "octo/repo",
+      number: 12,
+      title: "Fix the thing",
+      url: "https://github.com/octo/repo/pull/12",
+      autoMerge: false,
+      status: PullRequestWatchStatus.waiting(),
+    );
+
+    SessionViewService viewsWithWatch() => SessionViewService(
+      wakeUps: wakeUps,
+      sessions: FakeSessionRepository(plugin: FakeBridgePlugin()),
+      continuations: SessionContinuationRepository(
+        dao: SessionContinuationDao(database: db),
+        runtime: createAlwaysCurrentTestPluginRuntime(),
+      ),
+      scheduledTasks: tasks,
+      interruptions: const NoSessionInterruptions(),
+      pullRequestWatches: const _Watches(
+        bySession: {
+          "ses_watching": [watch],
+        },
+      ),
+      settings: settings,
+      resetBuffer: const Duration(minutes: 2),
+    );
+
+    test("a session carries its watched PRs while the PR monitor is on", () async {
+      final session = await viewsWithWatch().enrich(session: _session(id: "ses_watching"));
+
+      expect(session.pullRequestWatches, [watch]);
+    });
+
+    test("turning the PR monitor or agent tools off leaves the watches out of sessions and the list", () async {
+      final views = viewsWithWatch();
+      await settings.updateToolGroup(id: SesoriToolGroupIds.prMonitor, enabled: false);
+
+      expect((await views.enrich(session: _session(id: "ses_watching"))).pullRequestWatches, isEmpty);
+      expect((await views.pullRequestWatches()).watches, isEmpty);
+
+      await settings.updateToolGroup(id: SesoriToolGroupIds.prMonitor, enabled: true);
+      await settings.updateAgentTools(enabled: false);
+
+      expect((await views.enrich(session: _session(id: "ses_watching"))).pullRequestWatches, isEmpty);
+
+      await settings.updateAgentTools(enabled: true);
+
+      expect((await views.enrich(session: _session(id: "ses_watching"))).pullRequestWatches, [watch]);
+    });
+  });
 
   test("a single session carries its task's mark", () async {
     final task = await tasks.create(
@@ -278,3 +337,12 @@ Session _session({required String id, int? archivedAt}) => Session(
   scheduledTask: null,
   interruption: null,
 );
+
+class const _Watches({required final Map<String, List<SessionPullRequestWatch>> _bySession})
+    implements PullRequestWatchRepository {
+  @override
+  Future<Map<String, List<SessionPullRequestWatch>>> watchesBySession() async => _bySession;
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError(invocation.memberName.toString());
+}

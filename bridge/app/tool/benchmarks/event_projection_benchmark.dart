@@ -6,12 +6,14 @@ import "package:args/args.dart";
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_wake_up_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -79,6 +81,12 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
   Future<Map<String, Object?>> run() async {
     final rssBefore = ProcessInfo.currentRss;
     final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-event-projection-");
+    // Default settings, so the PR monitor counts as on.
+    final bridgeSettings = BridgeSettingsRepository(
+      api: BridgeSettingsApi(homeDirectory: temporaryDirectory.path),
+      defaultEditorApi: null,
+    );
+    await bridgeSettings.loadSettings();
     final databaseFile = File(p.join(temporaryDirectory.path, "benchmark.sqlite"));
     AppDatabase? database;
     SessionRepository? repository;
@@ -122,6 +130,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
               ),
             ),
           ),
+          settings: bridgeSettings,
           resetBuffer: const Duration(minutes: 2),
         ),
         sessionPromptService: const _UnusedSessionPromptService(),

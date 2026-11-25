@@ -201,6 +201,7 @@ void main() {
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
         ),
       ),
     );
