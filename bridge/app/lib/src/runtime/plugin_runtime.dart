@@ -270,8 +270,16 @@ class PluginRuntime({
   bool supportsPromptAttachments({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.supportsPromptAttachments ?? false;
 
-  bool injectsSesoriTools({required String pluginId}) =>
-      _slots[pluginId]?.registration.descriptor.injectsSesoriTools ?? false;
+  /// Whether [pluginId]'s sessions get Sesori's tools: its descriptor declares
+  /// it, and a running backend too old to carry them has not said otherwise.
+  bool injectsSesoriTools({required String pluginId}) {
+    final slot = _slots[pluginId];
+    if (slot == null || !slot.registration.descriptor.injectsSesoriTools) return false;
+    return switch (slot.plugin?.api) {
+      final SesoriToolsPluginApi api => api.carriesSesoriTools,
+      _ => true,
+    };
+  }
 
   bool namesCommandInvocations({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.namesCommandInvocations ?? false;

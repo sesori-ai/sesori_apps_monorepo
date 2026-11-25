@@ -143,6 +143,8 @@ class OpenCodeV2Service({
   }
 
   Future<void> disposeMcpAuthentication() => _mcpAuthentication.dispose();
+  bool get carriesSesoriTools => _sesoriTools != null;
+
   Future<void> disposeSesoriTools() async => await _sesoriTools?.dispose();
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     try {

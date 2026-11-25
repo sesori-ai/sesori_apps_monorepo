@@ -322,6 +322,10 @@ class OpenCodePlugin._({
   @override
   String get id => Harness.opencode.name;
 
+  /// OpenCode 1 has no client-MCP socket.
+  @override
+  bool get carriesSesoriTools => false;
+
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 

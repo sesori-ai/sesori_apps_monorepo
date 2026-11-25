@@ -287,8 +287,8 @@ task to its start and compare it with the app's view of the session. Use fixture
   [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity and Cursor stay off until a live check passes;
   Hermes stays off because a session given Sesori's server loses the user's own `config.yaml` MCP servers on 0.23.4
   and older ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)); DeepSeek's adapter rejects MCP servers.
-- OpenCode older than 2.2.0 has no client-MCP socket and gets no tools, yet the plugin still declares
-  `injectsSesoriTools`, so a scheduled run there gets the tool note without the tools.
+- OpenCode older than 2.2.0, including OpenCode 1, has no client-MCP socket: its sessions get no tools, and its
+  running plugin reports so through `SesoriToolsPluginApi`, so its scheduled runs get no tool note either.
 - On OpenCode, the socket rides an experimental endpoint and carries no MCP `instructions`. A folder idle for an hour lets its socket go, so the first step of a turn started
   from OpenCode's own app in it can miss the tools. With the shared service, an OpenCode restart longer than
   5 seconds brings the tools back only with the next Sesori request.

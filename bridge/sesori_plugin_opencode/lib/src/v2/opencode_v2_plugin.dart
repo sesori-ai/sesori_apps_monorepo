@@ -110,6 +110,8 @@ class OpenCodeV2Plugin._({
   @override
   String get id => _id;
   @override
+  bool get carriesSesoriTools => _service.carriesSesoriTools;
+  @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
   @override
   Stream<PluginWorkState> get workState => _workState.stream;

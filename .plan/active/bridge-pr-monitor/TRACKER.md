@@ -16,7 +16,7 @@
 | 12 | ⚙️ Bridge projection, status and app actions | Not started | |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Not started | |
 | 14 | ⚙️ App: watched-PR list | Not started | |
-| 15 | ⚙️ Sesori tools on OpenCode | In review | |
+| 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
 | 17 | 🌿 Verify and retire | Not started | |
 
