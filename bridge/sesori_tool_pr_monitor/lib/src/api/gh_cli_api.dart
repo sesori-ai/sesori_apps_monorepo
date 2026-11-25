@@ -8,6 +8,7 @@ import "../models/gh_cli_exception.dart";
 import "../models/pull_request_target.dart";
 import "models/gh_graphql_response_dto.dart";
 import "models/gh_pull_request_dto.dart";
+import "models/gh_rest_pull_request_dto.dart";
 
 /// GitHub through the user's own `gh` CLI on PATH, with its own credentials.
 ///
@@ -103,14 +104,147 @@ class GhCliApi({required final CommandExecutor _commandExecutor}) {
     );
   }
 
+  /// The PR as REST shows it, which says whether it is merged at its head.
+  Future<GhRestPullRequestDto> fetchRestPullRequest({required PullRequestTarget target}) async {
+    final stdout = await _run(
+      arguments: [
+        "api",
+        "--hostname",
+        "github.com",
+        _pullRequestPath(target: target),
+      ],
+    );
+    return _decode<GhRestPullRequestDto>(() => GhRestPullRequestDto.fromJson(jsonDecodeMap(stdout)));
+  }
+
+  /// Creates [name] in the repository. GitHub refuses a label that already
+  /// exists, which keeps the repository's own color and description.
+  Future<void> createLabel({
+    required PullRequestTarget target,
+    required String name,
+    required String color,
+    required String description,
+  }) => _run(
+    arguments: [
+      "api",
+      "--hostname",
+      "github.com",
+      "repos/${target.owner}/${target.repo}/labels",
+      "-f",
+      "name=$name",
+      "-f",
+      "color=$color",
+      "-f",
+      "description=$description",
+    ],
+  );
+
+  Future<void> addLabel({required PullRequestTarget target, required String name}) => _run(
+    arguments: [
+      "api",
+      "--hostname",
+      "github.com",
+      "${_issuePath(target: target)}/labels",
+      "-f",
+      "labels[]=$name",
+    ],
+  );
+
+  /// Throws [GhCliNotFoundException] when the PR does not carry [name].
+  Future<void> removeLabel({required PullRequestTarget target, required String name}) => _run(
+    arguments: [
+      "api",
+      "--hostname",
+      "github.com",
+      "--method",
+      "DELETE",
+      "${_issuePath(target: target)}/labels/${Uri.encodeComponent(name)}",
+    ],
+  );
+
+  /// One squash merge of exactly [headSha], titled [title] with an empty body.
+  Future<GhMergeResultDto> squashMerge({
+    required PullRequestTarget target,
+    required String headSha,
+    required String title,
+  }) async {
+    final stdout = await _run(
+      arguments: [
+        "api",
+        "--hostname",
+        "github.com",
+        "--method",
+        "PUT",
+        "${_pullRequestPath(target: target)}/merge",
+        "-f",
+        "merge_method=squash",
+        "-f",
+        "sha=$headSha",
+        "-f",
+        "commit_title=$title",
+        "-f",
+        "commit_message=",
+      ],
+    );
+    return _decode<GhMergeResultDto>(() => GhMergeResultDto.fromJson(jsonDecodeMap(stdout)));
+  }
+
+  /// Posts a top-level PR comment and returns its URL.
+  Future<String> addComment({required PullRequestTarget target, required String body}) async {
+    final stdout = await _run(
+      arguments: [
+        "api",
+        "--hostname",
+        "github.com",
+        "${_issuePath(target: target)}/comments",
+        "-f",
+        "body=$body",
+        "--jq",
+        ".html_url",
+      ],
+    );
+    return stdout.trim();
+  }
+
+  /// Replies in the review thread [threadId] and returns the reply's URL.
+  Future<String> replyToThread({required String threadId, required String body}) async {
+    final data = await _graphQl(
+      query: _threadReplyMutation,
+      fields: {"thread": threadId, "body": body},
+      number: null,
+    );
+    final reply = asStringKeyedMap(value: data["addPullRequestReviewThreadReply"]);
+    final url = asStringKeyedMap(value: reply?["comment"])?["url"];
+    if (url is! String) {
+      throw GhCliInvalidResponseException(innerError: FormatException("GitHub did not confirm the reply to $threadId"));
+    }
+    return url;
+  }
+
+  String _pullRequestPath({required PullRequestTarget target}) =>
+      "repos/${target.owner}/${target.repo}/pulls/${target.number}";
+
+  String _issuePath({required PullRequestTarget target}) =>
+      "repos/${target.owner}/${target.repo}/issues/${target.number}";
+
   Future<Map<String, dynamic>> _query({
     required String query,
     required PullRequestTarget target,
     required Map<String, String> extraFields,
     required bool includeNumber,
+  }) => _graphQl(
+    query: query,
+    fields: {"owner": target.owner, "repo": target.repo, ...extraFields},
+    number: includeNumber ? target.number : null,
+  );
+
+  /// `-f` sends raw strings; `-F` converts [number] to an Int (and would
+  /// read a file for an `@` value, so it never carries text).
+  Future<Map<String, dynamic>> _graphQl({
+    required String query,
+    required Map<String, String> fields,
+    required int? number,
   }) async {
-    // `-f` sends raw strings; only the PR number goes through `-F`, which
-    // converts it to an Int (and would read a file for an `@` value).
     final stdout = await _run(
       arguments: [
         "api",
@@ -119,12 +253,8 @@ class GhCliApi({required final CommandExecutor _commandExecutor}) {
         "github.com",
         "-f",
         "query=$query",
-        "-f",
-        "owner=${target.owner}",
-        "-f",
-        "repo=${target.repo}",
-        if (includeNumber) ...["-F", "number=${target.number}"],
-        for (final MapEntry(:key, :value) in extraFields.entries) ...["-f", "$key=$value"],
+        for (final MapEntry(:key, :value) in fields.entries) ...["-f", "$key=$value"],
+        if (number != null) ...["-F", "number=$number"],
       ],
     );
     final response = _decode(() => GhGraphQlResponseDto.fromJson(jsonDecodeMap(stdout)));
@@ -303,6 +433,11 @@ $_reviewThreadNodes
       }
     }
   }
+}""";
+
+const String _threadReplyMutation = r"""
+mutation($thread: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $thread, body: $body }) { comment { url } }
 }""";
 
 const String _labelsPageQuery = r"""
