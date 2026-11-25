@@ -52,11 +52,16 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
   exist. A change applies to launches after it. With the `tasks` group off, scheduled runs get no improvement note.
 - A group with a guide (today `pr_monitor`) adds `get_guide` to `tools/list`, whose `topic` enum names only the token's
   groups that have one; an unknown topic is an `isError` result, and a token without such a group lists no `get_guide`.
-  The `initialize` instructions name the matching skill (`sesori-pr-monitor`, or `sesori:pr-monitor` in Claude Code).
+  The `initialize` instructions and the `get_guide` description name the matching skill under each harness's spelling
+  (`sesori-pr-monitor`, `sesori:pr-monitor` or `pr-monitor`) and say the skill and `get_guide` hold the same text, so an
+  agent that loaded the skill does not call `get_guide`.
   While a group with a guide is on, the bridge keeps `agent-skills/` in its data directory holding it as a Claude plugin skill and
   a plain skill, rewrites the folder when a setting turns such a group on or off, and removes it when none is on.
-  Claude Code sessions get `--plugin-dir` and Codex gets `skills/extraRoots/set` (see
+  Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot sessions load it, and every one of them except Grok also
+  loads it in its catalog probe, so the app's command list shows the skill; Grok's list comes from a live session (see
   [harness capabilities](../HARNESS_CAPABILITIES.md)).
+- Pi registers Sesori's tools deferred and activates `tool_search`; its first request declares none of them. The
+  server's `initialize` instructions reach Pi's system prompt as a `sesori` section.
 - `initialize` echoes a supported protocol version (`2024-11-05` through `2025-11-25`) and otherwise offers the newest.
   Notifications get 202 with no body. Malformed JSON is -32700, an unknown method -32601, an unknown tool -32602.
 - Tool failures an agent can act on (bad arguments, an unknown task or run, a run without a session) come back as

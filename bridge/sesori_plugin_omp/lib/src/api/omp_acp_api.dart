@@ -67,7 +67,7 @@ class OmpAcpApi({
   Future<AcpNewSessionResult> newSession({
     required String cwd,
     required Duration timeout,
-  }) => _api().newSession(cwd: cwd, sesoriMcp: null, timeout: timeout);
+  }) => _api().newSession(cwd: cwd, sesoriMcp: null, meta: null, timeout: timeout);
 
   Future<AcpNewSessionResult> setConfigOption({
     required String sessionId,
@@ -95,7 +95,7 @@ class OmpAcpApi({
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) => _api().resumeSession(sessionId: sessionId, cwd: cwd, sesoriMcp: null, timeout: timeout);
+  }) => _api().resumeSession(sessionId: sessionId, cwd: cwd, sesoriMcp: null, meta: null, timeout: timeout);
 
   Future<AcpPromptResult> prompt({
     required String sessionId,

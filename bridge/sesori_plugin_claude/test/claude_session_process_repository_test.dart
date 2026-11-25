@@ -449,7 +449,7 @@ void main() {
       expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
     });
 
-    test("gives every session launch its own bound Sesori token and probes none", () async {
+    test("gives every session launch its own bound Sesori token, and the probe only the skills", () async {
       final access = FakeSesoriMcpAccess(enabled: true)
         ..skillBundle = const SesoriSkillBundle(pluginRoot: "/skills/claude-plugin", skillsRoot: "/skills/skills");
       final state = await Directory.systemTemp.createTemp("claude-sesori-mcp-");
@@ -489,11 +489,11 @@ void main() {
         sesoriMcpServerName,
         isNull,
       ]);
-      // A probe loads no Sesori skill, as it gets no Sesori tools.
+      // The probe loads the skills too, so the app's command list shows them.
       expect(harness.specs.map((spec) => spec.sesoriPluginDirectory), [
         "/skills/claude-plugin",
         "/skills/claude-plugin",
-        isNull,
+        "/skills/claude-plugin",
       ]);
       expect(harness.sesoriMcpConfigs, [contains('"Bearer token-1"'), contains('"Bearer token-2"')]);
       // The token lives on disk only until the handshake.

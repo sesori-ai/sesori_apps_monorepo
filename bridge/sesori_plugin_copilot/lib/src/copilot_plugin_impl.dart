@@ -38,6 +38,11 @@ class CopilotPlugin._({
       cwd: launchDirectory,
       environment: environment,
     );
+    // Read at every spawn, so a restarted process picks up a toggle. The
+    // catalog probe gets the skills too, so the app's command list shows them.
+    Future<AcpProcessHandle> spawn(AcpLaunchSpec spec) => processFactory(
+      spec.withArguments(arguments: CopilotBinary.skillArguments(skills: sesoriMcp?.skillBundle)),
+    );
     final copilotSessionOptionsService = CopilotSessionOptionsService(
       commandTracker: commandTracker,
       configurationTracker: configurationTracker,
@@ -45,7 +50,7 @@ class CopilotPlugin._({
         api: CopilotCatalogProbeApi(
           client: AcpStdioClient(
             launchSpec: launchSpec,
-            processFactory: processFactory,
+            processFactory: spawn,
             logTag: "copilot-catalog",
           ),
         ),
@@ -65,7 +70,7 @@ class CopilotPlugin._({
       ),
       commandTracker: commandTracker,
       copilotSessionOptionsService: copilotSessionOptionsService,
-      processFactory: processFactory,
+      processFactory: spawn,
       sesoriMcp: sesoriMcp,
     );
   }

@@ -11,7 +11,7 @@
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | In review | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
-| 10 | ⚙️ Guides and skills on Claude Code and Codex | In review | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
+| 10 | ⚙️ Guides and skills on Claude Code and Codex | Done | #2917. Step 11 reuses `SesoriMcpAccess.skillBundle` (`pluginRoot` for `--plugin-dir`-style harnesses, `skillsRoot` for plain skill roots), which lives in `<data-dir>/agent-skills`. |
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Not started | |
 | 12 | ⚙️ Bridge projection, status and app actions | Not started | |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Not started | |

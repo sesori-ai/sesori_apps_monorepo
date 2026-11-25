@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 const { default: install } = await import(pathToFileURL(process.argv[2]).href);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const sesoriLaunchKey = Symbol.for("sesori.mcp.launch");
-const sesoriKeys = ["SESORI_MCP_URL", "SESORI_MCP_TOKEN", "SESORI_MCP_SERVER"];
+const sesoriKeys = ["SESORI_MCP_URL", "SESORI_MCP_TOKEN", "SESORI_MCP_SERVER", "SESORI_SKILLS_ROOT"];
 
 async function fixture(run, { mode = "rpc", nativeInput = false } = {}) {
   const descriptor = Object.getOwnPropertyDescriptor(process, "stdin");
@@ -138,12 +138,22 @@ async function withSesoriServer(answer, run) {
     SESORI_MCP_URL: `http://127.0.0.1:${server.address().port}/mcp`,
     SESORI_MCP_TOKEN: "fixture-token",
     SESORI_MCP_SERVER: "sesori_bridge",
+    SESORI_SKILLS_ROOT: "/data/agent-skills/skills",
   });
   const tools = [];
-  const load = () => install({ on: () => {}, registerTool: tool => tools.push(tool) });
+  const handlers = {};
+  let active = ["read", "bash"];
+  const pi = {
+    on: (event, handler) => { handlers[event] = handler; },
+    registerTool: tool => tools.push(tool),
+    getAllTools: () => [{ name: "read" }, { name: "bash" }, { name: "tool_search" }],
+    getActiveTools: () => active,
+    setActiveTools: names => { active = names; },
+  };
+  const load = () => install(pi);
   try {
     await load();
-    await run({ tools, requests, load });
+    await run({ tools, requests, load, handlers, active: () => active });
   } finally {
     for (const key of sesoriKeys) delete process.env[key];
     delete globalThis[sesoriLaunchKey];
@@ -160,10 +170,11 @@ const fixtureTool = {
 };
 
 test("Sesori tools are registered under Pi's MCP names and forward calls", async () => {
-  await withSesoriServer(message => message.method === "tools/list"
-    ? { result: { tools: [fixtureTool] } }
-    : { result: { content: [{ type: "text", text: "Unknown task" }], isError: true } },
-  async ({ tools, requests, load }) => {
+  await withSesoriServer(message => ({
+    initialize: { result: { instructions: "Fixture instructions." } },
+    "tools/list": { result: { tools: [fixtureTool] } },
+  })[message.method] ?? { result: { content: [{ type: "text", text: "Unknown task" }], isError: true } },
+  async ({ tools, requests, load, handlers, active }) => {
     assert.equal(tools.length, 1);
     for (const key of sesoriKeys) assert.equal(process.env[key], undefined);
     const [tool] = tools;
@@ -172,10 +183,21 @@ test("Sesori tools are registered under Pi's MCP names and forward calls", async
     assert.equal(tool.description, "Fixture description");
     assert.deepEqual(tool.parameters, fixtureTool.inputSchema);
     assert.deepEqual(tool.annotations, { readOnlyHint: true });
+    assert.equal(tool.exposure, "deferred");
+    handlers.session_start({}, { mode: "rpc" });
+    assert.deepEqual(active(), ["read", "bash", "tool_search"]);
+    assert.deepEqual(handlers.resources_discover({}), { skillPaths: ["/data/agent-skills/skills"] });
+    const sections = {};
+    assert.equal(handlers.before_agent_start({ systemPromptOptions: { sections } }), undefined);
+    assert.match(sections.sesori, /^Fixture instructions\.\n\n.*mcp__sesori_bridge__<tool>.*tool_search/);
+    assert.deepEqual(
+      handlers.before_agent_start({ systemPrompt: "Base." }),
+      { systemPrompt: `Base.\n\n${sections.sesori}` },
+    );
     const result = await tool.execute("call-1", { task_id: "task" }, undefined);
     assert.deepEqual(result, { content: [{ type: "text", text: "Unknown task" }], details: {}, isError: true });
-    assert.deepEqual(requests.map(r => r.message.method), ["tools/list", "tools/call"]);
-    assert.deepEqual(requests[1].message.params, { name: "get_task", arguments: { task_id: "task" } });
+    assert.deepEqual(requests.map(r => r.message.method), ["initialize", "tools/list", "tools/call"]);
+    assert.deepEqual(requests[2].message.params, { name: "get_task", arguments: { task_id: "task" } });
     for (const { headers } of requests) {
       assert.equal(headers.authorization, "Bearer fixture-token");
       assert.equal(headers["content-type"], "application/json");

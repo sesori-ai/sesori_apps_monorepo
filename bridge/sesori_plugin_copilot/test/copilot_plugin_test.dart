@@ -137,6 +137,33 @@ void main() {
       expect(plugin.launchSpec.environment, const {"COPILOT_HOME": "/state/copilot"});
     });
 
+    test("a spawn loads Sesori's skills while they are on", () async {
+      final access = RecordingSesoriMcpAccess(enabled: true);
+      final spawned = <List<String>>[];
+      final process = FakeAcpProcess();
+      final skilled = CopilotPlugin(
+        sesoriMcp: access,
+        binaryPath: "/opt/copilot",
+        launchDirectory: "/repo",
+        environment: const {},
+        processFactory: (spec) async {
+          spawned.add(spec.args);
+          return process;
+        },
+      );
+      addTearDown(() async {
+        await skilled.dispose();
+        await process.close();
+      });
+
+      skilled.ensureConnected().ignore();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(spawned, [
+        ["--no-auto-update", "--acp", "--plugin-dir", RecordingSesoriMcpAccess.skills.pluginRoot],
+      ]);
+    });
+
     Future<void> completeCatalogDiscovery({required FakeAcpProcess process}) async {
       await completeHandshake(process: process);
       final newSession = await waitForFrame(process: process, method: "session/new");

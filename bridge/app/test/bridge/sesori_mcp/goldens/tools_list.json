@@ -865,7 +865,7 @@
     },
     {
       "name": "get_guide",
-      "description": "Read the how-to for a Sesori tool group before you first use it, unless its Sesori skill is already loaded. Topics: pr_monitor: Use right after you open a GitHub PR, when asked to watch or babysit a PR, and every time a [PR Monitor] message arrives.",
+      "description": "Read the how-to for a Sesori tool group before you first use it. Its Sesori skill (sesori-pr-monitor, sesori:pr-monitor or pr-monitor) holds the same text: when that skill is loaded or listed, use it and don't call this tool. Topics: pr_monitor: Use right after you open a GitHub PR, when asked to watch or babysit a PR, and every time a [PR Monitor] message arrives.",
       "inputSchema": {
         "type": "object",
         "properties": {

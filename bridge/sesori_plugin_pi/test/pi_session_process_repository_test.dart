@@ -87,7 +87,7 @@ void main() {
     expect(frames.where((frame) => frame.frame is PiExtensionUiFrame), hasLength(2));
   });
 
-  test("only a resident process gets Sesori's tools, bound to its session", () async {
+  test("only a resident process gets Sesori's tools and skills, bound to its session", () async {
     final sesoriMcp = FakeSesoriMcpAccess(enabled: true);
     final specs = <PiLaunchSpec>[];
     final processes = [FakePiProcess(), FakePiProcess()];
@@ -129,6 +129,7 @@ void main() {
       "SESORI_MCP_URL": "http://127.0.0.1:4711/mcp",
       "SESORI_MCP_TOKEN": "token-1",
       "SESORI_MCP_SERVER": sesoriMcpServerName,
+      "SESORI_SKILLS_ROOT": "/skills/skills",
       "PI_SKIP_VERSION_CHECK": "1",
     });
     expect(specs[1].arguments, isNot(contains(contains("token-1"))));

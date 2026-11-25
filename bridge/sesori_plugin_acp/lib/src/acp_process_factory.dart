@@ -21,7 +21,16 @@ class const AcpLaunchSpec({
 
   /// Environment entries, merged over inherited values only when enabled.
   final Map<String, String> environment = const {},
-});
+}) {
+  /// This spec with [arguments] after its own.
+  AcpLaunchSpec withArguments({required List<String> arguments}) => AcpLaunchSpec(
+    command: command,
+    args: [...args, ...arguments],
+    cwd: cwd,
+    includeParentEnvironment: includeParentEnvironment,
+    environment: environment,
+  );
+}
 
 /// The slice of `dart:io`'s [io.Process] the ACP transport actually uses.
 ///
