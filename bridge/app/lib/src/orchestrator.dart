@@ -971,6 +971,7 @@ class Orchestrator({
       activity: pullRequestActivity,
       readiness: pullRequestReadiness,
       reports: const PullRequestReportBuilder(activity: pullRequestActivity, readiness: pullRequestReadiness),
+      feedback: const PullRequestFeedbackBuilder(readiness: pullRequestReadiness),
       clock: clock,
     );
     final toolGroups = <SesoriToolGroup>[

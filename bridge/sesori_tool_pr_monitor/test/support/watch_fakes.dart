@@ -3,6 +3,7 @@ import "dart:collection";
 
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:sesori_tool_pr_monitor/src/models/pull_request_target.dart";
+import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_merge_outcome.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_action_repository.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_snapshot_repository.dart";
@@ -28,9 +29,46 @@ class FakeSnapshots() implements PullRequestSnapshotRepository {
   }
 }
 
+/// Records each GitHub write; label changes throw [labelFailure] while set.
 class FakeActions() implements PullRequestActionRepository {
+  final List<String> calls = [];
+  Exception? labelFailure;
+  PullRequestMergeOutcome mergeOutcome = const PullRequestMerged(labelError: null);
+
+  /// What [removeReadyLabel] answers.
+  bool carriesReadyLabel = true;
+
   @override
   Future<String> selfLogin() async => "owner";
+
+  @override
+  Future<void> addReadyLabel({required PullRequestTarget target}) async {
+    calls.add("add label");
+    if (labelFailure case final failure?) throw failure;
+  }
+
+  @override
+  Future<bool> removeReadyLabel({required PullRequestTarget target}) async {
+    calls.add("remove label");
+    if (labelFailure case final failure?) throw failure;
+    return carriesReadyLabel;
+  }
+
+  @override
+  Future<PullRequestMergeOutcome> squashMerge({
+    required PullRequestTarget target,
+    required String headSha,
+    required String title,
+  }) async {
+    calls.add("merge $headSha");
+    return mergeOutcome;
+  }
+
+  @override
+  Future<String> reply({required PullRequestTarget target, required String? threadId, required String body}) async {
+    calls.add("reply ${threadId ?? "comment"}: $body");
+    return "https://github.com/sesori/example/pull/42#reply";
+  }
 }
 
 class MemoryStore() implements SesoriToolStore {

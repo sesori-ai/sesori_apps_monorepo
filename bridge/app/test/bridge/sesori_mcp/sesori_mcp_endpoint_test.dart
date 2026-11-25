@@ -413,6 +413,8 @@ void main() {
           "unwatch_pr",
           "pr_watch_status",
           "get_pr_report",
+          "get_pr_feedback",
+          "reply_on_pr",
           "get_guide",
         ],
       );
@@ -1984,6 +1986,7 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
     activity: activity,
     readiness: readiness,
     reports: const PullRequestReportBuilder(activity: activity, readiness: readiness),
+    feedback: const PullRequestFeedbackBuilder(readiness: readiness),
     clock: const Clock(),
   );
   return PullRequestMonitorToolGroup(

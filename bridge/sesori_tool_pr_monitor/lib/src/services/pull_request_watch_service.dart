@@ -13,6 +13,7 @@ import "../repositories/pull_request_snapshot_repository.dart";
 import "../repositories/pull_request_watch_repository.dart";
 import "models/pull_request_watch_results.dart";
 import "pull_request_activity_calculator.dart";
+import "pull_request_feedback_builder.dart";
 import "pull_request_readiness_calculator.dart";
 import "pull_request_report_builder.dart";
 
@@ -32,6 +33,7 @@ class PullRequestWatchService({
   required final PullRequestActivityCalculator _activity,
   required final PullRequestReadinessCalculator _readiness,
   required final PullRequestReportBuilder _reports,
+  required final PullRequestFeedbackBuilder _feedback,
   required final Clock _clock,
 }) {
   static const Duration pollInterval = Duration(seconds: 60);
@@ -166,6 +168,17 @@ class PullRequestWatchService({
       },
     );
   }
+
+  /// `get_pr_feedback`: the PR's current feedback in full. Throws when the
+  /// fetch fails.
+  Future<String> feedback({required PullRequestTarget target}) async => _feedback.build(
+    target: target,
+    snapshot: await _snapshots.fetchSnapshot(target: target, selfLogin: await _actions.selfLogin()),
+  );
+
+  /// `reply_on_pr`: posts [body] as the agent's reply and returns its URL.
+  Future<String> reply({required PullRequestTarget target, required String? threadId, required String body}) =>
+      _actions.reply(target: target, threadId: threadId, body: body);
 
   /// Polls each watched PR whose last poll is [pollInterval] old, one at a
   /// time, and sends the reports and reminders that are due. A PR whose

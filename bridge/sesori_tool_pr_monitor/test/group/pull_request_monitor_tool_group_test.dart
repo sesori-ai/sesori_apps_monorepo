@@ -12,6 +12,8 @@ import "../support/watch_fakes.dart";
 void main() {
   late FakeHost host;
   late MemoryStore store;
+  late FakeActions actions;
+  late FakeSnapshots snapshots;
   late PullRequestMonitorToolGroup group;
 
   setUp(() {
@@ -19,15 +21,17 @@ void main() {
     host = FakeHost(records: store)
       ..addSession(sessionId: "root")
       ..addSession(sessionId: "child", rootSessionId: "root");
-    final snapshots = FakeSnapshots()..enqueue(emptySnapshot);
+    snapshots = FakeSnapshots();
+    actions = FakeActions();
     final service = PullRequestWatchService(
       snapshots: snapshots,
-      actions: FakeActions(),
+      actions: actions,
       watches: PullRequestWatchRepository(store: store),
       host: host,
       activity: activity,
       readiness: readiness,
       reports: reports,
+      feedback: feedback,
       clock: Clock.fixed(DateTime.utc(2026, 11, 25, 12)),
     );
     group = PullRequestMonitorToolGroup(
@@ -36,13 +40,19 @@ void main() {
     );
   });
 
-  Future<SesoriToolResult> call({required String tool, required String session, String? pr}) => group.call(
+  Future<SesoriToolResult> call({
+    required String tool,
+    required String session,
+    String? pr,
+    Map<String, Object?> extra = const {},
+  }) => group.call(
     tool: tool,
     caller: SesoriToolCaller(sessionId: session),
-    arguments: {"pr": ?pr},
+    arguments: {"pr": ?pr, ...extra},
   );
 
   test("a sub-agent's watch lands on its root and shows in the root's status", () async {
+    snapshots.enqueue(emptySnapshot);
     final started = await call(tool: "watch_pr", session: "child", pr: "https://github.com/sesori/example/pull/42");
     expect(started, isA<SesoriToolSuccess>());
     expect(started.text, startsWith('Started watching sesori/example#42 — "test PR".'));
@@ -73,6 +83,38 @@ void main() {
     expect(
       (await call(tool: "get_pr_report", session: "root", pr: "sesori/example#42")).text,
       "This session is not watching sesori/example#42; call watch_pr first.",
+    );
+  });
+
+  test("reply_on_pr posts in a thread or on the PR, and get_pr_feedback reads the PR", () async {
+    expect(
+      (await call(
+        tool: "reply_on_pr",
+        session: "root",
+        pr: "sesori/example#42",
+        extra: {"body": "Fixed.", "thread_id": "PRRT_1"},
+      )).text,
+      "Replied on thread PRRT_1: https://github.com/sesori/example/pull/42#reply",
+    );
+    expect(
+      (await call(
+        tool: "reply_on_pr",
+        session: "root",
+        pr: "sesori/example#42",
+        extra: {"body": "Done.", "thread_id": ""},
+      )).text,
+      "Posted a PR comment on sesori/example#42: https://github.com/sesori/example/pull/42#reply",
+    );
+    expect(actions.calls, ["reply PRRT_1: Fixed.", "reply comment: Done."]);
+    await expectLater(
+      call(tool: "reply_on_pr", session: "root", pr: "sesori/example#42"),
+      throwsA(isA<InvalidToolArguments>()),
+    );
+
+    snapshots.enqueue(emptySnapshot);
+    expect(
+      (await call(tool: "get_pr_feedback", session: "root", pr: "sesori/example#42")).text,
+      "No feedback on sesori/example#42 is awaiting a reply.",
     );
   });
 }

@@ -83,8 +83,53 @@ class PullRequestMonitorToolGroup({
           result: await _watches.report(sessionId: sessionId, target: target),
         ),
       ),
+      PullRequestMonitorTool.getPrFeedback => _withTarget(
+        arguments: arguments,
+        run: (target) => _attempt(
+          failure: "Cannot fetch feedback for ${target.displayKey}",
+          run: () async => await _watches.feedback(target: target),
+        ),
+      ),
+      PullRequestMonitorTool.replyOnPr => _withTarget(
+        arguments: arguments,
+        run: (target) {
+          final body = requiredToolText(
+            value: _text(value: arguments["body"], field: "body") ?? "",
+            field: "body",
+          );
+          final threadId = optionalToolText(
+            value: _text(value: arguments["thread_id"], field: "thread_id"),
+          );
+          return _attempt(
+            failure: "Cannot reply on ${target.displayKey}",
+            run: () async {
+              final url = await _watches.reply(target: target, threadId: threadId, body: body);
+              return threadId == null
+                  ? "Posted a PR comment on ${target.displayKey}: $url"
+                  : "Replied on thread $threadId: $url";
+            },
+          );
+        },
+      ),
     };
   }
+
+  /// [run]'s text, or a failure saying why: every exception on these paths
+  /// (`gh`, pagination, a PR that is not open) has actionable text.
+  Future<SesoriToolResult> _attempt({required String failure, required Future<String> Function() run}) async {
+    try {
+      return SesoriToolSuccess(text: await run());
+    } on Exception catch (error, stackTrace) {
+      Log.w("PR monitor: $failure", error, stackTrace);
+      return SesoriToolFailure(text: "$failure: $error");
+    }
+  }
+
+  String? _text({required Object? value, required String field}) => switch (value) {
+    null => null,
+    final String text => text,
+    _ => throw InvalidToolArguments(reason: "$field must be a string."),
+  };
 
   /// Runs [run] on the `pr` argument, or answers why it is not a PR.
   Future<SesoriToolResult> _withTarget({

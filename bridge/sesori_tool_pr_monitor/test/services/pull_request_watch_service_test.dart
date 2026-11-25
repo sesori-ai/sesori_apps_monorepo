@@ -29,6 +29,7 @@ class _Harness() {
     activity: activity,
     readiness: readiness,
     reports: reports,
+    feedback: feedback,
     clock: Clock(() => now),
   );
 
