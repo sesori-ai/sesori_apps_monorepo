@@ -33,6 +33,7 @@ import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/macos_system_power_observer_api.dart";
 import "../api/sesori_server_api.dart";
+import "../api/sesori_skill_bundle_storage.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
 import "../auth/auth_repository.dart";
@@ -70,6 +71,7 @@ import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
 import "../repositories/sesori_mcp_grant_repository.dart";
+import "../repositories/sesori_skill_bundle_repository.dart";
 import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
@@ -627,6 +629,11 @@ class const BridgeRuntimeRunner._() {
       shutdownCoordinator.addPhase(phase: BridgeShutdownPhase.pluginDispose, action: sesoriMcpServer.close);
       // Tokens live in memory only, so a restarted bridge refuses old ones.
       final sesoriMcpGrants = SesoriMcpGrantRepository(random: Random.secure());
+      final skillBundles = SesoriSkillBundleRepository(
+        storage: SesoriSkillBundleStorage(
+          directoryPath: sesoriSkillBundleDirectoryPath(dataDirectory: options.dataDirectory),
+        ),
+      );
       final generationFactory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -643,6 +650,7 @@ class const BridgeRuntimeRunner._() {
         sesoriMcpUrl: sesoriMcpServer.url,
         sesoriMcpGrants: sesoriMcpGrants,
         enabledToolGroups: () => bridgeSettingsRepository.currentSettings.enabledToolGroups,
+        skillBundles: skillBundles,
       );
       final activePluginRuntime = PluginRuntime(
         registrations: pluginRuntimeRegistrations,
@@ -830,6 +838,7 @@ class const BridgeRuntimeRunner._() {
         startupRetryService: startupRetryService,
         sesoriMcpRequests: sesoriMcpServer.requests,
         sesoriMcpGrants: sesoriMcpGrants,
+        skillBundles: skillBundles,
       ).create();
       runtime = BridgeRuntime(
         database: database,

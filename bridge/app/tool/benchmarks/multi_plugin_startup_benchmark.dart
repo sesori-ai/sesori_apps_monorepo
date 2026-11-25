@@ -4,7 +4,9 @@ import "dart:io";
 import "dart:math";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/sesori_skill_bundle_storage.dart";
 import "package:sesori_bridge/src/repositories/sesori_mcp_grant_repository.dart";
+import "package:sesori_bridge/src/repositories/sesori_skill_bundle_repository.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
@@ -89,6 +91,9 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     binaryPath: p.join(runtimeDirectory.path, "bin", "sesori-bridge"),
   );
   final generationFactory = PluginGenerationFactory(
+    skillBundles: SesoriSkillBundleRepository(
+      storage: SesoriSkillBundleStorage(directoryPath: p.join(runtimeDirectory.path, "agent-skills")),
+    ),
     managedRuntimePaths: managedRuntimePaths,
     currentBridgeIdentity: ProcessIdentity(
       pid: 1,

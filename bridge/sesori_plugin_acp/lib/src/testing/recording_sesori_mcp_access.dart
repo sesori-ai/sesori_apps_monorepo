@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show SesoriMcpAccess, SesoriMcpLaunch, sesoriMcpServerName;
+    show SesoriMcpAccess, SesoriMcpLaunch, SesoriSkillBundle, sesoriMcpServerName;
 
 /// A [SesoriMcpAccess] that mints numbered tokens (`token-1`, `token-2`, ...)
 /// while [enabled] and records every bind as `(token, backendSessionId)`.
@@ -23,4 +23,7 @@ class RecordingSesoriMcpAccess({
   void bind({required SesoriMcpLaunch launch, required String backendSessionId}) {
     binds.add((launch.token, backendSessionId));
   }
+
+  @override
+  SesoriSkillBundle? get skillBundle => null;
 }

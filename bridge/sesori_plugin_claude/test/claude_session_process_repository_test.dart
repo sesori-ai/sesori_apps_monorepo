@@ -450,7 +450,8 @@ void main() {
     });
 
     test("gives every session launch its own bound Sesori token and probes none", () async {
-      final access = FakeSesoriMcpAccess(enabled: true);
+      final access = FakeSesoriMcpAccess(enabled: true)
+        ..skillBundle = const SesoriSkillBundle(pluginRoot: "/skills/claude-plugin", skillsRoot: "/skills/skills");
       final state = await Directory.systemTemp.createTemp("claude-sesori-mcp-");
       addTearDown(() => state.delete(recursive: true));
       final injecting = ClaudeSessionProcessRepository(
@@ -486,6 +487,12 @@ void main() {
       expect(harness.specs.map((spec) => spec.sesoriMcp?.serverName), [
         sesoriMcpServerName,
         sesoriMcpServerName,
+        isNull,
+      ]);
+      // A probe loads no Sesori skill, as it gets no Sesori tools.
+      expect(harness.specs.map((spec) => spec.sesoriPluginDirectory), [
+        "/skills/claude-plugin",
+        "/skills/claude-plugin",
         isNull,
       ]);
       expect(harness.sesoriMcpConfigs, [contains('"Bearer token-1"'), contains('"Bearer token-2"')]);

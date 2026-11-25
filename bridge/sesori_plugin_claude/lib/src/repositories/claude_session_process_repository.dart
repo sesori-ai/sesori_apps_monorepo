@@ -654,6 +654,8 @@ final class ClaudeSessionProcessRepository({
         transcriptsDirectory: _transcriptsDirectory,
         uploadsDirectory: _uploadsDirectory,
         sesoriMcp: sesoriMcp,
+        // The skills explain the tools, so they come only with them.
+        sesoriPluginDirectory: sesoriMcpLaunch == null ? null : _sesoriMcp.skillBundle?.pluginRoot,
         environment: _environment,
       ),
       processFactory: _processFactory,
