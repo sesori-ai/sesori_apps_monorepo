@@ -5,6 +5,7 @@ import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_merge_outcome.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_watch_repository.dart";
+import "package:sesori_tool_pr_monitor/src/services/models/pull_request_merge_state.dart";
 import "package:sesori_tool_pr_monitor/src/services/models/pull_request_watch_results.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_merge_service.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_watch_service.dart";
@@ -363,6 +364,21 @@ void main() {
       expect(h.store.sessionRecords["s1"], isEmpty);
     });
 
+    test("a get_pr_report that shows the merge result is not followed by a report repeating it", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
+      h.actions.mergeOutcome = const PullRequestMergeRejected(reason: "Required review is missing", cause: null);
+      h.snapshots.enqueue(passing);
+      await h.poll();
+
+      final fetched = await h.service.report(sessionId: "s1", target: target);
+      expect((fetched as PullRequestReportFresh).report, contains("Auto-merge failed after the ready label was added"));
+      h.snapshots.enqueue(ready);
+      await h.poll(after: const Duration(minutes: 2));
+
+      expect(h.host.sent, isEmpty);
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+    });
+
     test("without auto-merge the label hands the PR to a human: no merge and no idle reminder", () async {
       await h.watch(sessionId: "s1");
       await settle(snapshot: passing);
@@ -476,10 +492,11 @@ void main() {
       expect(
         await h.service.setReady(sessionId: "s1", target: target, ready: true),
         isA<PullRequestMarkedReady>().having(
-          (change) => change.autoMergeNotice,
-          "autoMergeNotice",
-          "Auto-merge failed after the ready label was added; the ready label remains and no automatic retry will "
-              "occur: Required review is missing",
+          (change) => change.mergeAttempt,
+          "mergeAttempt",
+          isA<PullRequestMergeAttempt>()
+              .having((attempt) => attempt.headSha, "headSha", "head-1")
+              .having((attempt) => attempt.outcome, "outcome", isA<PullRequestMergeRejected>()),
         ),
       );
       expect(h.actions.calls, ["add label", "merge head-1"]);
@@ -489,7 +506,7 @@ void main() {
     test("mark_pr_ready on a PR nobody watches only changes the label", () async {
       expect(
         await h.service.setReady(sessionId: "s1", target: target, ready: true),
-        isA<PullRequestMarkedReady>().having((change) => change.autoMergeNotice, "autoMergeNotice", isNull),
+        isA<PullRequestMarkedReady>().having((change) => change.mergeAttempt, "mergeAttempt", isNull),
       );
       h.actions.carriesReadyLabel = false;
       expect(

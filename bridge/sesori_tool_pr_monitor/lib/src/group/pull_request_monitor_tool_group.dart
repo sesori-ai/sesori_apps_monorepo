@@ -4,6 +4,7 @@ import "../listeners/pull_request_poll_listener.dart";
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "../services/models/pull_request_watch_results.dart";
+import "../services/pull_request_report_builder.dart";
 import "../services/pull_request_watch_service.dart";
 import "pull_request_monitor_guide.dart";
 import "pull_request_monitor_tool.dart";
@@ -13,6 +14,7 @@ import "pull_request_monitor_tool.dart";
 class PullRequestMonitorToolGroup({
   required final PullRequestWatchService _watches,
   required final PullRequestPollListener _poller,
+  required final PullRequestReportBuilder _reports,
 }) implements SesoriToolGroup {
   static const SesoriToolGroupId groupId = SesoriToolGroupId("pr_monitor");
 
@@ -179,9 +181,9 @@ class PullRequestMonitorToolGroup({
   };
 
   String _readyText({required PullRequestTarget target, required PullRequestReadyChange change}) => switch (change) {
-    PullRequestMarkedReady(:final autoMergeNotice) => [
+    PullRequestMarkedReady(:final mergeAttempt) => [
       'Marked ${target.displayKey} as ready: label "$agentReadyLabel" added.',
-      ?autoMergeNotice,
+      if (mergeAttempt != null) _reports.mergeAttemptText(target: target, attempt: mergeAttempt),
     ].join(" "),
     PullRequestUnmarkedReady(wasCarried: true) =>
       'Removed the "$agentReadyLabel" label from ${target.displayKey}: it is no longer marked ready.',

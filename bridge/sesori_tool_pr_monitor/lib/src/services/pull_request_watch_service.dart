@@ -130,8 +130,8 @@ class PullRequestWatchService({
             baseline: null,
             forcedHoldMinutes: null,
             autoMergeEnabled: _autoMerge(runtime: runtime),
-            readinessError: runtime.merge.retry?.error,
-            autoMergeNotice: null,
+            readinessFailure: runtime.merge.retry,
+            mergeAttempt: null,
             opening: PullRequestReportOpening.watchStarted,
           ),
           autoMerge: _autoMerge(runtime: runtime),
@@ -186,6 +186,12 @@ class PullRequestWatchService({
         // An unwatch while the fetch ran must not be undone.
         if (!_isCurrent(runtime: runtime, watch: watch)) return const PullRequestNotWatched();
         final report = _render(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: null);
+        // ponytail: like a delivered report, this one shows the readiness
+        // news once; other watchers see the PR state, not the notice.
+        snapshot = _applyStep(
+          runtime: runtime,
+          step: _merges.afterReport(snapshot: snapshot, state: runtime.merge),
+        );
         await _recordReport(runtime: runtime, watch: watch, snapshot: snapshot);
         return PullRequestReportFresh(report: report);
       },
@@ -487,8 +493,8 @@ class PullRequestWatchService({
     }
     final current = await _prepareReport(runtime: runtime, snapshot: snapshot);
     // A readiness failure or merge result is news even with the PR unchanged.
-    final merge = runtime.merge;
-    final readinessNews = merge.autoMergeNotice != null || merge.retry?.error != merge.reportedError;
+    final PullRequestMergeState(:retry, :reportedRetry, :mergeAttempt) = runtime.merge;
+    final readinessNews = mergeAttempt != null || (retry != null && !retry.sameFailureAs(other: reportedRetry));
     // A watch whose previous report still waits gets this activity in its
     // next one, so the PR stays due until every watch has had it.
     var waiting = false;
@@ -554,7 +560,7 @@ class PullRequestWatchService({
           snapshot: snapshot,
           idleMinutes: idle.inMinutes,
           autoMergeEnabled: autoMerge,
-          readinessError: runtime.merge.retry?.error,
+          readinessFailure: runtime.merge.retry,
         ),
         timing: SesoriToolNoticeTiming.afterTurn,
         // Repeats one delay later while the PR stays still.
@@ -664,7 +670,7 @@ class PullRequestWatchService({
             snapshot: runtime.snapshot,
             reason: reason,
             autoMergeEnabled: watch.stored.autoMerge,
-            readinessError: runtime.merge.retry?.error,
+            readinessFailure: runtime.merge.retry,
           ),
           timing: SesoriToolNoticeTiming.derived,
           claim: null,
@@ -690,8 +696,8 @@ class PullRequestWatchService({
     baseline: watch.stored.baseline,
     forcedHoldMinutes: forcedHoldMinutes,
     autoMergeEnabled: _autoMerge(runtime: runtime),
-    readinessError: runtime.merge.retry?.error,
-    autoMergeNotice: runtime.merge.autoMergeNotice,
+    readinessFailure: runtime.merge.retry,
+    mergeAttempt: runtime.merge.mergeAttempt,
     opening: watch.resumed ? PullRequestReportOpening.resumed : PullRequestReportOpening.ongoing,
   );
 

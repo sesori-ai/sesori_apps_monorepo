@@ -130,7 +130,7 @@ class PullRequestMergeService({
         _readiness.assess(snapshot: snapshot).eligible;
     return _step(
       snapshot: snapshot,
-      state: state.copyWith(reportedError: state.retry?.error, autoMergeNotice: null, restoreAfterReport: false),
+      state: state.copyWith(reportedRetry: state.retry, mergeAttempt: null, restoreAfterReport: false),
       need: restore ? PullRequestReportNeed.afterQuiet : PullRequestReportNeed.none,
     );
   }
@@ -147,12 +147,12 @@ class PullRequestMergeService({
   }) async {
     final change = await setStandaloneReady(target: target, ready: ready);
     final changed = _withReadyLabel(snapshot: snapshot, ready: ready);
-    final next = _cleared(state: state).copyWith(autoMergeNotice: null, resetPending: false, restoreAfterReport: false);
+    final next = _cleared(state: state).copyWith(mergeAttempt: null, resetPending: false, restoreAfterReport: false);
     if (ready) {
       return (
         step: _step(snapshot: changed, state: next),
         change: PullRequestMarkedReady(
-          autoMergeNotice: autoMerge ? await _merge(target: target, snapshot: changed) : null,
+          mergeAttempt: autoMerge ? await _merge(target: target, snapshot: changed) : null,
         ),
       );
     }
@@ -172,7 +172,7 @@ class PullRequestMergeService({
   Future<PullRequestReadyChange> setStandaloneReady({required PullRequestTarget target, required bool ready}) async {
     if (!ready) return PullRequestUnmarkedReady(wasCarried: await _actions.removeReadyLabel(target: target));
     await _actions.addReadyLabel(target: target);
-    return const PullRequestMarkedReady(autoMergeNotice: null);
+    return const PullRequestMarkedReady(mergeAttempt: null);
   }
 
   /// Turning auto-merge on removes an existing ready label, so a handoff made
@@ -224,18 +224,16 @@ class PullRequestMergeService({
       }
     } on Exception catch (error, stackTrace) {
       Log.w("PR monitor: readiness automation failed for ${target.displayKey}", error, stackTrace);
-      final message = 'could not ${ready ? "add" : "remove"} label "$agentReadyLabel": $error';
-      final retry = state.retry;
+      final previous = state.retry;
+      final retry = PullRequestReadinessRetry(
+        ready: ready,
+        baseline: previous != null && previous.ready == ready ? previous.baseline : snapshot,
+        cause: error,
+      );
       return _step(
         snapshot: snapshot,
-        state: state.copyWith(
-          retry: PullRequestReadinessRetry(
-            ready: ready,
-            baseline: retry != null && retry.ready == ready ? retry.baseline : snapshot,
-            error: message,
-          ),
-        ),
-        need: message == state.reportedError ? PullRequestReportNeed.none : PullRequestReportNeed.now,
+        state: state.copyWith(retry: retry),
+        need: retry.sameFailureAs(other: state.reportedRetry) ? PullRequestReportNeed.none : PullRequestReportNeed.now,
       );
     }
     final changed = _withReadyLabel(snapshot: snapshot, ready: ready);
@@ -244,43 +242,34 @@ class PullRequestMergeService({
     return _step(
       snapshot: changed,
       state: next.copyWith(
-        autoMergeNotice: await _merge(target: target, snapshot: changed),
+        mergeAttempt: await _merge(target: target, snapshot: changed),
       ),
     );
   }
 
   /// The one squash merge a ready label from this service allows, at
-  /// [snapshot]'s head and title, as report text.
-  Future<String> _merge({required PullRequestTarget target, required PullRequestSnapshot snapshot}) async {
+  /// [snapshot]'s head and title.
+  Future<PullRequestMergeAttempt> _merge({
+    required PullRequestTarget target,
+    required PullRequestSnapshot snapshot,
+  }) async {
     final head = snapshot.headSha;
     final outcome = await _actions.squashMerge(target: target, headSha: head, title: snapshot.title);
     switch (outcome) {
-      case PullRequestMerged(:final labelError):
-        final merged = "Auto-merge succeeded: squash-merged ${target.displayKey} at $head using only the PR title.";
-        const label = PullRequestActionRepository.mergedLabel;
-        return labelError == null
-            ? '$merged Label "$label" added.'
-            : '$merged Warning: could not add label "$label": $labelError';
-      case PullRequestMergeHeadChanged(:final actualHeadSha):
+      case PullRequestMerged():
+        break;
+      case PullRequestMergeHeadChanged():
         Log.i("PR monitor: auto-merge of ${target.displayKey} canceled, the head moved from $head");
-        final reason = actualHeadSha == null
-            ? "GitHub rejected the accepted head $head with HTTP 409 before confirming the merge"
-            : "the PR head changed from $head to $actualHeadSha before GitHub confirmed the merge";
-        return "Auto-merge was canceled because the accepted head changed; the monitor will reassess readiness on its "
-            "next poll: $reason";
       case PullRequestMergeRejected(:final reason, :final cause):
         Log.w("PR monitor: auto-merge of ${target.displayKey} failed: $reason", cause);
-        return "Auto-merge failed after the ready label was added; the ready label remains and no automatic retry "
-            "will occur: $reason";
       case PullRequestMergeOutcomeUnknown(:final detail, :final cause):
         Log.w("PR monitor: auto-merge outcome of ${target.displayKey} is unknown: $detail", cause);
-        return "Auto-merge outcome is unknown after the ready label was added; the ready label remains and no "
-            "automatic retry will occur: $detail";
     }
+    return PullRequestMergeAttempt(headSha: head, outcome: outcome);
   }
 
   PullRequestMergeState _cleared({required PullRequestMergeState state}) =>
-      state.copyWith(retry: null, reportedError: null);
+      state.copyWith(retry: null, reportedRetry: null);
 
   /// [snapshot] as if GitHub already showed the label change.
   PullRequestSnapshot _withReadyLabel({required PullRequestSnapshot snapshot, required bool ready}) =>

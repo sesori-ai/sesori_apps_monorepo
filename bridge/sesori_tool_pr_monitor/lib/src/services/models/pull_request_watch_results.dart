@@ -1,6 +1,7 @@
 import "../../models/gh_cli_exception.dart";
 import "../../models/pull_request_target.dart";
 import "../../repositories/models/pull_request_snapshot.dart";
+import "pull_request_merge_state.dart";
 
 /// How a request to watch a PR ended.
 sealed class const PullRequestWatchStart();
@@ -78,8 +79,9 @@ final class const PullRequestWatchStatuses({
 /// What `mark_pr_ready` or `unmark_pr_ready` changed.
 sealed class const PullRequestReadyChange();
 
-/// [autoMergeNotice] is the merge attempt's result, when auto-merge is on.
-final class const PullRequestMarkedReady({required final String? autoMergeNotice}) extends PullRequestReadyChange;
+/// [mergeAttempt] is the merge it made, when auto-merge is on.
+final class const PullRequestMarkedReady({required final PullRequestMergeAttempt? mergeAttempt})
+    extends PullRequestReadyChange;
 
 final class const PullRequestUnmarkedReady({required final bool wasCarried}) extends PullRequestReadyChange;
 

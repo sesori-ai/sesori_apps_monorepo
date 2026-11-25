@@ -964,6 +964,7 @@ class Orchestrator({
     const pullRequestActivity = PullRequestActivityCalculator();
     const pullRequestReadiness = PullRequestReadinessCalculator(activity: pullRequestActivity);
     final pullRequestActions = PullRequestActionRepository(api: ghCliApi);
+    const pullRequestReports = PullRequestReportBuilder(activity: pullRequestActivity, readiness: pullRequestReadiness);
     final pullRequestWatchService = PullRequestWatchService(
       snapshots: PullRequestSnapshotRepository(api: ghCliApi),
       actions: pullRequestActions,
@@ -971,7 +972,7 @@ class Orchestrator({
       host: pullRequestMonitorHost,
       activity: pullRequestActivity,
       readiness: pullRequestReadiness,
-      reports: const PullRequestReportBuilder(activity: pullRequestActivity, readiness: pullRequestReadiness),
+      reports: pullRequestReports,
       feedback: const PullRequestFeedbackBuilder(readiness: pullRequestReadiness),
       merges: PullRequestMergeService(actions: pullRequestActions, readiness: pullRequestReadiness),
       clock: clock,
@@ -983,6 +984,7 @@ class Orchestrator({
       PullRequestMonitorToolGroup(
         watches: pullRequestWatchService,
         poller: PullRequestPollListener(service: pullRequestWatchService, host: pullRequestMonitorHost),
+        reports: pullRequestReports,
       ),
     ];
     // Launches grant groups by SesoriToolGroupIds before these are built.

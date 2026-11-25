@@ -40,6 +40,7 @@ void main() {
     group = PullRequestMonitorToolGroup(
       watches: service,
       poller: PullRequestPollListener(service: service, host: host),
+      reports: reports,
     );
   });
 

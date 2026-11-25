@@ -1982,6 +1982,7 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
   const activity = PullRequestActivityCalculator();
   const readiness = PullRequestReadinessCalculator(activity: activity);
   final actions = PullRequestActionRepository(api: api);
+  const reports = PullRequestReportBuilder(activity: activity, readiness: readiness);
   final service = PullRequestWatchService(
     snapshots: PullRequestSnapshotRepository(api: api),
     actions: actions,
@@ -1989,7 +1990,7 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
     host: host,
     activity: activity,
     readiness: readiness,
-    reports: const PullRequestReportBuilder(activity: activity, readiness: readiness),
+    reports: reports,
     feedback: const PullRequestFeedbackBuilder(readiness: readiness),
     merges: PullRequestMergeService(actions: actions, readiness: readiness),
     clock: const Clock(),
@@ -1997,5 +1998,6 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
   return PullRequestMonitorToolGroup(
     watches: service,
     poller: PullRequestPollListener(service: service, host: host),
+    reports: reports,
   );
 }

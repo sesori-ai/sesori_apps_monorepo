@@ -1,7 +1,10 @@
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_baseline.dart";
 import "../repositories/models/pull_request_ci_phase.dart";
+import "../repositories/models/pull_request_merge_outcome.dart";
 import "../repositories/models/pull_request_snapshot.dart";
+import "../repositories/pull_request_action_repository.dart";
+import "models/pull_request_merge_state.dart";
 import "pull_request_activity_calculator.dart";
 import "pull_request_readiness_calculator.dart";
 
@@ -34,8 +37,8 @@ class const PullRequestReportBuilder({
     required PullRequestBaseline? baseline,
     required int? forcedHoldMinutes,
     required bool autoMergeEnabled,
-    required String? readinessError,
-    required String? autoMergeNotice,
+    required PullRequestReadinessRetry? readinessFailure,
+    required PullRequestMergeAttempt? mergeAttempt,
     required PullRequestReportOpening opening,
   }) {
     final stateSuffix = switch (snapshot.state) {
@@ -62,8 +65,8 @@ class const PullRequestReportBuilder({
         target: target,
         snapshot: snapshot,
         autoMergeEnabled: autoMergeEnabled,
-        readinessError: readinessError,
-        autoMergeNotice: autoMergeNotice,
+        readinessFailure: readinessFailure,
+        mergeAttempt: mergeAttempt,
       ),
       if (snapshot.labels.isNotEmpty) "- Labels: ${snapshot.labels.join(", ")}",
       ?switch (snapshot.state) {
@@ -124,7 +127,7 @@ class const PullRequestReportBuilder({
     required PullRequestSnapshot? snapshot,
     required String reason,
     required bool autoMergeEnabled,
-    required String? readinessError,
+    required PullRequestReadinessRetry? readinessFailure,
   }) => [
     "[PR Monitor] [${target.displayKey}](${target.url}) — $reason",
     if (snapshot != null)
@@ -132,8 +135,8 @@ class const PullRequestReportBuilder({
         target: target,
         snapshot: snapshot,
         autoMergeEnabled: autoMergeEnabled,
-        readinessError: readinessError,
-        autoMergeNotice: null,
+        readinessFailure: readinessFailure,
+        mergeAttempt: null,
       ),
   ].join("\n");
 
@@ -153,7 +156,7 @@ class const PullRequestReportBuilder({
     required PullRequestSnapshot snapshot,
     required int idleMinutes,
     required bool autoMergeEnabled,
-    required String? readinessError,
+    required PullRequestReadinessRetry? readinessFailure,
   }) {
     final unresolved = snapshot.reviewThreads.where((thread) => !thread.isResolved).length;
     return [
@@ -167,11 +170,40 @@ class const PullRequestReportBuilder({
         target: target,
         snapshot: snapshot,
         autoMergeEnabled: autoMergeEnabled,
-        readinessError: readinessError,
-        autoMergeNotice: null,
+        readinessFailure: readinessFailure,
+        mergeAttempt: null,
       ),
       if (autoMergeEnabled && _readiness.hasReadyLabel(snapshot: snapshot)) _stuckMergeLine(target: target),
     ].join("\n");
+  }
+
+  /// What a failed automatic label change was trying to do, and why it failed.
+  String readinessFailureText({required PullRequestReadinessRetry retry}) =>
+      'could not ${retry.ready ? "add" : "remove"} label "$agentReadyLabel": ${retry.cause}';
+
+  /// The result of the one squash merge a ready label allowed.
+  String mergeAttemptText({required PullRequestTarget target, required PullRequestMergeAttempt attempt}) {
+    final head = attempt.headSha;
+    switch (attempt.outcome) {
+      case PullRequestMerged(:final labelError):
+        final merged = "Auto-merge succeeded: squash-merged ${target.displayKey} at $head using only the PR title.";
+        const label = PullRequestActionRepository.mergedLabel;
+        return labelError == null
+            ? '$merged Label "$label" added.'
+            : '$merged Warning: could not add label "$label": $labelError';
+      case PullRequestMergeHeadChanged(:final actualHeadSha):
+        final reason = actualHeadSha == null
+            ? "GitHub rejected the accepted head $head with HTTP 409 before confirming the merge"
+            : "the PR head changed from $head to $actualHeadSha before GitHub confirmed the merge";
+        return "Auto-merge was canceled because the accepted head changed; the monitor will reassess readiness on its "
+            "next poll: $reason";
+      case PullRequestMergeRejected(:final reason):
+        return "Auto-merge failed after the ready label was added; the ready label remains and no automatic retry "
+            "will occur: $reason";
+      case PullRequestMergeOutcomeUnknown(:final detail):
+        return "Auto-merge outcome is unknown after the ready label was added; the ready label remains and no "
+            "automatic retry will occur: $detail";
+    }
   }
 
   static const String _autoMergeLine =
@@ -212,8 +244,8 @@ class const PullRequestReportBuilder({
     required PullRequestTarget target,
     required PullRequestSnapshot snapshot,
     required bool autoMergeEnabled,
-    required String? readinessError,
-    required String? autoMergeNotice,
+    required PullRequestReadinessRetry? readinessFailure,
+    required PullRequestMergeAttempt? mergeAttempt,
   }) {
     final ready = _readiness.hasReadyLabel(snapshot: snapshot);
     final blockers = ready || snapshot.state != PullRequestState.open
@@ -225,8 +257,8 @@ class const PullRequestReportBuilder({
       else
         '- Ready: NO — label "$agentReadyLabel" is absent.',
       if (autoMergeEnabled) _autoMergeLine,
-      if (readinessError != null) "- Readiness automation failed: $readinessError",
-      if (autoMergeNotice != null) "- $autoMergeNotice",
+      if (readinessFailure != null) "- Readiness automation failed: ${readinessFailureText(retry: readinessFailure)}",
+      if (mergeAttempt != null) "- ${mergeAttemptText(target: target, attempt: mergeAttempt)}",
       if (blockers.isNotEmpty) "- Automatic readiness blocked by: ${blockers.join("; ")}.",
       if (!ready && snapshot.state == PullRequestState.open) _requiredNextStepLine(target: target),
     ];

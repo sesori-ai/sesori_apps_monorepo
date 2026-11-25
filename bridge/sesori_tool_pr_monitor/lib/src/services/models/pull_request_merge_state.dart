@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../repositories/models/pull_request_merge_outcome.dart";
 import "../../repositories/models/pull_request_snapshot.dart";
 
 part "pull_request_merge_state.freezed.dart";
@@ -13,10 +14,10 @@ sealed class PullRequestMergeState with _$PullRequestMergeState {
     required PullRequestReadinessRetry? retry,
 
     /// The failure the last report showed; a different one reports at once.
-    required String? reportedError,
+    required PullRequestReadinessRetry? reportedRetry,
 
-    /// The automatic merge attempt's result, for the next report only.
-    required String? autoMergeNotice,
+    /// The automatic merge attempt, for the next report only.
+    required PullRequestMergeAttempt? mergeAttempt,
 
     /// Turning auto-merge on removed the label from an eligible PR. Until new
     /// activity, readiness waits for the agent's own judgment.
@@ -29,23 +30,34 @@ sealed class PullRequestMergeState with _$PullRequestMergeState {
 
   static const PullRequestMergeState initial = PullRequestMergeState(
     retry: null,
-    reportedError: null,
-    autoMergeNotice: null,
+    reportedRetry: null,
+    mergeAttempt: null,
     resetPending: false,
     restoreAfterReport: false,
   );
 }
 
 /// [ready] is the label state a failed change wanted, [baseline] the PR as
-/// it was at the first failure, and [error] the report text.
-@freezed
-sealed class PullRequestReadinessRetry with _$PullRequestReadinessRetry {
-  const factory({
-    required bool ready,
-    required PullRequestSnapshot baseline,
-    required String error,
-  }) = _PullRequestReadinessRetry;
+/// it was at the first failure, and [cause] the latest failure.
+final class const PullRequestReadinessRetry({
+  required final bool ready,
+  required final PullRequestSnapshot baseline,
+  required final Exception cause,
+}) {
+  /// Whether [other] failed the same way, so a report need not repeat it.
+  /// Exceptions have no value equality; their type and text identify them.
+  bool sameFailureAs({required PullRequestReadinessRetry? other}) =>
+      other != null &&
+      other.ready == ready &&
+      other.cause.runtimeType == cause.runtimeType &&
+      other.cause.toString() == cause.toString();
 }
+
+/// The one squash merge a ready label allowed, at [headSha].
+final class const PullRequestMergeAttempt({
+  required final String headSha,
+  required final PullRequestMergeOutcome outcome,
+});
 
 /// When the PR needs a report because of a readiness change.
 enum PullRequestReportNeed() {
