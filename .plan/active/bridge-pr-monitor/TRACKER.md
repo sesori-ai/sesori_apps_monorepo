@@ -139,8 +139,8 @@
   list in dark mode.
 - Step 14.b as built: the desktop sidebar's "Pull requests" row (always
   shown, red count at its end) opens `AppRoute.pullRequests()`, a page over
-  the main pane (`PullRequestWatchesPage`) reporting the `pull_requests`
-  screen. The phone registers no such route: it uses the sheet. Loads retry
+  the main pane (`PullRequestWatchesPage`) reporting the `sessions` screen
+  (the warehouse's screen set is closed). The phone registers no such route: it uses the sheet. Loads retry
   through `ScheduledTaskRefreshDispatcher` (its name is now broader than its
   use; rename it only if a third user appears).
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite

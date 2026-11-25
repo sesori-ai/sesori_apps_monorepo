@@ -112,6 +112,7 @@ extension on AppRoute {
     return switch (this) {
       AppRouteArchivedSessions() ||
       AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
+      AppRoutePullRequests() => throw StateError("The phone shows pull requests in a sheet, not a route"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteHome() => const HomeScreen(),

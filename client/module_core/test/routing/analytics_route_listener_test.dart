@@ -147,7 +147,7 @@ void main() {
         AnalyticsScreen.scheduledTasks,
         AnalyticsScreen.scheduledTaskDetail,
         AnalyticsScreen.scheduledTaskEditor,
-        AnalyticsScreen.pullRequests,
+        AnalyticsScreen.sessions,
       ],
     );
     expect(AppRouteDef.values, hasLength(sequence.length + 1));
