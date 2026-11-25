@@ -4,6 +4,7 @@ import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
+import 'package:sesori_shared/sesori_shared.dart' show SleepPreventionStatus;
 import 'package:test/test.dart';
 
 void main() {
@@ -59,8 +60,10 @@ void main() {
         warningLogger: (_, [_, _]) {},
       );
 
+      expect(await service.status(), SleepPreventionStatus.off);
       expect(await service.update(enabled: true), isTrue);
       expect(wakeLockClient.enableCalls, equals(1));
+      expect(await service.status(), SleepPreventionStatus.awake);
       expect((await repository.readCommittedSettings()).sleepPrevention, SleepPreventionMode.always);
       expect(settingsApi.writtenConfigs.last, contains('"sleepPrevention": "always"'));
 
@@ -85,6 +88,7 @@ void main() {
 
       expect(appliedMode, SleepPreventionMode.always);
       expect(wakeLockClient.enableCalls, equals(1));
+      expect(await service.status(), SleepPreventionStatus.failed);
     });
 
     test('returns configured mode when disabling wake lock fails', () async {
@@ -343,7 +347,7 @@ class _FakeWakeLockRepository({
   int disableCalls = 0;
 
   @override
-  bool get isEnabled => enableCalls > disableCalls;
+  bool get isHeld => !failEnable && enableCalls > disableCalls;
 
   @override
   Future<void> enable() async {

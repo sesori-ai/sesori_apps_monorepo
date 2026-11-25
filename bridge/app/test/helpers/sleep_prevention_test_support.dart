@@ -18,16 +18,16 @@ SleepPreventionService createTestSleepPreventionService({
 
 class RecordingWakeLockRepository() implements WakeLockRepository {
   @override
-  bool isEnabled = false;
+  bool isHeld = false;
 
   @override
   bool get preventsLidCloseSleep => true;
 
   @override
-  Future<void> enable() async => isEnabled = true;
+  Future<void> enable() async => isHeld = true;
 
   @override
-  Future<void> disable() async => isEnabled = false;
+  Future<void> disable() async => isHeld = false;
 }
 
 class _DesktopDeviceTypeDetector() implements DeviceTypeDetector {

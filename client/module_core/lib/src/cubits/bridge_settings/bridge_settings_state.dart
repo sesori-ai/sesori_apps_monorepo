@@ -122,9 +122,24 @@ final class const ReleaseTrackMutationUncertain({required final ApiError refresh
 /// Whether the bridge keeps its computer from going to sleep. A change
 /// applies right away.
 final class const PreventSleepSettings({
-  required final bool enabled,
+  required final PreventSleepStatus status,
   required final PreventSleepMutationState mutation,
-});
+}) {
+  /// The stored choice, whether or not the wake lock holds.
+  bool get enabled => status != PreventSleepStatus.off;
+}
+
+enum PreventSleepStatus() {
+  /// The computer may sleep.
+  off,
+
+  /// The bridge keeps the computer awake.
+  awake,
+
+  /// The choice is on, but the computer refused the wake lock and can still
+  /// sleep.
+  failed,
+}
 
 sealed class const PreventSleepMutationState();
 

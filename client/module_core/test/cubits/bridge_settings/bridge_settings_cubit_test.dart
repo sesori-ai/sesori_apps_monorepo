@@ -176,14 +176,38 @@ void main() {
   });
 
   group("prevent sleep", () {
-    test("a bridge that does not report the setting has no row", () async {
-      when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false, preventSleep: null));
+    test("a bridge that does not report the setting, or reports a status this app does not know, has no row", () async {
+      for (final status in [null, SleepPreventionStatus.unknown]) {
+        when(service.load).thenAnswer((_) async => _loadResult(yoloEnabled: false, preventSleep: status));
+        final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
+
+        await _waitForState<BridgeSettingsReady>(cubit);
+
+        expect((cubit.state as BridgeSettingsReady).preventSleep, isNull);
+        await cubit.close();
+      }
+    });
+
+    test("turning it on reloads to learn whether the computer stays awake", () async {
+      var loads = 0;
+      when(service.load).thenAnswer(
+        (_) async => _loadResult(
+          yoloEnabled: false,
+          preventSleep: loads++ == 0 ? SleepPreventionStatus.off : SleepPreventionStatus.failed,
+        ),
+      );
+      when(() => service.updatePreventSleep(enabled: true)).thenAnswer(
+        (_) async => const PreventSleepSettingsMutationCommitted(enabled: true),
+      );
       final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
       addTearDown(cubit.close);
-
       await _waitForState<BridgeSettingsReady>(cubit);
 
-      expect((cubit.state as BridgeSettingsReady).preventSleep, isNull);
+      await cubit.updatePreventSleep(enabled: true, expectedState: cubit.state as BridgeSettingsReady);
+
+      expect(_preventSleepOf(cubit).status, PreventSleepStatus.failed);
+      expect(_preventSleepOf(cubit).enabled, isTrue);
+      expect(_preventSleepOf(cubit).mutation, isA<PreventSleepMutationIdle>());
     });
 
     test("remembers the row through a failed load and a dropped connection", () async {
@@ -592,7 +616,7 @@ BridgeSettingsLoadSupported _loadResult({
   bool? agentToolsEnabled = true,
   List<BridgeToolGroupSetting> toolGroups = const [_prMonitor],
   BridgeReleaseTrack? releaseTrack = BridgeReleaseTrack.stable,
-  bool? preventSleep = true,
+  SleepPreventionStatus? preventSleep = SleepPreventionStatus.awake,
 }) {
   return BridgeSettingsLoadSupported(
     response: BridgeSettingsResponse(

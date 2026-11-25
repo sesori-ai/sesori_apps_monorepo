@@ -54,7 +54,8 @@ class BridgeSettingsRepository({
       agentToolsEnabled: settings.agentTools,
       // ReleaseTrackSettingsService adds it for an install that updates itself.
       releaseTrack: null,
-      preventSleep: settings.preventsSleep,
+      // SleepPreventionService adds it, with whether the wake lock holds.
+      preventSleep: null,
     );
   }
 

@@ -557,7 +557,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
-          preventSleep: true,
+          preventSleep: SleepPreventionStatus.awake,
         ),
       ),
     );
@@ -569,7 +569,9 @@ void main() {
 
     expect(find.text("Keep computer awake"), findsOneWidget);
     expect(
-      find.text("Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes."),
+      find.text(
+        "Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.",
+      ),
       findsOneWidget,
     );
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isTrue);
@@ -579,6 +581,27 @@ void main() {
 
     verify(() => bridgeSettingsService.updatePreventSleep(enabled: false)).called(1);
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isFalse);
+  });
+
+  testWidgets("says when the computer couldn't be kept awake", (tester) async {
+    _useTallSurface(tester);
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: null,
+          preventSleep: SleepPreventionStatus.failed,
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("The computer couldn't be kept awake, so it can still sleep."), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isTrue);
   });
 
   testWidgets("a bridge that does not update itself has no Internal builds row", (tester) async {

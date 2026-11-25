@@ -425,26 +425,34 @@ class BridgeSettingsCubit({
 
     _operationInProgress = true;
     final operationEpoch = _connectionEpoch;
-    final currentEnabled = preventSleep.enabled;
-    emit(_withPreventSleep(state: current, enabled: currentEnabled, mutation: const PreventSleepMutationInProgress()));
+    final currentStatus = preventSleep.status;
+    emit(_withPreventSleep(state: current, status: currentStatus, mutation: const PreventSleepMutationInProgress()));
     try {
       final result = await _service.updatePreventSleep(enabled: enabled);
       if (!_canPublish(operationEpoch: operationEpoch)) return;
       switch (result) {
-        case PreventSleepSettingsMutationCommitted(enabled: final committed):
-          emit(_withPreventSleep(state: current, enabled: committed, mutation: const PreventSleepMutationIdle()));
+        case PreventSleepSettingsMutationCommitted(enabled: false):
+          emit(
+            _withPreventSleep(
+              state: current,
+              status: PreventSleepStatus.off,
+              mutation: const PreventSleepMutationIdle(),
+            ),
+          );
+        case PreventSleepSettingsMutationCommitted(enabled: true):
+          await _loadAfterKeepingAwake(current: current, operationEpoch: operationEpoch);
         case PreventSleepSettingsMutationFailure(:final error):
           emit(
             _withPreventSleep(
               state: current,
-              enabled: currentEnabled,
+              status: currentStatus,
               mutation: PreventSleepMutationFailed(error: error),
             ),
           );
         case PreventSleepSettingsMutationUncertain():
           await _reconcilePreventSleep(
             current: current,
-            currentEnabled: currentEnabled,
+            currentStatus: currentStatus,
             operationEpoch: operationEpoch,
           );
       }
@@ -453,7 +461,7 @@ class BridgeSettingsCubit({
       emit(
         _withPreventSleep(
           state: current,
-          enabled: currentEnabled,
+          status: currentStatus,
           mutation: PreventSleepMutationFailed(error: ApiError.dartHttpClient(error)),
         ),
       );
@@ -462,9 +470,28 @@ class BridgeSettingsCubit({
     }
   }
 
+  /// The bridge took the choice; reloads to learn whether the computer
+  /// granted the wake lock.
+  Future<void> _loadAfterKeepingAwake({required BridgeSettingsReady current, required int operationEpoch}) async {
+    try {
+      final result = await _service.load();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      if (result is! BridgeSettingsLoadFailure) {
+        _publishLoad(result: result);
+        return;
+      }
+    } on Object catch (_) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+    }
+    // The choice is committed; a failed wake lock shows on the next load.
+    emit(
+      _withPreventSleep(state: current, status: PreventSleepStatus.awake, mutation: const PreventSleepMutationIdle()),
+    );
+  }
+
   Future<void> _reconcilePreventSleep({
     required BridgeSettingsReady current,
-    required bool currentEnabled,
+    required PreventSleepStatus currentStatus,
     required int operationEpoch,
   }) async {
     ApiError refreshError;
@@ -484,7 +511,7 @@ class BridgeSettingsCubit({
     emit(
       _withPreventSleep(
         state: current,
-        enabled: currentEnabled,
+        status: currentStatus,
         mutation: PreventSleepMutationUncertain(refreshError: refreshError),
       ),
     );
@@ -574,8 +601,20 @@ class BridgeSettingsCubit({
               null => null,
             },
             preventSleep: switch (response.preventSleep) {
-              final bool enabled => PreventSleepSettings(enabled: enabled, mutation: const PreventSleepMutationIdle()),
-              null => null,
+              SleepPreventionStatus.off => const PreventSleepSettings(
+                status: PreventSleepStatus.off,
+                mutation: PreventSleepMutationIdle(),
+              ),
+              SleepPreventionStatus.awake => const PreventSleepSettings(
+                status: PreventSleepStatus.awake,
+                mutation: PreventSleepMutationIdle(),
+              ),
+              SleepPreventionStatus.failed => const PreventSleepSettings(
+                status: PreventSleepStatus.failed,
+                mutation: PreventSleepMutationIdle(),
+              ),
+              // A status from a newer bridge: leave the row out.
+              SleepPreventionStatus.unknown || null => null,
             },
           ),
         );
@@ -643,7 +682,7 @@ class BridgeSettingsCubit({
 
   BridgeSettingsReady _withPreventSleep({
     required BridgeSettingsReady state,
-    required bool enabled,
+    required PreventSleepStatus status,
     required PreventSleepMutationState mutation,
   }) {
     return BridgeSettingsReady(
@@ -652,7 +691,7 @@ class BridgeSettingsCubit({
       pluginWarmupMutation: state.pluginWarmupMutation,
       agentTools: state.agentTools,
       releaseTrack: state.releaseTrack,
-      preventSleep: PreventSleepSettings(enabled: enabled, mutation: mutation),
+      preventSleep: PreventSleepSettings(status: status, mutation: mutation),
     );
   }
 

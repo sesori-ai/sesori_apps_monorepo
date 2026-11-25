@@ -698,6 +698,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.';
 
   @override
+  String get settingsPreventSleepNotHeld => 'The computer couldn\'t be kept awake, so it can still sleep.';
+
+  @override
   String get settingsPreventSleepUncertain => 'The update status is unknown. Refresh before trying again.';
 
   @override

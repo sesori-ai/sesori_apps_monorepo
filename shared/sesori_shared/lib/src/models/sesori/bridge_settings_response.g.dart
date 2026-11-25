@@ -32,7 +32,11 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
         json['releaseTrack'],
         unknownValue: BridgeReleaseTrack.unknown,
       ),
-      preventSleep: json['preventSleep'] as bool?,
+      preventSleep: $enumDecodeNullable(
+        _$SleepPreventionStatusEnumMap,
+        json['preventSleep'],
+        unknownValue: SleepPreventionStatus.unknown,
+      ),
     );
 
 Map<String, dynamic> _$BridgeSettingsResponseToJson(
@@ -44,11 +48,18 @@ Map<String, dynamic> _$BridgeSettingsResponseToJson(
   'agentToolsEnabled': ?instance.agentToolsEnabled,
   'toolGroups': instance.toolGroups.map((e) => e.toJson()).toList(),
   'releaseTrack': ?_$BridgeReleaseTrackEnumMap[instance.releaseTrack],
-  'preventSleep': ?instance.preventSleep,
+  'preventSleep': ?_$SleepPreventionStatusEnumMap[instance.preventSleep],
 };
 
 const _$BridgeReleaseTrackEnumMap = {
   BridgeReleaseTrack.stable: 'stable',
   BridgeReleaseTrack.internal: 'internal',
   BridgeReleaseTrack.unknown: 'unknown',
+};
+
+const _$SleepPreventionStatusEnumMap = {
+  SleepPreventionStatus.off: 'off',
+  SleepPreventionStatus.awake: 'awake',
+  SleepPreventionStatus.failed: 'failed',
+  SleepPreventionStatus.unknown: 'unknown',
 };

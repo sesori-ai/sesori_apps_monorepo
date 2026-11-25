@@ -1303,6 +1303,12 @@ abstract class AppLocalizations {
   /// **'Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.'**
   String get settingsPreventSleepDescription;
 
+  /// Shown under the Keep computer awake toggle while it is on but the bridge's computer refused to stay awake.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer couldn\'t be kept awake, so it can still sleep.'**
+  String get settingsPreventSleepNotHeld;
+
   /// No description provided for @settingsPreventSleepUncertain.
   ///
   /// In en, this message translates to:

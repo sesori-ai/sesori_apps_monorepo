@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/release_track_settings_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
+import "package:sesori_bridge/src/services/sleep_prevention_service.dart";
 import "package:sesori_bridge/src/services/tool_group_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_bridge/src/updater/foundation/release_track.dart";
@@ -28,6 +29,7 @@ void main() {
     late ToolGroupSettingsService toolGroups;
     late ReleaseTrackSettingsService releaseTrack;
     late RecordingWakeLockRepository wakeLock;
+    late SleepPreventionService sleepPrevention;
     late PatchBridgeSettingsHandler patchHandler;
 
     setUp(() async {
@@ -42,6 +44,10 @@ void main() {
       toolGroups = ToolGroupSettingsService(settings: repository, groups: [_FakeToolGroup()]);
       releaseTrack = ReleaseTrackSettingsService(settings: repository, updatesItself: true);
       wakeLock = RecordingWakeLockRepository();
+      sleepPrevention = createTestSleepPreventionService(
+        bridgeSettingsRepository: repository,
+        wakeLockRepository: wakeLock,
+      );
       patchHandler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: PullRequestRefreshSettingsService(
           bridgeSettingsRepository: repository,
@@ -52,10 +58,7 @@ void main() {
         ),
         toolGroupSettingsService: toolGroups,
         releaseTrackSettingsService: releaseTrack,
-        sleepPreventionService: createTestSleepPreventionService(
-          bridgeSettingsRepository: repository,
-          wakeLockRepository: wakeLock,
-        ),
+        sleepPreventionService: sleepPrevention,
       );
     });
 
@@ -67,6 +70,7 @@ void main() {
             settingsRepository: repository,
             toolGroupSettingsService: toolGroups,
             releaseTrackSettingsService: releaseTrack,
+            sleepPreventionService: sleepPrevention,
           ).routeForTest(
             makeRequest("GET", "/settings"),
           );
@@ -83,7 +87,8 @@ void main() {
             BridgeToolGroupSetting(id: "tasks", title: "Fake", summary: "Agents can fake.", enabled: true),
           ],
           releaseTrack: BridgeReleaseTrack.stable,
-          preventSleep: true,
+          // The default choice is on, and this test never took the wake lock.
+          preventSleep: SleepPreventionStatus.failed,
         ),
       );
     });
@@ -169,6 +174,7 @@ void main() {
         settingsRepository: repository,
         toolGroupSettingsService: toolGroups,
         releaseTrackSettingsService: releaseTrack,
+        sleepPreventionService: sleepPrevention,
       ).routeForTest(makeRequest("GET", "/settings"));
       final read = BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body")));
       expect(read.agentToolsEnabled, isFalse);
@@ -194,6 +200,7 @@ void main() {
         settingsRepository: repository,
         toolGroupSettingsService: toolGroups,
         releaseTrackSettingsService: releaseTrack,
+        sleepPreventionService: sleepPrevention,
       ).routeForTest(makeRequest("GET", "/settings"));
       expect(
         BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body"))).releaseTrack,
@@ -202,7 +209,7 @@ void main() {
     });
 
     test("PATCH lets the computer sleep right away and GET reports it", () async {
-      wakeLock.isEnabled = true;
+      wakeLock.isHeld = true;
       final response = await patchHandler.routeForTest(
         makeRequest(
           "PATCH",
@@ -216,16 +223,17 @@ void main() {
         BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body ?? fail("missing body"))),
         const BridgeSettingUpdate.preventSleep(enabled: false),
       );
-      expect(wakeLock.isEnabled, isFalse);
+      expect(wakeLock.isHeld, isFalse);
       expect(jsonDecodeMap(api.config ?? fail("missing stored settings"))["sleepPrevention"], "off");
       final settings = await GetBridgeSettingsHandler(
         settingsRepository: repository,
         toolGroupSettingsService: toolGroups,
         releaseTrackSettingsService: releaseTrack,
+        sleepPreventionService: sleepPrevention,
       ).routeForTest(makeRequest("GET", "/settings"));
       expect(
         BridgeSettingsResponse.fromJson(jsonDecodeMap(settings.body ?? fail("missing body"))).preventSleep,
-        isFalse,
+        SleepPreventionStatus.off,
       );
     });
 
@@ -247,6 +255,7 @@ void main() {
         settingsRepository: repository,
         toolGroupSettingsService: toolGroups,
         releaseTrackSettingsService: ReleaseTrackSettingsService(settings: repository, updatesItself: false),
+        sleepPreventionService: sleepPrevention,
       ).routeForTest(makeRequest("GET", "/settings"));
 
       final body = jsonDecodeMap(settings.body ?? fail("missing body"));

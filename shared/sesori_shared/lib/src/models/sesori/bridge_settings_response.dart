@@ -3,6 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "bridge_release_track.dart";
 import "bridge_tool_group_setting.dart";
 import "pull_request_refresh_settings.dart";
+import "sleep_prevention_status.dart";
 import "yolo_settings.dart";
 
 part "bridge_settings_response.freezed.dart";
@@ -42,10 +43,11 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
     // once the minimum supported bridge sends the track.
     @JsonKey(unknownEnumValue: BridgeReleaseTrack.unknown) required BridgeReleaseTrack? releaseTrack,
 
-    /// Whether the bridge keeps its computer from going to sleep while it runs.
+    /// Whether the bridge keeps its computer from going to sleep while it runs,
+    /// and whether its wake lock actually holds.
     // COMPATIBILITY 2026-11-25 (v1.16.0): v1.15.0 bridges omit this setting, and the app shows no row for them. Remove
-    // null handling and require a bool once the minimum supported bridge always sends it.
-    required bool? preventSleep,
+    // null handling and require the status once the minimum supported bridge always sends it.
+    @JsonKey(unknownEnumValue: SleepPreventionStatus.unknown) required SleepPreventionStatus? preventSleep,
   }) = _BridgeSettingsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);

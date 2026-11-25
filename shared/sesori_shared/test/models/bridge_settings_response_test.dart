@@ -12,7 +12,7 @@ void main() {
         BridgeToolGroupSetting(id: "tasks", title: "Scheduled tasks", summary: "Read tasks.", enabled: false),
       ],
       releaseTrack: BridgeReleaseTrack.internal,
-      preventSleep: true,
+      preventSleep: SleepPreventionStatus.failed,
     );
 
     expect(response.toJson(), {
@@ -24,7 +24,7 @@ void main() {
         {"id": "tasks", "title": "Scheduled tasks", "summary": "Read tasks.", "enabled": false},
       ],
       "releaseTrack": "internal",
-      "preventSleep": true,
+      "preventSleep": "failed",
     });
     expect(BridgeSettingsResponse.fromJson(response.toJson()), response);
   });

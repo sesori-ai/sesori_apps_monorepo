@@ -641,6 +641,8 @@
   "@settingsPreventSleepTitle": {"description": "Settings toggle that stops the connected bridge's computer from going to sleep while the bridge runs."},
   "settingsPreventSleepDescription": "Stops the computer from sleeping while the bridge runs. Some laptops still sleep when the lid closes.",
   "@settingsPreventSleepDescription": {"description": "Footnote under the Keep computer awake toggle: what it does, and that a closed laptop lid may still put the computer to sleep."},
+  "settingsPreventSleepNotHeld": "The computer couldn't be kept awake, so it can still sleep.",
+  "@settingsPreventSleepNotHeld": {"description": "Shown under the Keep computer awake toggle while it is on but the bridge's computer refused to stay awake."},
   "settingsPreventSleepUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPreventSleepUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPreventSleepRetry": "Retry keep computer awake setting",

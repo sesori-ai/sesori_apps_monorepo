@@ -606,15 +606,16 @@ void main() {
   });
 
   testWidgets("a connected bridge toggles Keep computer awake", (tester) async {
+    var loads = 0;
     when(bridgeSettingsService.load).thenAnswer(
-      (_) async => const BridgeSettingsLoadSupported(
+      (_) async => BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: null,
-          yolo: YoloSettingsResponse(enabled: false),
+          yolo: const YoloSettingsResponse(enabled: false),
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
-          preventSleep: false,
+          preventSleep: loads++ == 0 ? SleepPreventionStatus.off : SleepPreventionStatus.awake,
         ),
       ),
     );

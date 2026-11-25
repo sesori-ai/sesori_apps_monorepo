@@ -1,3 +1,5 @@
+import 'package:sesori_shared/sesori_shared.dart' show SleepPreventionStatus;
+
 import '../foundation/device_type_detector.dart';
 import '../foundation/warning_logger.dart';
 import '../repositories/bridge_settings.dart';
@@ -23,6 +25,16 @@ class SleepPreventionService({
     final committed = await _bridgeSettingsRepository.updatePreventSleep(enabled: enabled);
     await _apply(mode: committed.sleepPrevention);
     return committed.preventsSleep;
+  }
+
+  /// The stored choice, and for an "on" choice whether the wake lock holds.
+  Future<SleepPreventionStatus> status() async {
+    final settings = await _bridgeSettingsRepository.readCommittedSettings();
+    return switch (settings.sleepPrevention) {
+      SleepPreventionMode.off => SleepPreventionStatus.off,
+      SleepPreventionMode.always when _wakeLockRepository.isHeld => SleepPreventionStatus.awake,
+      SleepPreventionMode.always => SleepPreventionStatus.failed,
+    };
   }
 
   Future<void> _apply({required SleepPreventionMode mode}) async {

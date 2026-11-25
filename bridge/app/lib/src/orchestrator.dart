@@ -1033,6 +1033,7 @@ class Orchestrator({
           settingsRepository: _bridgeSettingsRepository,
           toolGroupSettingsService: toolGroupSettingsService,
           releaseTrackSettingsService: releaseTrackSettingsService,
+          sleepPreventionService: _sleepPreventionService,
         ),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PatchBridgeSettingsHandler(

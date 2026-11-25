@@ -325,11 +325,12 @@ class const _PreventSleepSettingsRow() extends StatelessWidget {
         key: const Key("prevent_sleep_setting"),
         icon: TablerRegular.coffee,
         title: Text(context.loc.settingsPreventSleepTitle),
-        subtitle: Text(switch (preventSleep?.mutation) {
-          PreventSleepMutationUncertain() => context.loc.settingsPreventSleepUncertain,
-          PreventSleepMutationFailed() => context.loc.settingsPreventSleepUpdateFailed,
-          PreventSleepMutationIdle() ||
-          PreventSleepMutationInProgress() ||
+        subtitle: Text(switch (preventSleep) {
+          PreventSleepSettings(mutation: PreventSleepMutationUncertain()) => context.loc.settingsPreventSleepUncertain,
+          PreventSleepSettings(mutation: PreventSleepMutationFailed()) => context.loc.settingsPreventSleepUpdateFailed,
+          PreventSleepSettings(status: PreventSleepStatus.failed, mutation: PreventSleepMutationIdle()) =>
+            context.loc.settingsPreventSleepNotHeld,
+          PreventSleepSettings(mutation: PreventSleepMutationIdle() || PreventSleepMutationInProgress()) ||
           null => context.loc.settingsPreventSleepDescription,
         }),
         trailing: switch (state) {
