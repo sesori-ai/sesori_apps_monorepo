@@ -90,9 +90,9 @@ No parity work came out of this run.
 
 - Pi probe pitfall: the fake `ProcessException` needs `errorCode` 2 (ENOENT), which
   `IoHostExecutableLocator.isProcessMissingError` checks (fixed in #2935).
-- Claude and Codex side-question probes: the reference said every refresh runs them live, but
-  they need a signed-in account or a local test provider, and offline runs carried them as
-  follow-ups. The reference now says so (this PR).
+- Claude side-question probe: the reference said every refresh runs it live, but it needs a
+  signed-in test account, and offline runs carry it as a follow-up. The reference now says so
+  (this PR).
 - OMP: the detached-spawn grep now also finds the language-server spawn in `lsp/client.ts`
   (expected); `git grep` over a full source clone can hit the 10-minute tool limit, so search the
   saved diff instead (this PR).
