@@ -73,9 +73,10 @@ class BridgeSesoriToolHostImpl({
           sessionId: sessionId,
           operation: SessionOperation.lookUpToolSessions,
         )).rootSessionId;
-      } on PluginOperationException {
+      } on PluginOperationException catch (error, stackTrace) {
         // Deleted between the two reads, or with broken ancestry: either way
         // it is no longer a session a group can act for.
+        Log.w("Left session $sessionId out of a ${_groupId.value} session lookup", error, stackTrace);
         continue;
       }
       found[sessionId] = SesoriToolSession(
