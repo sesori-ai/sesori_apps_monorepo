@@ -312,3 +312,18 @@ sealed class GhLabelDto with _$GhLabelDto {
 
   factory fromJson(Map<String, dynamic> json) => _$GhLabelDtoFromJson(json);
 }
+
+/// The `addPullRequestReviewThreadReply` mutation's payload.
+@Freezed(fromJson: true, toJson: false)
+sealed class GhThreadReplyDto with _$GhThreadReplyDto {
+  const factory({required GhThreadReplyCommentDto comment}) = _GhThreadReplyDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GhThreadReplyDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class GhThreadReplyCommentDto with _$GhThreadReplyCommentDto {
+  const factory({required String url}) = _GhThreadReplyCommentDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GhThreadReplyCommentDtoFromJson(json);
+}
