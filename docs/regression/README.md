@@ -182,6 +182,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Prego button interactions](prego-button-interactions.md)
 - [Projects and sessions](projects-and-sessions.md)
 - [Provider route conformance](provider-route-conformance.md)
+- [Pull request monitor](pull-request-monitor.md)
 - [Questions and permissions](questions-and-permissions.md)
 - [Quota auto continuation](quota-auto-continuation.md)
 - [Scheduled tasks](scheduled-tasks.md)

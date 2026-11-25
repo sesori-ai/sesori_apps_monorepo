@@ -16,7 +16,7 @@
 | 11 | ⚙️ Pi deferred tools and instructions; skills on Pi, Oh My Pi, Grok and Copilot | Done | #2922 |
 | 12 | ⚙️ Bridge projection, status and app actions | Done | #2923 |
 | 13 | ⚙️ App: row mark, composer chip and group toggles | Done | #2926 (13.a), #2927 (13.b) |
-| 14 | ⚙️ App: watched-PR list | In review | #2929 (14.a), 14.b (desktop) |
+| 14 | ⚙️ App: watched-PR list | Done | #2929 (14.a), #2930 (14.b) |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Not started | |
 | 17 | 🌿 Verify and retire | Not started | |
@@ -143,6 +143,12 @@
   (the warehouse's screen set is closed). The phone registers no such route: it uses the sheet. Loads retry
   through `ScheduledTaskRefreshDispatcher` (its name is now broader than its
   use; rename it only if a third user appears).
+- Step 16 as built: the PR monitor's bridge and app behaviour, tests, failure
+  signals and limits moved from `sesori-mcp.md` into
+  `docs/regression/pull-request-monitor.md`; `sesori-mcp.md` keeps the groups,
+  gating, the Agent tools settings, `get_guide` and skills, and links to it.
+  Its L3 row is the step 17 matrix; report delivery per harness is recorded as
+  not yet verified live in `HARNESS_CAPABILITIES.md`.
 - `test/bridge/sesori_mcp/goldens/tools_list.json` pins `tools/list`; rewrite
   it with `SESORI_UPDATE_GOLDENS=1` after an intended change.
 - Hermes gets the Sesori MCP from a separate PR outside this plan. The

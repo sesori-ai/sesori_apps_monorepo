@@ -25,6 +25,8 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_hermes` | Hermes implementation over ACP |
 | `sesori_plugin_grok` | Grok Build implementation over ACP |
 | `sesori_plugin_pi` | Pi backend implementation |
+| `sesori_tool_interface` | Contract between the bridge and a Sesori MCP tool group (`SesoriToolGroup`, `SesoriToolHost`) |
+| `sesori_tool_pr_monitor` | PR monitor tool group: watches GitHub pull requests through `gh` |
 | `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and plugin composition |
 
 ## Quick Start
@@ -96,6 +98,22 @@ resolve a compatible PATH binary or an existing pinned managed runtime before
 they are started, monitored, failed, and stopped independently. A plugin failure
 disables controls routed to that plugin but does not stop the relay, catalog
 browsing, or another plugin.
+
+### Sesori agent tools
+
+The bridge serves its own MCP tools to the agents in the sessions it launches, in
+groups that can be turned off one by one, here or in the app's bridge settings:
+
+```bash
+sesori-bridge config agent-tools off        # every group
+sesori-bridge config tool-group             # lists tasks, pages, wake_ups and pr_monitor
+sesori-bridge config tool-group pr_monitor off
+```
+
+The `pr_monitor` group needs the optional [GitHub CLI](https://cli.github.com)
+(`gh`), signed in with `gh auth login`. Without it the rest of the bridge works,
+and a PR monitor call says how to install or sign in. See
+[app/README.md](app/README.md#commands).
 
 ### Antigravity official runtime
 
