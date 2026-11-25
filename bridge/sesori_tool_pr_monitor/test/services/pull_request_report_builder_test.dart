@@ -10,6 +10,8 @@ String report({required PullRequestSnapshot snapshot, required PullRequestSnapsh
   baseline: baseline == null ? null : activity.baselineOf(snapshot: baseline),
   forcedHoldMinutes: null,
   autoMergeEnabled: false,
+  readinessError: null,
+  autoMergeNotice: null,
   opening: PullRequestReportOpening.ongoing,
 );
 
@@ -205,6 +207,8 @@ void main() {
           baseline: null,
           forcedHoldMinutes: forcedHoldMinutes,
           autoMergeEnabled: false,
+          readinessError: null,
+          autoMergeNotice: null,
           opening: PullRequestReportOpening.ongoing,
         )
         .split("\n")[1];
@@ -280,15 +284,20 @@ void main() {
     );
   });
 
-  test("the auto-merge line appears when auto-merge is on", () {
+  test("the auto-merge line, a readiness failure and the merge result appear in the report", () {
     final text = reports.buildReport(
       target: target,
       snapshot: emptySnapshot,
       baseline: null,
       forcedHoldMinutes: null,
       autoMergeEnabled: true,
+      readinessError: 'could not add label "agent-ready": boom',
+      autoMergeNotice: "Auto-merge succeeded: merged.",
       opening: PullRequestReportOpening.ongoing,
     );
+
+    expect(text, contains('- Readiness automation failed: could not add label "agent-ready": boom'));
+    expect(text, contains("\n- Auto-merge succeeded: merged."));
 
     expect(
       text,
@@ -307,12 +316,14 @@ void main() {
       snapshot: ready,
       idleMinutes: 25,
       autoMergeEnabled: true,
+      readinessError: null,
     );
     final unready = reports.buildIdleReminder(
       target: target,
       snapshot: emptySnapshot,
       idleMinutes: 25,
       autoMergeEnabled: false,
+      readinessError: null,
     );
 
     expect(reminder.split("\n").first, endsWith('— "test PR" — idle reminder'));

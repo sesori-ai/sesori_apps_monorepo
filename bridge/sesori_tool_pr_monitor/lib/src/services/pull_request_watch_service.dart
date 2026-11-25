@@ -11,9 +11,11 @@ import "../repositories/models/stored_pull_request_watch.dart";
 import "../repositories/pull_request_action_repository.dart";
 import "../repositories/pull_request_snapshot_repository.dart";
 import "../repositories/pull_request_watch_repository.dart";
+import "models/pull_request_merge_state.dart";
 import "models/pull_request_watch_results.dart";
 import "pull_request_activity_calculator.dart";
 import "pull_request_feedback_builder.dart";
+import "pull_request_merge_service.dart";
 import "pull_request_readiness_calculator.dart";
 import "pull_request_report_builder.dart";
 
@@ -34,6 +36,7 @@ class PullRequestWatchService({
   required final PullRequestReadinessCalculator _readiness,
   required final PullRequestReportBuilder _reports,
   required final PullRequestFeedbackBuilder _feedback,
+  required final PullRequestMergeService _merges,
   required final Clock _clock,
 }) {
   static const Duration pollInterval = Duration(seconds: 60);
@@ -66,7 +69,13 @@ class PullRequestWatchService({
     }
   }
 
-  Future<PullRequestWatchStart> watch({required String sessionId, required PullRequestTarget target}) async {
+  /// With [autoMerge], a ready label the PR already carries is removed
+  /// first, unless auto-merge already applied to it.
+  Future<PullRequestWatchStart> watch({
+    required String sessionId,
+    required PullRequestTarget target,
+    required bool autoMerge,
+  }) async {
     final String selfLogin;
     try {
       selfLogin = await _actions.selfLogin();
@@ -82,20 +91,32 @@ class PullRequestWatchService({
             status: _status(runtime: runtime, watch: existing),
           );
         }
-        final PullRequestSnapshot snapshot;
+        final PullRequestSnapshot fetched;
         try {
-          snapshot = await _snapshots.fetchSnapshot(target: target, selfLogin: selfLogin);
+          fetched = await _snapshots.fetchSnapshot(target: target, selfLogin: selfLogin);
         } on Exception catch (error) {
           return PullRequestFetchFailed(error: error);
         }
-        _applySnapshot(runtime: runtime, snapshot: snapshot);
+        var snapshot = await _applySnapshot(runtime: runtime, snapshot: fetched);
         if (snapshot.state != PullRequestState.open) return PullRequestAlreadyEnded(state: snapshot.state);
+        final readyLabelRemoved =
+            autoMerge && !_autoMerge(runtime: runtime) && _readiness.hasReadyLabel(snapshot: snapshot);
+        if (readyLabelRemoved) {
+          try {
+            snapshot = _applyStep(
+              runtime: runtime,
+              step: await _merges.resetForAutoMerge(target: target, snapshot: snapshot, state: runtime.merge),
+            );
+          } on Exception catch (error) {
+            return PullRequestReadyResetFailed(error: error);
+          }
+        }
         final stored = StoredPullRequestWatch(
           owner: target.owner,
           repo: target.repo,
           number: target.number,
           title: snapshot.title,
-          autoMerge: false,
+          autoMerge: autoMerge,
           baseline: _activity.baselineOf(snapshot: snapshot),
           lastReportAt: _clock.now(),
         );
@@ -109,8 +130,12 @@ class PullRequestWatchService({
             baseline: null,
             forcedHoldMinutes: null,
             autoMergeEnabled: _autoMerge(runtime: runtime),
+            readinessError: runtime.merge.retry?.error,
+            autoMergeNotice: null,
             opening: PullRequestReportOpening.watchStarted,
           ),
+          autoMerge: _autoMerge(runtime: runtime),
+          readyLabelRemoved: readyLabelRemoved,
         );
       },
     );
@@ -144,12 +169,9 @@ class PullRequestWatchService({
       operation: () async {
         final watch = runtime.watches[sessionId];
         if (watch == null) return const PullRequestNotWatched();
+        final PullRequestSnapshot fetched;
         try {
-          final snapshot = await _snapshots.fetchSnapshot(
-            target: runtime.target,
-            selfLogin: await _actions.selfLogin(),
-          );
-          _applySnapshot(runtime: runtime, snapshot: snapshot);
+          fetched = await _snapshots.fetchSnapshot(target: runtime.target, selfLogin: await _actions.selfLogin());
         } on Exception catch (error) {
           return switch (runtime.snapshot) {
             null => PullRequestReportUnavailable(error: error),
@@ -159,12 +181,89 @@ class PullRequestWatchService({
             ),
           };
         }
-        final snapshot = runtime.snapshot;
+        var snapshot = await _applySnapshot(runtime: runtime, snapshot: fetched);
+        if (runtime.dirty) snapshot = await _prepareReport(runtime: runtime, snapshot: snapshot);
         // An unwatch while the fetch ran must not be undone.
-        if (snapshot == null || !_isCurrent(runtime: runtime, watch: watch)) return const PullRequestNotWatched();
+        if (!_isCurrent(runtime: runtime, watch: watch)) return const PullRequestNotWatched();
         final report = _render(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: null);
         await _recordReport(runtime: runtime, watch: watch, snapshot: snapshot);
         return PullRequestReportFresh(report: report);
+      },
+    );
+  }
+
+  /// `mark_pr_ready` or `unmark_pr_ready`. On a watched PR it also settles
+  /// readiness, and with auto-merge on a mark makes the one merge attempt; on
+  /// any other PR it only changes the label. Throws when the label change
+  /// fails.
+  Future<PullRequestReadyChange> setReady({
+    required String sessionId,
+    required PullRequestTarget target,
+    required bool ready,
+  }) async {
+    final runtime = _runtimes[target.registryKey];
+    if (runtime == null) return await _merges.setStandaloneReady(target: target, ready: ready);
+    return await _run(
+      runtime: runtime,
+      operation: () async {
+        if (runtime.watches.isEmpty) return await _merges.setStandaloneReady(target: target, ready: ready);
+        final result = await _merges.setReady(
+          target: target,
+          snapshot: await _currentSnapshot(runtime: runtime),
+          ready: ready,
+          autoMerge: _autoMerge(runtime: runtime),
+          state: runtime.merge,
+        );
+        final snapshot = _applyStep(runtime: runtime, step: result.step);
+        if (runtime.watches[sessionId] case final watch?) {
+          await _saveIfCurrent(
+            runtime: runtime,
+            watch: watch,
+            stored: _acknowledged(stored: watch.stored, snapshot: snapshot),
+          );
+        }
+        return result.change;
+      },
+    );
+  }
+
+  /// Turns auto-merge on or off for [sessionId]'s watch. When that turns it
+  /// on for the PR, a ready label the PR carries is removed so that only a
+  /// fresh judgment merges it. Throws when that removal fails.
+  Future<PullRequestAutoMergeResult> setAutoMerge({
+    required String sessionId,
+    required PullRequestTarget target,
+    required bool enabled,
+  }) async {
+    final runtime = _runtimes[target.registryKey];
+    if (runtime == null || !runtime.watches.containsKey(sessionId)) return const PullRequestAutoMergeNotWatched();
+    return await _run(
+      runtime: runtime,
+      operation: () async {
+        final watch = runtime.watches[sessionId];
+        if (watch == null) return const PullRequestAutoMergeNotWatched();
+        if (watch.stored.autoMerge == enabled) return PullRequestAutoMergeUnchanged(enabled: enabled);
+        var stored = watch.stored.copyWith(autoMerge: enabled);
+        var readyLabelRemoved = false;
+        if (enabled && !_autoMerge(runtime: runtime)) {
+          final snapshot = await _currentSnapshot(runtime: runtime);
+          if (snapshot.state == PullRequestState.open && _readiness.hasReadyLabel(snapshot: snapshot)) {
+            final reset = _applyStep(
+              runtime: runtime,
+              step: await _merges.resetForAutoMerge(target: target, snapshot: snapshot, state: runtime.merge),
+            );
+            stored = _acknowledged(stored: stored, snapshot: reset);
+            readyLabelRemoved = true;
+          }
+        }
+        if (!await _saveIfCurrent(runtime: runtime, watch: watch, stored: stored)) {
+          return const PullRequestAutoMergeNotWatched();
+        }
+        return PullRequestAutoMergeSet(
+          enabled: enabled,
+          effective: _autoMerge(runtime: runtime),
+          readyLabelRemoved: readyLabelRemoved,
+        );
       },
     );
   }
@@ -241,14 +340,28 @@ class PullRequestWatchService({
       return;
     }
     runtime.consecutiveFailures = 0;
-    _applySnapshot(runtime: runtime, snapshot: snapshot);
-    _sendDue(runtime: runtime, snapshot: snapshot);
+    await _sendDue(
+      runtime: runtime,
+      snapshot: await _applySnapshot(runtime: runtime, snapshot: snapshot),
+    );
   }
 
-  /// Updates the PR's activity clock from [snapshot] (spec §4). The first
-  /// snapshot after a restart is compared with each watch's stored baseline
-  /// instead of a previous poll.
-  void _applySnapshot({required _PullRequestRuntime runtime, required PullRequestSnapshot snapshot}) {
+  /// The last poll, or a fresh one after a restart.
+  Future<PullRequestSnapshot> _currentSnapshot({required _PullRequestRuntime runtime}) async =>
+      runtime.snapshot ??
+      await _applySnapshot(
+        runtime: runtime,
+        snapshot: await _snapshots.fetchSnapshot(target: runtime.target, selfLogin: await _actions.selfLogin()),
+      );
+
+  /// Updates the PR's activity clock and readiness from [snapshot] (spec
+  /// §4, §6) and returns the PR as it now stands. The first snapshot after a
+  /// restart is compared with each watch's stored baseline instead of a
+  /// previous poll, and has no earlier state to invalidate readiness against.
+  Future<PullRequestSnapshot> _applySnapshot({
+    required _PullRequestRuntime runtime,
+    required PullRequestSnapshot snapshot,
+  }) async {
     final previous = runtime.snapshot;
     var activity = false;
     var ciFailure = false;
@@ -300,11 +413,63 @@ class PullRequestWatchService({
     runtime
       ..snapshot = snapshot
       ..lastPolledAt = _clock.now();
+    var current = snapshot;
+    if (previous != null) {
+      current = _applyStep(
+        runtime: runtime,
+        step: await _merges.applyPoll(
+          target: runtime.target,
+          previous: previous,
+          next: snapshot,
+          lastDefiniteMergeable: runtime.lastDefiniteMergeable,
+          activity: activity,
+          autoMerge: _autoMerge(runtime: runtime),
+          state: runtime.merge,
+        ),
+      );
+    }
     if (snapshot.mergeable != PullRequestMergeable.unknown) runtime.lastDefiniteMergeable = snapshot.mergeable;
+    return current;
   }
 
+  /// Takes on a readiness step's state and snapshot and the report it calls
+  /// for, and returns the snapshot.
+  PullRequestSnapshot _applyStep({required _PullRequestRuntime runtime, required PullRequestMergeStep step}) {
+    runtime
+      ..merge = step.state
+      ..snapshot = step.snapshot;
+    switch (step.need) {
+      case PullRequestReportNeed.none:
+        break;
+      case PullRequestReportNeed.afterQuiet:
+        runtime
+          ..dirty = true
+          ..lastActivityAt = _clock.now()
+          ..holdStartedAt = null;
+      case PullRequestReportNeed.now:
+        runtime
+          ..dirty = true
+          ..urgent = true
+          ..holdStartedAt = null;
+    }
+    return step.snapshot;
+  }
+
+  Future<PullRequestSnapshot> _prepareReport({
+    required _PullRequestRuntime runtime,
+    required PullRequestSnapshot snapshot,
+  }) async => _applyStep(
+    runtime: runtime,
+    step: await _merges.prepareReport(
+      target: runtime.target,
+      snapshot: snapshot,
+      autoMerge: _autoMerge(runtime: runtime),
+      state: runtime.merge,
+    ),
+  );
+
   /// Sends each watch its report once one is due, or its idle reminder.
-  void _sendDue({required _PullRequestRuntime runtime, required PullRequestSnapshot snapshot}) {
+  Future<void> _sendDue({required _PullRequestRuntime runtime, required PullRequestSnapshot snapshot}) async {
     final now = _clock.now();
     if (!runtime.dirty) {
       _sendIdleReminders(runtime: runtime, snapshot: snapshot, now: now);
@@ -320,14 +485,18 @@ class PullRequestWatchService({
         forcedHoldMinutes = held.inMinutes;
       }
     }
+    final current = await _prepareReport(runtime: runtime, snapshot: snapshot);
+    // A readiness failure or merge result is news even with the PR unchanged.
+    final merge = runtime.merge;
+    final readinessNews = merge.autoMergeNotice != null || merge.retry?.error != merge.reportedError;
     // A watch whose previous report still waits gets this activity in its
     // next one, so the PR stays due until every watch has had it.
     var waiting = false;
     for (final watch in [...runtime.watches.values]) {
       if (watch.delivering) {
         waiting = true;
-      } else if (!_activity.covers(baseline: watch.stored.baseline, snapshot: snapshot)) {
-        _deliverReport(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: forcedHoldMinutes);
+      } else if (readinessNews || !_activity.covers(baseline: watch.stored.baseline, snapshot: current)) {
+        _deliverReport(runtime: runtime, watch: watch, snapshot: current, forcedHoldMinutes: forcedHoldMinutes);
       }
     }
     if (!waiting) {
@@ -335,6 +504,10 @@ class PullRequestWatchService({
         ..dirty = false
         ..urgent = false
         ..holdStartedAt = null;
+      _applyStep(
+        runtime: runtime,
+        step: _merges.afterReport(snapshot: current, state: runtime.merge),
+      );
     }
   }
 
@@ -381,6 +554,7 @@ class PullRequestWatchService({
           snapshot: snapshot,
           idleMinutes: idle.inMinutes,
           autoMergeEnabled: autoMerge,
+          readinessError: runtime.merge.retry?.error,
         ),
         timing: SesoriToolNoticeTiming.afterTurn,
         // Repeats one delay later while the PR stays still.
@@ -490,6 +664,7 @@ class PullRequestWatchService({
             snapshot: runtime.snapshot,
             reason: reason,
             autoMergeEnabled: watch.stored.autoMerge,
+            readinessError: runtime.merge.retry?.error,
           ),
           timing: SesoriToolNoticeTiming.derived,
           claim: null,
@@ -515,6 +690,8 @@ class PullRequestWatchService({
     baseline: watch.stored.baseline,
     forcedHoldMinutes: forcedHoldMinutes,
     autoMergeEnabled: _autoMerge(runtime: runtime),
+    readinessError: runtime.merge.retry?.error,
+    autoMergeNotice: runtime.merge.autoMergeNotice,
     opening: watch.resumed ? PullRequestReportOpening.resumed : PullRequestReportOpening.ongoing,
   );
 
@@ -530,6 +707,15 @@ class PullRequestWatchService({
       autoMerge: watch.stored.autoMerge,
     );
   }
+
+  /// A tool call changed the label, so the caller already knows that state.
+  StoredPullRequestWatch _acknowledged({
+    required StoredPullRequestWatch stored,
+    required PullRequestSnapshot snapshot,
+  }) => stored.copyWith(
+    baseline: stored.baseline.copyWith(ready: _readiness.hasReadyLabel(snapshot: snapshot)),
+    lastReportAt: _clock.now(),
+  );
 
   /// Auto-merge applies to the PR when any of its watches has it on.
   bool _autoMerge({required _PullRequestRuntime runtime}) =>
@@ -581,6 +767,7 @@ class _PullRequestRuntime({required final PullRequestTarget target, required var
   bool urgent = false;
   DateTime? holdStartedAt;
   String? ciFailureReportedSha;
+  PullRequestMergeState merge = PullRequestMergeState.initial;
 
   Future<void> queue = Future<void>.value();
   int pendingOperations = 0;

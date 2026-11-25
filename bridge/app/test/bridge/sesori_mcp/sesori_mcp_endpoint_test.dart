@@ -415,6 +415,9 @@ void main() {
           "get_pr_report",
           "get_pr_feedback",
           "reply_on_pr",
+          "mark_pr_ready",
+          "unmark_pr_ready",
+          "set_pr_auto_merge",
           "get_guide",
         ],
       );
@@ -1978,15 +1981,17 @@ PullRequestMonitorToolGroup _pullRequestMonitorGroup({required SesoriToolHost ho
   final api = GhCliApi(commandExecutor: FakeCommandExecutor(results: {}));
   const activity = PullRequestActivityCalculator();
   const readiness = PullRequestReadinessCalculator(activity: activity);
+  final actions = PullRequestActionRepository(api: api);
   final service = PullRequestWatchService(
     snapshots: PullRequestSnapshotRepository(api: api),
-    actions: PullRequestActionRepository(api: api),
+    actions: actions,
     watches: PullRequestWatchRepository(store: host.store),
     host: host,
     activity: activity,
     readiness: readiness,
     reports: const PullRequestReportBuilder(activity: activity, readiness: readiness),
     feedback: const PullRequestFeedbackBuilder(readiness: readiness),
+    merges: PullRequestMergeService(actions: actions, readiness: readiness),
     clock: const Clock(),
   );
   return PullRequestMonitorToolGroup(

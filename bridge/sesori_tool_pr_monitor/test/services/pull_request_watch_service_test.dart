@@ -2,9 +2,11 @@ import "package:clock/clock.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart";
 import "package:sesori_tool_pr_monitor/src/listeners/pull_request_poll_listener.dart";
 import "package:sesori_tool_pr_monitor/src/models/gh_cli_exception.dart";
+import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_merge_outcome.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:sesori_tool_pr_monitor/src/repositories/pull_request_watch_repository.dart";
 import "package:sesori_tool_pr_monitor/src/services/models/pull_request_watch_results.dart";
+import "package:sesori_tool_pr_monitor/src/services/pull_request_merge_service.dart";
 import "package:sesori_tool_pr_monitor/src/services/pull_request_watch_service.dart";
 import "package:test/test.dart";
 
@@ -18,23 +20,28 @@ class _Harness() {
     ..addSession(sessionId: "s1")
     ..addSession(sessionId: "s2");
   final FakeSnapshots snapshots = FakeSnapshots();
+  final FakeActions actions = FakeActions();
   late PullRequestWatchService service = build();
 
   /// A fresh service over the same store, as after a bridge restart.
   PullRequestWatchService build() => PullRequestWatchService(
     snapshots: snapshots,
-    actions: FakeActions(),
+    actions: actions,
     watches: PullRequestWatchRepository(store: store),
     host: host,
     activity: activity,
     readiness: readiness,
     reports: reports,
     feedback: feedback,
+    merges: PullRequestMergeService(actions: actions, readiness: readiness),
     clock: Clock(() => now),
   );
 
-  Future<void> watch({required String sessionId}) async {
-    expect(await service.watch(sessionId: sessionId, target: target), isA<PullRequestWatchStarted>());
+  Future<void> watch({required String sessionId, bool autoMerge = false}) async {
+    expect(
+      await service.watch(sessionId: sessionId, target: target, autoMerge: autoMerge),
+      isA<PullRequestWatchStarted>(),
+    );
   }
 
   /// Moves time on by [after] and runs one poll tick.
@@ -296,10 +303,10 @@ void main() {
 
   test("a merged PR cannot be watched, and a second watch from a session reports the first", () async {
     await h.watch(sessionId: "s1");
-    expect(await h.service.watch(sessionId: "s1", target: target), isA<PullRequestAlreadyWatched>());
+    expect(await h.service.watch(sessionId: "s1", target: target, autoMerge: false), isA<PullRequestAlreadyWatched>());
 
     h.snapshots.enqueue(emptySnapshot.copyWith(state: PullRequestState.merged));
-    expect(await h.service.watch(sessionId: "s2", target: target), isA<PullRequestAlreadyEnded>());
+    expect(await h.service.watch(sessionId: "s2", target: target, autoMerge: false), isA<PullRequestAlreadyEnded>());
     expect(h.store.sessionRecords["s2"], isNull);
   });
 
@@ -319,5 +326,190 @@ void main() {
     await pumpEventQueue();
     await enabled.dispose();
     expect(h.snapshots.fetches, hasLength(fetches + 1));
+  });
+
+  group("readiness and auto-merge", () {
+    final passing = emptySnapshot.copyWith(
+      checks: [check(name: "build", outcome: PullRequestCheckOutcome.success)],
+    );
+    final ready = passing.copyWith(labels: [agentReadyLabel]);
+
+    /// CI concludes green, and the quiet report that follows is due.
+    Future<void> settle({required PullRequestSnapshot snapshot}) async {
+      h.snapshots.enqueue(snapshot);
+      await h.poll();
+      await h.poll(after: const Duration(minutes: 2));
+    }
+
+    test("a quiet eligible report labels the PR, and with auto-merge on makes one merge at the head", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
+      await settle(snapshot: passing);
+
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+      final report = h.host.sent.single.guidance;
+      expect(report, contains('- Ready: YES — label "agent-ready" is present.'));
+      expect(
+        report,
+        contains(
+          "- Auto-merge succeeded: squash-merged sesori/example#42 at head-1 using only the PR title. "
+          'Label "automatically-merged" added.',
+        ),
+      );
+
+      h.snapshots.enqueue(ready.copyWith(state: PullRequestState.merged));
+      await h.poll();
+      expect(h.host.sent, hasLength(2));
+      expect(h.host.sent.last.guidance, isNot(contains("Auto-merge succeeded")), reason: "the notice shows once");
+      expect(h.store.sessionRecords["s1"], isEmpty);
+    });
+
+    test("without auto-merge the label hands the PR to a human: no merge and no idle reminder", () async {
+      await h.watch(sessionId: "s1");
+      await settle(snapshot: passing);
+      expect(h.actions.calls, ["add label"]);
+
+      h.snapshots.enqueue(ready);
+      await h.poll(after: const Duration(minutes: 40));
+      expect(h.host.sent, hasLength(1));
+    });
+
+    test("auto-merge applies to the PR when any watcher has it on", () async {
+      await h.watch(sessionId: "s1");
+      await h.watch(sessionId: "s2", autoMerge: true);
+      expect(
+        await h.service.setAutoMerge(sessionId: "s2", target: target, enabled: true),
+        isA<PullRequestAutoMergeUnchanged>(),
+      );
+      await settle(snapshot: passing);
+
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+      expect(h.sentTo, ["s1", "s2"]);
+      for (final notice in h.host.sent) {
+        expect(notice.guidance, contains("- Auto-merge: ENABLED"));
+        expect(notice.guidance, contains("- Auto-merge succeeded"));
+      }
+      expect([for (final watch in h.store.sessionRecords.values) watch.values.single["autoMerge"]], [false, true]);
+    });
+
+    test("one watcher turning auto-merge off leaves it on while another has it", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
+      await h.watch(sessionId: "s2", autoMerge: true);
+
+      expect(
+        await h.service.setAutoMerge(sessionId: "s1", target: target, enabled: false),
+        isA<PullRequestAutoMergeSet>().having((result) => result.effective, "effective", isTrue),
+      );
+      expect(h.service.statusOf(sessionId: "s1").watches.single.autoMerge, isFalse);
+      expect(
+        await h.service.setAutoMerge(sessionId: "s2", target: target, enabled: false),
+        isA<PullRequestAutoMergeSet>().having((result) => result.effective, "effective", isFalse),
+      );
+      expect(
+        await h.service.setAutoMerge(sessionId: "gone", target: target, enabled: true),
+        isA<PullRequestAutoMergeNotWatched>(),
+      );
+    });
+
+    test("turning auto-merge on removes the ready label and waits for new activity to label again", () async {
+      await h.watch(sessionId: "s1");
+      h.snapshots.enqueue(ready);
+      await h.poll();
+
+      expect(
+        await h.service.setAutoMerge(sessionId: "s1", target: target, enabled: true),
+        isA<PullRequestAutoMergeSet>().having((result) => result.readyLabelRemoved, "readyLabelRemoved", isTrue),
+      );
+      h.snapshots.enqueue(passing);
+      await h.poll(after: const Duration(minutes: 2));
+      expect(h.actions.calls, ["remove label"], reason: "the removed handoff waits for a fresh judgment");
+      expect(h.host.sent.single.guidance, contains("- Ready: NO"));
+
+      await settle(snapshot: passing.copyWith(headSha: "head-2"));
+      expect(h.actions.calls, ["remove label", "add label", "merge head-2"]);
+    });
+
+    test("a push withdraws the ready label at once, and a later quiet report adds it back", () async {
+      await h.watch(sessionId: "s1");
+      await settle(snapshot: ready);
+      expect(h.host.sent, hasLength(1));
+
+      h.snapshots.enqueue(
+        ready.copyWith(
+          headSha: "head-2",
+          checks: [check(name: "build", outcome: PullRequestCheckOutcome.pending)],
+        ),
+      );
+      await h.poll();
+      expect(h.actions.calls, ["remove label"]);
+      expect(h.host.sent, hasLength(2), reason: "the withdrawal reports without a quiet window");
+      expect(h.host.sent.last.guidance, contains("- Ready: NO"));
+
+      await settle(snapshot: passing.copyWith(headSha: "head-2"));
+      expect(h.actions.calls, ["remove label", "add label"]);
+      expect(h.host.sent.last.guidance, contains("- Ready: YES"));
+    });
+
+    test("a failed label change reports at once, retries each poll, and reports again once it works", () async {
+      await h.watch(sessionId: "s1");
+      h.actions.labelFailure = const GhCliCommandFailedException(exitCode: 1, httpStatus: 403, detail: "forbidden");
+      await settle(snapshot: passing);
+      expect(
+        h.host.sent.single.guidance,
+        contains('- Readiness automation failed: could not add label "agent-ready": GitHub CLI (gh) failed: forbidden'),
+      );
+
+      await h.poll();
+      expect(h.actions.calls, ["add label", "add label"]);
+      expect(h.host.sent, hasLength(1), reason: "the same failure is not reported twice");
+
+      h.actions.labelFailure = null;
+      await h.poll();
+      expect(h.host.sent, hasLength(2));
+      expect(h.host.sent.last.guidance, contains("- Ready: YES"));
+      expect(h.host.sent.last.guidance, isNot(contains("Readiness automation failed")));
+    });
+
+    test("mark_pr_ready with auto-merge on merges at the last polled head and returns the outcome", () async {
+      await h.watch(sessionId: "s1", autoMerge: true);
+      h.actions.mergeOutcome = const PullRequestMergeRejected(reason: "Required review is missing", cause: null);
+
+      expect(
+        await h.service.setReady(sessionId: "s1", target: target, ready: true),
+        isA<PullRequestMarkedReady>().having(
+          (change) => change.autoMergeNotice,
+          "autoMergeNotice",
+          "Auto-merge failed after the ready label was added; the ready label remains and no automatic retry will "
+              "occur: Required review is missing",
+        ),
+      );
+      expect(h.actions.calls, ["add label", "merge head-1"]);
+      expect(h.service.statusOf(sessionId: "s1").watches.single.ready, isTrue);
+    });
+
+    test("mark_pr_ready on a PR nobody watches only changes the label", () async {
+      expect(
+        await h.service.setReady(sessionId: "s1", target: target, ready: true),
+        isA<PullRequestMarkedReady>().having((change) => change.autoMergeNotice, "autoMergeNotice", isNull),
+      );
+      h.actions.carriesReadyLabel = false;
+      expect(
+        await h.service.setReady(sessionId: "s1", target: target, ready: false),
+        isA<PullRequestUnmarkedReady>().having((change) => change.wasCarried, "wasCarried", isFalse),
+      );
+      expect(h.actions.calls, ["add label", "remove label"]);
+      expect(h.snapshots.fetches, isEmpty);
+    });
+
+    test("unmarking a PR that still qualifies labels it again after the next quiet report", () async {
+      await h.watch(sessionId: "s1");
+      await h.service.setReady(sessionId: "s1", target: target, ready: true);
+      await h.service.setReady(sessionId: "s1", target: target, ready: false);
+      await h.poll();
+      expect(h.actions.calls, ["add label", "remove label"]);
+
+      await h.poll(after: const Duration(minutes: 2));
+      expect(h.actions.calls, ["add label", "remove label", "add label"]);
+      expect(h.host.sent.single.guidance, contains("- Ready: YES"));
+    });
   });
 }

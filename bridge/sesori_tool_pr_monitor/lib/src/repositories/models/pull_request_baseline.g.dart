@@ -24,6 +24,7 @@ _PullRequestBaseline _$PullRequestBaselineFromJson(Map json) => _PullRequestBase
   ),
   resolvedThreadIds: (json['resolvedThreadIds'] as List<dynamic>).map((e) => e as String).toSet(),
   unresolvedThreadCount: (json['unresolvedThreadCount'] as num).toInt(),
+  ready: json['ready'] as bool,
 );
 
 Map<String, dynamic> _$PullRequestBaselineToJson(
@@ -43,6 +44,7 @@ Map<String, dynamic> _$PullRequestBaselineToJson(
   ),
   'resolvedThreadIds': instance.resolvedThreadIds.toList(),
   'unresolvedThreadCount': instance.unresolvedThreadCount,
+  'ready': instance.ready,
 };
 
 const _$PullRequestStateEnumMap = {

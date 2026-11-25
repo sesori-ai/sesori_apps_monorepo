@@ -34,6 +34,8 @@ class const PullRequestReportBuilder({
     required PullRequestBaseline? baseline,
     required int? forcedHoldMinutes,
     required bool autoMergeEnabled,
+    required String? readinessError,
+    required String? autoMergeNotice,
     required PullRequestReportOpening opening,
   }) {
     final stateSuffix = switch (snapshot.state) {
@@ -56,7 +58,13 @@ class const PullRequestReportBuilder({
         _reviewSummaryLine(fresh: newReviewSummaries),
       _inlineLine(snapshot: snapshot, baseline: baseline),
       _issueLine(snapshot: snapshot, fresh: newIssue),
-      ..._readinessLines(target: target, snapshot: snapshot, autoMergeEnabled: autoMergeEnabled),
+      ..._readinessLines(
+        target: target,
+        snapshot: snapshot,
+        autoMergeEnabled: autoMergeEnabled,
+        readinessError: readinessError,
+        autoMergeNotice: autoMergeNotice,
+      ),
       if (snapshot.labels.isNotEmpty) "- Labels: ${snapshot.labels.join(", ")}",
       ?switch (snapshot.state) {
         PullRequestState.open => null,
@@ -116,9 +124,17 @@ class const PullRequestReportBuilder({
     required PullRequestSnapshot? snapshot,
     required String reason,
     required bool autoMergeEnabled,
+    required String? readinessError,
   }) => [
     "[PR Monitor] [${target.displayKey}](${target.url}) — $reason",
-    if (snapshot != null) ..._readinessLines(target: target, snapshot: snapshot, autoMergeEnabled: autoMergeEnabled),
+    if (snapshot != null)
+      ..._readinessLines(
+        target: target,
+        snapshot: snapshot,
+        autoMergeEnabled: autoMergeEnabled,
+        readinessError: readinessError,
+        autoMergeNotice: null,
+      ),
   ].join("\n");
 
   String _startupAssessmentLine({required PullRequestTarget target}) =>
@@ -137,6 +153,7 @@ class const PullRequestReportBuilder({
     required PullRequestSnapshot snapshot,
     required int idleMinutes,
     required bool autoMergeEnabled,
+    required String? readinessError,
   }) {
     final unresolved = snapshot.reviewThreads.where((thread) => !thread.isResolved).length;
     return [
@@ -146,7 +163,13 @@ class const PullRequestReportBuilder({
       _mergeableLine(snapshot: snapshot),
       _reviewLine(snapshot: snapshot),
       "- [comment:inline] ${_countLabel(count: unresolved, singular: "unresolved thread")}",
-      ..._readinessLines(target: target, snapshot: snapshot, autoMergeEnabled: autoMergeEnabled),
+      ..._readinessLines(
+        target: target,
+        snapshot: snapshot,
+        autoMergeEnabled: autoMergeEnabled,
+        readinessError: readinessError,
+        autoMergeNotice: null,
+      ),
       if (autoMergeEnabled && _readiness.hasReadyLabel(snapshot: snapshot)) _stuckMergeLine(target: target),
     ].join("\n");
   }
@@ -189,6 +212,8 @@ class const PullRequestReportBuilder({
     required PullRequestTarget target,
     required PullRequestSnapshot snapshot,
     required bool autoMergeEnabled,
+    required String? readinessError,
+    required String? autoMergeNotice,
   }) {
     final ready = _readiness.hasReadyLabel(snapshot: snapshot);
     final blockers = ready || snapshot.state != PullRequestState.open
@@ -200,6 +225,8 @@ class const PullRequestReportBuilder({
       else
         '- Ready: NO — label "$agentReadyLabel" is absent.',
       if (autoMergeEnabled) _autoMergeLine,
+      if (readinessError != null) "- Readiness automation failed: $readinessError",
+      if (autoMergeNotice != null) "- $autoMergeNotice",
       if (blockers.isNotEmpty) "- Automatic readiness blocked by: ${blockers.join("; ")}.",
       if (!ready && snapshot.state == PullRequestState.open) _requiredNextStepLine(target: target),
     ];

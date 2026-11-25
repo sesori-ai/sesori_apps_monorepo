@@ -10,6 +10,12 @@ final class const PullRequestWatchStarted({
 
   /// The first report, where every existing comment counts as new.
   required final String report,
+
+  /// Whether auto-merge applies to the PR, from this watch or another.
+  required final bool autoMerge,
+
+  /// Turning auto-merge on removed a ready label the PR already carried.
+  required final bool readyLabelRemoved,
 }) extends PullRequestWatchStart;
 
 final class const PullRequestAlreadyWatched({required final PullRequestWatchStatus status})
@@ -24,6 +30,10 @@ final class const PullRequestFetchFailed({required final Exception error}) exten
 
 /// The PR is already merged or closed, so there is nothing to watch.
 final class const PullRequestAlreadyEnded({required final PullRequestState state}) extends PullRequestWatchStart;
+
+/// Auto-merge was asked for, but the ready label the PR carried could not be
+/// removed, so no watch started.
+final class const PullRequestReadyResetFailed({required final Exception error}) extends PullRequestWatchStart;
 
 /// How a request for a watched PR's report ended.
 sealed class const PullRequestReportResult();
@@ -64,3 +74,28 @@ final class const PullRequestWatchStatuses({
   /// Every PR this bridge polls, for any session.
   required final int watchedPullRequests,
 });
+
+/// What `mark_pr_ready` or `unmark_pr_ready` changed.
+sealed class const PullRequestReadyChange();
+
+/// [autoMergeNotice] is the merge attempt's result, when auto-merge is on.
+final class const PullRequestMarkedReady({required final String? autoMergeNotice}) extends PullRequestReadyChange;
+
+final class const PullRequestUnmarkedReady({required final bool wasCarried}) extends PullRequestReadyChange;
+
+/// How `set_pr_auto_merge` ended.
+sealed class const PullRequestAutoMergeResult();
+
+final class const PullRequestAutoMergeNotWatched() extends PullRequestAutoMergeResult;
+
+final class const PullRequestAutoMergeUnchanged({required final bool enabled}) extends PullRequestAutoMergeResult;
+
+final class const PullRequestAutoMergeSet({
+  required final bool enabled,
+
+  /// Whether auto-merge now applies to the PR, from this watch or another.
+  required final bool effective,
+
+  /// Turning auto-merge on removed a ready label the PR already carried.
+  required final bool readyLabelRemoved,
+}) extends PullRequestAutoMergeResult;

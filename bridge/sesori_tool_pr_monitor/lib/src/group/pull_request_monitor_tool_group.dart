@@ -60,7 +60,11 @@ class PullRequestMonitorToolGroup({
         arguments: arguments,
         run: (target) async => _watchResult(
           target: target,
-          result: await _watches.watch(sessionId: sessionId, target: target),
+          result: await _watches.watch(
+            sessionId: sessionId,
+            target: target,
+            autoMerge: _flag(value: arguments["auto_merge"], field: "auto_merge") ?? false,
+          ),
         ),
       ),
       PullRequestMonitorTool.unwatchPr => _withTarget(
@@ -111,6 +115,41 @@ class PullRequestMonitorToolGroup({
           );
         },
       ),
+      PullRequestMonitorTool.markPrReady => _withTarget(
+        arguments: arguments,
+        run: (target) => _attempt(
+          failure: "Cannot mark ${target.displayKey} as ready",
+          run: () async => _readyText(
+            target: target,
+            change: await _watches.setReady(sessionId: sessionId, target: target, ready: true),
+          ),
+        ),
+      ),
+      PullRequestMonitorTool.unmarkPrReady => _withTarget(
+        arguments: arguments,
+        run: (target) => _attempt(
+          failure: "Cannot withdraw the ready label from ${target.displayKey}",
+          run: () async => _readyText(
+            target: target,
+            change: await _watches.setReady(sessionId: sessionId, target: target, ready: false),
+          ),
+        ),
+      ),
+      PullRequestMonitorTool.setPrAutoMerge => _withTarget(
+        arguments: arguments,
+        run: (target) {
+          final enabled = _flag(value: arguments["enabled"], field: "enabled");
+          if (enabled == null) throw const InvalidToolArguments(reason: "enabled is required.");
+          return _attempt(
+            failure: "Cannot change auto-merge for ${target.displayKey}",
+            run: () async => _autoMergeText(
+              target: target,
+              enabled: enabled,
+              result: await _watches.setAutoMerge(sessionId: sessionId, target: target, enabled: enabled),
+            ),
+          );
+        },
+      ),
     };
   }
 
@@ -124,11 +163,64 @@ class PullRequestMonitorToolGroup({
     }
   }
 
+  /// A boolean argument, or null when absent; strict-schema providers may
+  /// send "" for it.
+  bool? _flag({required Object? value, required String field}) => switch (value) {
+    null || "" => null,
+    final bool flag => flag,
+    _ => throw InvalidToolArguments(reason: "$field must be true or false."),
+  };
+
   String? _text({required Object? value, required String field}) => switch (value) {
     null => null,
     final String text => text,
     _ => throw InvalidToolArguments(reason: "$field must be a string."),
   };
+
+  String _readyText({required PullRequestTarget target, required PullRequestReadyChange change}) => switch (change) {
+    PullRequestMarkedReady(:final autoMergeNotice) => [
+      'Marked ${target.displayKey} as ready: label "$agentReadyLabel" added.',
+      ?autoMergeNotice,
+    ].join(" "),
+    PullRequestUnmarkedReady(wasCarried: true) =>
+      'Removed the "$agentReadyLabel" label from ${target.displayKey}: it is no longer marked ready.',
+    PullRequestUnmarkedReady(wasCarried: false) =>
+      '${target.displayKey} did not carry the "$agentReadyLabel" label; nothing to remove.',
+  };
+
+  String _autoMergeText({
+    required PullRequestTarget target,
+    required bool enabled,
+    required PullRequestAutoMergeResult result,
+  }) {
+    final key = target.displayKey;
+    return switch (result) {
+      PullRequestAutoMergeNotWatched() when enabled =>
+        "This session is not watching $key. To watch it with auto-merge on, call watch_pr with auto_merge: true.",
+      PullRequestAutoMergeNotWatched() => "This session is not watching $key; nothing to change.",
+      PullRequestAutoMergeUnchanged(enabled: true) => "Auto-merge is already on for $key in this session.",
+      PullRequestAutoMergeUnchanged(enabled: false) => "Auto-merge is already off for $key in this session.",
+      PullRequestAutoMergeSet(enabled: true, :final readyLabelRemoved) => [
+        "Auto-merge enabled for $key: $_autoMergeGuidance",
+        if (readyLabelRemoved) _readyLabelRemovedText,
+      ].join(" "),
+      PullRequestAutoMergeSet(enabled: false, effective: true) =>
+        "Auto-merge disabled for $key in this session; it stays on because another session watching the PR has "
+            "it on.",
+      PullRequestAutoMergeSet(enabled: false, effective: false) =>
+        "Auto-merge disabled for $key: marking it ready hands it to a human reviewer.",
+    };
+  }
+
+  static const String _autoMergeGuidance =
+      "the user chose to have this PR merged without waiting for human review. Marking it ready, automatically or "
+      "with mark_pr_ready, is the merge approval: Sesori makes one squash-merge attempt for the accepted head, "
+      "titled with only the PR title. When nothing is left to do and the label is absent, call mark_pr_ready; never "
+      "hold it back to wait for a human.";
+
+  static const String _readyLabelRemovedText =
+      'The "$agentReadyLabel" label it carried was removed: that handoff was made without auto-merge, so assess the '
+      "PR again before marking it ready.";
 
   /// Runs [run] on the `pr` argument, or answers why it is not a PR.
   Future<SesoriToolResult> _withTarget({
@@ -149,11 +241,13 @@ class PullRequestMonitorToolGroup({
 
   SesoriToolResult _watchResult({required PullRequestTarget target, required PullRequestWatchStart result}) =>
       switch (result) {
-        PullRequestWatchStarted(:final title, :final report) => SesoriToolSuccess(
-          text:
-              'Started watching ${target.displayKey} — "$title". Reports arrive in this session as messages; end '
-              "your turn instead of polling.\n\n$report",
-        ),
+        PullRequestWatchStarted(:final title, :final report, :final autoMerge, :final readyLabelRemoved) =>
+          SesoriToolSuccess(
+            text:
+                'Started watching ${target.displayKey} — "$title". Reports arrive in this session as messages; end '
+                "your turn instead of polling.${autoMerge ? " Auto-merge enabled: $_autoMergeGuidance" : ""}"
+                "${readyLabelRemoved ? " $_readyLabelRemovedText" : ""}\n\n$report",
+          ),
         PullRequestAlreadyWatched(:final status) => SesoriToolSuccess(
           text: "Already watching ${target.displayKey} in this session.\n${_statusLine(status: status)}",
         ),
@@ -161,6 +255,11 @@ class PullRequestMonitorToolGroup({
           text: "Cannot watch ${target.displayKey}: resolving the gh account failed. ${error.message}",
         ),
         PullRequestFetchFailed(:final error) => SesoriToolFailure(text: "Cannot watch ${target.displayKey}: $error"),
+        PullRequestReadyResetFailed(:final error) => SesoriToolFailure(
+          text:
+              'Cannot watch ${target.displayKey} with auto-merge: removing the "$agentReadyLabel" label it carries '
+              "failed: $error",
+        ),
         PullRequestAlreadyEnded(:final state) => SesoriToolFailure(
           text:
               "Cannot watch ${target.displayKey}: it is already "

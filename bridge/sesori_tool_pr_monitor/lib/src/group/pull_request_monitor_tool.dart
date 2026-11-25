@@ -34,7 +34,15 @@ enum PullRequestMonitorTool({
         "once the PR is merged or closed; a sub-agent's watch belongs to its root session.",
     inputSchema: {
       "type": "object",
-      "properties": {"pr": _prSchema},
+      "properties": {
+        "pr": _prSchema,
+        "auto_merge": {
+          "type": "boolean",
+          "description":
+              "Only when the user asked for this PR to be merged without human review: marking it ready then "
+              "squash-merges it once. Defaults to false.",
+        },
+      },
       "required": ["pr"],
       "additionalProperties": false,
     },
@@ -89,6 +97,41 @@ enum PullRequestMonitorTool({
         },
       },
       "required": ["pr", "body"],
+      "additionalProperties": false,
+    },
+  ),
+  markPrReady(
+    wireName: "mark_pr_ready",
+    readOnly: false,
+    description:
+        "Mark a PR ready: add the agent-ready label, handing it to a human reviewer. Call it once checks pass, "
+        "expected reviews have arrived and every comment is answered, with nothing left for you to do. When "
+        "auto-merge is on for the PR, this is the merge approval: Sesori makes one squash-merge attempt at the "
+        "head it last polled.",
+    inputSchema: _prOnlySchema,
+  ),
+  unmarkPrReady(
+    wireName: "unmark_pr_ready",
+    readOnly: false,
+    description:
+        "Withdraw a PR's ready label, for example when new work turns up after you marked it ready. A watched PR "
+        "that still qualifies is labelled again after its next quiet report.",
+    inputSchema: _prOnlySchema,
+  ),
+  setPrAutoMerge(
+    wireName: "set_pr_auto_merge",
+    readOnly: false,
+    description:
+        "Turn auto-merge on or off for a PR this session watches, only when the user asks. With it on, the ready "
+        "label is the merge approval: Sesori squash-merges the PR once it is marked ready. Turning it on removes a "
+        "ready label the PR already carries, so it is merged only after a fresh judgment.",
+    inputSchema: {
+      "type": "object",
+      "properties": {
+        "pr": _prSchema,
+        "enabled": {"type": "boolean", "description": "true to turn auto-merge on, false to turn it off."},
+      },
+      "required": ["pr", "enabled"],
       "additionalProperties": false,
     },
   );

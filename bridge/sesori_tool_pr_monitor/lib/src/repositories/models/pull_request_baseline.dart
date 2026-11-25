@@ -35,6 +35,10 @@ sealed class PullRequestBaseline with _$PullRequestBaseline {
     required Map<String, Set<String>> threadCommentIds,
     required Set<String> resolvedThreadIds,
     required int unresolvedThreadCount,
+
+    /// Whether the PR carried the ready label, so a label change alone, such
+    /// as one the monitor made or one removed from outside, is reported.
+    required bool ready,
   }) = _PullRequestBaseline;
 
   factory fromJson(Map<String, dynamic> json) => _$PullRequestBaselineFromJson(json);

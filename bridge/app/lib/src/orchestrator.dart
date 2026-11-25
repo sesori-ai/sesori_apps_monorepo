@@ -963,15 +963,17 @@ class Orchestrator({
     final ghCliApi = GhCliApi(commandExecutor: ProcessRunnerCommandExecutor(processRunner: _processRunner));
     const pullRequestActivity = PullRequestActivityCalculator();
     const pullRequestReadiness = PullRequestReadinessCalculator(activity: pullRequestActivity);
+    final pullRequestActions = PullRequestActionRepository(api: ghCliApi);
     final pullRequestWatchService = PullRequestWatchService(
       snapshots: PullRequestSnapshotRepository(api: ghCliApi),
-      actions: PullRequestActionRepository(api: ghCliApi),
+      actions: pullRequestActions,
       watches: PullRequestWatchRepository(store: pullRequestMonitorHost.store),
       host: pullRequestMonitorHost,
       activity: pullRequestActivity,
       readiness: pullRequestReadiness,
       reports: const PullRequestReportBuilder(activity: pullRequestActivity, readiness: pullRequestReadiness),
       feedback: const PullRequestFeedbackBuilder(readiness: pullRequestReadiness),
+      merges: PullRequestMergeService(actions: pullRequestActions, readiness: pullRequestReadiness),
       clock: clock,
     );
     final toolGroups = <SesoriToolGroup>[
