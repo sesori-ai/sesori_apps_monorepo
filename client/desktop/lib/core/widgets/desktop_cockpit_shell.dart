@@ -222,12 +222,6 @@ class const DesktopCockpitShell({
             shortcut: null,
             run: onNewTask,
           ),
-          DesktopCommand(
-            label: loc.pullRequestWatchesTitle,
-            icon: TablerRegular.git_pull_request,
-            shortcut: null,
-            run: onOpenPullRequests,
-          ),
         ];
         void openPalette() => unawaited(
           showDesktopCommandPalette(

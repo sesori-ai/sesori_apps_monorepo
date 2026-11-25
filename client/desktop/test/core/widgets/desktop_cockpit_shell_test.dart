@@ -31,6 +31,7 @@ void main() {
   late int contentTaps;
   late _MockProjectListCubit projects;
   late _MockComputerSwitcherCubit computerSwitcher;
+  late _MockPullRequestWatchListCubit pullRequests;
   late _MockProjectInventoryService projectInventory;
   late _MockSessionWindowService window;
 
@@ -157,6 +158,12 @@ void main() {
       ),
     );
     computerSwitcher = _MockComputerSwitcherCubit();
+    pullRequests = _MockPullRequestWatchListCubit();
+    whenListen(
+      pullRequests,
+      const Stream<PullRequestWatchListState>.empty(),
+      initialState: const PullRequestWatchListLoaded(watches: [], stopping: {}),
+    );
     whenListen(
       computerSwitcher,
       const Stream<ComputerSwitcherState>.empty(),
@@ -211,6 +218,7 @@ void main() {
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<ComputerSwitcherCubit>.value(value: computerSwitcher),
+            BlocProvider<PullRequestWatchListCubit>.value(value: pullRequests),
             RepositoryProvider<ProjectInventoryService>.value(value: projectInventory),
             RepositoryProvider<SessionWindowService>.value(value: window),
             RepositoryProvider.value(value: launchService),
@@ -687,6 +695,7 @@ void main() {
   ) async {
     var archivedOpens = 0;
     var scheduledOpens = 0;
+    var pullRequestOpens = 0;
     await tester.pumpWidget(
       app(
         state: running,
@@ -701,7 +710,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: () => archivedOpens++,
           onOpenScheduled: () => scheduledOpens++,
-          onOpenPullRequests: _noOp,
+          onOpenPullRequests: () => pullRequestOpens++,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
@@ -718,7 +727,11 @@ void main() {
     final scheduled = find.byKey(const Key("desktop-sidebar-scheduled"));
     expect(find.descendant(of: scheduled, matching: find.text("Scheduled")), findsOneWidget);
     expect(tester.getTopLeft(scheduled), tester.getBottomLeft(archived));
-    expect(tester.getBottomLeft(scheduled).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
+    final pullRequestsRow = find.byKey(const Key("desktop-sidebar-pull-requests"));
+    expect(find.descendant(of: pullRequestsRow, matching: find.text("Pull requests")), findsOneWidget);
+    expect(tester.getTopLeft(pullRequestsRow), tester.getBottomLeft(scheduled));
+    expect(tester.getSize(pullRequestsRow), tester.getSize(search));
+    expect(tester.getBottomLeft(pullRequestsRow).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
     final footer = find.byKey(const Key("desktop-sidebar-footer"));
     expect(find.descendant(of: footer, matching: find.byIcon(TablerLight.archive)), findsNothing);
 
@@ -726,6 +739,41 @@ void main() {
     expect(archivedOpens, 1);
     await tester.tap(scheduled);
     expect(scheduledOpens, 1);
+    await tester.tap(pullRequestsRow);
+    expect(pullRequestOpens, 1);
+  });
+
+  testWidgets("the Pull requests row says how many pull requests need the user", (tester) async {
+    whenListen(
+      pullRequests,
+      const Stream<PullRequestWatchListState>.empty(),
+      initialState: const PullRequestWatchListLoaded(
+        watches: [
+          PullRequestWatchListItem(
+            sessionId: "session-1",
+            sessionTitle: "Session",
+            projectId: "project-1",
+            watch: SessionPullRequestWatch(
+              repository: "acme/web",
+              number: 7,
+              title: "Fix",
+              url: "https://github.com/acme/web/pull/7",
+              autoMerge: false,
+              status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
+            ),
+          ),
+        ],
+        stopping: {},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel("Pull requests, 1 needs you"), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const Key("desktop-sidebar-pull-requests")), matching: find.text("1")),
+      findsOneWidget,
+    );
   });
 
   testWidgets("Bridge opens from the footer without replacing the main pane", (tester) async {
@@ -1906,6 +1954,9 @@ BridgeSummary _computer({required String id, required String name, required Brid
     );
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
+class _MockPullRequestWatchListCubit() extends MockCubit<PullRequestWatchListState>
+    implements PullRequestWatchListCubit;
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
