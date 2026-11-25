@@ -49,7 +49,7 @@ void main() {
     expect((result as BridgeSettingsLoadFailure).error, same(error));
   });
 
-  test("maps the agent tools updates, and an older bridge's 400 as unsupported", () async {
+  test("maps the agent tools updates", () async {
     when(() => api.update(update: const BridgeSettingUpdate.agentTools(enabled: false))).thenAnswer(
       (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.agentTools(enabled: false)),
     );
@@ -58,11 +58,10 @@ void main() {
         update: BridgeSettingUpdate.toolGroup(id: "pr_monitor", enabled: true),
       ),
     );
-    when(() => api.update(update: const BridgeSettingUpdate.agentTools(enabled: true))).thenAnswer(
-      (_) async => BridgeSettingUpdateApiFailure(
-        error: ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"type":"unknown"}'),
-      ),
-    );
+    final refused = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"type":"unknown"}');
+    when(
+      () => api.update(update: const BridgeSettingUpdate.agentTools(enabled: true)),
+    ).thenAnswer((_) async => BridgeSettingUpdateApiFailure(error: refused));
     when(() => api.update(update: const BridgeSettingUpdate.toolGroup(id: "tasks", enabled: false))).thenAnswer(
       (_) async => const BridgeSettingUpdateApiCommitted(
         update: BridgeSettingUpdate.toolGroup(id: "pages", enabled: false),
@@ -77,7 +76,10 @@ void main() {
       await repository.updateToolGroup(id: "pr_monitor", enabled: true),
       isA<AgentToolsSettingsMutationCommitted>().having((result) => result.enabled, "enabled", isTrue),
     );
-    expect(await repository.updateAgentTools(enabled: true), isA<AgentToolsSettingsMutationUnsupported>());
+    expect(
+      await repository.updateAgentTools(enabled: true),
+      isA<AgentToolsSettingsMutationFailure>().having((result) => result.error, "error", same(refused)),
+    );
     expect(
       await repository.updateToolGroup(id: "tasks", enabled: false),
       isA<AgentToolsSettingsMutationUncertain>(),

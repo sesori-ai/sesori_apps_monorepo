@@ -282,9 +282,10 @@ change.
     empty.
   - Step 13 adds the master switch: `BridgeSettingsResponse.agentToolsEnabled`
     (`bool?`, null from v1.15.0 bridges, with a dated `COMPATIBILITY` comment)
-    and `BridgeSettingUpdate.agentTools(enabled)`. An older bridge answers
-    the update with 400 `unknown`, which the app shows as needing a bridge
-    update. The CLI command keeps working.
+    and `BridgeSettingUpdate.agentTools(enabled)`. The app offers the
+    switches only to bridges that send the master, so it never sends the
+    update to an older bridge; a refusal is a plain, retryable failure. The
+    CLI command keeps working.
 - **App.** `module_core`'s `BridgeSettingsRepository` and
   `BridgeSettingsCubit` gain the tool-group list and a `setToolGroupEnabled`
   action. The phone and desktop settings screens render an "Agent tools"

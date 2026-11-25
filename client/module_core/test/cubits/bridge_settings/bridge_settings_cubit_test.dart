@@ -126,24 +126,6 @@ void main() {
       expect(agentTools.groups, [_prMonitor.copyWith(enabled: false)]);
     });
 
-    test("an older bridge that refuses the update leaves the switches as they were and says so", () async {
-      _stubLoad(service, yoloEnabled: false);
-      when(() => service.updateAgentTools(enabled: false)).thenAnswer(
-        (_) async => const AgentToolsSettingsMutationUnsupported(),
-      );
-      final cubit = BridgeSettingsCubit(service: service, connectionService: connection);
-      addTearDown(cubit.close);
-      await _waitForState<BridgeSettingsReady>(cubit);
-
-      await cubit.updateAgentTools(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
-
-      final agentTools = _agentToolsOf(cubit);
-      expect(agentTools.enabled, isTrue);
-      expect(agentTools.mutation, isA<AgentToolsMutationUnsupported>());
-      await cubit.updateAgentTools(enabled: false, expectedState: cubit.state as BridgeSettingsReady);
-      verify(() => service.updateAgentTools(enabled: false)).called(1);
-    });
-
     test("a failed save names the switch and keeps its state", () async {
       _stubLoad(service, yoloEnabled: false);
       when(() => service.updateToolGroup(id: "pr_monitor", enabled: false)).thenAnswer(
