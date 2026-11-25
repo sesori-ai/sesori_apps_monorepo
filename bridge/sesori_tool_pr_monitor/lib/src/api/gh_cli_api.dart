@@ -214,11 +214,10 @@ class GhCliApi({required final CommandExecutor _commandExecutor}) {
       number: null,
     );
     final reply = asStringKeyedMap(value: data["addPullRequestReviewThreadReply"]);
-    final url = asStringKeyedMap(value: reply?["comment"])?["url"];
-    if (url is! String) {
+    if (reply == null) {
       throw GhCliInvalidResponseException(innerError: FormatException("GitHub did not confirm the reply to $threadId"));
     }
-    return url;
+    return _decode<GhThreadReplyDto>(() => GhThreadReplyDto.fromJson(reply)).comment.url;
   }
 
   String _pullRequestPath({required PullRequestTarget target}) =>
