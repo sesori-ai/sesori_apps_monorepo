@@ -1,6 +1,8 @@
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../repositories/models/bridge_settings_result.dart";
+
 sealed class const BridgeSettingsState();
 
 final class const BridgeSettingsLoading({required final ReportedOptionalSettings reported}) extends BridgeSettingsState;
@@ -127,18 +129,6 @@ final class const PreventSleepSettings({
 }) {
   /// The stored choice, whether or not the wake lock holds.
   bool get enabled => status != PreventSleepStatus.off;
-}
-
-enum PreventSleepStatus() {
-  /// The computer may sleep.
-  off,
-
-  /// The bridge keeps the computer awake.
-  awake,
-
-  /// The choice is on, but the computer refused the wake lock and can still
-  /// sleep.
-  failed,
 }
 
 sealed class const PreventSleepMutationState();

@@ -77,6 +77,25 @@ void main() {
     });
   }
 
+  test('macOS stops reporting the wake lock as held when caffeinate exits', () async {
+    final process = _FakeProcess();
+    final warnings = <String>[];
+    final client = WakeLockClient.forPlatform(
+      platform: PlatformOs.macos,
+      processStarter: (_, _) async => process,
+      executionStateSetter: (_) => const EXECUTION_STATE(1),
+      warningLogger: (message, [_, _]) => warnings.add(message),
+    );
+
+    await client.enable();
+    expect(client.isHeld, isTrue);
+    process.completeExit(0);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(client.isHeld, isFalse);
+    expect(warnings.single, contains('caffeinate exited unexpectedly with code 0'));
+  });
+
   test('Linux logs unexpected nonzero process exit', () async {
     final process = _FakeProcess();
     final warnings = <String>[];

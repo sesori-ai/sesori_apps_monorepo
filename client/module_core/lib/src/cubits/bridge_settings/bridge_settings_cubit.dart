@@ -578,7 +578,7 @@ class BridgeSettingsCubit({
 
   void _publishLoad({required BridgeSettingsLoadResult result}) {
     switch (result) {
-      case BridgeSettingsLoadSupported(:final response, :final releaseTrackInternalBuilds):
+      case BridgeSettingsLoadSupported(:final response, :final releaseTrackInternalBuilds, :final preventSleepStatus):
         emit(
           BridgeSettingsReady(
             yoloEnabled: response.yolo.enabled,
@@ -600,21 +600,12 @@ class BridgeSettingsCubit({
               ),
               null => null,
             },
-            preventSleep: switch (response.preventSleep) {
-              SleepPreventionStatus.off => const PreventSleepSettings(
-                status: PreventSleepStatus.off,
-                mutation: PreventSleepMutationIdle(),
+            preventSleep: switch (preventSleepStatus) {
+              final PreventSleepStatus status => PreventSleepSettings(
+                status: status,
+                mutation: const PreventSleepMutationIdle(),
               ),
-              SleepPreventionStatus.awake => const PreventSleepSettings(
-                status: PreventSleepStatus.awake,
-                mutation: PreventSleepMutationIdle(),
-              ),
-              SleepPreventionStatus.failed => const PreventSleepSettings(
-                status: PreventSleepStatus.failed,
-                mutation: PreventSleepMutationIdle(),
-              ),
-              // A status from a newer bridge: leave the row out.
-              SleepPreventionStatus.unknown || null => null,
+              null => null,
             },
           ),
         );

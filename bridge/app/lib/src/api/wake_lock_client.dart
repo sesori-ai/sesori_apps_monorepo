@@ -47,7 +47,16 @@ final class _MacOSWakeLockClient({
   Future<void> enable() async {
     await disable();
     try {
-      _process = await _processStarter('caffeinate', <String>['-i', '-s', '-w', pid.toString()]);
+      final process = await _processStarter('caffeinate', <String>['-i', '-s', '-w', pid.toString()]);
+      _process = process;
+      unawaited(
+        process.exitCode.then((exitCode) {
+          if (_process == process) {
+            _process = null;
+            _warningLogger('[wake-lock] caffeinate exited unexpectedly with code $exitCode');
+          }
+        }),
+      );
     } on ProcessException catch (error, stackTrace) {
       _warningLogger('[wake-lock] caffeinate unavailable', error, stackTrace);
     }
