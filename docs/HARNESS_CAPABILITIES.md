@@ -356,7 +356,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
   then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
   `agent_settled` follows final retry resolution; they have not been re-run on
-  the current target (1.6.0) or floor (0.99.0). Those probes did not exhaust a real account;
+  the current target (1.6.1) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -391,7 +391,7 @@ Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,
 including extension-owned input, and carries no Sesori prompt IDs. It cannot
 safely implement deletion of one row; Sesori does not clear/replay that native
 queue. This limit is verified from installed 0.85.1 native source and has not
-been re-checked on the current target (1.6.0) or floor (0.99.0). Dispatch-state and
+been re-checked on the current target (1.6.1) or floor (0.99.0). Dispatch-state and
 cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
 live authenticated run. Older public bridge payloads without dispatch ownership
 remain explicitly unknown and retain best-effort cancellation. Only a reported
@@ -1424,7 +1424,7 @@ The other harnesses advertise nothing a picker owns (checked 2026-11-15):
   `/compact`.
 - OpenCode: the server's `/command` list holds configured commands, MCP prompts
   and skills, plus the synthesized `/compact`.
-- Pi 1.6.0: RPC `get_commands` returns extension, prompt-template and skill
+- Pi 1.6.1: RPC `get_commands` returns extension, prompt-template and skill
   commands. Its bundled extensions, read from the installed package, register
   only `/llama` (already excluded), `/mcp` and `/name`.
 - Cursor 2026.07.23: the installed agent's `sendAvailableCommands` sends
@@ -1445,8 +1445,8 @@ Startup dialog fixtures and catalog discovery were verified on macOS arm64 with
 Pi 1.0.4 (npm) and managed Pi 0.85.1 and 0.84.4. Pi 1.0.4 also passed installed
 MCP adapter approvals, new/resume/fork RPC launches, and a full Sesori plugin
 session completing an authenticated GPT-6.1 request. Pi 1.0.4 awaits
-extension startup before reading stdin (1.6.0 source still attaches the reader
-after startup `session_start`; not re-probed live on the current target 1.6.0
+extension startup before reading stdin (1.6.1 source still attaches the reader
+after startup `session_start`; not re-probed live on the current target 1.6.1
 or floor 0.99.0); an unanswered startup dialog can
 otherwise exit or hang the process. Sesori forwards startup questions before
 waiting for initial history. A runtime already reading stdin uses its own
@@ -1859,7 +1859,7 @@ exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
 install with no credentials; not re-probed on the supported range (minimum 0.99.0).
 A logged-out RPC process still starts, on a placeholder `unknown` model, and
 rejects a prompt with "No API key found for the selected model." (seen on
-1.5.2 and 1.6.0). The plugin matches that first line exactly. The turn fails
+1.5.2, 1.6.0 and 1.6.1). The plugin matches that first line exactly. The turn fails
 with the login toast, and then the plugin reports authentication required with
 the same `/login` action as setup detection, as Claude does for a login that
 fails at turn time.
