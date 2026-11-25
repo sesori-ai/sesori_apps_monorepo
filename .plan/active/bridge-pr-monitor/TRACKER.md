@@ -8,7 +8,7 @@
 | 4 | 🚧 Tool host: records, notices and approvals | Done | #2913 |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
-| 7 | 🚧 Watches: fan-out polling, delivery and restart | In review | #PRNUM |
+| 7 | 🚧 Watches: fan-out polling, delivery and restart | In review | #2916 |
 | 8 | 🚧 Readiness, auto-merge, feedback and reply | Not started | |
 | 9 | ⚙️ `configure_pr_monitor` | Not started | |
 | 10 | ⚙️ Guides and skills on Claude Code and Codex | Not started | |
