@@ -14,13 +14,14 @@ _UpdateAttempt _$UpdateAttemptFromJson(Map json) => _UpdateAttempt(
   reason: json['reason'] as String?,
 );
 
-Map<String, dynamic> _$UpdateAttemptToJson(_UpdateAttempt instance) => <String, dynamic>{
-  'fromVersion': instance.fromVersion,
-  'toVersion': instance.toVersion,
-  'startedAt': instance.startedAt.toIso8601String(),
-  'status': _$UpdateAttemptStatusEnumMap[instance.status]!,
-  'reason': ?instance.reason,
-};
+Map<String, dynamic> _$UpdateAttemptToJson(_UpdateAttempt instance) =>
+    <String, dynamic>{
+      'fromVersion': instance.fromVersion,
+      'toVersion': instance.toVersion,
+      'startedAt': instance.startedAt.toIso8601String(),
+      'status': _$UpdateAttemptStatusEnumMap[instance.status]!,
+      'reason': ?instance.reason,
+    };
 
 const _$UpdateAttemptStatusEnumMap = {
   UpdateAttemptStatus.inFlight: 'inFlight',

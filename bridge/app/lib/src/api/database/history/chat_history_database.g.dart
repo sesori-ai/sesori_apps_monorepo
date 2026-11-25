@@ -3,7 +3,8 @@
 part of 'chat_history_database.dart';
 
 // ignore_for_file: type=lint
-mixin $HistoryMessagesTableTableToColumns implements Insertable<HistoryMessagesTableData> {
+mixin $HistoryMessagesTableTableToColumns
+    implements Insertable<HistoryMessagesTableData> {
   String get sessionId;
   String get messageId;
   int get seq;
@@ -184,7 +185,8 @@ class $HistoryMessagesTableTable extends HistoryMessagesTable
   bool get withoutRowId => true;
 }
 
-class HistoryMessagesTableData extends DataClass with $HistoryMessagesTableTableToColumns {
+class HistoryMessagesTableData extends DataClass
+    with $HistoryMessagesTableTableToColumns {
   @override
   final String sessionId;
   @override
@@ -275,7 +277,8 @@ class HistoryMessagesTableData extends DataClass with $HistoryMessagesTableTable
   }
 
   @override
-  int get hashCode => Object.hash(sessionId, messageId, seq, infoJson, updatedAt);
+  int get hashCode =>
+      Object.hash(sessionId, messageId, seq, infoJson, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -287,7 +290,8 @@ class HistoryMessagesTableData extends DataClass with $HistoryMessagesTableTable
           other.updatedAt == this.updatedAt);
 }
 
-class HistoryMessagesTableCompanion extends UpdateCompanion<HistoryMessagesTableData> {
+class HistoryMessagesTableCompanion
+    extends UpdateCompanion<HistoryMessagesTableData> {
   final Value<String> sessionId;
   final Value<String> messageId;
   final Value<int> seq;
@@ -377,7 +381,8 @@ class HistoryMessagesTableCompanion extends UpdateCompanion<HistoryMessagesTable
   }
 }
 
-mixin $HistoryPartsTableTableToColumns implements Insertable<HistoryPartsTableData> {
+mixin $HistoryPartsTableTableToColumns
+    implements Insertable<HistoryPartsTableData> {
   String get sessionId;
   String get messageId;
   String get partId;
@@ -397,7 +402,8 @@ mixin $HistoryPartsTableTableToColumns implements Insertable<HistoryPartsTableDa
   }
 }
 
-class $HistoryPartsTableTable extends HistoryPartsTable with TableInfo<$HistoryPartsTableTable, HistoryPartsTableData> {
+class $HistoryPartsTableTable extends HistoryPartsTable
+    with TableInfo<$HistoryPartsTableTable, HistoryPartsTableData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -580,7 +586,8 @@ class $HistoryPartsTableTable extends HistoryPartsTable with TableInfo<$HistoryP
   bool get withoutRowId => true;
 }
 
-class HistoryPartsTableData extends DataClass with $HistoryPartsTableTableToColumns {
+class HistoryPartsTableData extends DataClass
+    with $HistoryPartsTableTableToColumns {
   @override
   final String sessionId;
   @override
@@ -659,7 +666,9 @@ class HistoryPartsTableData extends DataClass with $HistoryPartsTableTableToColu
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       messageId: data.messageId.present ? data.messageId.value : this.messageId,
       partId: data.partId.present ? data.partId.value : this.partId,
-      orderIndex: data.orderIndex.present ? data.orderIndex.value : this.orderIndex,
+      orderIndex: data.orderIndex.present
+          ? data.orderIndex.value
+          : this.orderIndex,
       partJson: data.partJson.present ? data.partJson.value : this.partJson,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -699,7 +708,8 @@ class HistoryPartsTableData extends DataClass with $HistoryPartsTableTableToColu
           other.updatedAt == this.updatedAt);
 }
 
-class HistoryPartsTableCompanion extends UpdateCompanion<HistoryPartsTableData> {
+class HistoryPartsTableCompanion
+    extends UpdateCompanion<HistoryPartsTableData> {
   final Value<String> sessionId;
   final Value<String> messageId;
   final Value<String> partId;
@@ -801,7 +811,8 @@ class HistoryPartsTableCompanion extends UpdateCompanion<HistoryPartsTableData> 
   }
 }
 
-mixin $HistorySyncStateTableTableToColumns implements Insertable<HistorySyncStateTableData> {
+mixin $HistorySyncStateTableTableToColumns
+    implements Insertable<HistorySyncStateTableData> {
   String get sessionId;
   int get watermark;
   int get backendActivityAt;
@@ -961,7 +972,8 @@ class $HistorySyncStateTableTable extends HistorySyncStateTable
   bool get withoutRowId => true;
 }
 
-class HistorySyncStateTableData extends DataClass with $HistorySyncStateTableTableToColumns {
+class HistorySyncStateTableData extends DataClass
+    with $HistorySyncStateTableTableToColumns {
   @override
   final String sessionId;
   @override
@@ -981,7 +993,9 @@ class HistorySyncStateTableData extends DataClass with $HistorySyncStateTableTab
       sessionId: Value(sessionId),
       watermark: Value(watermark),
       backendActivityAt: Value(backendActivityAt),
-      syncedAt: syncedAt == null && nullToAbsent ? const Value.absent() : Value(syncedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -1025,7 +1039,9 @@ class HistorySyncStateTableData extends DataClass with $HistorySyncStateTableTab
     return HistorySyncStateTableData(
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       watermark: data.watermark.present ? data.watermark.value : this.watermark,
-      backendActivityAt: data.backendActivityAt.present ? data.backendActivityAt.value : this.backendActivityAt,
+      backendActivityAt: data.backendActivityAt.present
+          ? data.backendActivityAt.value
+          : this.backendActivityAt,
       syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
@@ -1042,7 +1058,8 @@ class HistorySyncStateTableData extends DataClass with $HistorySyncStateTableTab
   }
 
   @override
-  int get hashCode => Object.hash(sessionId, watermark, backendActivityAt, syncedAt);
+  int get hashCode =>
+      Object.hash(sessionId, watermark, backendActivityAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1053,7 +1070,8 @@ class HistorySyncStateTableData extends DataClass with $HistorySyncStateTableTab
           other.syncedAt == this.syncedAt);
 }
 
-class HistorySyncStateTableCompanion extends UpdateCompanion<HistorySyncStateTableData> {
+class HistorySyncStateTableCompanion
+    extends UpdateCompanion<HistorySyncStateTableData> {
   final Value<String> sessionId;
   final Value<int> watermark;
   final Value<int> backendActivityAt;
@@ -1133,9 +1151,12 @@ class HistorySyncStateTableCompanion extends UpdateCompanion<HistorySyncStateTab
 abstract class _$ChatHistoryDatabase extends GeneratedDatabase {
   _$ChatHistoryDatabase(QueryExecutor e) : super(e);
   $ChatHistoryDatabaseManager get managers => $ChatHistoryDatabaseManager(this);
-  late final $HistoryMessagesTableTable historyMessagesTable = $HistoryMessagesTableTable(this);
-  late final $HistoryPartsTableTable historyPartsTable = $HistoryPartsTableTable(this);
-  late final $HistorySyncStateTableTable historySyncStateTable = $HistorySyncStateTableTable(this);
+  late final $HistoryMessagesTableTable historyMessagesTable =
+      $HistoryMessagesTableTable(this);
+  late final $HistoryPartsTableTable historyPartsTable =
+      $HistoryPartsTableTable(this);
+  late final $HistorySyncStateTableTable historySyncStateTable =
+      $HistorySyncStateTableTable(this);
   late final Index idxHistoryMessagesSeq = Index(
     'idx_history_messages_seq',
     'CREATE UNIQUE INDEX idx_history_messages_seq ON history_messages (session_id, seq)',
@@ -1148,7 +1169,8 @@ abstract class _$ChatHistoryDatabase extends GeneratedDatabase {
     this as ChatHistoryDatabase,
   );
   @override
-  Iterable<TableInfo<Table, Object?>> get allTables => allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     historyMessagesTable,
@@ -1159,22 +1181,25 @@ abstract class _$ChatHistoryDatabase extends GeneratedDatabase {
   ];
 }
 
-typedef $$HistoryMessagesTableTableCreateCompanionBuilder = HistoryMessagesTableCompanion Function({
-  required String sessionId,
-  required String messageId,
-  required int seq,
-  required String infoJson,
-  required int updatedAt,
-});
-typedef $$HistoryMessagesTableTableUpdateCompanionBuilder = HistoryMessagesTableCompanion Function({
-  Value<String> sessionId,
-  Value<String> messageId,
-  Value<int> seq,
-  Value<String> infoJson,
-  Value<int> updatedAt,
-});
+typedef $$HistoryMessagesTableTableCreateCompanionBuilder =
+    HistoryMessagesTableCompanion Function({
+      required String sessionId,
+      required String messageId,
+      required int seq,
+      required String infoJson,
+      required int updatedAt,
+    });
+typedef $$HistoryMessagesTableTableUpdateCompanionBuilder =
+    HistoryMessagesTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> messageId,
+      Value<int> seq,
+      Value<String> infoJson,
+      Value<int> updatedAt,
+    });
 
-class $$HistoryMessagesTableTableFilterComposer extends Composer<_$ChatHistoryDatabase, $HistoryMessagesTableTable> {
+class $$HistoryMessagesTableTableFilterComposer
+    extends Composer<_$ChatHistoryDatabase, $HistoryMessagesTableTable> {
   $$HistoryMessagesTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -1208,7 +1233,8 @@ class $$HistoryMessagesTableTableFilterComposer extends Composer<_$ChatHistoryDa
   );
 }
 
-class $$HistoryMessagesTableTableOrderingComposer extends Composer<_$ChatHistoryDatabase, $HistoryMessagesTableTable> {
+class $$HistoryMessagesTableTableOrderingComposer
+    extends Composer<_$ChatHistoryDatabase, $HistoryMessagesTableTable> {
   $$HistoryMessagesTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -1251,15 +1277,20 @@ class $$HistoryMessagesTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
-  GeneratedColumn<String> get messageId => $composableBuilder(column: $table.messageId, builder: (column) => column);
+  GeneratedColumn<String> get messageId =>
+      $composableBuilder(column: $table.messageId, builder: (column) => column);
 
-  GeneratedColumn<int> get seq => $composableBuilder(column: $table.seq, builder: (column) => column);
+  GeneratedColumn<int> get seq =>
+      $composableBuilder(column: $table.seq, builder: (column) => column);
 
-  GeneratedColumn<String> get infoJson => $composableBuilder(column: $table.infoJson, builder: (column) => column);
+  GeneratedColumn<String> get infoJson =>
+      $composableBuilder(column: $table.infoJson, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$HistoryMessagesTableTableTableManager
@@ -1275,7 +1306,11 @@ class $$HistoryMessagesTableTableTableManager
           $$HistoryMessagesTableTableUpdateCompanionBuilder,
           (
             HistoryMessagesTableData,
-            BaseReferences<_$ChatHistoryDatabase, $HistoryMessagesTableTable, HistoryMessagesTableData>,
+            BaseReferences<
+              _$ChatHistoryDatabase,
+              $HistoryMessagesTableTable,
+              HistoryMessagesTableData
+            >,
           ),
           HistoryMessagesTableData,
           PrefetchHooks Function()
@@ -1287,15 +1322,18 @@ class $$HistoryMessagesTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$HistoryMessagesTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$HistoryMessagesTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$HistoryMessagesTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$HistoryMessagesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryMessagesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HistoryMessagesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -1327,12 +1365,15 @@ class $$HistoryMessagesTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$HistoryMessagesTableTable, HistoryMessagesTableData>(table),
-                  BaseReferences<_$ChatHistoryDatabase, $HistoryMessagesTableTable, HistoryMessagesTableData>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  e.readTable<
+                    $HistoryMessagesTableTable,
+                    HistoryMessagesTableData
+                  >(table),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistoryMessagesTableTable,
+                    HistoryMessagesTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -1353,29 +1394,36 @@ typedef $$HistoryMessagesTableTableProcessedTableManager =
       $$HistoryMessagesTableTableUpdateCompanionBuilder,
       (
         HistoryMessagesTableData,
-        BaseReferences<_$ChatHistoryDatabase, $HistoryMessagesTableTable, HistoryMessagesTableData>,
+        BaseReferences<
+          _$ChatHistoryDatabase,
+          $HistoryMessagesTableTable,
+          HistoryMessagesTableData
+        >,
       ),
       HistoryMessagesTableData,
       PrefetchHooks Function()
     >;
-typedef $$HistoryPartsTableTableCreateCompanionBuilder = HistoryPartsTableCompanion Function({
-  required String sessionId,
-  required String messageId,
-  required String partId,
-  required int orderIndex,
-  required String partJson,
-  required int updatedAt,
-});
-typedef $$HistoryPartsTableTableUpdateCompanionBuilder = HistoryPartsTableCompanion Function({
-  Value<String> sessionId,
-  Value<String> messageId,
-  Value<String> partId,
-  Value<int> orderIndex,
-  Value<String> partJson,
-  Value<int> updatedAt,
-});
+typedef $$HistoryPartsTableTableCreateCompanionBuilder =
+    HistoryPartsTableCompanion Function({
+      required String sessionId,
+      required String messageId,
+      required String partId,
+      required int orderIndex,
+      required String partJson,
+      required int updatedAt,
+    });
+typedef $$HistoryPartsTableTableUpdateCompanionBuilder =
+    HistoryPartsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> messageId,
+      Value<String> partId,
+      Value<int> orderIndex,
+      Value<String> partJson,
+      Value<int> updatedAt,
+    });
 
-class $$HistoryPartsTableTableFilterComposer extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
+class $$HistoryPartsTableTableFilterComposer
+    extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
   $$HistoryPartsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -1414,7 +1462,8 @@ class $$HistoryPartsTableTableFilterComposer extends Composer<_$ChatHistoryDatab
   );
 }
 
-class $$HistoryPartsTableTableOrderingComposer extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
+class $$HistoryPartsTableTableOrderingComposer
+    extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
   $$HistoryPartsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -1453,7 +1502,8 @@ class $$HistoryPartsTableTableOrderingComposer extends Composer<_$ChatHistoryDat
   );
 }
 
-class $$HistoryPartsTableTableAnnotationComposer extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
+class $$HistoryPartsTableTableAnnotationComposer
+    extends Composer<_$ChatHistoryDatabase, $HistoryPartsTableTable> {
   $$HistoryPartsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -1461,20 +1511,25 @@ class $$HistoryPartsTableTableAnnotationComposer extends Composer<_$ChatHistoryD
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
-  GeneratedColumn<String> get messageId => $composableBuilder(column: $table.messageId, builder: (column) => column);
+  GeneratedColumn<String> get messageId =>
+      $composableBuilder(column: $table.messageId, builder: (column) => column);
 
-  GeneratedColumn<String> get partId => $composableBuilder(column: $table.partId, builder: (column) => column);
+  GeneratedColumn<String> get partId =>
+      $composableBuilder(column: $table.partId, builder: (column) => column);
 
   GeneratedColumn<int> get orderIndex => $composableBuilder(
     column: $table.orderIndex,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get partJson => $composableBuilder(column: $table.partJson, builder: (column) => column);
+  GeneratedColumn<String> get partJson =>
+      $composableBuilder(column: $table.partJson, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$HistoryPartsTableTableTableManager
@@ -1490,7 +1545,11 @@ class $$HistoryPartsTableTableTableManager
           $$HistoryPartsTableTableUpdateCompanionBuilder,
           (
             HistoryPartsTableData,
-            BaseReferences<_$ChatHistoryDatabase, $HistoryPartsTableTable, HistoryPartsTableData>,
+            BaseReferences<
+              _$ChatHistoryDatabase,
+              $HistoryPartsTableTable,
+              HistoryPartsTableData
+            >,
           ),
           HistoryPartsTableData,
           PrefetchHooks Function()
@@ -1502,12 +1561,15 @@ class $$HistoryPartsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$HistoryPartsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$HistoryPartsTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () => $$HistoryPartsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$HistoryPartsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryPartsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistoryPartsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -1546,7 +1608,11 @@ class $$HistoryPartsTableTableTableManager
                   e.readTable<$HistoryPartsTableTable, HistoryPartsTableData>(
                     table,
                   ),
-                  BaseReferences<_$ChatHistoryDatabase, $HistoryPartsTableTable, HistoryPartsTableData>(db, table, e),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistoryPartsTableTable,
+                    HistoryPartsTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -1567,25 +1633,32 @@ typedef $$HistoryPartsTableTableProcessedTableManager =
       $$HistoryPartsTableTableUpdateCompanionBuilder,
       (
         HistoryPartsTableData,
-        BaseReferences<_$ChatHistoryDatabase, $HistoryPartsTableTable, HistoryPartsTableData>,
+        BaseReferences<
+          _$ChatHistoryDatabase,
+          $HistoryPartsTableTable,
+          HistoryPartsTableData
+        >,
       ),
       HistoryPartsTableData,
       PrefetchHooks Function()
     >;
-typedef $$HistorySyncStateTableTableCreateCompanionBuilder = HistorySyncStateTableCompanion Function({
-  required String sessionId,
-  required int watermark,
-  required int backendActivityAt,
-  Value<int?> syncedAt,
-});
-typedef $$HistorySyncStateTableTableUpdateCompanionBuilder = HistorySyncStateTableCompanion Function({
-  Value<String> sessionId,
-  Value<int> watermark,
-  Value<int> backendActivityAt,
-  Value<int?> syncedAt,
-});
+typedef $$HistorySyncStateTableTableCreateCompanionBuilder =
+    HistorySyncStateTableCompanion Function({
+      required String sessionId,
+      required int watermark,
+      required int backendActivityAt,
+      Value<int?> syncedAt,
+    });
+typedef $$HistorySyncStateTableTableUpdateCompanionBuilder =
+    HistorySyncStateTableCompanion Function({
+      Value<String> sessionId,
+      Value<int> watermark,
+      Value<int> backendActivityAt,
+      Value<int?> syncedAt,
+    });
 
-class $$HistorySyncStateTableTableFilterComposer extends Composer<_$ChatHistoryDatabase, $HistorySyncStateTableTable> {
+class $$HistorySyncStateTableTableFilterComposer
+    extends Composer<_$ChatHistoryDatabase, $HistorySyncStateTableTable> {
   $$HistorySyncStateTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -1653,16 +1726,19 @@ class $$HistorySyncStateTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
-  GeneratedColumn<int> get watermark => $composableBuilder(column: $table.watermark, builder: (column) => column);
+  GeneratedColumn<int> get watermark =>
+      $composableBuilder(column: $table.watermark, builder: (column) => column);
 
   GeneratedColumn<int> get backendActivityAt => $composableBuilder(
     column: $table.backendActivityAt,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get syncedAt => $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+  GeneratedColumn<int> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
 }
 
 class $$HistorySyncStateTableTableTableManager
@@ -1678,7 +1754,11 @@ class $$HistorySyncStateTableTableTableManager
           $$HistorySyncStateTableTableUpdateCompanionBuilder,
           (
             HistorySyncStateTableData,
-            BaseReferences<_$ChatHistoryDatabase, $HistorySyncStateTableTable, HistorySyncStateTableData>,
+            BaseReferences<
+              _$ChatHistoryDatabase,
+              $HistorySyncStateTableTable,
+              HistorySyncStateTableData
+            >,
           ),
           HistorySyncStateTableData,
           PrefetchHooks Function()
@@ -1690,18 +1770,21 @@ class $$HistorySyncStateTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$HistorySyncStateTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$HistorySyncStateTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$HistorySyncStateTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$HistorySyncStateTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$HistorySyncStateTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HistorySyncStateTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -1729,12 +1812,15 @@ class $$HistorySyncStateTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$HistorySyncStateTableTable, HistorySyncStateTableData>(table),
-                  BaseReferences<_$ChatHistoryDatabase, $HistorySyncStateTableTable, HistorySyncStateTableData>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  e.readTable<
+                    $HistorySyncStateTableTable,
+                    HistorySyncStateTableData
+                  >(table),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistorySyncStateTableTable,
+                    HistorySyncStateTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -1755,7 +1841,11 @@ typedef $$HistorySyncStateTableTableProcessedTableManager =
       $$HistorySyncStateTableTableUpdateCompanionBuilder,
       (
         HistorySyncStateTableData,
-        BaseReferences<_$ChatHistoryDatabase, $HistorySyncStateTableTable, HistorySyncStateTableData>,
+        BaseReferences<
+          _$ChatHistoryDatabase,
+          $HistorySyncStateTableTable,
+          HistorySyncStateTableData
+        >,
       ),
       HistorySyncStateTableData,
       PrefetchHooks Function()

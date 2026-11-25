@@ -14,31 +14,30 @@ _ListTasksArguments _$ListTasksArgumentsFromJson(Map json) =>
       return val;
     }, fieldKeyMap: const {'projectId': 'project_id'});
 
-Map<String, dynamic> _$ListTasksArgumentsToJson(_ListTasksArguments instance) => <String, dynamic>{
-  'project_id': ?instance.projectId,
-};
+Map<String, dynamic> _$ListTasksArgumentsToJson(_ListTasksArguments instance) =>
+    <String, dynamic>{'project_id': ?instance.projectId};
 
-_GetTaskArguments _$GetTaskArgumentsFromJson(Map json) => $checkedCreate('_GetTaskArguments', json, ($checkedConvert) {
-  final val = _GetTaskArguments(
-    taskId: $checkedConvert('task_id', (v) => v as String?),
-  );
-  return val;
-}, fieldKeyMap: const {'taskId': 'task_id'});
+_GetTaskArguments _$GetTaskArgumentsFromJson(Map json) =>
+    $checkedCreate('_GetTaskArguments', json, ($checkedConvert) {
+      final val = _GetTaskArguments(
+        taskId: $checkedConvert('task_id', (v) => v as String?),
+      );
+      return val;
+    }, fieldKeyMap: const {'taskId': 'task_id'});
 
-Map<String, dynamic> _$GetTaskArgumentsToJson(_GetTaskArguments instance) => <String, dynamic>{
-  'task_id': ?instance.taskId,
-};
+Map<String, dynamic> _$GetTaskArgumentsToJson(_GetTaskArguments instance) =>
+    <String, dynamic>{'task_id': ?instance.taskId};
 
-_TaskIdArguments _$TaskIdArgumentsFromJson(Map json) => $checkedCreate('_TaskIdArguments', json, ($checkedConvert) {
-  final val = _TaskIdArguments(
-    taskId: $checkedConvert('task_id', (v) => v as String),
-  );
-  return val;
-}, fieldKeyMap: const {'taskId': 'task_id'});
+_TaskIdArguments _$TaskIdArgumentsFromJson(Map json) =>
+    $checkedCreate('_TaskIdArguments', json, ($checkedConvert) {
+      final val = _TaskIdArguments(
+        taskId: $checkedConvert('task_id', (v) => v as String),
+      );
+      return val;
+    }, fieldKeyMap: const {'taskId': 'task_id'});
 
-Map<String, dynamic> _$TaskIdArgumentsToJson(_TaskIdArguments instance) => <String, dynamic>{
-  'task_id': instance.taskId,
-};
+Map<String, dynamic> _$TaskIdArgumentsToJson(_TaskIdArguments instance) =>
+    <String, dynamic>{'task_id': instance.taskId};
 
 _GetTaskRunTranscriptArguments _$GetTaskRunTranscriptArgumentsFromJson(
   Map json,
@@ -74,17 +73,23 @@ _CreateTaskArguments _$CreateTaskArgumentsFromJson(Map json) => $checkedCreate(
       projectId: $checkedConvert('project_id', (v) => v as String?),
       missedRunPolicy: $checkedConvert(
         'missed_run_policy',
-        (v) => $enumDecodeNullable(_$TaskMissedRunPolicyEnumMap, v) ?? TaskMissedRunPolicy.runWhenBack,
+        (v) =>
+            $enumDecodeNullable(_$TaskMissedRunPolicyEnumMap, v) ??
+            TaskMissedRunPolicy.runWhenBack,
       ),
       runMode: $checkedConvert(
         'run_mode',
-        (v) => v == null ? const TaskRunMode.newSession() : TaskRunMode.fromJson(Map<String, dynamic>.from(v as Map)),
+        (v) => v == null
+            ? const TaskRunMode.newSession()
+            : TaskRunMode.fromJson(Map<String, dynamic>.from(v as Map)),
       ),
       model: $checkedConvert('model', (v) => v as String?),
       effort: $checkedConvert('effort', (v) => v as String?),
       approvalMode: $checkedConvert(
         'approval_mode',
-        (v) => $enumDecodeNullable(_$TaskApprovalModeEnumMap, v) ?? TaskApprovalMode.ask,
+        (v) =>
+            $enumDecodeNullable(_$TaskApprovalModeEnumMap, v) ??
+            TaskApprovalMode.ask,
       ),
       command: $checkedConvert('command', (v) => v as String?),
     );
@@ -141,7 +146,9 @@ _UpdateTaskArguments _$UpdateTaskArgumentsFromJson(Map json) => $checkedCreate(
       ),
       schedule: $checkedConvert(
         'schedule',
-        (v) => v == null ? null : TaskSchedule.fromJson(Map<String, dynamic>.from(v as Map)),
+        (v) => v == null
+            ? null
+            : TaskSchedule.fromJson(Map<String, dynamic>.from(v as Map)),
       ),
       timeZone: $checkedConvert('time_zone', (v) => v as String?),
       missedRunPolicy: $checkedConvert(
@@ -150,7 +157,9 @@ _UpdateTaskArguments _$UpdateTaskArgumentsFromJson(Map json) => $checkedCreate(
       ),
       runMode: $checkedConvert(
         'run_mode',
-        (v) => v == null ? null : TaskRunMode.fromJson(Map<String, dynamic>.from(v as Map)),
+        (v) => v == null
+            ? null
+            : TaskRunMode.fromJson(Map<String, dynamic>.from(v as Map)),
       ),
       model: $checkedConvert('model', (v) => v as String?),
       effort: $checkedConvert('effort', (v) => v as String?),
@@ -325,7 +334,9 @@ _PageOptionArgument _$PageOptionArgumentFromJson(Map json) => $checkedCreate(
       description: $checkedConvert('description', (v) => v as String?),
       image: $checkedConvert(
         'image',
-        (v) => v == null ? null : PageImageArgument.fromJson(Map<String, dynamic>.from(v as Map)),
+        (v) => v == null
+            ? null
+            : PageImageArgument.fromJson(Map<String, dynamic>.from(v as Map)),
       ),
       recommended: $checkedConvert('recommended', (v) => v as bool? ?? false),
     );
@@ -340,7 +351,8 @@ _ScheduleWakeUpArguments _$ScheduleWakeUpArgumentsFromJson(Map json) =>
         prompt: $checkedConvert('prompt', (v) => v as String),
         when: $checkedConvert(
           'when',
-          (v) => WakeUpWhenArgument.fromJson(Map<String, dynamic>.from(v as Map)),
+          (v) =>
+              WakeUpWhenArgument.fromJson(Map<String, dynamic>.from(v as Map)),
         ),
         timeZone: $checkedConvert('time_zone', (v) => v as String?),
         command: $checkedConvert('command', (v) => v as String?),
@@ -348,31 +360,38 @@ _ScheduleWakeUpArguments _$ScheduleWakeUpArgumentsFromJson(Map json) =>
       return val;
     }, fieldKeyMap: const {'timeZone': 'time_zone'});
 
-WakeUpWhenAfterArgument _$WakeUpWhenAfterArgumentFromJson(Map json) => WakeUpWhenAfterArgument(
-  minutes: (json['minutes'] as num).toInt(),
-  $type: json['kind'] as String?,
-);
+WakeUpWhenAfterArgument _$WakeUpWhenAfterArgumentFromJson(Map json) =>
+    WakeUpWhenAfterArgument(
+      minutes: (json['minutes'] as num).toInt(),
+      $type: json['kind'] as String?,
+    );
 
-WakeUpWhenEveryArgument _$WakeUpWhenEveryArgumentFromJson(Map json) => WakeUpWhenEveryArgument(
-  minutes: (json['minutes'] as num).toInt(),
-  $type: json['kind'] as String?,
-);
+WakeUpWhenEveryArgument _$WakeUpWhenEveryArgumentFromJson(Map json) =>
+    WakeUpWhenEveryArgument(
+      minutes: (json['minutes'] as num).toInt(),
+      $type: json['kind'] as String?,
+    );
 
-WakeUpWhenDailyArgument _$WakeUpWhenDailyArgumentFromJson(Map json) => WakeUpWhenDailyArgument(
-  time: json['time'] as String,
-  $type: json['kind'] as String?,
-);
+WakeUpWhenDailyArgument _$WakeUpWhenDailyArgumentFromJson(Map json) =>
+    WakeUpWhenDailyArgument(
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
 
-WakeUpWhenWeekdaysArgument _$WakeUpWhenWeekdaysArgumentFromJson(Map json) => WakeUpWhenWeekdaysArgument(
-  time: json['time'] as String,
-  $type: json['kind'] as String?,
-);
+WakeUpWhenWeekdaysArgument _$WakeUpWhenWeekdaysArgumentFromJson(Map json) =>
+    WakeUpWhenWeekdaysArgument(
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
 
-WakeUpWhenWeeklyArgument _$WakeUpWhenWeeklyArgumentFromJson(Map json) => WakeUpWhenWeeklyArgument(
-  days: (json['days'] as List<dynamic>).map((e) => $enumDecode(_$TaskWeekdayEnumMap, e)).toSet(),
-  time: json['time'] as String,
-  $type: json['kind'] as String?,
-);
+WakeUpWhenWeeklyArgument _$WakeUpWhenWeeklyArgumentFromJson(Map json) =>
+    WakeUpWhenWeeklyArgument(
+      days: (json['days'] as List<dynamic>)
+          .map((e) => $enumDecode(_$TaskWeekdayEnumMap, e))
+          .toSet(),
+      time: json['time'] as String,
+      $type: json['kind'] as String?,
+    );
 
 const _$TaskWeekdayEnumMap = {
   TaskWeekday.monday: 'monday',

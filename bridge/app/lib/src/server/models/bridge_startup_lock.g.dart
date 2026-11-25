@@ -11,7 +11,8 @@ _BridgeStartupLock _$BridgeStartupLockFromJson(Map json) => _BridgeStartupLock(
   bridgeStartMarker: json['bridgeStartMarker'] as String?,
 );
 
-Map<String, dynamic> _$BridgeStartupLockToJson(_BridgeStartupLock instance) => <String, dynamic>{
-  'bridgePid': instance.bridgePid,
-  'bridgeStartMarker': ?instance.bridgeStartMarker,
-};
+Map<String, dynamic> _$BridgeStartupLockToJson(_BridgeStartupLock instance) =>
+    <String, dynamic>{
+      'bridgePid': instance.bridgePid,
+      'bridgeStartMarker': ?instance.bridgeStartMarker,
+    };

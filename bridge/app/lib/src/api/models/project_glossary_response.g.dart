@@ -18,7 +18,8 @@ _ProjectGlossaryAddedWordsResponse _$ProjectGlossaryAddedWordsResponseFromJson(
   added: (json['added'] as List<dynamic>).map((e) => e as String).toList(),
 );
 
-_ProjectGlossaryRemovedWordsResponse _$ProjectGlossaryRemovedWordsResponseFromJson(Map json) =>
+_ProjectGlossaryRemovedWordsResponse
+_$ProjectGlossaryRemovedWordsResponseFromJson(Map json) =>
     _ProjectGlossaryRemovedWordsResponse(
       removed: (json['removed'] as num).toInt(),
     );

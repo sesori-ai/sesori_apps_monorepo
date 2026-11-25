@@ -47,7 +47,8 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   }
 }
 
-class $ProjectsTableTable extends ProjectsTable with TableInfo<$ProjectsTableTable, ProjectDto> {
+class $ProjectsTableTable extends ProjectsTable
+    with TableInfo<$ProjectsTableTable, ProjectDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -131,7 +132,8 @@ class $ProjectsTableTable extends ProjectsTable with TableInfo<$ProjectsTableTab
     requiredDuringInsert: false,
     clientDefault: () => DateTime.now().millisecondsSinceEpoch,
   );
-  static const VerificationMeta _projectionUpdatedAtMeta = const VerificationMeta('projectionUpdatedAt');
+  static const VerificationMeta _projectionUpdatedAtMeta =
+      const VerificationMeta('projectionUpdatedAt');
   @override
   late final GeneratedColumn<int> projectionUpdatedAt = GeneratedColumn<int>(
     'projection_updated_at',
@@ -325,7 +327,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (projectionUpdatedAt != null) 'projection_updated_at': projectionUpdatedAt,
+      if (projectionUpdatedAt != null)
+        'projection_updated_at': projectionUpdatedAt,
     });
   }
 
@@ -397,7 +400,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   }
 }
 
-mixin $ScheduledTasksTableTableToColumns implements Insertable<ScheduledTaskDto> {
+mixin $ScheduledTasksTableTableToColumns
+    implements Insertable<ScheduledTaskDto> {
   String get id;
   String get name;
   String get promptJson;
@@ -629,7 +633,8 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String> missedRunPolicy =
+  late final GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String>
+  missedRunPolicy =
       GeneratedColumn<String>(
         'missed_run_policy',
         aliasedName,
@@ -640,7 +645,8 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
         $ScheduledTasksTableTable.$convertermissedRunPolicy,
       );
   @override
-  late final GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String> runMode =
+  late final GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String>
+  runMode =
       GeneratedColumn<String>(
         'run_mode',
         aliasedName,
@@ -665,7 +671,8 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     ),
   );
   @override
-  late final GeneratedColumnWithTypeConverter<TaskApprovalMode, String> approvalMode =
+  late final GeneratedColumnWithTypeConverter<TaskApprovalMode, String>
+  approvalMode =
       GeneratedColumn<String>(
         'approval_mode',
         aliasedName,
@@ -1011,12 +1018,13 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
         DriftSqlType.string,
         data['${effectivePrefix}time_zone'],
       )!,
-      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}missed_run_policy'],
-        )!,
-      ),
+      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}missed_run_policy'],
+            )!,
+          ),
       runMode: $ScheduledTasksTableTable.$converterrunMode.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -1069,23 +1077,24 @@ class $ScheduledTasksTableTable extends ScheduledTasksTable
     return $ScheduledTasksTableTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<TaskMissedRunPolicy, String, String> $convertermissedRunPolicy =
-      const EnumNameConverter<TaskMissedRunPolicy>(
-        TaskMissedRunPolicy.values,
-      );
-  static JsonTypeConverter2<ScheduledTaskRunModeKind, String, String> $converterrunMode =
-      const EnumNameConverter<ScheduledTaskRunModeKind>(
-        ScheduledTaskRunModeKind.values,
-      );
-  static JsonTypeConverter2<TaskApprovalMode, String, String> $converterapprovalMode =
-      const EnumNameConverter<TaskApprovalMode>(
-        TaskApprovalMode.values,
-      );
+  static JsonTypeConverter2<TaskMissedRunPolicy, String, String>
+  $convertermissedRunPolicy = const EnumNameConverter<TaskMissedRunPolicy>(
+    TaskMissedRunPolicy.values,
+  );
+  static JsonTypeConverter2<ScheduledTaskRunModeKind, String, String>
+  $converterrunMode = const EnumNameConverter<ScheduledTaskRunModeKind>(
+    ScheduledTaskRunModeKind.values,
+  );
+  static JsonTypeConverter2<TaskApprovalMode, String, String>
+  $converterapprovalMode = const EnumNameConverter<TaskApprovalMode>(
+    TaskApprovalMode.values,
+  );
   @override
   bool get withoutRowId => true;
 }
 
-class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns {
+class ScheduledTaskDto extends DataClass
+    with $ScheduledTasksTableTableToColumns {
   @override
   final String id;
   @override
@@ -1175,9 +1184,15 @@ class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns
       promptJson: Value(promptJson),
       projectId: Value(projectId),
       pluginId: Value(pluginId),
-      agent: agent == null && nullToAbsent ? const Value.absent() : Value(agent),
-      modelJson: modelJson == null && nullToAbsent ? const Value.absent() : Value(modelJson),
-      variant: variant == null && nullToAbsent ? const Value.absent() : Value(variant),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      modelJson: modelJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelJson),
+      variant: variant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(variant),
       fastMode: Value(fastMode),
       dedicatedWorktree: Value(dedicatedWorktree),
       scheduleJson: Value(scheduleJson),
@@ -1187,10 +1202,18 @@ class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns
       autoCompact: Value(autoCompact),
       approvalMode: Value(approvalMode),
       enabled: Value(enabled),
-      command: command == null && nullToAbsent ? const Value.absent() : Value(command),
-      nextDueAt: nextDueAt == null && nullToAbsent ? const Value.absent() : Value(nextDueAt),
-      targetSessionId: targetSessionId == null && nullToAbsent ? const Value.absent() : Value(targetSessionId),
-      completedAt: completedAt == null && nullToAbsent ? const Value.absent() : Value(completedAt),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
+      nextDueAt: nextDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextDueAt),
+      targetSessionId: targetSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetSessionId),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1214,9 +1237,8 @@ class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns
       dedicatedWorktree: serializer.fromJson<bool>(json['dedicatedWorktree']),
       scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
       timeZone: serializer.fromJson<String>(json['timeZone']),
-      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy.fromJson(
-        serializer.fromJson<String>(json['missedRunPolicy']),
-      ),
+      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy
+          .fromJson(serializer.fromJson<String>(json['missedRunPolicy'])),
       runMode: $ScheduledTasksTableTable.$converterrunMode.fromJson(
         serializer.fromJson<String>(json['runMode']),
       ),
@@ -1315,7 +1337,9 @@ class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns
     enabled: enabled ?? this.enabled,
     command: command.present ? command.value : this.command,
     nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
-    targetSessionId: targetSessionId.present ? targetSessionId.value : this.targetSessionId,
+    targetSessionId: targetSessionId.present
+        ? targetSessionId.value
+        : this.targetSessionId,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1324,25 +1348,41 @@ class ScheduledTaskDto extends DataClass with $ScheduledTasksTableTableToColumns
     return ScheduledTaskDto(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      promptJson: data.promptJson.present ? data.promptJson.value : this.promptJson,
+      promptJson: data.promptJson.present
+          ? data.promptJson.value
+          : this.promptJson,
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
       pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
       agent: data.agent.present ? data.agent.value : this.agent,
       modelJson: data.modelJson.present ? data.modelJson.value : this.modelJson,
       variant: data.variant.present ? data.variant.value : this.variant,
       fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
-      dedicatedWorktree: data.dedicatedWorktree.present ? data.dedicatedWorktree.value : this.dedicatedWorktree,
-      scheduleJson: data.scheduleJson.present ? data.scheduleJson.value : this.scheduleJson,
+      dedicatedWorktree: data.dedicatedWorktree.present
+          ? data.dedicatedWorktree.value
+          : this.dedicatedWorktree,
+      scheduleJson: data.scheduleJson.present
+          ? data.scheduleJson.value
+          : this.scheduleJson,
       timeZone: data.timeZone.present ? data.timeZone.value : this.timeZone,
-      missedRunPolicy: data.missedRunPolicy.present ? data.missedRunPolicy.value : this.missedRunPolicy,
+      missedRunPolicy: data.missedRunPolicy.present
+          ? data.missedRunPolicy.value
+          : this.missedRunPolicy,
       runMode: data.runMode.present ? data.runMode.value : this.runMode,
-      autoCompact: data.autoCompact.present ? data.autoCompact.value : this.autoCompact,
-      approvalMode: data.approvalMode.present ? data.approvalMode.value : this.approvalMode,
+      autoCompact: data.autoCompact.present
+          ? data.autoCompact.value
+          : this.autoCompact,
+      approvalMode: data.approvalMode.present
+          ? data.approvalMode.value
+          : this.approvalMode,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
       command: data.command.present ? data.command.value : this.command,
       nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
-      targetSessionId: data.targetSessionId.present ? data.targetSessionId.value : this.targetSessionId,
-      completedAt: data.completedAt.present ? data.completedAt.value : this.completedAt,
+      targetSessionId: data.targetSessionId.present
+          ? data.targetSessionId.value
+          : this.targetSessionId,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1875,7 +1915,8 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   }
 }
 
-class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable, SessionDto> {
+class $SessionTableTable extends SessionTable
+    with TableInfo<$SessionTableTable, SessionDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -2022,7 +2063,8 @@ class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable,
     requiredDuringInsert: false,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<AgentModel?, String> lastAgentModel = GeneratedColumn<String>(
+  late final GeneratedColumnWithTypeConverter<AgentModel?, String>
+  lastAgentModel = GeneratedColumn<String>(
     'last_agent_model',
     aliasedName,
     true,
@@ -2066,7 +2108,8 @@ class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable,
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _projectionUpdatedAtMeta = const VerificationMeta('projectionUpdatedAt');
+  static const VerificationMeta _projectionUpdatedAtMeta =
+      const VerificationMeta('projectionUpdatedAt');
   @override
   late final GeneratedColumn<int> projectionUpdatedAt = GeneratedColumn<int>(
     'projection_updated_at',
@@ -2140,7 +2183,8 @@ class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable,
     requiredDuringInsert: false,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<SessionApprovalMode?, String> approvalOverride =
+  late final GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  approvalOverride =
       GeneratedColumn<String>(
         'approval_override',
         aliasedName,
@@ -2161,18 +2205,20 @@ class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _forkedFromSessionIdMeta = const VerificationMeta('forkedFromSessionId');
+  static const VerificationMeta _forkedFromSessionIdMeta =
+      const VerificationMeta('forkedFromSessionId');
   @override
-  late final GeneratedColumn<String> forkedFromSessionId = GeneratedColumn<String>(
-    'forked_from_session_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES sessions_table (session_id) ON DELETE SET NULL',
-    ),
-  );
+  late final GeneratedColumn<String> forkedFromSessionId =
+      GeneratedColumn<String>(
+        'forked_from_session_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES sessions_table (session_id) ON DELETE SET NULL',
+        ),
+      );
   static const VerificationMeta _forkedFromTitleMeta = const VerificationMeta(
     'forkedFromTitle',
   );
@@ -2584,18 +2630,18 @@ class $SessionTableTable extends SessionTable with TableInfo<$SessionTableTable,
     return $SessionTableTable(attachedDatabase, alias);
   }
 
-  static TypeConverter<AgentModel, String> $converterlastAgentModel = const AgentModelConverter();
-  static TypeConverter<AgentModel?, String?> $converterlastAgentModeln = NullAwareTypeConverter.wrap(
-    $converterlastAgentModel,
+  static TypeConverter<AgentModel, String> $converterlastAgentModel =
+      const AgentModelConverter();
+  static TypeConverter<AgentModel?, String?> $converterlastAgentModeln =
+      NullAwareTypeConverter.wrap($converterlastAgentModel);
+  static JsonTypeConverter2<SessionApprovalMode, String, String>
+  $converterapprovalOverride = const EnumNameConverter<SessionApprovalMode>(
+    SessionApprovalMode.values,
   );
-  static JsonTypeConverter2<SessionApprovalMode, String, String> $converterapprovalOverride =
-      const EnumNameConverter<SessionApprovalMode>(
-        SessionApprovalMode.values,
-      );
-  static JsonTypeConverter2<SessionApprovalMode?, String?, String?> $converterapprovalOverriden =
-      JsonTypeConverter2.asNullable(
-        $converterapprovalOverride,
-      );
+  static JsonTypeConverter2<SessionApprovalMode?, String?, String?>
+  $converterapprovalOverriden = JsonTypeConverter2.asNullable(
+    $converterapprovalOverride,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -2744,7 +2790,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (fastMode != null) 'fast_mode': fastMode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
-      if (projectionUpdatedAt != null) 'projection_updated_at': projectionUpdatedAt,
+      if (projectionUpdatedAt != null)
+        'projection_updated_at': projectionUpdatedAt,
       if (lastActivityAt != null) 'last_activity_at': lastActivityAt,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
@@ -2753,7 +2800,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
       if (pinOrder != null) 'pin_order': pinOrder,
-      if (forkedFromSessionId != null) 'forked_from_session_id': forkedFromSessionId,
+      if (forkedFromSessionId != null)
+        'forked_from_session_id': forkedFromSessionId,
       if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
       if (scheduledTaskId != null) 'scheduled_task_id': scheduledTaskId,
     });
@@ -2957,7 +3005,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   }
 }
 
-mixin $DeletedSessionsTableTableToColumns implements Insertable<DeletedSessionDto> {
+mixin $DeletedSessionsTableTableToColumns
+    implements Insertable<DeletedSessionDto> {
   /// Current owner of this durable local entity. Local mode has one owner;
   /// carrying it in the key keeps future identity scoping possible.
   String get ownerIdentity;
@@ -3202,7 +3251,8 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
   }
 }
 
-mixin $CatalogHydrationsTableTableToColumns implements Insertable<CatalogHydrationDto> {
+mixin $CatalogHydrationsTableTableToColumns
+    implements Insertable<CatalogHydrationDto> {
   String get pluginId;
   int get projectionVersion;
   int get completedAt;
@@ -3336,7 +3386,8 @@ class $CatalogHydrationsTableTable extends CatalogHydrationsTable
   bool get withoutRowId => true;
 }
 
-class CatalogHydrationsTableCompanion extends UpdateCompanion<CatalogHydrationDto> {
+class CatalogHydrationsTableCompanion
+    extends UpdateCompanion<CatalogHydrationDto> {
   final Value<String> pluginId;
   final Value<int> projectionVersion;
   final Value<int> completedAt;
@@ -3402,7 +3453,8 @@ class CatalogHydrationsTableCompanion extends UpdateCompanion<CatalogHydrationDt
   }
 }
 
-mixin $SessionOptionsCacheTableTableToColumns implements Insertable<SessionOptionsCacheTableData> {
+mixin $SessionOptionsCacheTableTableToColumns
+    implements Insertable<SessionOptionsCacheTableData> {
   String get pluginId;
   PluginSessionOptionsScope get scope;
   String get ownerId;
@@ -3439,7 +3491,11 @@ mixin $SessionOptionsCacheTableTableToColumns implements Insertable<SessionOptio
 }
 
 class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
-    with TableInfo<$SessionOptionsCacheTableTable, SessionOptionsCacheTableData> {
+    with
+        TableInfo<
+          $SessionOptionsCacheTableTable,
+          SessionOptionsCacheTableData
+        > {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -3456,7 +3512,8 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String> scope =
+  late final GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String>
+  scope =
       GeneratedColumn<String>(
         'scope',
         aliasedName,
@@ -3487,17 +3544,20 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints: 'NULL REFERENCES projects_table (project_id) ON DELETE CASCADE',
+    $customConstraints:
+        'NULL REFERENCES projects_table (project_id) ON DELETE CASCADE',
   );
-  static const VerificationMeta _capturedProjectPathMeta = const VerificationMeta('capturedProjectPath');
+  static const VerificationMeta _capturedProjectPathMeta =
+      const VerificationMeta('capturedProjectPath');
   @override
-  late final GeneratedColumn<String> capturedProjectPath = GeneratedColumn<String>(
-    'captured_project_path',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
+  late final GeneratedColumn<String> capturedProjectPath =
+      GeneratedColumn<String>(
+        'captured_project_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -3717,15 +3777,16 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
     return $SessionOptionsCacheTableTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<PluginSessionOptionsScope, String, String> $converterscope =
-      const EnumNameConverter<PluginSessionOptionsScope>(
-        PluginSessionOptionsScope.values,
-      );
+  static JsonTypeConverter2<PluginSessionOptionsScope, String, String>
+  $converterscope = const EnumNameConverter<PluginSessionOptionsScope>(
+    PluginSessionOptionsScope.values,
+  );
   @override
   bool get withoutRowId => true;
 }
 
-class SessionOptionsCacheTableData extends DataClass with $SessionOptionsCacheTableTableToColumns {
+class SessionOptionsCacheTableData extends DataClass
+    with $SessionOptionsCacheTableTableToColumns {
   @override
   final String pluginId;
   @override
@@ -3763,7 +3824,9 @@ class SessionOptionsCacheTableData extends DataClass with $SessionOptionsCacheTa
       pluginId: Value(pluginId),
       scope: Value(scope),
       ownerId: Value(ownerId),
-      projectId: projectId == null && nullToAbsent ? const Value.absent() : Value(projectId),
+      projectId: projectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(projectId),
       capturedProjectPath: capturedProjectPath == null && nullToAbsent
           ? const Value.absent()
           : Value(capturedProjectPath),
@@ -3832,7 +3895,9 @@ class SessionOptionsCacheTableData extends DataClass with $SessionOptionsCacheTa
     scope: scope ?? this.scope,
     ownerId: ownerId ?? this.ownerId,
     projectId: projectId.present ? projectId.value : this.projectId,
-    capturedProjectPath: capturedProjectPath.present ? capturedProjectPath.value : this.capturedProjectPath,
+    capturedProjectPath: capturedProjectPath.present
+        ? capturedProjectPath.value
+        : this.capturedProjectPath,
     revision: revision ?? this.revision,
     capturedAt: capturedAt ?? this.capturedAt,
     agentsJson: agentsJson ?? this.agentsJson,
@@ -3847,12 +3912,22 @@ class SessionOptionsCacheTableData extends DataClass with $SessionOptionsCacheTa
       scope: data.scope.present ? data.scope.value : this.scope,
       ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
-      capturedProjectPath: data.capturedProjectPath.present ? data.capturedProjectPath.value : this.capturedProjectPath,
+      capturedProjectPath: data.capturedProjectPath.present
+          ? data.capturedProjectPath.value
+          : this.capturedProjectPath,
       revision: data.revision.present ? data.revision.value : this.revision,
-      capturedAt: data.capturedAt.present ? data.capturedAt.value : this.capturedAt,
-      agentsJson: data.agentsJson.present ? data.agentsJson.value : this.agentsJson,
-      providersJson: data.providersJson.present ? data.providersJson.value : this.providersJson,
-      commandsJson: data.commandsJson.present ? data.commandsJson.value : this.commandsJson,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
+      agentsJson: data.agentsJson.present
+          ? data.agentsJson.value
+          : this.agentsJson,
+      providersJson: data.providersJson.present
+          ? data.providersJson.value
+          : this.providersJson,
+      commandsJson: data.commandsJson.present
+          ? data.commandsJson.value
+          : this.commandsJson,
     );
   }
 
@@ -3902,7 +3977,8 @@ class SessionOptionsCacheTableData extends DataClass with $SessionOptionsCacheTa
           other.commandsJson == this.commandsJson);
 }
 
-class SessionOptionsCacheTableCompanion extends UpdateCompanion<SessionOptionsCacheTableData> {
+class SessionOptionsCacheTableCompanion
+    extends UpdateCompanion<SessionOptionsCacheTableData> {
   final Value<String> pluginId;
   final Value<PluginSessionOptionsScope> scope;
   final Value<String> ownerId;
@@ -3961,7 +4037,8 @@ class SessionOptionsCacheTableCompanion extends UpdateCompanion<SessionOptionsCa
       if (scope != null) 'scope': scope,
       if (ownerId != null) 'owner_id': ownerId,
       if (projectId != null) 'project_id': projectId,
-      if (capturedProjectPath != null) 'captured_project_path': capturedProjectPath,
+      if (capturedProjectPath != null)
+        'captured_project_path': capturedProjectPath,
       if (revision != null) 'revision': revision,
       if (capturedAt != null) 'captured_at': capturedAt,
       if (agentsJson != null) 'agents_json': agentsJson,
@@ -4054,7 +4131,8 @@ class SessionOptionsCacheTableCompanion extends UpdateCompanion<SessionOptionsCa
   }
 }
 
-mixin $NewSessionDefaultsTableTableToColumns implements Insertable<NewSessionDefaultsTableData> {
+mixin $NewSessionDefaultsTableTableToColumns
+    implements Insertable<NewSessionDefaultsTableData> {
   String get pluginId;
   String? get agent;
   AgentModel? get agentModel;
@@ -4200,13 +4278,16 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
     return $NewSessionDefaultsTableTable(attachedDatabase, alias);
   }
 
-  static TypeConverter<AgentModel, String> $converteragentModel = const AgentModelConverter();
-  static TypeConverter<AgentModel?, String?> $converteragentModeln = NullAwareTypeConverter.wrap($converteragentModel);
+  static TypeConverter<AgentModel, String> $converteragentModel =
+      const AgentModelConverter();
+  static TypeConverter<AgentModel?, String?> $converteragentModeln =
+      NullAwareTypeConverter.wrap($converteragentModel);
   @override
   bool get withoutRowId => true;
 }
 
-class NewSessionDefaultsTableData extends DataClass with $NewSessionDefaultsTableTableToColumns {
+class NewSessionDefaultsTableData extends DataClass
+    with $NewSessionDefaultsTableTableToColumns {
   @override
   final String pluginId;
   @override
@@ -4224,8 +4305,12 @@ class NewSessionDefaultsTableData extends DataClass with $NewSessionDefaultsTabl
   NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
     return NewSessionDefaultsTableCompanion(
       pluginId: Value(pluginId),
-      agent: agent == null && nullToAbsent ? const Value.absent() : Value(agent),
-      agentModel: agentModel == null && nullToAbsent ? const Value.absent() : Value(agentModel),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      agentModel: agentModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentModel),
       fastMode: Value(fastMode),
     );
   }
@@ -4270,7 +4355,9 @@ class NewSessionDefaultsTableData extends DataClass with $NewSessionDefaultsTabl
     return NewSessionDefaultsTableData(
       pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
       agent: data.agent.present ? data.agent.value : this.agent,
-      agentModel: data.agentModel.present ? data.agentModel.value : this.agentModel,
+      agentModel: data.agentModel.present
+          ? data.agentModel.value
+          : this.agentModel,
       fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
     );
   }
@@ -4298,7 +4385,8 @@ class NewSessionDefaultsTableData extends DataClass with $NewSessionDefaultsTabl
           other.fastMode == this.fastMode);
 }
 
-class NewSessionDefaultsTableCompanion extends UpdateCompanion<NewSessionDefaultsTableData> {
+class NewSessionDefaultsTableCompanion
+    extends UpdateCompanion<NewSessionDefaultsTableData> {
   final Value<String> pluginId;
   final Value<String?> agent;
   final Value<AgentModel?> agentModel;
@@ -4377,7 +4465,8 @@ class NewSessionDefaultsTableCompanion extends UpdateCompanion<NewSessionDefault
   }
 }
 
-mixin $AcceptedPromptsTableTableToColumns implements Insertable<AcceptedPromptsTableData> {
+mixin $AcceptedPromptsTableTableToColumns
+    implements Insertable<AcceptedPromptsTableData> {
   String get sessionId;
   String get promptId;
   int get acceptedAt;
@@ -4504,7 +4593,8 @@ class $AcceptedPromptsTableTable extends AcceptedPromptsTable
   bool get withoutRowId => true;
 }
 
-class AcceptedPromptsTableData extends DataClass with $AcceptedPromptsTableTableToColumns {
+class AcceptedPromptsTableData extends DataClass
+    with $AcceptedPromptsTableTableToColumns {
   @override
   final String sessionId;
   @override
@@ -4560,7 +4650,9 @@ class AcceptedPromptsTableData extends DataClass with $AcceptedPromptsTableTable
     return AcceptedPromptsTableData(
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       promptId: data.promptId.present ? data.promptId.value : this.promptId,
-      acceptedAt: data.acceptedAt.present ? data.acceptedAt.value : this.acceptedAt,
+      acceptedAt: data.acceptedAt.present
+          ? data.acceptedAt.value
+          : this.acceptedAt,
     );
   }
 
@@ -4585,7 +4677,8 @@ class AcceptedPromptsTableData extends DataClass with $AcceptedPromptsTableTable
           other.acceptedAt == this.acceptedAt);
 }
 
-class AcceptedPromptsTableCompanion extends UpdateCompanion<AcceptedPromptsTableData> {
+class AcceptedPromptsTableCompanion
+    extends UpdateCompanion<AcceptedPromptsTableData> {
   final Value<String> sessionId;
   final Value<String> promptId;
   final Value<int> acceptedAt;
@@ -4651,7 +4744,8 @@ class AcceptedPromptsTableCompanion extends UpdateCompanion<AcceptedPromptsTable
   }
 }
 
-mixin $SessionContinuationTableTableToColumns implements Insertable<SessionContinuationDto> {
+mixin $SessionContinuationTableTableToColumns
+    implements Insertable<SessionContinuationDto> {
   String get sessionId;
   bool get enabled;
   String get outcomeJson;
@@ -4784,7 +4878,8 @@ class $SessionContinuationTableTable extends SessionContinuationTable
   bool get withoutRowId => true;
 }
 
-class SessionContinuationDto extends DataClass with $SessionContinuationTableTableToColumns {
+class SessionContinuationDto extends DataClass
+    with $SessionContinuationTableTableToColumns {
   @override
   final String sessionId;
   @override
@@ -4840,7 +4935,9 @@ class SessionContinuationDto extends DataClass with $SessionContinuationTableTab
     return SessionContinuationDto(
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
-      outcomeJson: data.outcomeJson.present ? data.outcomeJson.value : this.outcomeJson,
+      outcomeJson: data.outcomeJson.present
+          ? data.outcomeJson.value
+          : this.outcomeJson,
     );
   }
 
@@ -4865,7 +4962,8 @@ class SessionContinuationDto extends DataClass with $SessionContinuationTableTab
           other.outcomeJson == this.outcomeJson);
 }
 
-class SessionContinuationTableCompanion extends UpdateCompanion<SessionContinuationDto> {
+class SessionContinuationTableCompanion
+    extends UpdateCompanion<SessionContinuationDto> {
   final Value<String> sessionId;
   final Value<bool> enabled;
   final Value<String> outcomeJson;
@@ -4931,7 +5029,8 @@ class SessionContinuationTableCompanion extends UpdateCompanion<SessionContinuat
   }
 }
 
-mixin $SideChatExchangesTableTableToColumns implements Insertable<SideChatExchangeDto> {
+mixin $SideChatExchangesTableTableToColumns
+    implements Insertable<SideChatExchangeDto> {
   String get id;
   String get sessionId;
   String get sideChatId;
@@ -5191,7 +5290,8 @@ class $SideChatExchangesTableTable extends SideChatExchangesTable
   bool get withoutRowId => true;
 }
 
-class SideChatExchangeDto extends DataClass with $SideChatExchangesTableTableToColumns {
+class SideChatExchangeDto extends DataClass
+    with $SideChatExchangesTableTableToColumns {
   @override
   final String id;
   @override
@@ -5225,7 +5325,9 @@ class SideChatExchangeDto extends DataClass with $SideChatExchangesTableTableToC
       sideChatId: Value(sideChatId),
       question: Value(question),
       answer: Value(answer),
-      answerNotice: answerNotice == null && nullToAbsent ? const Value.absent() : Value(answerNotice),
+      answerNotice: answerNotice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(answerNotice),
       askedAt: Value(askedAt),
       answeredAt: Value(answeredAt),
     );
@@ -5285,12 +5387,18 @@ class SideChatExchangeDto extends DataClass with $SideChatExchangesTableTableToC
     return SideChatExchangeDto(
       id: data.id.present ? data.id.value : this.id,
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      sideChatId: data.sideChatId.present ? data.sideChatId.value : this.sideChatId,
+      sideChatId: data.sideChatId.present
+          ? data.sideChatId.value
+          : this.sideChatId,
       question: data.question.present ? data.question.value : this.question,
       answer: data.answer.present ? data.answer.value : this.answer,
-      answerNotice: data.answerNotice.present ? data.answerNotice.value : this.answerNotice,
+      answerNotice: data.answerNotice.present
+          ? data.answerNotice.value
+          : this.answerNotice,
       askedAt: data.askedAt.present ? data.askedAt.value : this.askedAt,
-      answeredAt: data.answeredAt.present ? data.answeredAt.value : this.answeredAt,
+      answeredAt: data.answeredAt.present
+          ? data.answeredAt.value
+          : this.answeredAt,
     );
   }
 
@@ -5334,7 +5442,8 @@ class SideChatExchangeDto extends DataClass with $SideChatExchangesTableTableToC
           other.answeredAt == this.answeredAt);
 }
 
-class SideChatExchangesTableCompanion extends UpdateCompanion<SideChatExchangeDto> {
+class SideChatExchangesTableCompanion
+    extends UpdateCompanion<SideChatExchangeDto> {
   final Value<String> id;
   final Value<String> sessionId;
   final Value<String> sideChatId;
@@ -5459,7 +5568,8 @@ class SideChatExchangesTableCompanion extends UpdateCompanion<SideChatExchangeDt
   }
 }
 
-mixin $ScheduledTaskRunsTableTableToColumns implements Insertable<ScheduledTaskRunDto> {
+mixin $ScheduledTaskRunsTableTableToColumns
+    implements Insertable<ScheduledTaskRunDto> {
   String get id;
   String get taskId;
 
@@ -5580,15 +5690,17 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _scheduledForOffsetMinutesMeta = const VerificationMeta('scheduledForOffsetMinutes');
+  static const VerificationMeta _scheduledForOffsetMinutesMeta =
+      const VerificationMeta('scheduledForOffsetMinutes');
   @override
-  late final GeneratedColumn<int> scheduledForOffsetMinutes = GeneratedColumn<int>(
-    'scheduled_for_offset_minutes',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
+  late final GeneratedColumn<int> scheduledForOffsetMinutes =
+      GeneratedColumn<int>(
+        'scheduled_for_offset_minutes',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      );
   static const VerificationMeta _firedAtMeta = const VerificationMeta(
     'firedAt',
   );
@@ -5601,7 +5713,11 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<ScheduledTaskRunOutcomeKind, String> outcome =
+  late final GeneratedColumnWithTypeConverter<
+    ScheduledTaskRunOutcomeKind,
+    String
+  >
+  outcome =
       GeneratedColumn<String>(
         'outcome',
         aliasedName,
@@ -5612,7 +5728,8 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
         $ScheduledTaskRunsTableTable.$converteroutcome,
       );
   @override
-  late final GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String> reason =
+  late final GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String>
+  reason =
       GeneratedColumn<String>(
         'reason',
         aliasedName,
@@ -5656,7 +5773,8 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _compactRequestedAtMeta = const VerificationMeta('compactRequestedAt');
+  static const VerificationMeta _compactRequestedAtMeta =
+      const VerificationMeta('compactRequestedAt');
   @override
   late final GeneratedColumn<int> compactRequestedAt = GeneratedColumn<int>(
     'compact_requested_at',
@@ -5845,22 +5963,22 @@ class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
     return $ScheduledTaskRunsTableTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<ScheduledTaskRunOutcomeKind, String, String> $converteroutcome =
-      const EnumNameConverter<ScheduledTaskRunOutcomeKind>(
-        ScheduledTaskRunOutcomeKind.values,
-      );
-  static JsonTypeConverter2<TaskRunFailureReason, String, String> $converterreason =
-      const EnumNameConverter<TaskRunFailureReason>(
-        TaskRunFailureReason.values,
-      );
-  static JsonTypeConverter2<TaskRunFailureReason?, String?, String?> $converterreasonn = JsonTypeConverter2.asNullable(
-    $converterreason,
+  static JsonTypeConverter2<ScheduledTaskRunOutcomeKind, String, String>
+  $converteroutcome = const EnumNameConverter<ScheduledTaskRunOutcomeKind>(
+    ScheduledTaskRunOutcomeKind.values,
   );
+  static JsonTypeConverter2<TaskRunFailureReason, String, String>
+  $converterreason = const EnumNameConverter<TaskRunFailureReason>(
+    TaskRunFailureReason.values,
+  );
+  static JsonTypeConverter2<TaskRunFailureReason?, String?, String?>
+  $converterreasonn = JsonTypeConverter2.asNullable($converterreason);
   @override
   bool get withoutRowId => true;
 }
 
-class ScheduledTaskRunDto extends DataClass with $ScheduledTaskRunsTableTableToColumns {
+class ScheduledTaskRunDto extends DataClass
+    with $ScheduledTaskRunsTableTableToColumns {
   @override
   final String id;
   @override
@@ -5922,16 +6040,26 @@ class ScheduledTaskRunDto extends DataClass with $ScheduledTaskRunsTableTableToC
     return ScheduledTaskRunsTableCompanion(
       id: Value(id),
       taskId: Value(taskId),
-      sessionId: sessionId == null && nullToAbsent ? const Value.absent() : Value(sessionId),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
       scheduledFor: Value(scheduledFor),
       scheduledForOffsetMinutes: Value(scheduledForOffsetMinutes),
       firedAt: Value(firedAt),
       outcome: Value(outcome),
-      reason: reason == null && nullToAbsent ? const Value.absent() : Value(reason),
-      attemptJson: attemptJson == null && nullToAbsent ? const Value.absent() : Value(attemptJson),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      attemptJson: attemptJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attemptJson),
       late: Value(late),
-      userPromptedAt: userPromptedAt == null && nullToAbsent ? const Value.absent() : Value(userPromptedAt),
-      compactRequestedAt: compactRequestedAt == null && nullToAbsent ? const Value.absent() : Value(compactRequestedAt),
+      userPromptedAt: userPromptedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userPromptedAt),
+      compactRequestedAt: compactRequestedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(compactRequestedAt),
     );
   }
 
@@ -6004,31 +6132,44 @@ class ScheduledTaskRunDto extends DataClass with $ScheduledTaskRunsTableTableToC
     taskId: taskId ?? this.taskId,
     sessionId: sessionId.present ? sessionId.value : this.sessionId,
     scheduledFor: scheduledFor ?? this.scheduledFor,
-    scheduledForOffsetMinutes: scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+    scheduledForOffsetMinutes:
+        scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
     firedAt: firedAt ?? this.firedAt,
     outcome: outcome ?? this.outcome,
     reason: reason.present ? reason.value : this.reason,
     attemptJson: attemptJson.present ? attemptJson.value : this.attemptJson,
     late: late ?? this.late,
-    userPromptedAt: userPromptedAt.present ? userPromptedAt.value : this.userPromptedAt,
-    compactRequestedAt: compactRequestedAt.present ? compactRequestedAt.value : this.compactRequestedAt,
+    userPromptedAt: userPromptedAt.present
+        ? userPromptedAt.value
+        : this.userPromptedAt,
+    compactRequestedAt: compactRequestedAt.present
+        ? compactRequestedAt.value
+        : this.compactRequestedAt,
   );
   ScheduledTaskRunDto copyWithCompanion(ScheduledTaskRunsTableCompanion data) {
     return ScheduledTaskRunDto(
       id: data.id.present ? data.id.value : this.id,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      scheduledFor: data.scheduledFor.present ? data.scheduledFor.value : this.scheduledFor,
+      scheduledFor: data.scheduledFor.present
+          ? data.scheduledFor.value
+          : this.scheduledFor,
       scheduledForOffsetMinutes: data.scheduledForOffsetMinutes.present
           ? data.scheduledForOffsetMinutes.value
           : this.scheduledForOffsetMinutes,
       firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
       outcome: data.outcome.present ? data.outcome.value : this.outcome,
       reason: data.reason.present ? data.reason.value : this.reason,
-      attemptJson: data.attemptJson.present ? data.attemptJson.value : this.attemptJson,
+      attemptJson: data.attemptJson.present
+          ? data.attemptJson.value
+          : this.attemptJson,
       late: data.late.present ? data.late.value : this.late,
-      userPromptedAt: data.userPromptedAt.present ? data.userPromptedAt.value : this.userPromptedAt,
-      compactRequestedAt: data.compactRequestedAt.present ? data.compactRequestedAt.value : this.compactRequestedAt,
+      userPromptedAt: data.userPromptedAt.present
+          ? data.userPromptedAt.value
+          : this.userPromptedAt,
+      compactRequestedAt: data.compactRequestedAt.present
+          ? data.compactRequestedAt.value
+          : this.compactRequestedAt,
     );
   }
 
@@ -6084,7 +6225,8 @@ class ScheduledTaskRunDto extends DataClass with $ScheduledTaskRunsTableTableToC
           other.compactRequestedAt == this.compactRequestedAt);
 }
 
-class ScheduledTaskRunsTableCompanion extends UpdateCompanion<ScheduledTaskRunDto> {
+class ScheduledTaskRunsTableCompanion
+    extends UpdateCompanion<ScheduledTaskRunDto> {
   final Value<String> id;
   final Value<String> taskId;
   final Value<String?> sessionId;
@@ -6150,14 +6292,16 @@ class ScheduledTaskRunsTableCompanion extends UpdateCompanion<ScheduledTaskRunDt
       if (taskId != null) 'task_id': taskId,
       if (sessionId != null) 'session_id': sessionId,
       if (scheduledFor != null) 'scheduled_for': scheduledFor,
-      if (scheduledForOffsetMinutes != null) 'scheduled_for_offset_minutes': scheduledForOffsetMinutes,
+      if (scheduledForOffsetMinutes != null)
+        'scheduled_for_offset_minutes': scheduledForOffsetMinutes,
       if (firedAt != null) 'fired_at': firedAt,
       if (outcome != null) 'outcome': outcome,
       if (reason != null) 'reason': reason,
       if (attemptJson != null) 'attempt_json': attemptJson,
       if (late != null) 'late': late,
       if (userPromptedAt != null) 'user_prompted_at': userPromptedAt,
-      if (compactRequestedAt != null) 'compact_requested_at': compactRequestedAt,
+      if (compactRequestedAt != null)
+        'compact_requested_at': compactRequestedAt,
     });
   }
 
@@ -6180,7 +6324,8 @@ class ScheduledTaskRunsTableCompanion extends UpdateCompanion<ScheduledTaskRunDt
       taskId: taskId ?? this.taskId,
       sessionId: sessionId ?? this.sessionId,
       scheduledFor: scheduledFor ?? this.scheduledFor,
-      scheduledForOffsetMinutes: scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+      scheduledForOffsetMinutes:
+          scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
       firedAt: firedAt ?? this.firedAt,
       outcome: outcome ?? this.outcome,
       reason: reason ?? this.reason,
@@ -6259,7 +6404,8 @@ class ScheduledTaskRunsTableCompanion extends UpdateCompanion<ScheduledTaskRunDt
   }
 }
 
-mixin $SessionRunningTurnsTableTableToColumns implements Insertable<SessionRunningTurnDto> {
+mixin $SessionRunningTurnsTableTableToColumns
+    implements Insertable<SessionRunningTurnDto> {
   String get sessionId;
 
   /// UTC milliseconds of when this bridge run last saw the turn running, or
@@ -6364,7 +6510,8 @@ class $SessionRunningTurnsTableTable extends SessionRunningTurnsTable
   bool get withoutRowId => true;
 }
 
-class SessionRunningTurnDto extends DataClass with $SessionRunningTurnsTableTableToColumns {
+class SessionRunningTurnDto extends DataClass
+    with $SessionRunningTurnsTableTableToColumns {
   @override
   final String sessionId;
 
@@ -6402,10 +6549,11 @@ class SessionRunningTurnDto extends DataClass with $SessionRunningTurnsTableTabl
     };
   }
 
-  SessionRunningTurnDto copyWith({String? sessionId, int? startedAt}) => SessionRunningTurnDto(
-    sessionId: sessionId ?? this.sessionId,
-    startedAt: startedAt ?? this.startedAt,
-  );
+  SessionRunningTurnDto copyWith({String? sessionId, int? startedAt}) =>
+      SessionRunningTurnDto(
+        sessionId: sessionId ?? this.sessionId,
+        startedAt: startedAt ?? this.startedAt,
+      );
   SessionRunningTurnDto copyWithCompanion(
     SessionRunningTurnsTableCompanion data,
   ) {
@@ -6429,10 +6577,13 @@ class SessionRunningTurnDto extends DataClass with $SessionRunningTurnsTableTabl
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionRunningTurnDto && other.sessionId == this.sessionId && other.startedAt == this.startedAt);
+      (other is SessionRunningTurnDto &&
+          other.sessionId == this.sessionId &&
+          other.startedAt == this.startedAt);
 }
 
-class SessionRunningTurnsTableCompanion extends UpdateCompanion<SessionRunningTurnDto> {
+class SessionRunningTurnsTableCompanion
+    extends UpdateCompanion<SessionRunningTurnDto> {
   final Value<String> sessionId;
   final Value<int> startedAt;
   const SessionRunningTurnsTableCompanion({
@@ -6486,7 +6637,8 @@ class SessionRunningTurnsTableCompanion extends UpdateCompanion<SessionRunningTu
   }
 }
 
-mixin $SessionInterruptionsTableTableToColumns implements Insertable<SessionInterruptionDto> {
+mixin $SessionInterruptionsTableTableToColumns
+    implements Insertable<SessionInterruptionDto> {
   String get sessionId;
 
   /// The newest stored history message when the interruption was recorded.
@@ -6630,7 +6782,8 @@ class $SessionInterruptionsTableTable extends SessionInterruptionsTable
   bool get withoutRowId => true;
 }
 
-class SessionInterruptionDto extends DataClass with $SessionInterruptionsTableTableToColumns {
+class SessionInterruptionDto extends DataClass
+    with $SessionInterruptionsTableTableToColumns {
   @override
   final String sessionId;
 
@@ -6689,8 +6842,12 @@ class SessionInterruptionDto extends DataClass with $SessionInterruptionsTableTa
   ) {
     return SessionInterruptionDto(
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      afterMessageId: data.afterMessageId.present ? data.afterMessageId.value : this.afterMessageId,
-      acknowledged: data.acknowledged.present ? data.acknowledged.value : this.acknowledged,
+      afterMessageId: data.afterMessageId.present
+          ? data.afterMessageId.value
+          : this.afterMessageId,
+      acknowledged: data.acknowledged.present
+          ? data.acknowledged.value
+          : this.acknowledged,
     );
   }
 
@@ -6715,7 +6872,8 @@ class SessionInterruptionDto extends DataClass with $SessionInterruptionsTableTa
           other.acknowledged == this.acknowledged);
 }
 
-class SessionInterruptionsTableCompanion extends UpdateCompanion<SessionInterruptionDto> {
+class SessionInterruptionsTableCompanion
+    extends UpdateCompanion<SessionInterruptionDto> {
   final Value<String> sessionId;
   final Value<String> afterMessageId;
   final Value<bool> acknowledged;
@@ -6824,7 +6982,8 @@ mixin $AgentPagesTableTableToColumns implements Insertable<AgentPageDto> {
   }
 }
 
-class $AgentPagesTableTable extends AgentPagesTable with TableInfo<$AgentPagesTableTable, AgentPageDto> {
+class $AgentPagesTableTable extends AgentPagesTable
+    with TableInfo<$AgentPagesTableTable, AgentPageDto> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -6864,21 +7023,23 @@ class $AgentPagesTableTable extends AgentPagesTable with TableInfo<$AgentPagesTa
     requiredDuringInsert: true,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<PendingPage, String> pageJson = GeneratedColumn<String>(
-    'page_json',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<PendingPage>($AgentPagesTableTable.$converterpageJson);
+  late final GeneratedColumnWithTypeConverter<PendingPage, String> pageJson =
+      GeneratedColumn<String>(
+        'page_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<PendingPage>($AgentPagesTableTable.$converterpageJson);
   @override
-  late final GeneratedColumnWithTypeConverter<AgentPageStatus, String> status = GeneratedColumn<String>(
-    'status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<AgentPageStatus>($AgentPagesTableTable.$converterstatus);
+  late final GeneratedColumnWithTypeConverter<AgentPageStatus, String> status =
+      GeneratedColumn<String>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<AgentPageStatus>($AgentPagesTableTable.$converterstatus);
   static const VerificationMeta _outcomeJsonMeta = const VerificationMeta(
     'outcomeJson',
   );
@@ -7035,7 +7196,8 @@ class $AgentPagesTableTable extends AgentPagesTable with TableInfo<$AgentPagesTa
     return $AgentPagesTableTable(attachedDatabase, alias);
   }
 
-  static TypeConverter<PendingPage, String> $converterpageJson = const PendingPageConverter();
+  static TypeConverter<PendingPage, String> $converterpageJson =
+      const PendingPageConverter();
   static JsonTypeConverter2<AgentPageStatus, String, String> $converterstatus =
       const EnumNameConverter<AgentPageStatus>(AgentPageStatus.values);
   @override
@@ -7083,9 +7245,13 @@ class AgentPageDto extends DataClass with $AgentPagesTableTableToColumns {
       rootSessionId: Value(rootSessionId),
       pageJson: Value(pageJson),
       status: Value(status),
-      outcomeJson: outcomeJson == null && nullToAbsent ? const Value.absent() : Value(outcomeJson),
+      outcomeJson: outcomeJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(outcomeJson),
       createdAt: Value(createdAt),
-      settledAt: settledAt == null && nullToAbsent ? const Value.absent() : Value(settledAt),
+      settledAt: settledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(settledAt),
     );
   }
 
@@ -7147,10 +7313,14 @@ class AgentPageDto extends DataClass with $AgentPagesTableTableToColumns {
     return AgentPageDto(
       id: data.id.present ? data.id.value : this.id,
       sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      rootSessionId: data.rootSessionId.present ? data.rootSessionId.value : this.rootSessionId,
+      rootSessionId: data.rootSessionId.present
+          ? data.rootSessionId.value
+          : this.rootSessionId,
       pageJson: data.pageJson.present ? data.pageJson.value : this.pageJson,
       status: data.status.present ? data.status.value : this.status,
-      outcomeJson: data.outcomeJson.present ? data.outcomeJson.value : this.outcomeJson,
+      outcomeJson: data.outcomeJson.present
+          ? data.outcomeJson.value
+          : this.outcomeJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       settledAt: data.settledAt.present ? data.settledAt.value : this.settledAt,
     );
@@ -7324,7 +7494,8 @@ class AgentPagesTableCompanion extends UpdateCompanion<AgentPageDto> {
   }
 }
 
-mixin $SessionWakeUpsTableTableToColumns implements Insertable<SessionWakeUpDto> {
+mixin $SessionWakeUpsTableTableToColumns
+    implements Insertable<SessionWakeUpDto> {
   String get id;
 
   /// The root session the wake-up is sent to.
@@ -7427,7 +7598,11 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     requiredDuringInsert: false,
   );
   @override
-  late final GeneratedColumnWithTypeConverter<SessionWakeUpCommandApproval?, String> commandApproval =
+  late final GeneratedColumnWithTypeConverter<
+    SessionWakeUpCommandApproval?,
+    String
+  >
+  commandApproval =
       GeneratedColumn<String>(
         'command_approval',
         aliasedName,
@@ -7585,12 +7760,13 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
         DriftSqlType.string,
         data['${effectivePrefix}command'],
       ),
-      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}command_approval'],
-        ),
-      ),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}command_approval'],
+            ),
+          ),
       scheduleJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}schedule_json'],
@@ -7611,19 +7787,21 @@ class $SessionWakeUpsTableTable extends SessionWakeUpsTable
     return $SessionWakeUpsTableTable(attachedDatabase, alias);
   }
 
-  static JsonTypeConverter2<SessionWakeUpCommandApproval, String, String> $convertercommandApproval =
+  static JsonTypeConverter2<SessionWakeUpCommandApproval, String, String>
+  $convertercommandApproval =
       const EnumNameConverter<SessionWakeUpCommandApproval>(
         SessionWakeUpCommandApproval.values,
       );
-  static JsonTypeConverter2<SessionWakeUpCommandApproval?, String?, String?> $convertercommandApprovaln =
-      JsonTypeConverter2.asNullable(
-        $convertercommandApproval,
-      );
+  static JsonTypeConverter2<SessionWakeUpCommandApproval?, String?, String?>
+  $convertercommandApprovaln = JsonTypeConverter2.asNullable(
+    $convertercommandApproval,
+  );
   @override
   bool get withoutRowId => true;
 }
 
-class SessionWakeUpDto extends DataClass with $SessionWakeUpsTableTableToColumns {
+class SessionWakeUpDto extends DataClass
+    with $SessionWakeUpsTableTableToColumns {
   @override
   final String id;
 
@@ -7669,8 +7847,12 @@ class SessionWakeUpDto extends DataClass with $SessionWakeUpsTableTableToColumns
       sessionId: Value(sessionId),
       label: Value(label),
       prompt: Value(prompt),
-      command: command == null && nullToAbsent ? const Value.absent() : Value(command),
-      commandApproval: commandApproval == null && nullToAbsent ? const Value.absent() : Value(commandApproval),
+      command: command == null && nullToAbsent
+          ? const Value.absent()
+          : Value(command),
+      commandApproval: commandApproval == null && nullToAbsent
+          ? const Value.absent()
+          : Value(commandApproval),
       scheduleJson: Value(scheduleJson),
       nextDueAt: Value(nextDueAt),
       createdAt: Value(createdAt),
@@ -7688,9 +7870,8 @@ class SessionWakeUpDto extends DataClass with $SessionWakeUpsTableTableToColumns
       label: serializer.fromJson<String>(json['label']),
       prompt: serializer.fromJson<String>(json['prompt']),
       command: serializer.fromJson<String?>(json['command']),
-      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln.fromJson(
-        serializer.fromJson<String?>(json['commandApproval']),
-      ),
+      commandApproval: $SessionWakeUpsTableTable.$convertercommandApprovaln
+          .fromJson(serializer.fromJson<String?>(json['commandApproval'])),
       scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
       nextDueAt: serializer.fromJson<int>(json['nextDueAt']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
@@ -7732,7 +7913,9 @@ class SessionWakeUpDto extends DataClass with $SessionWakeUpsTableTableToColumns
     label: label ?? this.label,
     prompt: prompt ?? this.prompt,
     command: command.present ? command.value : this.command,
-    commandApproval: commandApproval.present ? commandApproval.value : this.commandApproval,
+    commandApproval: commandApproval.present
+        ? commandApproval.value
+        : this.commandApproval,
     scheduleJson: scheduleJson ?? this.scheduleJson,
     nextDueAt: nextDueAt ?? this.nextDueAt,
     createdAt: createdAt ?? this.createdAt,
@@ -7744,8 +7927,12 @@ class SessionWakeUpDto extends DataClass with $SessionWakeUpsTableTableToColumns
       label: data.label.present ? data.label.value : this.label,
       prompt: data.prompt.present ? data.prompt.value : this.prompt,
       command: data.command.present ? data.command.value : this.command,
-      commandApproval: data.commandApproval.present ? data.commandApproval.value : this.commandApproval,
-      scheduleJson: data.scheduleJson.present ? data.scheduleJson.value : this.scheduleJson,
+      commandApproval: data.commandApproval.present
+          ? data.commandApproval.value
+          : this.commandApproval,
+      scheduleJson: data.scheduleJson.present
+          ? data.scheduleJson.value
+          : this.scheduleJson,
       nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -7934,7 +8121,8 @@ class SessionWakeUpsTableCompanion extends UpdateCompanion<SessionWakeUpDto> {
   }
 }
 
-mixin $SesoriToolSessionRecordsTableTableToColumns implements Insertable<SesoriToolSessionRecordDto> {
+mixin $SesoriToolSessionRecordsTableTableToColumns
+    implements Insertable<SesoriToolSessionRecordDto> {
   String get groupId;
   String get sessionId;
   String get recordKey;
@@ -7957,7 +8145,11 @@ mixin $SesoriToolSessionRecordsTableTableToColumns implements Insertable<SesoriT
 }
 
 class $SesoriToolSessionRecordsTableTable extends SesoriToolSessionRecordsTable
-    with TableInfo<$SesoriToolSessionRecordsTableTable, SesoriToolSessionRecordDto> {
+    with
+        TableInfo<
+          $SesoriToolSessionRecordsTableTable,
+          SesoriToolSessionRecordDto
+        > {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -8124,7 +8316,8 @@ class $SesoriToolSessionRecordsTableTable extends SesoriToolSessionRecordsTable
   bool get withoutRowId => true;
 }
 
-class SesoriToolSessionRecordDto extends DataClass with $SesoriToolSessionRecordsTableTableToColumns {
+class SesoriToolSessionRecordDto extends DataClass
+    with $SesoriToolSessionRecordsTableTableToColumns {
   @override
   final String groupId;
   @override
@@ -8219,7 +8412,8 @@ class SesoriToolSessionRecordDto extends DataClass with $SesoriToolSessionRecord
   }
 
   @override
-  int get hashCode => Object.hash(groupId, sessionId, recordKey, valueJson, updatedAt);
+  int get hashCode =>
+      Object.hash(groupId, sessionId, recordKey, valueJson, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8231,7 +8425,8 @@ class SesoriToolSessionRecordDto extends DataClass with $SesoriToolSessionRecord
           other.updatedAt == this.updatedAt);
 }
 
-class SesoriToolSessionRecordsTableCompanion extends UpdateCompanion<SesoriToolSessionRecordDto> {
+class SesoriToolSessionRecordsTableCompanion
+    extends UpdateCompanion<SesoriToolSessionRecordDto> {
   final Value<String> groupId;
   final Value<String> sessionId;
   final Value<String> recordKey;
@@ -8321,7 +8516,8 @@ class SesoriToolSessionRecordsTableCompanion extends UpdateCompanion<SesoriToolS
   }
 }
 
-mixin $SesoriToolRecordsTableTableToColumns implements Insertable<SesoriToolRecordDto> {
+mixin $SesoriToolRecordsTableTableToColumns
+    implements Insertable<SesoriToolRecordDto> {
   String get groupId;
   String get recordKey;
 
@@ -8479,7 +8675,8 @@ class $SesoriToolRecordsTableTable extends SesoriToolRecordsTable
   bool get withoutRowId => true;
 }
 
-class SesoriToolRecordDto extends DataClass with $SesoriToolRecordsTableTableToColumns {
+class SesoriToolRecordDto extends DataClass
+    with $SesoriToolRecordsTableTableToColumns {
   @override
   final String groupId;
   @override
@@ -8573,7 +8770,8 @@ class SesoriToolRecordDto extends DataClass with $SesoriToolRecordsTableTableToC
           other.updatedAt == this.updatedAt);
 }
 
-class SesoriToolRecordsTableCompanion extends UpdateCompanion<SesoriToolRecordDto> {
+class SesoriToolRecordsTableCompanion
+    extends UpdateCompanion<SesoriToolRecordDto> {
   final Value<String> groupId;
   final Value<String> recordKey;
   final Value<String> valueJson;
@@ -8655,26 +8853,38 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
-  late final $ScheduledTasksTableTable scheduledTasksTable = $ScheduledTasksTableTable(this);
+  late final $ScheduledTasksTableTable scheduledTasksTable =
+      $ScheduledTasksTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
-  late final $DeletedSessionsTableTable deletedSessionsTable = $DeletedSessionsTableTable(this);
-  late final $CatalogHydrationsTableTable catalogHydrationsTable = $CatalogHydrationsTableTable(this);
-  late final $SessionOptionsCacheTableTable sessionOptionsCacheTable = $SessionOptionsCacheTableTable(this);
-  late final $NewSessionDefaultsTableTable newSessionDefaultsTable = $NewSessionDefaultsTableTable(this);
-  late final $AcceptedPromptsTableTable acceptedPromptsTable = $AcceptedPromptsTableTable(this);
-  late final $SessionContinuationTableTable sessionContinuationTable = $SessionContinuationTableTable(this);
-  late final $SideChatExchangesTableTable sideChatExchangesTable = $SideChatExchangesTableTable(this);
-  late final $ScheduledTaskRunsTableTable scheduledTaskRunsTable = $ScheduledTaskRunsTableTable(this);
-  late final $SessionRunningTurnsTableTable sessionRunningTurnsTable = $SessionRunningTurnsTableTable(this);
-  late final $SessionInterruptionsTableTable sessionInterruptionsTable = $SessionInterruptionsTableTable(this);
+  late final $DeletedSessionsTableTable deletedSessionsTable =
+      $DeletedSessionsTableTable(this);
+  late final $CatalogHydrationsTableTable catalogHydrationsTable =
+      $CatalogHydrationsTableTable(this);
+  late final $SessionOptionsCacheTableTable sessionOptionsCacheTable =
+      $SessionOptionsCacheTableTable(this);
+  late final $NewSessionDefaultsTableTable newSessionDefaultsTable =
+      $NewSessionDefaultsTableTable(this);
+  late final $AcceptedPromptsTableTable acceptedPromptsTable =
+      $AcceptedPromptsTableTable(this);
+  late final $SessionContinuationTableTable sessionContinuationTable =
+      $SessionContinuationTableTable(this);
+  late final $SideChatExchangesTableTable sideChatExchangesTable =
+      $SideChatExchangesTableTable(this);
+  late final $ScheduledTaskRunsTableTable scheduledTaskRunsTable =
+      $ScheduledTaskRunsTableTable(this);
+  late final $SessionRunningTurnsTableTable sessionRunningTurnsTable =
+      $SessionRunningTurnsTableTable(this);
+  late final $SessionInterruptionsTableTable sessionInterruptionsTable =
+      $SessionInterruptionsTableTable(this);
   late final $AgentPagesTableTable agentPagesTable = $AgentPagesTableTable(
     this,
   );
-  late final $SessionWakeUpsTableTable sessionWakeUpsTable = $SessionWakeUpsTableTable(this);
-  late final $SesoriToolSessionRecordsTableTable sesoriToolSessionRecordsTable = $SesoriToolSessionRecordsTableTable(
-    this,
-  );
-  late final $SesoriToolRecordsTableTable sesoriToolRecordsTable = $SesoriToolRecordsTableTable(this);
+  late final $SessionWakeUpsTableTable sessionWakeUpsTable =
+      $SessionWakeUpsTableTable(this);
+  late final $SesoriToolSessionRecordsTableTable sesoriToolSessionRecordsTable =
+      $SesoriToolSessionRecordsTableTable(this);
+  late final $SesoriToolRecordsTableTable sesoriToolRecordsTable =
+      $SesoriToolRecordsTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -8733,7 +8943,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   @override
-  Iterable<TableInfo<Table, Object?>> get allTables => allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
@@ -8872,46 +9083,50 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
-typedef $$ProjectsTableTableCreateCompanionBuilder = ProjectsTableCompanion Function({
-  required String projectId,
-  required String path,
-  Value<bool> hidden,
-  Value<String?> baseBranch,
-  Value<String?> displayName,
-  Value<int> createdAt,
-  Value<int> updatedAt,
-  required int projectionUpdatedAt,
-});
-typedef $$ProjectsTableTableUpdateCompanionBuilder = ProjectsTableCompanion Function({
-  Value<String> projectId,
-  Value<String> path,
-  Value<bool> hidden,
-  Value<String?> baseBranch,
-  Value<String?> displayName,
-  Value<int> createdAt,
-  Value<int> updatedAt,
-  Value<int> projectionUpdatedAt,
-});
+typedef $$ProjectsTableTableCreateCompanionBuilder =
+    ProjectsTableCompanion Function({
+      required String projectId,
+      required String path,
+      Value<bool> hidden,
+      Value<String?> baseBranch,
+      Value<String?> displayName,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      required int projectionUpdatedAt,
+    });
+typedef $$ProjectsTableTableUpdateCompanionBuilder =
+    ProjectsTableCompanion Function({
+      Value<String> projectId,
+      Value<String> path,
+      Value<bool> hidden,
+      Value<String?> baseBranch,
+      Value<String?> displayName,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> projectionUpdatedAt,
+    });
 
-final class $$ProjectsTableTableReferences extends BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto> {
+final class $$ProjectsTableTableReferences
+    extends BaseReferences<_$AppDatabase, $ProjectsTableTable, ProjectDto> {
   $$ProjectsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>> _sessionTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.sessionTable,
-        aliasName: 'projects_table__project_id__sessions_table__project_id',
-      );
+  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
+  _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sessionTable,
+    aliasName: 'projects_table__project_id__sessions_table__project_id',
+  );
 
   $$SessionTableTableProcessedTableManager get sessionTableRefs {
-    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable).filter(
-      (f) => f.projectId.projectId.sqlEquals(
-        $_itemColumn<String>('project_id')!,
-      ),
-    );
+    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable)
+        .filter(
+          (f) => f.projectId.projectId.sqlEquals(
+            $_itemColumn<String>('project_id')!,
+          ),
+        );
 
     final cache = $_typedResult.readTableOrNull(_sessionTableRefsTable($_db));
     return ProcessedTableManager(
@@ -8920,7 +9135,8 @@ final class $$ProjectsTableTableReferences extends BaseReferences<_$AppDatabase,
   }
 }
 
-class $$ProjectsTableTableFilterComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -8986,14 +9202,16 @@ class $$ProjectsTableTableFilterComposer extends Composer<_$AppDatabase, $Projec
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 }
 
-class $$ProjectsTableTableOrderingComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -9042,7 +9260,8 @@ class $$ProjectsTableTableOrderingComposer extends Composer<_$AppDatabase, $Proj
   );
 }
 
-class $$ProjectsTableTableAnnotationComposer extends Composer<_$AppDatabase, $ProjectsTableTable> {
+class $$ProjectsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProjectsTableTable> {
   $$ProjectsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -9050,11 +9269,14 @@ class $$ProjectsTableTableAnnotationComposer extends Composer<_$AppDatabase, $Pr
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get projectId => $composableBuilder(column: $table.projectId, builder: (column) => column);
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
 
-  GeneratedColumn<String> get path => $composableBuilder(column: $table.path, builder: (column) => column);
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
 
-  GeneratedColumn<bool> get hidden => $composableBuilder(column: $table.hidden, builder: (column) => column);
+  GeneratedColumn<bool> get hidden =>
+      $composableBuilder(column: $table.hidden, builder: (column) => column);
 
   GeneratedColumn<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
@@ -9066,9 +9288,11 @@ class $$ProjectsTableTableAnnotationComposer extends Composer<_$AppDatabase, $Pr
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   GeneratedColumn<int> get projectionUpdatedAt => $composableBuilder(
     column: $table.projectionUpdatedAt,
@@ -9093,7 +9317,8 @@ class $$ProjectsTableTableAnnotationComposer extends Composer<_$AppDatabase, $Pr
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -9120,9 +9345,12 @@ class $$ProjectsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$ProjectsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$ProjectsTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () => $$ProjectsTableTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$ProjectsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProjectsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProjectsTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
@@ -9179,14 +9407,21 @@ class $$ProjectsTableTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (sessionTableRefs)
-                    await $_getPrefetchedDataByColumns<ProjectDto, $ProjectsTableTable, SessionDto, $SessionTableTable>(
+                    await $_getPrefetchedDataByColumns<
+                      ProjectDto,
+                      $ProjectsTableTable,
+                      SessionDto,
+                      $SessionTableTable
+                    >(
                       currentTable: table,
-                      referencedTable: $$ProjectsTableTableReferences._sessionTableRefsTable(db),
-                      managerFromTypedResult: (p0) => $$ProjectsTableTableReferences(
-                        db,
-                        table,
-                        p0,
-                      ).sessionTableRefs,
+                      referencedTable: $$ProjectsTableTableReferences
+                          ._sessionTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ProjectsTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).sessionTableRefs,
                       currentColumn: 'project_id',
                       referencedColumn: 'project_id',
                       typedResults: items,
@@ -9213,68 +9448,76 @@ typedef $$ProjectsTableTableProcessedTableManager =
       ProjectDto,
       PrefetchHooks Function({bool sessionTableRefs})
     >;
-typedef $$ScheduledTasksTableTableCreateCompanionBuilder = ScheduledTasksTableCompanion Function({
-  required String id,
-  required String name,
-  required String promptJson,
-  required String projectId,
-  required String pluginId,
-  Value<String?> agent,
-  Value<String?> modelJson,
-  Value<String?> variant,
-  required bool fastMode,
-  required bool dedicatedWorktree,
-  required String scheduleJson,
-  required String timeZone,
-  required TaskMissedRunPolicy missedRunPolicy,
-  required ScheduledTaskRunModeKind runMode,
-  required bool autoCompact,
-  required TaskApprovalMode approvalMode,
-  required bool enabled,
-  Value<String?> command,
-  Value<int?> nextDueAt,
-  Value<String?> targetSessionId,
-  Value<int?> completedAt,
-  required int createdAt,
-  required int updatedAt,
-});
-typedef $$ScheduledTasksTableTableUpdateCompanionBuilder = ScheduledTasksTableCompanion Function({
-  Value<String> id,
-  Value<String> name,
-  Value<String> promptJson,
-  Value<String> projectId,
-  Value<String> pluginId,
-  Value<String?> agent,
-  Value<String?> modelJson,
-  Value<String?> variant,
-  Value<bool> fastMode,
-  Value<bool> dedicatedWorktree,
-  Value<String> scheduleJson,
-  Value<String> timeZone,
-  Value<TaskMissedRunPolicy> missedRunPolicy,
-  Value<ScheduledTaskRunModeKind> runMode,
-  Value<bool> autoCompact,
-  Value<TaskApprovalMode> approvalMode,
-  Value<bool> enabled,
-  Value<String?> command,
-  Value<int?> nextDueAt,
-  Value<String?> targetSessionId,
-  Value<int?> completedAt,
-  Value<int> createdAt,
-  Value<int> updatedAt,
-});
+typedef $$ScheduledTasksTableTableCreateCompanionBuilder =
+    ScheduledTasksTableCompanion Function({
+      required String id,
+      required String name,
+      required String promptJson,
+      required String projectId,
+      required String pluginId,
+      Value<String?> agent,
+      Value<String?> modelJson,
+      Value<String?> variant,
+      required bool fastMode,
+      required bool dedicatedWorktree,
+      required String scheduleJson,
+      required String timeZone,
+      required TaskMissedRunPolicy missedRunPolicy,
+      required ScheduledTaskRunModeKind runMode,
+      required bool autoCompact,
+      required TaskApprovalMode approvalMode,
+      required bool enabled,
+      Value<String?> command,
+      Value<int?> nextDueAt,
+      Value<String?> targetSessionId,
+      Value<int?> completedAt,
+      required int createdAt,
+      required int updatedAt,
+    });
+typedef $$ScheduledTasksTableTableUpdateCompanionBuilder =
+    ScheduledTasksTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> promptJson,
+      Value<String> projectId,
+      Value<String> pluginId,
+      Value<String?> agent,
+      Value<String?> modelJson,
+      Value<String?> variant,
+      Value<bool> fastMode,
+      Value<bool> dedicatedWorktree,
+      Value<String> scheduleJson,
+      Value<String> timeZone,
+      Value<TaskMissedRunPolicy> missedRunPolicy,
+      Value<ScheduledTaskRunModeKind> runMode,
+      Value<bool> autoCompact,
+      Value<TaskApprovalMode> approvalMode,
+      Value<bool> enabled,
+      Value<String?> command,
+      Value<int?> nextDueAt,
+      Value<String?> targetSessionId,
+      Value<int?> completedAt,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+    });
 
 final class $$ScheduledTasksTableTableReferences
-    extends BaseReferences<_$AppDatabase, $ScheduledTasksTableTable, ScheduledTaskDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ScheduledTasksTableTable,
+          ScheduledTaskDto
+        > {
   $$ScheduledTasksTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _targetSessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'scheduled_tasks__target_session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _targetSessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'scheduled_tasks__target_session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager? get targetSessionId {
     final $_column = $_itemColumn<String>('target_session_id');
@@ -9290,16 +9533,17 @@ final class $$ScheduledTasksTableTableReferences
     );
   }
 
-  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>> _sessionTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.sessionTable,
-        aliasName: 'scheduled_tasks__id__sessions_table__scheduled_task_id',
-      );
+  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
+  _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sessionTable,
+    aliasName: 'scheduled_tasks__id__sessions_table__scheduled_task_id',
+  );
 
   $$SessionTableTableProcessedTableManager get sessionTableRefs {
-    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable).filter(
-      (f) => f.scheduledTaskId.id.sqlEquals($_itemColumn<String>('id')!),
-    );
+    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable)
+        .filter(
+          (f) => f.scheduledTaskId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
 
     final cache = $_typedResult.readTableOrNull(_sessionTableRefsTable($_db));
     return ProcessedTableManager(
@@ -9307,14 +9551,18 @@ final class $$ScheduledTasksTableTableReferences
     );
   }
 
-  static MultiTypedResultKey<$ScheduledTaskRunsTableTable, List<ScheduledTaskRunDto>> _scheduledTaskRunsTableRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.scheduledTaskRunsTable,
-    aliasName: 'scheduled_tasks__id__scheduled_task_runs__task_id',
-  );
+  static MultiTypedResultKey<
+    $ScheduledTaskRunsTableTable,
+    List<ScheduledTaskRunDto>
+  >
+  _scheduledTaskRunsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTaskRunsTable,
+        aliasName: 'scheduled_tasks__id__scheduled_task_runs__task_id',
+      );
 
-  $$ScheduledTaskRunsTableTableProcessedTableManager get scheduledTaskRunsTableRefs {
+  $$ScheduledTaskRunsTableTableProcessedTableManager
+  get scheduledTaskRunsTableRefs {
     final manager = $$ScheduledTaskRunsTableTableTableManager(
       $_db,
       $_db.scheduledTaskRunsTable,
@@ -9329,7 +9577,8 @@ final class $$ScheduledTasksTableTableReferences
   }
 }
 
-class $$ScheduledTasksTableTableFilterComposer extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+class $$ScheduledTasksTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
   $$ScheduledTasksTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -9397,24 +9646,33 @@ class $$ScheduledTasksTableTableFilterComposer extends Composer<_$AppDatabase, $
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<TaskMissedRunPolicy, TaskMissedRunPolicy, String> get missedRunPolicy =>
-      $composableBuilder(
-        column: $table.missedRunPolicy,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+  ColumnWithTypeConverterFilters<
+    TaskMissedRunPolicy,
+    TaskMissedRunPolicy,
+    String
+  >
+  get missedRunPolicy => $composableBuilder(
+    column: $table.missedRunPolicy,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
-  ColumnWithTypeConverterFilters<ScheduledTaskRunModeKind, ScheduledTaskRunModeKind, String> get runMode =>
-      $composableBuilder(
-        column: $table.runMode,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+  ColumnWithTypeConverterFilters<
+    ScheduledTaskRunModeKind,
+    ScheduledTaskRunModeKind,
+    String
+  >
+  get runMode => $composableBuilder(
+    column: $table.runMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
   ColumnFilters<bool> get autoCompact => $composableBuilder(
     column: $table.autoCompact,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<TaskApprovalMode, TaskApprovalMode, String> get approvalMode => $composableBuilder(
+  ColumnWithTypeConverterFilters<TaskApprovalMode, TaskApprovalMode, String>
+  get approvalMode => $composableBuilder(
     column: $table.approvalMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -9465,7 +9723,8 @@ class $$ScheduledTasksTableTableFilterComposer extends Composer<_$AppDatabase, $
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -9489,7 +9748,8 @@ class $$ScheduledTasksTableTableFilterComposer extends Composer<_$AppDatabase, $
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -9498,29 +9758,32 @@ class $$ScheduledTasksTableTableFilterComposer extends Composer<_$AppDatabase, $
   Expression<bool> scheduledTaskRunsTableRefs(
     Expression<bool> Function($$ScheduledTaskRunsTableTableFilterComposer f) f,
   ) {
-    final $$ScheduledTaskRunsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.scheduledTaskRunsTable,
-      getReferencedColumn: (t) => t.taskId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTaskRunsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.scheduledTaskRunsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTaskRunsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
 
-class $$ScheduledTasksTableTableOrderingComposer extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+class $$ScheduledTasksTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
   $$ScheduledTasksTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -9654,14 +9917,16 @@ class $$ScheduledTasksTableTableOrderingComposer extends Composer<_$AppDatabase,
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+class $$ScheduledTasksTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
   $$ScheduledTasksTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -9669,26 +9934,34 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name => $composableBuilder(column: $table.name, builder: (column) => column);
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<String> get promptJson => $composableBuilder(
     column: $table.promptJson,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get projectId => $composableBuilder(column: $table.projectId, builder: (column) => column);
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
 
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<String> get agent => $composableBuilder(column: $table.agent, builder: (column) => column);
+  GeneratedColumn<String> get agent =>
+      $composableBuilder(column: $table.agent, builder: (column) => column);
 
-  GeneratedColumn<String> get modelJson => $composableBuilder(column: $table.modelJson, builder: (column) => column);
+  GeneratedColumn<String> get modelJson =>
+      $composableBuilder(column: $table.modelJson, builder: (column) => column);
 
-  GeneratedColumn<String> get variant => $composableBuilder(column: $table.variant, builder: (column) => column);
+  GeneratedColumn<String> get variant =>
+      $composableBuilder(column: $table.variant, builder: (column) => column);
 
-  GeneratedColumn<bool> get fastMode => $composableBuilder(column: $table.fastMode, builder: (column) => column);
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
 
   GeneratedColumn<bool> get dedicatedWorktree => $composableBuilder(
     column: $table.dedicatedWorktree,
@@ -9700,14 +9973,17 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get timeZone => $composableBuilder(column: $table.timeZone, builder: (column) => column);
+  GeneratedColumn<String> get timeZone =>
+      $composableBuilder(column: $table.timeZone, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String> get missedRunPolicy => $composableBuilder(
+  GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String>
+  get missedRunPolicy => $composableBuilder(
     column: $table.missedRunPolicy,
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String> get runMode =>
+  GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String>
+  get runMode =>
       $composableBuilder(column: $table.runMode, builder: (column) => column);
 
   GeneratedColumn<bool> get autoCompact => $composableBuilder(
@@ -9715,25 +9991,31 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<TaskApprovalMode, String> get approvalMode => $composableBuilder(
-    column: $table.approvalMode,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<TaskApprovalMode, String> get approvalMode =>
+      $composableBuilder(
+        column: $table.approvalMode,
+        builder: (column) => column,
+      );
 
-  GeneratedColumn<bool> get enabled => $composableBuilder(column: $table.enabled, builder: (column) => column);
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
 
-  GeneratedColumn<String> get command => $composableBuilder(column: $table.command, builder: (column) => column);
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
 
-  GeneratedColumn<int> get nextDueAt => $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
+  GeneratedColumn<int> get nextDueAt =>
+      $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
 
   GeneratedColumn<int> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   $$SessionTableTableAnnotationComposer get targetSessionId {
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
@@ -9751,7 +10033,8 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -9775,7 +10058,8 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -9784,24 +10068,26 @@ class $$ScheduledTasksTableTableAnnotationComposer extends Composer<_$AppDatabas
   Expression<T> scheduledTaskRunsTableRefs<T extends Object>(
     Expression<T> Function($$ScheduledTaskRunsTableTableAnnotationComposer a) f,
   ) {
-    final $$ScheduledTaskRunsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.scheduledTaskRunsTable,
-      getReferencedColumn: (t) => t.taskId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.scheduledTaskRunsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTaskRunsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -9832,15 +10118,18 @@ class $$ScheduledTasksTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$ScheduledTasksTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$ScheduledTasksTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$ScheduledTasksTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$ScheduledTasksTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScheduledTasksTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduledTasksTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -9855,7 +10144,8 @@ class $$ScheduledTasksTableTableTableManager
                 Value<bool> dedicatedWorktree = const Value.absent(),
                 Value<String> scheduleJson = const Value.absent(),
                 Value<String> timeZone = const Value.absent(),
-                Value<TaskMissedRunPolicy> missedRunPolicy = const Value.absent(),
+                Value<TaskMissedRunPolicy> missedRunPolicy =
+                    const Value.absent(),
                 Value<ScheduledTaskRunModeKind> runMode = const Value.absent(),
                 Value<bool> autoCompact = const Value.absent(),
                 Value<TaskApprovalMode> approvalMode = const Value.absent(),
@@ -9983,8 +10273,13 @@ class $$ScheduledTasksTableTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.targetSessionId,
-                            referencedTable: $$ScheduledTasksTableTableReferences._targetSessionIdTable(db),
-                            referencedColumn: $$ScheduledTasksTableTableReferences._targetSessionIdTable(db).sessionId,
+                            referencedTable:
+                                $$ScheduledTasksTableTableReferences
+                                    ._targetSessionIdTable(db),
+                            referencedColumn:
+                                $$ScheduledTasksTableTableReferences
+                                    ._targetSessionIdTable(db)
+                                    .sessionId,
                           ) as T;
                         }
 
@@ -10000,12 +10295,14 @@ class $$ScheduledTasksTableTableTableManager
                           $SessionTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$ScheduledTasksTableTableReferences._sessionTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$ScheduledTasksTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionTableRefs,
+                          referencedTable: $$ScheduledTasksTableTableReferences
+                              ._sessionTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScheduledTasksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionTableRefs,
                           currentColumn: 'id',
                           referencedColumn: 'scheduled_task_id',
                           typedResults: items,
@@ -10018,12 +10315,14 @@ class $$ScheduledTasksTableTableTableManager
                           $ScheduledTaskRunsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$ScheduledTasksTableTableReferences._scheduledTaskRunsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$ScheduledTasksTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).scheduledTaskRunsTableRefs,
+                          referencedTable: $$ScheduledTasksTableTableReferences
+                              ._scheduledTaskRunsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScheduledTasksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTaskRunsTableRefs,
                           currentColumn: 'id',
                           referencedColumn: 'task_id',
                           typedResults: items,
@@ -10054,72 +10353,76 @@ typedef $$ScheduledTasksTableTableProcessedTableManager =
         bool scheduledTaskRunsTableRefs,
       })
     >;
-typedef $$SessionTableTableCreateCompanionBuilder = SessionTableCompanion Function({
-  required String sessionId,
-  required String backendSessionId,
-  required String projectId,
-  Value<String?> parentSessionId,
-  required String directory,
-  Value<String?> worktreePath,
-  Value<String?> branchName,
-  required bool isDedicated,
-  Value<int?> archivedAt,
-  Value<String?> baseBranch,
-  Value<String?> baseCommit,
-  Value<String?> lastAgent,
-  Value<AgentModel?> lastAgentModel,
-  Value<bool> fastMode,
-  required int createdAt,
-  required int updatedAt,
-  required int projectionUpdatedAt,
-  Value<int?> lastActivityAt,
-  Value<int?> lastSeenAt,
-  Value<int?> lastUserMessageAt,
-  required String pluginId,
-  Value<String?> title,
-  Value<String?> catalogTitle,
-  Value<SessionApprovalMode?> approvalOverride,
-  Value<int?> pinOrder,
-  Value<String?> forkedFromSessionId,
-  Value<String?> forkedFromTitle,
-  Value<String?> scheduledTaskId,
-});
-typedef $$SessionTableTableUpdateCompanionBuilder = SessionTableCompanion Function({
-  Value<String> sessionId,
-  Value<String> backendSessionId,
-  Value<String> projectId,
-  Value<String?> parentSessionId,
-  Value<String> directory,
-  Value<String?> worktreePath,
-  Value<String?> branchName,
-  Value<bool> isDedicated,
-  Value<int?> archivedAt,
-  Value<String?> baseBranch,
-  Value<String?> baseCommit,
-  Value<String?> lastAgent,
-  Value<AgentModel?> lastAgentModel,
-  Value<bool> fastMode,
-  Value<int> createdAt,
-  Value<int> updatedAt,
-  Value<int> projectionUpdatedAt,
-  Value<int?> lastActivityAt,
-  Value<int?> lastSeenAt,
-  Value<int?> lastUserMessageAt,
-  Value<String> pluginId,
-  Value<String?> title,
-  Value<String?> catalogTitle,
-  Value<SessionApprovalMode?> approvalOverride,
-  Value<int?> pinOrder,
-  Value<String?> forkedFromSessionId,
-  Value<String?> forkedFromTitle,
-  Value<String?> scheduledTaskId,
-});
+typedef $$SessionTableTableCreateCompanionBuilder =
+    SessionTableCompanion Function({
+      required String sessionId,
+      required String backendSessionId,
+      required String projectId,
+      Value<String?> parentSessionId,
+      required String directory,
+      Value<String?> worktreePath,
+      Value<String?> branchName,
+      required bool isDedicated,
+      Value<int?> archivedAt,
+      Value<String?> baseBranch,
+      Value<String?> baseCommit,
+      Value<String?> lastAgent,
+      Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
+      required int createdAt,
+      required int updatedAt,
+      required int projectionUpdatedAt,
+      Value<int?> lastActivityAt,
+      Value<int?> lastSeenAt,
+      Value<int?> lastUserMessageAt,
+      required String pluginId,
+      Value<String?> title,
+      Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
+      Value<int?> pinOrder,
+      Value<String?> forkedFromSessionId,
+      Value<String?> forkedFromTitle,
+      Value<String?> scheduledTaskId,
+    });
+typedef $$SessionTableTableUpdateCompanionBuilder =
+    SessionTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> backendSessionId,
+      Value<String> projectId,
+      Value<String?> parentSessionId,
+      Value<String> directory,
+      Value<String?> worktreePath,
+      Value<String?> branchName,
+      Value<bool> isDedicated,
+      Value<int?> archivedAt,
+      Value<String?> baseBranch,
+      Value<String?> baseCommit,
+      Value<String?> lastAgent,
+      Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> projectionUpdatedAt,
+      Value<int?> lastActivityAt,
+      Value<int?> lastSeenAt,
+      Value<int?> lastUserMessageAt,
+      Value<String> pluginId,
+      Value<String?> title,
+      Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
+      Value<int?> pinOrder,
+      Value<String?> forkedFromSessionId,
+      Value<String?> forkedFromTitle,
+      Value<String?> scheduledTaskId,
+    });
 
-final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
+final class $$SessionTableTableReferences
+    extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
   $$SessionTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
-      db.projectsTable.createAlias('sessions_table__project_id__projects_table__project_id');
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) => db
+      .projectsTable
+      .createAlias('sessions_table__project_id__projects_table__project_id');
 
   $$ProjectsTableTableProcessedTableManager get projectId {
     final $_column = $_itemColumn<String>('project_id')!;
@@ -10135,9 +10438,10 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static $SessionTableTable _parentSessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'sessions_table__parent_session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _parentSessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'sessions_table__parent_session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager? get parentSessionId {
     final $_column = $_itemColumn<String>('parent_session_id');
@@ -10153,9 +10457,10 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static $SessionTableTable _forkedFromSessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'sessions_table__forked_from_session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _forkedFromSessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'sessions_table__forked_from_session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager? get forkedFromSessionId {
     final $_column = $_itemColumn<String>('forked_from_session_id');
@@ -10171,8 +10476,9 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static $ScheduledTasksTableTable _scheduledTaskIdTable(_$AppDatabase db) =>
-      db.scheduledTasksTable.createAlias('sessions_table__scheduled_task_id__scheduled_tasks__id');
+  static $ScheduledTasksTableTable _scheduledTaskIdTable(_$AppDatabase db) => db
+      .scheduledTasksTable
+      .createAlias('sessions_table__scheduled_task_id__scheduled_tasks__id');
 
   $$ScheduledTasksTableTableProcessedTableManager? get scheduledTaskId {
     final $_column = $_itemColumn<String>('scheduled_task_id');
@@ -10188,12 +10494,13 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$ScheduledTasksTableTable, List<ScheduledTaskDto>> _scheduledTasksTableRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.scheduledTasksTable,
-    aliasName: 'sessions_table__session_id__scheduled_tasks__target_session_id',
-  );
+  static MultiTypedResultKey<$ScheduledTasksTableTable, List<ScheduledTaskDto>>
+  _scheduledTasksTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTasksTable,
+        aliasName:
+            'sessions_table__session_id__scheduled_tasks__target_session_id',
+      );
 
   $$ScheduledTasksTableTableProcessedTableManager get scheduledTasksTableRefs {
     final manager =
@@ -10214,13 +10521,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SessionContinuationTableTable, List<SessionContinuationDto>>
-  _sessionContinuationTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.sessionContinuationTable,
-    aliasName: 'sessions_table__session_id__session_continuations__session_id',
-  );
+  static MultiTypedResultKey<
+    $SessionContinuationTableTable,
+    List<SessionContinuationDto>
+  >
+  _sessionContinuationTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionContinuationTable,
+        aliasName:
+            'sessions_table__session_id__session_continuations__session_id',
+      );
 
-  $$SessionContinuationTableTableProcessedTableManager get sessionContinuationTableRefs {
+  $$SessionContinuationTableTableProcessedTableManager
+  get sessionContinuationTableRefs {
     final manager =
         $$SessionContinuationTableTableTableManager(
           $_db,
@@ -10239,14 +10552,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SideChatExchangesTableTable, List<SideChatExchangeDto>> _sideChatExchangesTableRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.sideChatExchangesTable,
-    aliasName: 'sessions_table__session_id__side_chat_exchanges__session_id',
-  );
+  static MultiTypedResultKey<
+    $SideChatExchangesTableTable,
+    List<SideChatExchangeDto>
+  >
+  _sideChatExchangesTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sideChatExchangesTable,
+        aliasName:
+            'sessions_table__session_id__side_chat_exchanges__session_id',
+      );
 
-  $$SideChatExchangesTableTableProcessedTableManager get sideChatExchangesTableRefs {
+  $$SideChatExchangesTableTableProcessedTableManager
+  get sideChatExchangesTableRefs {
     final manager =
         $$SideChatExchangesTableTableTableManager(
           $_db,
@@ -10265,14 +10583,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$ScheduledTaskRunsTableTable, List<ScheduledTaskRunDto>> _scheduledTaskRunsTableRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.scheduledTaskRunsTable,
-    aliasName: 'sessions_table__session_id__scheduled_task_runs__session_id',
-  );
+  static MultiTypedResultKey<
+    $ScheduledTaskRunsTableTable,
+    List<ScheduledTaskRunDto>
+  >
+  _scheduledTaskRunsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTaskRunsTable,
+        aliasName:
+            'sessions_table__session_id__scheduled_task_runs__session_id',
+      );
 
-  $$ScheduledTaskRunsTableTableProcessedTableManager get scheduledTaskRunsTableRefs {
+  $$ScheduledTaskRunsTableTableProcessedTableManager
+  get scheduledTaskRunsTableRefs {
     final manager =
         $$ScheduledTaskRunsTableTableTableManager(
           $_db,
@@ -10291,13 +10614,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SessionRunningTurnsTableTable, List<SessionRunningTurnDto>>
-  _sessionRunningTurnsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.sessionRunningTurnsTable,
-    aliasName: 'sessions_table__session_id__session_running_turns__session_id',
-  );
+  static MultiTypedResultKey<
+    $SessionRunningTurnsTableTable,
+    List<SessionRunningTurnDto>
+  >
+  _sessionRunningTurnsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionRunningTurnsTable,
+        aliasName:
+            'sessions_table__session_id__session_running_turns__session_id',
+      );
 
-  $$SessionRunningTurnsTableTableProcessedTableManager get sessionRunningTurnsTableRefs {
+  $$SessionRunningTurnsTableTableProcessedTableManager
+  get sessionRunningTurnsTableRefs {
     final manager =
         $$SessionRunningTurnsTableTableTableManager(
           $_db,
@@ -10316,13 +10645,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SessionInterruptionsTableTable, List<SessionInterruptionDto>>
-  _sessionInterruptionsTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.sessionInterruptionsTable,
-    aliasName: 'sessions_table__session_id__session_interruptions__session_id',
-  );
+  static MultiTypedResultKey<
+    $SessionInterruptionsTableTable,
+    List<SessionInterruptionDto>
+  >
+  _sessionInterruptionsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionInterruptionsTable,
+        aliasName:
+            'sessions_table__session_id__session_interruptions__session_id',
+      );
 
-  $$SessionInterruptionsTableTableProcessedTableManager get sessionInterruptionsTableRefs {
+  $$SessionInterruptionsTableTableProcessedTableManager
+  get sessionInterruptionsTableRefs {
     final manager =
         $$SessionInterruptionsTableTableTableManager(
           $_db,
@@ -10341,18 +10676,19 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$AgentPagesTableTable, List<AgentPageDto>> _agentPagesTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.agentPagesTable,
-        aliasName: 'sessions_table__session_id__agent_pages__session_id',
-      );
+  static MultiTypedResultKey<$AgentPagesTableTable, List<AgentPageDto>>
+  _agentPagesTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.agentPagesTable,
+    aliasName: 'sessions_table__session_id__agent_pages__session_id',
+  );
 
   $$AgentPagesTableTableProcessedTableManager get agentPagesTableRefs {
-    final manager = $$AgentPagesTableTableTableManager($_db, $_db.agentPagesTable).filter(
-      (f) => f.sessionId.sessionId.sqlEquals(
-        $_itemColumn<String>('session_id')!,
-      ),
-    );
+    final manager =
+        $$AgentPagesTableTableTableManager($_db, $_db.agentPagesTable).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
 
     final cache = $_typedResult.readTableOrNull(
       _agentPagesTableRefsTable($_db),
@@ -10362,12 +10698,12 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SessionWakeUpsTableTable, List<SessionWakeUpDto>> _sessionWakeUpsTableRefsTable(
-    _$AppDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.sessionWakeUpsTable,
-    aliasName: 'sessions_table__session_id__session_wake_ups__session_id',
-  );
+  static MultiTypedResultKey<$SessionWakeUpsTableTable, List<SessionWakeUpDto>>
+  _sessionWakeUpsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionWakeUpsTable,
+        aliasName: 'sessions_table__session_id__session_wake_ups__session_id',
+      );
 
   $$SessionWakeUpsTableTableProcessedTableManager get sessionWakeUpsTableRefs {
     final manager =
@@ -10388,15 +10724,20 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
     );
   }
 
-  static MultiTypedResultKey<$SesoriToolSessionRecordsTableTable, List<SesoriToolSessionRecordDto>>
+  static MultiTypedResultKey<
+    $SesoriToolSessionRecordsTableTable,
+    List<SesoriToolSessionRecordDto>
+  >
   _sesoriToolSessionRecordsTableRefsTable(
     _$AppDatabase db,
   ) => MultiTypedResultKey.fromTable(
     db.sesoriToolSessionRecordsTable,
-    aliasName: 'sessions_table__session_id__sesori_tool_session_records__session_id',
+    aliasName:
+        'sessions_table__session_id__sesori_tool_session_records__session_id',
   );
 
-  $$SesoriToolSessionRecordsTableTableProcessedTableManager get sesoriToolSessionRecordsTableRefs {
+  $$SesoriToolSessionRecordsTableTableProcessedTableManager
+  get sesoriToolSessionRecordsTableRefs {
     final manager =
         $$SesoriToolSessionRecordsTableTableTableManager(
           $_db,
@@ -10416,7 +10757,8 @@ final class $$SessionTableTableReferences extends BaseReferences<_$AppDatabase, 
   }
 }
 
-class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -10474,7 +10816,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String> get lastAgentModel => $composableBuilder(
+  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String>
+  get lastAgentModel => $composableBuilder(
     column: $table.lastAgentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -10529,11 +10872,15 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<SessionApprovalMode?, SessionApprovalMode, String> get approvalOverride =>
-      $composableBuilder(
-        column: $table.approvalOverride,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+  ColumnWithTypeConverterFilters<
+    SessionApprovalMode?,
+    SessionApprovalMode,
+    String
+  >
+  get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
   ColumnFilters<int> get pinOrder => $composableBuilder(
     column: $table.pinOrder,
@@ -10561,7 +10908,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -10583,7 +10931,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -10605,7 +10954,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -10627,7 +10977,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.scheduledTasksTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -10651,129 +11002,143 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.scheduledTasksTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
   }
 
   Expression<bool> sessionContinuationTableRefs(
-    Expression<bool> Function($$SessionContinuationTableTableFilterComposer f) f,
+    Expression<bool> Function($$SessionContinuationTableTableFilterComposer f)
+    f,
   ) {
-    final $$SessionContinuationTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionContinuationTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionContinuationTableTableFilterComposer(
-            $db: $db,
-            $table: $db.sessionContinuationTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionContinuationTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<bool> sideChatExchangesTableRefs(
     Expression<bool> Function($$SideChatExchangesTableTableFilterComposer f) f,
   ) {
-    final $$SideChatExchangesTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sideChatExchangesTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SideChatExchangesTableTableFilterComposer(
-            $db: $db,
-            $table: $db.sideChatExchangesTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SideChatExchangesTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sideChatExchangesTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SideChatExchangesTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sideChatExchangesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<bool> scheduledTaskRunsTableRefs(
     Expression<bool> Function($$ScheduledTaskRunsTableTableFilterComposer f) f,
   ) {
-    final $$ScheduledTaskRunsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.scheduledTaskRunsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTaskRunsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.scheduledTaskRunsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTaskRunsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<bool> sessionRunningTurnsTableRefs(
-    Expression<bool> Function($$SessionRunningTurnsTableTableFilterComposer f) f,
+    Expression<bool> Function($$SessionRunningTurnsTableTableFilterComposer f)
+    f,
   ) {
-    final $$SessionRunningTurnsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionRunningTurnsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionRunningTurnsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.sessionRunningTurnsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionRunningTurnsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionRunningTurnsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionRunningTurnsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionRunningTurnsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<bool> sessionInterruptionsTableRefs(
-    Expression<bool> Function($$SessionInterruptionsTableTableFilterComposer f) f,
+    Expression<bool> Function($$SessionInterruptionsTableTableFilterComposer f)
+    f,
   ) {
-    final $$SessionInterruptionsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionInterruptionsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionInterruptionsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.sessionInterruptionsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionInterruptionsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionInterruptionsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionInterruptionsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionInterruptionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -10795,7 +11160,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.agentPagesTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -10819,7 +11185,8 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
             $table: $db.sessionWakeUpsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -10831,29 +11198,32 @@ class $$SessionTableTableFilterComposer extends Composer<_$AppDatabase, $Session
     )
     f,
   ) {
-    final $$SesoriToolSessionRecordsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sesoriToolSessionRecordsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SesoriToolSessionRecordsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.sesoriToolSessionRecordsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SesoriToolSessionRecordsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sesoriToolSessionRecordsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SesoriToolSessionRecordsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sesoriToolSessionRecordsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
 
-class $$SessionTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -10997,7 +11367,8 @@ class $$SessionTableTableOrderingComposer extends Composer<_$AppDatabase, $Sessi
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -11019,7 +11390,8 @@ class $$SessionTableTableOrderingComposer extends Composer<_$AppDatabase, $Sessi
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -11041,36 +11413,40 @@ class $$SessionTableTableOrderingComposer extends Composer<_$AppDatabase, $Sessi
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
   $$ScheduledTasksTableTableOrderingComposer get scheduledTaskId {
-    final $$ScheduledTasksTableTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.scheduledTaskId,
-      referencedTable: $db.scheduledTasksTable,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTasksTableTableOrderingComposer(
-            $db: $db,
-            $table: $db.scheduledTasksTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTasksTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.scheduledTaskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 }
 
-class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $SessionTableTable> {
+class $$SessionTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionTableTable> {
   $$SessionTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -11078,14 +11454,16 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
   GeneratedColumn<String> get backendSessionId => $composableBuilder(
     column: $table.backendSessionId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get directory => $composableBuilder(column: $table.directory, builder: (column) => column);
+  GeneratedColumn<String> get directory =>
+      $composableBuilder(column: $table.directory, builder: (column) => column);
 
   GeneratedColumn<String> get worktreePath => $composableBuilder(
     column: $table.worktreePath,
@@ -11117,18 +11495,23 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get lastAgent => $composableBuilder(column: $table.lastAgent, builder: (column) => column);
+  GeneratedColumn<String> get lastAgent =>
+      $composableBuilder(column: $table.lastAgent, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<AgentModel?, String> get lastAgentModel => $composableBuilder(
-    column: $table.lastAgentModel,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<AgentModel?, String> get lastAgentModel =>
+      $composableBuilder(
+        column: $table.lastAgentModel,
+        builder: (column) => column,
+      );
 
-  GeneratedColumn<bool> get fastMode => $composableBuilder(column: $table.fastMode, builder: (column) => column);
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
 
-  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   GeneratedColumn<int> get projectionUpdatedAt => $composableBuilder(
     column: $table.projectionUpdatedAt,
@@ -11150,21 +11533,25 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<String> get title => $composableBuilder(column: $table.title, builder: (column) => column);
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
 
   GeneratedColumn<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
     builder: (column) => column,
   );
 
-  GeneratedColumnWithTypeConverter<SessionApprovalMode?, String> get approvalOverride => $composableBuilder(
+  GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  get approvalOverride => $composableBuilder(
     column: $table.approvalOverride,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get pinOrder => $composableBuilder(column: $table.pinOrder, builder: (column) => column);
+  GeneratedColumn<int> get pinOrder =>
+      $composableBuilder(column: $table.pinOrder, builder: (column) => column);
 
   GeneratedColumn<String> get forkedFromTitle => $composableBuilder(
     column: $table.forkedFromTitle,
@@ -11187,7 +11574,8 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
             $table: $db.projectsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -11209,7 +11597,8 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -11231,175 +11620,193 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 
   $$ScheduledTasksTableTableAnnotationComposer get scheduledTaskId {
-    final $$ScheduledTasksTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.scheduledTaskId,
-      referencedTable: $db.scheduledTasksTable,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTasksTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.scheduledTasksTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.scheduledTaskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 
   Expression<T> scheduledTasksTableRefs<T extends Object>(
     Expression<T> Function($$ScheduledTasksTableTableAnnotationComposer a) f,
   ) {
-    final $$ScheduledTasksTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.scheduledTasksTable,
-      getReferencedColumn: (t) => t.targetSessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTasksTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.scheduledTasksTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.targetSessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> sessionContinuationTableRefs<T extends Object>(
-    Expression<T> Function($$SessionContinuationTableTableAnnotationComposer a) f,
+    Expression<T> Function($$SessionContinuationTableTableAnnotationComposer a)
+    f,
   ) {
-    final $$SessionContinuationTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionContinuationTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionContinuationTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sessionContinuationTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionContinuationTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> sideChatExchangesTableRefs<T extends Object>(
     Expression<T> Function($$SideChatExchangesTableTableAnnotationComposer a) f,
   ) {
-    final $$SideChatExchangesTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sideChatExchangesTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SideChatExchangesTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sideChatExchangesTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SideChatExchangesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sideChatExchangesTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SideChatExchangesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sideChatExchangesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> scheduledTaskRunsTableRefs<T extends Object>(
     Expression<T> Function($$ScheduledTaskRunsTableTableAnnotationComposer a) f,
   ) {
-    final $$ScheduledTaskRunsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.scheduledTaskRunsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.scheduledTaskRunsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTaskRunsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> sessionRunningTurnsTableRefs<T extends Object>(
-    Expression<T> Function($$SessionRunningTurnsTableTableAnnotationComposer a) f,
+    Expression<T> Function($$SessionRunningTurnsTableTableAnnotationComposer a)
+    f,
   ) {
-    final $$SessionRunningTurnsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionRunningTurnsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionRunningTurnsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sessionRunningTurnsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionRunningTurnsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionRunningTurnsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionRunningTurnsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionRunningTurnsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
   Expression<T> sessionInterruptionsTableRefs<T extends Object>(
-    Expression<T> Function($$SessionInterruptionsTableTableAnnotationComposer a) f,
+    Expression<T> Function($$SessionInterruptionsTableTableAnnotationComposer a)
+    f,
   ) {
-    final $$SessionInterruptionsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionInterruptionsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionInterruptionsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sessionInterruptionsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionInterruptionsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionInterruptionsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionInterruptionsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionInterruptionsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -11421,7 +11828,8 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
             $table: $db.agentPagesTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return f(composer);
@@ -11430,24 +11838,26 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
   Expression<T> sessionWakeUpsTableRefs<T extends Object>(
     Expression<T> Function($$SessionWakeUpsTableTableAnnotationComposer a) f,
   ) {
-    final $$SessionWakeUpsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sessionWakeUpsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SessionWakeUpsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sessionWakeUpsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SessionWakeUpsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionWakeUpsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionWakeUpsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionWakeUpsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -11457,24 +11867,26 @@ class $$SessionTableTableAnnotationComposer extends Composer<_$AppDatabase, $Ses
     )
     f,
   ) {
-    final $$SesoriToolSessionRecordsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.sessionId,
-      referencedTable: $db.sesoriToolSessionRecordsTable,
-      getReferencedColumn: (t) => t.sessionId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$SesoriToolSessionRecordsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.sesoriToolSessionRecordsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$SesoriToolSessionRecordsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sesoriToolSessionRecordsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SesoriToolSessionRecordsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sesoriToolSessionRecordsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -11513,9 +11925,12 @@ class $$SessionTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$SessionTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () => $$SessionTableTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$SessionTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SessionTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -11541,7 +11956,8 @@ class $$SessionTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
-                Value<SessionApprovalMode?> approvalOverride = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
                 Value<int?> pinOrder = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
@@ -11601,7 +12017,8 @@ class $$SessionTableTableTableManager
                 required String pluginId,
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
-                Value<SessionApprovalMode?> approvalOverride = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
                 Value<int?> pinOrder = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
@@ -11664,14 +12081,18 @@ class $$SessionTableTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (scheduledTasksTableRefs) db.scheduledTasksTable,
-                    if (sessionContinuationTableRefs) db.sessionContinuationTable,
+                    if (sessionContinuationTableRefs)
+                      db.sessionContinuationTable,
                     if (sideChatExchangesTableRefs) db.sideChatExchangesTable,
                     if (scheduledTaskRunsTableRefs) db.scheduledTaskRunsTable,
-                    if (sessionRunningTurnsTableRefs) db.sessionRunningTurnsTable,
-                    if (sessionInterruptionsTableRefs) db.sessionInterruptionsTable,
+                    if (sessionRunningTurnsTableRefs)
+                      db.sessionRunningTurnsTable,
+                    if (sessionInterruptionsTableRefs)
+                      db.sessionInterruptionsTable,
                     if (agentPagesTableRefs) db.agentPagesTable,
                     if (sessionWakeUpsTableRefs) db.sessionWakeUpsTable,
-                    if (sesoriToolSessionRecordsTableRefs) db.sesoriToolSessionRecordsTable,
+                    if (sesoriToolSessionRecordsTableRefs)
+                      db.sesoriToolSessionRecordsTable,
                   ],
                   addJoins:
                       <
@@ -11693,32 +12114,44 @@ class $$SessionTableTableTableManager
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.projectId,
-                            referencedTable: $$SessionTableTableReferences._projectIdTable(db),
-                            referencedColumn: $$SessionTableTableReferences._projectIdTable(db).projectId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._projectIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._projectIdTable(db)
+                                .projectId,
                           ) as T;
                         }
                         if (parentSessionId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.parentSessionId,
-                            referencedTable: $$SessionTableTableReferences._parentSessionIdTable(db),
-                            referencedColumn: $$SessionTableTableReferences._parentSessionIdTable(db).sessionId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._parentSessionIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._parentSessionIdTable(db)
+                                .sessionId,
                           ) as T;
                         }
                         if (forkedFromSessionId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.forkedFromSessionId,
-                            referencedTable: $$SessionTableTableReferences._forkedFromSessionIdTable(db),
-                            referencedColumn: $$SessionTableTableReferences._forkedFromSessionIdTable(db).sessionId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._forkedFromSessionIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._forkedFromSessionIdTable(db)
+                                .sessionId,
                           ) as T;
                         }
                         if (scheduledTaskId) {
                           state = state.withJoin(
                             currentTable: table,
                             currentColumn: table.scheduledTaskId,
-                            referencedTable: $$SessionTableTableReferences._scheduledTaskIdTable(db),
-                            referencedColumn: $$SessionTableTableReferences._scheduledTaskIdTable(db).id,
+                            referencedTable: $$SessionTableTableReferences
+                                ._scheduledTaskIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._scheduledTaskIdTable(db)
+                                .id,
                           ) as T;
                         }
 
@@ -11734,12 +12167,14 @@ class $$SessionTableTableTableManager
                           $ScheduledTasksTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._scheduledTasksTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).scheduledTasksTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._scheduledTasksTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTasksTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'target_session_id',
                           typedResults: items,
@@ -11752,12 +12187,14 @@ class $$SessionTableTableTableManager
                           $SessionContinuationTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sessionContinuationTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionContinuationTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionContinuationTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionContinuationTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11770,12 +12207,14 @@ class $$SessionTableTableTableManager
                           $SideChatExchangesTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sideChatExchangesTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sideChatExchangesTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sideChatExchangesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sideChatExchangesTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11788,12 +12227,14 @@ class $$SessionTableTableTableManager
                           $ScheduledTaskRunsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._scheduledTaskRunsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).scheduledTaskRunsTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._scheduledTaskRunsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTaskRunsTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11806,12 +12247,14 @@ class $$SessionTableTableTableManager
                           $SessionRunningTurnsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sessionRunningTurnsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionRunningTurnsTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionRunningTurnsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionRunningTurnsTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11824,12 +12267,14 @@ class $$SessionTableTableTableManager
                           $SessionInterruptionsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sessionInterruptionsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionInterruptionsTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionInterruptionsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionInterruptionsTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11842,12 +12287,14 @@ class $$SessionTableTableTableManager
                           $AgentPagesTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._agentPagesTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).agentPagesTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._agentPagesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).agentPagesTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11860,12 +12307,14 @@ class $$SessionTableTableTableManager
                           $SessionWakeUpsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sessionWakeUpsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sessionWakeUpsTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionWakeUpsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionWakeUpsTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11878,12 +12327,14 @@ class $$SessionTableTableTableManager
                           $SesoriToolSessionRecordsTableTable
                         >(
                           currentTable: table,
-                          referencedTable: $$SessionTableTableReferences._sesoriToolSessionRecordsTableRefsTable(db),
-                          managerFromTypedResult: (p0) => $$SessionTableTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).sesoriToolSessionRecordsTableRefs,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sesoriToolSessionRecordsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sesoriToolSessionRecordsTableRefs,
                           currentColumn: 'session_id',
                           referencedColumn: 'session_id',
                           typedResults: items,
@@ -11924,20 +12375,23 @@ typedef $$SessionTableTableProcessedTableManager =
         bool sesoriToolSessionRecordsTableRefs,
       })
     >;
-typedef $$DeletedSessionsTableTableCreateCompanionBuilder = DeletedSessionsTableCompanion Function({
-  Value<String> ownerIdentity,
-  required String backendSessionId,
-  required String pluginId,
-  required int deletedAt,
-});
-typedef $$DeletedSessionsTableTableUpdateCompanionBuilder = DeletedSessionsTableCompanion Function({
-  Value<String> ownerIdentity,
-  Value<String> backendSessionId,
-  Value<String> pluginId,
-  Value<int> deletedAt,
-});
+typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
+    DeletedSessionsTableCompanion Function({
+      Value<String> ownerIdentity,
+      required String backendSessionId,
+      required String pluginId,
+      required int deletedAt,
+    });
+typedef $$DeletedSessionsTableTableUpdateCompanionBuilder =
+    DeletedSessionsTableCompanion Function({
+      Value<String> ownerIdentity,
+      Value<String> backendSessionId,
+      Value<String> pluginId,
+      Value<int> deletedAt,
+    });
 
-class $$DeletedSessionsTableTableFilterComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -11966,7 +12420,8 @@ class $$DeletedSessionsTableTableFilterComposer extends Composer<_$AppDatabase, 
   );
 }
 
-class $$DeletedSessionsTableTableOrderingComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -11995,7 +12450,8 @@ class $$DeletedSessionsTableTableOrderingComposer extends Composer<_$AppDatabase
   );
 }
 
-class $$DeletedSessionsTableTableAnnotationComposer extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
+class $$DeletedSessionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DeletedSessionsTableTable> {
   $$DeletedSessionsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -12013,9 +12469,11 @@ class $$DeletedSessionsTableTableAnnotationComposer extends Composer<_$AppDataba
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<int> get deletedAt => $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 }
 
 class $$DeletedSessionsTableTableTableManager
@@ -12031,7 +12489,11 @@ class $$DeletedSessionsTableTableTableManager
           $$DeletedSessionsTableTableUpdateCompanionBuilder,
           (
             DeletedSessionDto,
-            BaseReferences<_$AppDatabase, $DeletedSessionsTableTable, DeletedSessionDto>,
+            BaseReferences<
+              _$AppDatabase,
+              $DeletedSessionsTableTable,
+              DeletedSessionDto
+            >,
           ),
           DeletedSessionDto,
           PrefetchHooks Function()
@@ -12043,15 +12505,18 @@ class $$DeletedSessionsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$DeletedSessionsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$DeletedSessionsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$DeletedSessionsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$DeletedSessionsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeletedSessionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DeletedSessionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> ownerIdentity = const Value.absent(),
@@ -12082,7 +12547,11 @@ class $$DeletedSessionsTableTableTableManager
                   e.readTable<$DeletedSessionsTableTable, DeletedSessionDto>(
                     table,
                   ),
-                  BaseReferences<_$AppDatabase, $DeletedSessionsTableTable, DeletedSessionDto>(db, table, e),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DeletedSessionsTableTable,
+                    DeletedSessionDto
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -12103,23 +12572,30 @@ typedef $$DeletedSessionsTableTableProcessedTableManager =
       $$DeletedSessionsTableTableUpdateCompanionBuilder,
       (
         DeletedSessionDto,
-        BaseReferences<_$AppDatabase, $DeletedSessionsTableTable, DeletedSessionDto>,
+        BaseReferences<
+          _$AppDatabase,
+          $DeletedSessionsTableTable,
+          DeletedSessionDto
+        >,
       ),
       DeletedSessionDto,
       PrefetchHooks Function()
     >;
-typedef $$CatalogHydrationsTableTableCreateCompanionBuilder = CatalogHydrationsTableCompanion Function({
-  required String pluginId,
-  required int projectionVersion,
-  required int completedAt,
-});
-typedef $$CatalogHydrationsTableTableUpdateCompanionBuilder = CatalogHydrationsTableCompanion Function({
-  Value<String> pluginId,
-  Value<int> projectionVersion,
-  Value<int> completedAt,
-});
+typedef $$CatalogHydrationsTableTableCreateCompanionBuilder =
+    CatalogHydrationsTableCompanion Function({
+      required String pluginId,
+      required int projectionVersion,
+      required int completedAt,
+    });
+typedef $$CatalogHydrationsTableTableUpdateCompanionBuilder =
+    CatalogHydrationsTableCompanion Function({
+      Value<String> pluginId,
+      Value<int> projectionVersion,
+      Value<int> completedAt,
+    });
 
-class $$CatalogHydrationsTableTableFilterComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -12143,7 +12619,8 @@ class $$CatalogHydrationsTableTableFilterComposer extends Composer<_$AppDatabase
   );
 }
 
-class $$CatalogHydrationsTableTableOrderingComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -12167,7 +12644,8 @@ class $$CatalogHydrationsTableTableOrderingComposer extends Composer<_$AppDataba
   );
 }
 
-class $$CatalogHydrationsTableTableAnnotationComposer extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
+class $$CatalogHydrationsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CatalogHydrationsTableTable> {
   $$CatalogHydrationsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -12175,7 +12653,8 @@ class $$CatalogHydrationsTableTableAnnotationComposer extends Composer<_$AppData
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
   GeneratedColumn<int> get projectionVersion => $composableBuilder(
     column: $table.projectionVersion,
@@ -12201,7 +12680,11 @@ class $$CatalogHydrationsTableTableTableManager
           $$CatalogHydrationsTableTableUpdateCompanionBuilder,
           (
             CatalogHydrationDto,
-            BaseReferences<_$AppDatabase, $CatalogHydrationsTableTable, CatalogHydrationDto>,
+            BaseReferences<
+              _$AppDatabase,
+              $CatalogHydrationsTableTable,
+              CatalogHydrationDto
+            >,
           ),
           CatalogHydrationDto,
           PrefetchHooks Function()
@@ -12213,18 +12696,21 @@ class $$CatalogHydrationsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$CatalogHydrationsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$CatalogHydrationsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$CatalogHydrationsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$CatalogHydrationsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$CatalogHydrationsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CatalogHydrationsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> pluginId = const Value.absent(),
@@ -12248,8 +12734,15 @@ class $$CatalogHydrationsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$CatalogHydrationsTableTable, CatalogHydrationDto>(table),
-                  BaseReferences<_$AppDatabase, $CatalogHydrationsTableTable, CatalogHydrationDto>(db, table, e),
+                  e.readTable<
+                    $CatalogHydrationsTableTable,
+                    CatalogHydrationDto
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CatalogHydrationsTableTable,
+                    CatalogHydrationDto
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -12270,37 +12763,44 @@ typedef $$CatalogHydrationsTableTableProcessedTableManager =
       $$CatalogHydrationsTableTableUpdateCompanionBuilder,
       (
         CatalogHydrationDto,
-        BaseReferences<_$AppDatabase, $CatalogHydrationsTableTable, CatalogHydrationDto>,
+        BaseReferences<
+          _$AppDatabase,
+          $CatalogHydrationsTableTable,
+          CatalogHydrationDto
+        >,
       ),
       CatalogHydrationDto,
       PrefetchHooks Function()
     >;
-typedef $$SessionOptionsCacheTableTableCreateCompanionBuilder = SessionOptionsCacheTableCompanion Function({
-  required String pluginId,
-  required PluginSessionOptionsScope scope,
-  required String ownerId,
-  Value<String?> projectId,
-  Value<String?> capturedProjectPath,
-  required int revision,
-  required int capturedAt,
-  required String agentsJson,
-  required String providersJson,
-  required String commandsJson,
-});
-typedef $$SessionOptionsCacheTableTableUpdateCompanionBuilder = SessionOptionsCacheTableCompanion Function({
-  Value<String> pluginId,
-  Value<PluginSessionOptionsScope> scope,
-  Value<String> ownerId,
-  Value<String?> projectId,
-  Value<String?> capturedProjectPath,
-  Value<int> revision,
-  Value<int> capturedAt,
-  Value<String> agentsJson,
-  Value<String> providersJson,
-  Value<String> commandsJson,
-});
+typedef $$SessionOptionsCacheTableTableCreateCompanionBuilder =
+    SessionOptionsCacheTableCompanion Function({
+      required String pluginId,
+      required PluginSessionOptionsScope scope,
+      required String ownerId,
+      Value<String?> projectId,
+      Value<String?> capturedProjectPath,
+      required int revision,
+      required int capturedAt,
+      required String agentsJson,
+      required String providersJson,
+      required String commandsJson,
+    });
+typedef $$SessionOptionsCacheTableTableUpdateCompanionBuilder =
+    SessionOptionsCacheTableCompanion Function({
+      Value<String> pluginId,
+      Value<PluginSessionOptionsScope> scope,
+      Value<String> ownerId,
+      Value<String?> projectId,
+      Value<String?> capturedProjectPath,
+      Value<int> revision,
+      Value<int> capturedAt,
+      Value<String> agentsJson,
+      Value<String> providersJson,
+      Value<String> commandsJson,
+    });
 
-class $$SessionOptionsCacheTableTableFilterComposer extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
+class $$SessionOptionsCacheTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
   $$SessionOptionsCacheTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -12313,11 +12813,15 @@ class $$SessionOptionsCacheTableTableFilterComposer extends Composer<_$AppDataba
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<PluginSessionOptionsScope, PluginSessionOptionsScope, String> get scope =>
-      $composableBuilder(
-        column: $table.scope,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+  ColumnWithTypeConverterFilters<
+    PluginSessionOptionsScope,
+    PluginSessionOptionsScope,
+    String
+  >
+  get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
   ColumnFilters<String> get ownerId => $composableBuilder(
     column: $table.ownerId,
@@ -12360,7 +12864,8 @@ class $$SessionOptionsCacheTableTableFilterComposer extends Composer<_$AppDataba
   );
 }
 
-class $$SessionOptionsCacheTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
+class $$SessionOptionsCacheTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionOptionsCacheTableTable> {
   $$SessionOptionsCacheTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -12428,21 +12933,26 @@ class $$SessionOptionsCacheTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String> get scope =>
+  GeneratedColumnWithTypeConverter<PluginSessionOptionsScope, String>
+  get scope =>
       $composableBuilder(column: $table.scope, builder: (column) => column);
 
-  GeneratedColumn<String> get ownerId => $composableBuilder(column: $table.ownerId, builder: (column) => column);
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
-  GeneratedColumn<String> get projectId => $composableBuilder(column: $table.projectId, builder: (column) => column);
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
 
   GeneratedColumn<String> get capturedProjectPath => $composableBuilder(
     column: $table.capturedProjectPath,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get revision => $composableBuilder(column: $table.revision, builder: (column) => column);
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
 
   GeneratedColumn<int> get capturedAt => $composableBuilder(
     column: $table.capturedAt,
@@ -12478,7 +12988,11 @@ class $$SessionOptionsCacheTableTableTableManager
           $$SessionOptionsCacheTableTableUpdateCompanionBuilder,
           (
             SessionOptionsCacheTableData,
-            BaseReferences<_$AppDatabase, $SessionOptionsCacheTableTable, SessionOptionsCacheTableData>,
+            BaseReferences<
+              _$AppDatabase,
+              $SessionOptionsCacheTableTable,
+              SessionOptionsCacheTableData
+            >,
           ),
           SessionOptionsCacheTableData,
           PrefetchHooks Function()
@@ -12490,18 +13004,21 @@ class $$SessionOptionsCacheTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionOptionsCacheTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SessionOptionsCacheTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SessionOptionsCacheTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SessionOptionsCacheTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionOptionsCacheTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionOptionsCacheTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> pluginId = const Value.absent(),
@@ -12553,12 +13070,15 @@ class $$SessionOptionsCacheTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SessionOptionsCacheTableTable, SessionOptionsCacheTableData>(table),
-                  BaseReferences<_$AppDatabase, $SessionOptionsCacheTableTable, SessionOptionsCacheTableData>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  e.readTable<
+                    $SessionOptionsCacheTableTable,
+                    SessionOptionsCacheTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SessionOptionsCacheTableTable,
+                    SessionOptionsCacheTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -12579,25 +13099,32 @@ typedef $$SessionOptionsCacheTableTableProcessedTableManager =
       $$SessionOptionsCacheTableTableUpdateCompanionBuilder,
       (
         SessionOptionsCacheTableData,
-        BaseReferences<_$AppDatabase, $SessionOptionsCacheTableTable, SessionOptionsCacheTableData>,
+        BaseReferences<
+          _$AppDatabase,
+          $SessionOptionsCacheTableTable,
+          SessionOptionsCacheTableData
+        >,
       ),
       SessionOptionsCacheTableData,
       PrefetchHooks Function()
     >;
-typedef $$NewSessionDefaultsTableTableCreateCompanionBuilder = NewSessionDefaultsTableCompanion Function({
-  required String pluginId,
-  Value<String?> agent,
-  Value<AgentModel?> agentModel,
-  Value<bool> fastMode,
-});
-typedef $$NewSessionDefaultsTableTableUpdateCompanionBuilder = NewSessionDefaultsTableCompanion Function({
-  Value<String> pluginId,
-  Value<String?> agent,
-  Value<AgentModel?> agentModel,
-  Value<bool> fastMode,
-});
+typedef $$NewSessionDefaultsTableTableCreateCompanionBuilder =
+    NewSessionDefaultsTableCompanion Function({
+      required String pluginId,
+      Value<String?> agent,
+      Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
+    });
+typedef $$NewSessionDefaultsTableTableUpdateCompanionBuilder =
+    NewSessionDefaultsTableCompanion Function({
+      Value<String> pluginId,
+      Value<String?> agent,
+      Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
+    });
 
-class $$NewSessionDefaultsTableTableFilterComposer extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+class $$NewSessionDefaultsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
   $$NewSessionDefaultsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -12615,7 +13142,8 @@ class $$NewSessionDefaultsTableTableFilterComposer extends Composer<_$AppDatabas
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String> get agentModel => $composableBuilder(
+  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String>
+  get agentModel => $composableBuilder(
     column: $table.agentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -12626,7 +13154,8 @@ class $$NewSessionDefaultsTableTableFilterComposer extends Composer<_$AppDatabas
   );
 }
 
-class $$NewSessionDefaultsTableTableOrderingComposer extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+class $$NewSessionDefaultsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
   $$NewSessionDefaultsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -12655,7 +13184,8 @@ class $$NewSessionDefaultsTableTableOrderingComposer extends Composer<_$AppDatab
   );
 }
 
-class $$NewSessionDefaultsTableTableAnnotationComposer extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+class $$NewSessionDefaultsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
   $$NewSessionDefaultsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -12663,16 +13193,20 @@ class $$NewSessionDefaultsTableTableAnnotationComposer extends Composer<_$AppDat
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get pluginId => $composableBuilder(column: $table.pluginId, builder: (column) => column);
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
 
-  GeneratedColumn<String> get agent => $composableBuilder(column: $table.agent, builder: (column) => column);
+  GeneratedColumn<String> get agent =>
+      $composableBuilder(column: $table.agent, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<AgentModel?, String> get agentModel => $composableBuilder(
-    column: $table.agentModel,
-    builder: (column) => column,
-  );
+  GeneratedColumnWithTypeConverter<AgentModel?, String> get agentModel =>
+      $composableBuilder(
+        column: $table.agentModel,
+        builder: (column) => column,
+      );
 
-  GeneratedColumn<bool> get fastMode => $composableBuilder(column: $table.fastMode, builder: (column) => column);
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
 }
 
 class $$NewSessionDefaultsTableTableTableManager
@@ -12688,7 +13222,11 @@ class $$NewSessionDefaultsTableTableTableManager
           $$NewSessionDefaultsTableTableUpdateCompanionBuilder,
           (
             NewSessionDefaultsTableData,
-            BaseReferences<_$AppDatabase, $NewSessionDefaultsTableTable, NewSessionDefaultsTableData>,
+            BaseReferences<
+              _$AppDatabase,
+              $NewSessionDefaultsTableTable,
+              NewSessionDefaultsTableData
+            >,
           ),
           NewSessionDefaultsTableData,
           PrefetchHooks Function()
@@ -12700,18 +13238,21 @@ class $$NewSessionDefaultsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$NewSessionDefaultsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$NewSessionDefaultsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$NewSessionDefaultsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$NewSessionDefaultsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$NewSessionDefaultsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$NewSessionDefaultsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> pluginId = const Value.absent(),
@@ -12739,12 +13280,15 @@ class $$NewSessionDefaultsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$NewSessionDefaultsTableTable, NewSessionDefaultsTableData>(table),
-                  BaseReferences<_$AppDatabase, $NewSessionDefaultsTableTable, NewSessionDefaultsTableData>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  e.readTable<
+                    $NewSessionDefaultsTableTable,
+                    NewSessionDefaultsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $NewSessionDefaultsTableTable,
+                    NewSessionDefaultsTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -12765,23 +13309,30 @@ typedef $$NewSessionDefaultsTableTableProcessedTableManager =
       $$NewSessionDefaultsTableTableUpdateCompanionBuilder,
       (
         NewSessionDefaultsTableData,
-        BaseReferences<_$AppDatabase, $NewSessionDefaultsTableTable, NewSessionDefaultsTableData>,
+        BaseReferences<
+          _$AppDatabase,
+          $NewSessionDefaultsTableTable,
+          NewSessionDefaultsTableData
+        >,
       ),
       NewSessionDefaultsTableData,
       PrefetchHooks Function()
     >;
-typedef $$AcceptedPromptsTableTableCreateCompanionBuilder = AcceptedPromptsTableCompanion Function({
-  required String sessionId,
-  required String promptId,
-  required int acceptedAt,
-});
-typedef $$AcceptedPromptsTableTableUpdateCompanionBuilder = AcceptedPromptsTableCompanion Function({
-  Value<String> sessionId,
-  Value<String> promptId,
-  Value<int> acceptedAt,
-});
+typedef $$AcceptedPromptsTableTableCreateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      required String sessionId,
+      required String promptId,
+      required int acceptedAt,
+    });
+typedef $$AcceptedPromptsTableTableUpdateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> promptId,
+      Value<int> acceptedAt,
+    });
 
-class $$AcceptedPromptsTableTableFilterComposer extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+class $$AcceptedPromptsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
   $$AcceptedPromptsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -12805,7 +13356,8 @@ class $$AcceptedPromptsTableTableFilterComposer extends Composer<_$AppDatabase, 
   );
 }
 
-class $$AcceptedPromptsTableTableOrderingComposer extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+class $$AcceptedPromptsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
   $$AcceptedPromptsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -12829,7 +13381,8 @@ class $$AcceptedPromptsTableTableOrderingComposer extends Composer<_$AppDatabase
   );
 }
 
-class $$AcceptedPromptsTableTableAnnotationComposer extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+class $$AcceptedPromptsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
   $$AcceptedPromptsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -12837,9 +13390,11 @@ class $$AcceptedPromptsTableTableAnnotationComposer extends Composer<_$AppDataba
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get sessionId => $composableBuilder(column: $table.sessionId, builder: (column) => column);
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
 
-  GeneratedColumn<String> get promptId => $composableBuilder(column: $table.promptId, builder: (column) => column);
+  GeneratedColumn<String> get promptId =>
+      $composableBuilder(column: $table.promptId, builder: (column) => column);
 
   GeneratedColumn<int> get acceptedAt => $composableBuilder(
     column: $table.acceptedAt,
@@ -12860,7 +13415,11 @@ class $$AcceptedPromptsTableTableTableManager
           $$AcceptedPromptsTableTableUpdateCompanionBuilder,
           (
             AcceptedPromptsTableData,
-            BaseReferences<_$AppDatabase, $AcceptedPromptsTableTable, AcceptedPromptsTableData>,
+            BaseReferences<
+              _$AppDatabase,
+              $AcceptedPromptsTableTable,
+              AcceptedPromptsTableData
+            >,
           ),
           AcceptedPromptsTableData,
           PrefetchHooks Function()
@@ -12872,15 +13431,18 @@ class $$AcceptedPromptsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$AcceptedPromptsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$AcceptedPromptsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$AcceptedPromptsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$AcceptedPromptsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AcceptedPromptsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AcceptedPromptsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -12904,8 +13466,15 @@ class $$AcceptedPromptsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$AcceptedPromptsTableTable, AcceptedPromptsTableData>(table),
-                  BaseReferences<_$AppDatabase, $AcceptedPromptsTableTable, AcceptedPromptsTableData>(db, table, e),
+                  e.readTable<
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -12926,33 +13495,45 @@ typedef $$AcceptedPromptsTableTableProcessedTableManager =
       $$AcceptedPromptsTableTableUpdateCompanionBuilder,
       (
         AcceptedPromptsTableData,
-        BaseReferences<_$AppDatabase, $AcceptedPromptsTableTable, AcceptedPromptsTableData>,
+        BaseReferences<
+          _$AppDatabase,
+          $AcceptedPromptsTableTable,
+          AcceptedPromptsTableData
+        >,
       ),
       AcceptedPromptsTableData,
       PrefetchHooks Function()
     >;
-typedef $$SessionContinuationTableTableCreateCompanionBuilder = SessionContinuationTableCompanion Function({
-  required String sessionId,
-  required bool enabled,
-  required String outcomeJson,
-});
-typedef $$SessionContinuationTableTableUpdateCompanionBuilder = SessionContinuationTableCompanion Function({
-  Value<String> sessionId,
-  Value<bool> enabled,
-  Value<String> outcomeJson,
-});
+typedef $$SessionContinuationTableTableCreateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      required String sessionId,
+      required bool enabled,
+      required String outcomeJson,
+    });
+typedef $$SessionContinuationTableTableUpdateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      Value<String> sessionId,
+      Value<bool> enabled,
+      Value<String> outcomeJson,
+    });
 
 final class $$SessionContinuationTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SessionContinuationTableTable, SessionContinuationDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionContinuationTableTable,
+          SessionContinuationDto
+        > {
   $$SessionContinuationTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'session_continuations__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_continuations__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -12969,7 +13550,8 @@ final class $$SessionContinuationTableTableReferences
   }
 }
 
-class $$SessionContinuationTableTableFilterComposer extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+class $$SessionContinuationTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
   $$SessionContinuationTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -13003,14 +13585,16 @@ class $$SessionContinuationTableTableFilterComposer extends Composer<_$AppDataba
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionContinuationTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+class $$SessionContinuationTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
   $$SessionContinuationTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -13044,7 +13628,8 @@ class $$SessionContinuationTableTableOrderingComposer extends Composer<_$AppData
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -13060,7 +13645,8 @@ class $$SessionContinuationTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<bool> get enabled => $composableBuilder(column: $table.enabled, builder: (column) => column);
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
 
   GeneratedColumn<String> get outcomeJson => $composableBuilder(
     column: $table.outcomeJson,
@@ -13083,7 +13669,8 @@ class $$SessionContinuationTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -13112,18 +13699,21 @@ class $$SessionContinuationTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionContinuationTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SessionContinuationTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SessionContinuationTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SessionContinuationTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionContinuationTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionContinuationTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -13147,7 +13737,10 @@ class $$SessionContinuationTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SessionContinuationTableTable, SessionContinuationDto>(table),
+                  e.readTable<
+                    $SessionContinuationTableTable,
+                    SessionContinuationDto
+                  >(table),
                   $$SessionContinuationTableTableReferences(db, table, e),
                 ),
               )
@@ -13176,8 +13769,13 @@ class $$SessionContinuationTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SessionContinuationTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SessionContinuationTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -13206,38 +13804,46 @@ typedef $$SessionContinuationTableTableProcessedTableManager =
       SessionContinuationDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$SideChatExchangesTableTableCreateCompanionBuilder = SideChatExchangesTableCompanion Function({
-  required String id,
-  required String sessionId,
-  required String sideChatId,
-  required String question,
-  required String answer,
-  Value<String?> answerNotice,
-  required int askedAt,
-  required int answeredAt,
-});
-typedef $$SideChatExchangesTableTableUpdateCompanionBuilder = SideChatExchangesTableCompanion Function({
-  Value<String> id,
-  Value<String> sessionId,
-  Value<String> sideChatId,
-  Value<String> question,
-  Value<String> answer,
-  Value<String?> answerNotice,
-  Value<int> askedAt,
-  Value<int> answeredAt,
-});
+typedef $$SideChatExchangesTableTableCreateCompanionBuilder =
+    SideChatExchangesTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String sideChatId,
+      required String question,
+      required String answer,
+      Value<String?> answerNotice,
+      required int askedAt,
+      required int answeredAt,
+    });
+typedef $$SideChatExchangesTableTableUpdateCompanionBuilder =
+    SideChatExchangesTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> sideChatId,
+      Value<String> question,
+      Value<String> answer,
+      Value<String?> answerNotice,
+      Value<int> askedAt,
+      Value<int> answeredAt,
+    });
 
 final class $$SideChatExchangesTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SideChatExchangesTableTable, SideChatExchangeDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SideChatExchangesTableTable,
+          SideChatExchangeDto
+        > {
   $$SideChatExchangesTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'side_chat_exchanges__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'side_chat_exchanges__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -13254,7 +13860,8 @@ final class $$SideChatExchangesTableTableReferences
   }
 }
 
-class $$SideChatExchangesTableTableFilterComposer extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+class $$SideChatExchangesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
   $$SideChatExchangesTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -13313,14 +13920,16 @@ class $$SideChatExchangesTableTableFilterComposer extends Composer<_$AppDatabase
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SideChatExchangesTableTableOrderingComposer extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+class $$SideChatExchangesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
   $$SideChatExchangesTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -13379,14 +13988,16 @@ class $$SideChatExchangesTableTableOrderingComposer extends Composer<_$AppDataba
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SideChatExchangesTableTableAnnotationComposer extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+class $$SideChatExchangesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
   $$SideChatExchangesTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -13394,23 +14005,27 @@ class $$SideChatExchangesTableTableAnnotationComposer extends Composer<_$AppData
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get sideChatId => $composableBuilder(
     column: $table.sideChatId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get question => $composableBuilder(column: $table.question, builder: (column) => column);
+  GeneratedColumn<String> get question =>
+      $composableBuilder(column: $table.question, builder: (column) => column);
 
-  GeneratedColumn<String> get answer => $composableBuilder(column: $table.answer, builder: (column) => column);
+  GeneratedColumn<String> get answer =>
+      $composableBuilder(column: $table.answer, builder: (column) => column);
 
   GeneratedColumn<String> get answerNotice => $composableBuilder(
     column: $table.answerNotice,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get askedAt => $composableBuilder(column: $table.askedAt, builder: (column) => column);
+  GeneratedColumn<int> get askedAt =>
+      $composableBuilder(column: $table.askedAt, builder: (column) => column);
 
   GeneratedColumn<int> get answeredAt => $composableBuilder(
     column: $table.answeredAt,
@@ -13433,7 +14048,8 @@ class $$SideChatExchangesTableTableAnnotationComposer extends Composer<_$AppData
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -13462,18 +14078,21 @@ class $$SideChatExchangesTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SideChatExchangesTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SideChatExchangesTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SideChatExchangesTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SideChatExchangesTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SideChatExchangesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SideChatExchangesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -13517,7 +14136,10 @@ class $$SideChatExchangesTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SideChatExchangesTableTable, SideChatExchangeDto>(table),
+                  e.readTable<
+                    $SideChatExchangesTableTable,
+                    SideChatExchangeDto
+                  >(table),
                   $$SideChatExchangesTableTableReferences(db, table, e),
                 ),
               )
@@ -13546,8 +14168,12 @@ class $$SideChatExchangesTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SideChatExchangesTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SideChatExchangesTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable: $$SideChatExchangesTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SideChatExchangesTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -13576,45 +14202,53 @@ typedef $$SideChatExchangesTableTableProcessedTableManager =
       SideChatExchangeDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$ScheduledTaskRunsTableTableCreateCompanionBuilder = ScheduledTaskRunsTableCompanion Function({
-  required String id,
-  required String taskId,
-  Value<String?> sessionId,
-  required int scheduledFor,
-  required int scheduledForOffsetMinutes,
-  required int firedAt,
-  required ScheduledTaskRunOutcomeKind outcome,
-  Value<TaskRunFailureReason?> reason,
-  Value<String?> attemptJson,
-  required bool late,
-  Value<int?> userPromptedAt,
-  Value<int?> compactRequestedAt,
-});
-typedef $$ScheduledTaskRunsTableTableUpdateCompanionBuilder = ScheduledTaskRunsTableCompanion Function({
-  Value<String> id,
-  Value<String> taskId,
-  Value<String?> sessionId,
-  Value<int> scheduledFor,
-  Value<int> scheduledForOffsetMinutes,
-  Value<int> firedAt,
-  Value<ScheduledTaskRunOutcomeKind> outcome,
-  Value<TaskRunFailureReason?> reason,
-  Value<String?> attemptJson,
-  Value<bool> late,
-  Value<int?> userPromptedAt,
-  Value<int?> compactRequestedAt,
-});
+typedef $$ScheduledTaskRunsTableTableCreateCompanionBuilder =
+    ScheduledTaskRunsTableCompanion Function({
+      required String id,
+      required String taskId,
+      Value<String?> sessionId,
+      required int scheduledFor,
+      required int scheduledForOffsetMinutes,
+      required int firedAt,
+      required ScheduledTaskRunOutcomeKind outcome,
+      Value<TaskRunFailureReason?> reason,
+      Value<String?> attemptJson,
+      required bool late,
+      Value<int?> userPromptedAt,
+      Value<int?> compactRequestedAt,
+    });
+typedef $$ScheduledTaskRunsTableTableUpdateCompanionBuilder =
+    ScheduledTaskRunsTableCompanion Function({
+      Value<String> id,
+      Value<String> taskId,
+      Value<String?> sessionId,
+      Value<int> scheduledFor,
+      Value<int> scheduledForOffsetMinutes,
+      Value<int> firedAt,
+      Value<ScheduledTaskRunOutcomeKind> outcome,
+      Value<TaskRunFailureReason?> reason,
+      Value<String?> attemptJson,
+      Value<bool> late,
+      Value<int?> userPromptedAt,
+      Value<int?> compactRequestedAt,
+    });
 
 final class $$ScheduledTaskRunsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $ScheduledTaskRunsTableTable, ScheduledTaskRunDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ScheduledTaskRunsTableTable,
+          ScheduledTaskRunDto
+        > {
   $$ScheduledTaskRunsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $ScheduledTasksTableTable _taskIdTable(_$AppDatabase db) =>
-      db.scheduledTasksTable.createAlias('scheduled_task_runs__task_id__scheduled_tasks__id');
+  static $ScheduledTasksTableTable _taskIdTable(_$AppDatabase db) => db
+      .scheduledTasksTable
+      .createAlias('scheduled_task_runs__task_id__scheduled_tasks__id');
 
   $$ScheduledTasksTableTableProcessedTableManager get taskId {
     final $_column = $_itemColumn<String>('task_id')!;
@@ -13630,9 +14264,10 @@ final class $$ScheduledTaskRunsTableTableReferences
     );
   }
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'scheduled_task_runs__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'scheduled_task_runs__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager? get sessionId {
     final $_column = $_itemColumn<String>('session_id');
@@ -13649,7 +14284,8 @@ final class $$ScheduledTaskRunsTableTableReferences
   }
 }
 
-class $$ScheduledTaskRunsTableTableFilterComposer extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+class $$ScheduledTaskRunsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
   $$ScheduledTaskRunsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -13677,13 +14313,22 @@ class $$ScheduledTaskRunsTableTableFilterComposer extends Composer<_$AppDatabase
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<ScheduledTaskRunOutcomeKind, ScheduledTaskRunOutcomeKind, String> get outcome =>
-      $composableBuilder(
-        column: $table.outcome,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
+  ColumnWithTypeConverterFilters<
+    ScheduledTaskRunOutcomeKind,
+    ScheduledTaskRunOutcomeKind,
+    String
+  >
+  get outcome => $composableBuilder(
+    column: $table.outcome,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
-  ColumnWithTypeConverterFilters<TaskRunFailureReason?, TaskRunFailureReason, String> get reason => $composableBuilder(
+  ColumnWithTypeConverterFilters<
+    TaskRunFailureReason?,
+    TaskRunFailureReason,
+    String
+  >
+  get reason => $composableBuilder(
     column: $table.reason,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -13724,7 +14369,8 @@ class $$ScheduledTaskRunsTableTableFilterComposer extends Composer<_$AppDatabase
             $table: $db.scheduledTasksTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -13746,14 +14392,16 @@ class $$ScheduledTaskRunsTableTableFilterComposer extends Composer<_$AppDatabase
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ScheduledTaskRunsTableTableOrderingComposer extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+class $$ScheduledTaskRunsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
   $$ScheduledTaskRunsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -13812,24 +14460,26 @@ class $$ScheduledTaskRunsTableTableOrderingComposer extends Composer<_$AppDataba
   );
 
   $$ScheduledTasksTableTableOrderingComposer get taskId {
-    final $$ScheduledTasksTableTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.taskId,
-      referencedTable: $db.scheduledTasksTable,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTasksTableTableOrderingComposer(
-            $db: $db,
-            $table: $db.scheduledTasksTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTasksTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 
@@ -13849,14 +14499,16 @@ class $$ScheduledTaskRunsTableTableOrderingComposer extends Composer<_$AppDataba
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+class $$ScheduledTaskRunsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
   $$ScheduledTaskRunsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -13864,7 +14516,8 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppData
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get scheduledFor => $composableBuilder(
     column: $table.scheduledFor,
@@ -13876,9 +14529,11 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppData
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get firedAt => $composableBuilder(column: $table.firedAt, builder: (column) => column);
+  GeneratedColumn<int> get firedAt =>
+      $composableBuilder(column: $table.firedAt, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<ScheduledTaskRunOutcomeKind, String> get outcome =>
+  GeneratedColumnWithTypeConverter<ScheduledTaskRunOutcomeKind, String>
+  get outcome =>
       $composableBuilder(column: $table.outcome, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String> get reason =>
@@ -13889,7 +14544,8 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppData
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get late => $composableBuilder(column: $table.late, builder: (column) => column);
+  GeneratedColumn<bool> get late =>
+      $composableBuilder(column: $table.late, builder: (column) => column);
 
   GeneratedColumn<int> get userPromptedAt => $composableBuilder(
     column: $table.userPromptedAt,
@@ -13902,24 +14558,26 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppData
   );
 
   $$ScheduledTasksTableTableAnnotationComposer get taskId {
-    final $$ScheduledTasksTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.taskId,
-      referencedTable: $db.scheduledTasksTable,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ScheduledTasksTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.scheduledTasksTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
-          ),
-    );
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return composer;
   }
 
@@ -13939,7 +14597,8 @@ class $$ScheduledTaskRunsTableTableAnnotationComposer extends Composer<_$AppData
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -13968,18 +14627,21 @@ class $$ScheduledTaskRunsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$ScheduledTaskRunsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$ScheduledTaskRunsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$ScheduledTaskRunsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ScheduledTaskRunsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -13988,7 +14650,8 @@ class $$ScheduledTaskRunsTableTableTableManager
                 Value<int> scheduledFor = const Value.absent(),
                 Value<int> scheduledForOffsetMinutes = const Value.absent(),
                 Value<int> firedAt = const Value.absent(),
-                Value<ScheduledTaskRunOutcomeKind> outcome = const Value.absent(),
+                Value<ScheduledTaskRunOutcomeKind> outcome =
+                    const Value.absent(),
                 Value<TaskRunFailureReason?> reason = const Value.absent(),
                 Value<String?> attemptJson = const Value.absent(),
                 Value<bool> late = const Value.absent(),
@@ -14039,7 +14702,10 @@ class $$ScheduledTaskRunsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$ScheduledTaskRunsTableTable, ScheduledTaskRunDto>(table),
+                  e.readTable<
+                    $ScheduledTaskRunsTableTable,
+                    ScheduledTaskRunDto
+                  >(table),
                   $$ScheduledTaskRunsTableTableReferences(db, table, e),
                 ),
               )
@@ -14068,16 +14734,24 @@ class $$ScheduledTaskRunsTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.taskId,
-                        referencedTable: $$ScheduledTaskRunsTableTableReferences._taskIdTable(db),
-                        referencedColumn: $$ScheduledTaskRunsTableTableReferences._taskIdTable(db).id,
+                        referencedTable: $$ScheduledTaskRunsTableTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn:
+                            $$ScheduledTaskRunsTableTableReferences
+                                ._taskIdTable(db)
+                                .id,
                       ) as T;
                     }
                     if (sessionId) {
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$ScheduledTaskRunsTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$ScheduledTaskRunsTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable: $$ScheduledTaskRunsTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn:
+                            $$ScheduledTaskRunsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -14106,26 +14780,34 @@ typedef $$ScheduledTaskRunsTableTableProcessedTableManager =
       ScheduledTaskRunDto,
       PrefetchHooks Function({bool taskId, bool sessionId})
     >;
-typedef $$SessionRunningTurnsTableTableCreateCompanionBuilder = SessionRunningTurnsTableCompanion Function({
-  required String sessionId,
-  required int startedAt,
-});
-typedef $$SessionRunningTurnsTableTableUpdateCompanionBuilder = SessionRunningTurnsTableCompanion Function({
-  Value<String> sessionId,
-  Value<int> startedAt,
-});
+typedef $$SessionRunningTurnsTableTableCreateCompanionBuilder =
+    SessionRunningTurnsTableCompanion Function({
+      required String sessionId,
+      required int startedAt,
+    });
+typedef $$SessionRunningTurnsTableTableUpdateCompanionBuilder =
+    SessionRunningTurnsTableCompanion Function({
+      Value<String> sessionId,
+      Value<int> startedAt,
+    });
 
 final class $$SessionRunningTurnsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SessionRunningTurnsTableTable, SessionRunningTurnDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionRunningTurnsTableTable,
+          SessionRunningTurnDto
+        > {
   $$SessionRunningTurnsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'session_running_turns__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_running_turns__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -14142,7 +14824,8 @@ final class $$SessionRunningTurnsTableTableReferences
   }
 }
 
-class $$SessionRunningTurnsTableTableFilterComposer extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
+class $$SessionRunningTurnsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
   $$SessionRunningTurnsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -14171,14 +14854,16 @@ class $$SessionRunningTurnsTableTableFilterComposer extends Composer<_$AppDataba
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionRunningTurnsTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
+class $$SessionRunningTurnsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionRunningTurnsTableTable> {
   $$SessionRunningTurnsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -14207,7 +14892,8 @@ class $$SessionRunningTurnsTableTableOrderingComposer extends Composer<_$AppData
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14223,7 +14909,8 @@ class $$SessionRunningTurnsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get startedAt => $composableBuilder(column: $table.startedAt, builder: (column) => column);
+  GeneratedColumn<int> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
 
   $$SessionTableTableAnnotationComposer get sessionId {
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
@@ -14241,7 +14928,8 @@ class $$SessionRunningTurnsTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14270,18 +14958,21 @@ class $$SessionRunningTurnsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionRunningTurnsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SessionRunningTurnsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SessionRunningTurnsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SessionRunningTurnsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionRunningTurnsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionRunningTurnsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -14290,15 +14981,19 @@ class $$SessionRunningTurnsTableTableTableManager
                 sessionId: sessionId,
                 startedAt: startedAt,
               ),
-          createCompanionCallback: ({required String sessionId, required int startedAt}) =>
-              SessionRunningTurnsTableCompanion.insert(
-                sessionId: sessionId,
-                startedAt: startedAt,
-              ),
+          createCompanionCallback:
+              ({required String sessionId, required int startedAt}) =>
+                  SessionRunningTurnsTableCompanion.insert(
+                    sessionId: sessionId,
+                    startedAt: startedAt,
+                  ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SessionRunningTurnsTableTable, SessionRunningTurnDto>(table),
+                  e.readTable<
+                    $SessionRunningTurnsTableTable,
+                    SessionRunningTurnDto
+                  >(table),
                   $$SessionRunningTurnsTableTableReferences(db, table, e),
                 ),
               )
@@ -14327,8 +15022,13 @@ class $$SessionRunningTurnsTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SessionRunningTurnsTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SessionRunningTurnsTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable:
+                            $$SessionRunningTurnsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionRunningTurnsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -14357,28 +15057,36 @@ typedef $$SessionRunningTurnsTableTableProcessedTableManager =
       SessionRunningTurnDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$SessionInterruptionsTableTableCreateCompanionBuilder = SessionInterruptionsTableCompanion Function({
-  required String sessionId,
-  required String afterMessageId,
-  required bool acknowledged,
-});
-typedef $$SessionInterruptionsTableTableUpdateCompanionBuilder = SessionInterruptionsTableCompanion Function({
-  Value<String> sessionId,
-  Value<String> afterMessageId,
-  Value<bool> acknowledged,
-});
+typedef $$SessionInterruptionsTableTableCreateCompanionBuilder =
+    SessionInterruptionsTableCompanion Function({
+      required String sessionId,
+      required String afterMessageId,
+      required bool acknowledged,
+    });
+typedef $$SessionInterruptionsTableTableUpdateCompanionBuilder =
+    SessionInterruptionsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> afterMessageId,
+      Value<bool> acknowledged,
+    });
 
 final class $$SessionInterruptionsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SessionInterruptionsTableTable, SessionInterruptionDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionInterruptionsTableTable,
+          SessionInterruptionDto
+        > {
   $$SessionInterruptionsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'session_interruptions__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_interruptions__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -14395,7 +15103,8 @@ final class $$SessionInterruptionsTableTableReferences
   }
 }
 
-class $$SessionInterruptionsTableTableFilterComposer extends Composer<_$AppDatabase, $SessionInterruptionsTableTable> {
+class $$SessionInterruptionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionInterruptionsTableTable> {
   $$SessionInterruptionsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -14429,7 +15138,8 @@ class $$SessionInterruptionsTableTableFilterComposer extends Composer<_$AppDatab
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14471,7 +15181,8 @@ class $$SessionInterruptionsTableTableOrderingComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14513,7 +15224,8 @@ class $$SessionInterruptionsTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14542,18 +15254,21 @@ class $$SessionInterruptionsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionInterruptionsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SessionInterruptionsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SessionInterruptionsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SessionInterruptionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionInterruptionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionInterruptionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> sessionId = const Value.absent(),
@@ -14577,7 +15292,10 @@ class $$SessionInterruptionsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SessionInterruptionsTableTable, SessionInterruptionDto>(table),
+                  e.readTable<
+                    $SessionInterruptionsTableTable,
+                    SessionInterruptionDto
+                  >(table),
                   $$SessionInterruptionsTableTableReferences(db, table, e),
                 ),
               )
@@ -14606,8 +15324,13 @@ class $$SessionInterruptionsTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SessionInterruptionsTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SessionInterruptionsTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable:
+                            $$SessionInterruptionsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionInterruptionsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -14636,26 +15359,28 @@ typedef $$SessionInterruptionsTableTableProcessedTableManager =
       SessionInterruptionDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$AgentPagesTableTableCreateCompanionBuilder = AgentPagesTableCompanion Function({
-  required String id,
-  required String sessionId,
-  required String rootSessionId,
-  required PendingPage pageJson,
-  required AgentPageStatus status,
-  Value<String?> outcomeJson,
-  required int createdAt,
-  Value<int?> settledAt,
-});
-typedef $$AgentPagesTableTableUpdateCompanionBuilder = AgentPagesTableCompanion Function({
-  Value<String> id,
-  Value<String> sessionId,
-  Value<String> rootSessionId,
-  Value<PendingPage> pageJson,
-  Value<AgentPageStatus> status,
-  Value<String?> outcomeJson,
-  Value<int> createdAt,
-  Value<int?> settledAt,
-});
+typedef $$AgentPagesTableTableCreateCompanionBuilder =
+    AgentPagesTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String rootSessionId,
+      required PendingPage pageJson,
+      required AgentPageStatus status,
+      Value<String?> outcomeJson,
+      required int createdAt,
+      Value<int?> settledAt,
+    });
+typedef $$AgentPagesTableTableUpdateCompanionBuilder =
+    AgentPagesTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> rootSessionId,
+      Value<PendingPage> pageJson,
+      Value<AgentPageStatus> status,
+      Value<String?> outcomeJson,
+      Value<int> createdAt,
+      Value<int?> settledAt,
+    });
 
 final class $$AgentPagesTableTableReferences
     extends BaseReferences<_$AppDatabase, $AgentPagesTableTable, AgentPageDto> {
@@ -14665,8 +15390,8 @@ final class $$AgentPagesTableTableReferences
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
-      db.sessionTable.createAlias('agent_pages__session_id__sessions_table__session_id');
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable
+      .createAlias('agent_pages__session_id__sessions_table__session_id');
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -14683,7 +15408,8 @@ final class $$AgentPagesTableTableReferences
   }
 }
 
-class $$AgentPagesTableTableFilterComposer extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+class $$AgentPagesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
   $$AgentPagesTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -14701,12 +15427,14 @@ class $$AgentPagesTableTableFilterComposer extends Composer<_$AppDatabase, $Agen
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<PendingPage, PendingPage, String> get pageJson => $composableBuilder(
+  ColumnWithTypeConverterFilters<PendingPage, PendingPage, String>
+  get pageJson => $composableBuilder(
     column: $table.pageJson,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<AgentPageStatus, AgentPageStatus, String> get status => $composableBuilder(
+  ColumnWithTypeConverterFilters<AgentPageStatus, AgentPageStatus, String>
+  get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
@@ -14742,14 +15470,16 @@ class $$AgentPagesTableTableFilterComposer extends Composer<_$AppDatabase, $Agen
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$AgentPagesTableTableOrderingComposer extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+class $$AgentPagesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
   $$AgentPagesTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -14808,14 +15538,16 @@ class $$AgentPagesTableTableOrderingComposer extends Composer<_$AppDatabase, $Ag
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$AgentPagesTableTableAnnotationComposer extends Composer<_$AppDatabase, $AgentPagesTableTable> {
+class $$AgentPagesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AgentPagesTableTable> {
   $$AgentPagesTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -14823,7 +15555,8 @@ class $$AgentPagesTableTableAnnotationComposer extends Composer<_$AppDatabase, $
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get rootSessionId => $composableBuilder(
     column: $table.rootSessionId,
@@ -14841,9 +15574,11 @@ class $$AgentPagesTableTableAnnotationComposer extends Composer<_$AppDatabase, $
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
-  GeneratedColumn<int> get settledAt => $composableBuilder(column: $table.settledAt, builder: (column) => column);
+  GeneratedColumn<int> get settledAt =>
+      $composableBuilder(column: $table.settledAt, builder: (column) => column);
 
   $$SessionTableTableAnnotationComposer get sessionId {
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
@@ -14861,7 +15596,8 @@ class $$AgentPagesTableTableAnnotationComposer extends Composer<_$AppDatabase, $
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -14890,9 +15626,12 @@ class $$AgentPagesTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$AgentPagesTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$AgentPagesTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () => $$AgentPagesTableTableAnnotationComposer($db: db, $table: table),
+          createFilteringComposer: () =>
+              $$AgentPagesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AgentPagesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AgentPagesTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -14965,8 +15704,11 @@ class $$AgentPagesTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$AgentPagesTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$AgentPagesTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable: $$AgentPagesTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn: $$AgentPagesTableTableReferences
+                            ._sessionIdTable(db)
+                            .sessionId,
                       ) as T;
                     }
 
@@ -14995,39 +15737,46 @@ typedef $$AgentPagesTableTableProcessedTableManager =
       AgentPageDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$SessionWakeUpsTableTableCreateCompanionBuilder = SessionWakeUpsTableCompanion Function({
-  required String id,
-  required String sessionId,
-  required String label,
-  required String prompt,
-  Value<String?> command,
-  Value<SessionWakeUpCommandApproval?> commandApproval,
-  required String scheduleJson,
-  required int nextDueAt,
-  required int createdAt,
-});
-typedef $$SessionWakeUpsTableTableUpdateCompanionBuilder = SessionWakeUpsTableCompanion Function({
-  Value<String> id,
-  Value<String> sessionId,
-  Value<String> label,
-  Value<String> prompt,
-  Value<String?> command,
-  Value<SessionWakeUpCommandApproval?> commandApproval,
-  Value<String> scheduleJson,
-  Value<int> nextDueAt,
-  Value<int> createdAt,
-});
+typedef $$SessionWakeUpsTableTableCreateCompanionBuilder =
+    SessionWakeUpsTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String label,
+      required String prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
+      required String scheduleJson,
+      required int nextDueAt,
+      required int createdAt,
+    });
+typedef $$SessionWakeUpsTableTableUpdateCompanionBuilder =
+    SessionWakeUpsTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> label,
+      Value<String> prompt,
+      Value<String?> command,
+      Value<SessionWakeUpCommandApproval?> commandApproval,
+      Value<String> scheduleJson,
+      Value<int> nextDueAt,
+      Value<int> createdAt,
+    });
 
 final class $$SessionWakeUpsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SessionWakeUpsTableTable, SessionWakeUpDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionWakeUpsTableTable,
+          SessionWakeUpDto
+        > {
   $$SessionWakeUpsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
-      db.sessionTable.createAlias('session_wake_ups__session_id__sessions_table__session_id');
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable
+      .createAlias('session_wake_ups__session_id__sessions_table__session_id');
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -15044,7 +15793,8 @@ final class $$SessionWakeUpsTableTableReferences
   }
 }
 
-class $$SessionWakeUpsTableTableFilterComposer extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+class $$SessionWakeUpsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
   $$SessionWakeUpsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -15072,7 +15822,11 @@ class $$SessionWakeUpsTableTableFilterComposer extends Composer<_$AppDatabase, $
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<SessionWakeUpCommandApproval?, SessionWakeUpCommandApproval, String>
+  ColumnWithTypeConverterFilters<
+    SessionWakeUpCommandApproval?,
+    SessionWakeUpCommandApproval,
+    String
+  >
   get commandApproval => $composableBuilder(
     column: $table.commandApproval,
     builder: (column) => ColumnWithTypeConverterFilters(column),
@@ -15109,14 +15863,16 @@ class $$SessionWakeUpsTableTableFilterComposer extends Composer<_$AppDatabase, $
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionWakeUpsTableTableOrderingComposer extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+class $$SessionWakeUpsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
   $$SessionWakeUpsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -15180,14 +15936,16 @@ class $$SessionWakeUpsTableTableOrderingComposer extends Composer<_$AppDatabase,
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
   }
 }
 
-class $$SessionWakeUpsTableTableAnnotationComposer extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
+class $$SessionWakeUpsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionWakeUpsTableTable> {
   $$SessionWakeUpsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -15195,15 +15953,20 @@ class $$SessionWakeUpsTableTableAnnotationComposer extends Composer<_$AppDatabas
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id => $composableBuilder(column: $table.id, builder: (column) => column);
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get label => $composableBuilder(column: $table.label, builder: (column) => column);
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
 
-  GeneratedColumn<String> get prompt => $composableBuilder(column: $table.prompt, builder: (column) => column);
+  GeneratedColumn<String> get prompt =>
+      $composableBuilder(column: $table.prompt, builder: (column) => column);
 
-  GeneratedColumn<String> get command => $composableBuilder(column: $table.command, builder: (column) => column);
+  GeneratedColumn<String> get command =>
+      $composableBuilder(column: $table.command, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<SessionWakeUpCommandApproval?, String> get commandApproval => $composableBuilder(
+  GeneratedColumnWithTypeConverter<SessionWakeUpCommandApproval?, String>
+  get commandApproval => $composableBuilder(
     column: $table.commandApproval,
     builder: (column) => column,
   );
@@ -15213,9 +15976,11 @@ class $$SessionWakeUpsTableTableAnnotationComposer extends Composer<_$AppDatabas
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get nextDueAt => $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
+  GeneratedColumn<int> get nextDueAt =>
+      $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
 
-  GeneratedColumn<int> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   $$SessionTableTableAnnotationComposer get sessionId {
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
@@ -15233,7 +15998,8 @@ class $$SessionWakeUpsTableTableAnnotationComposer extends Composer<_$AppDatabas
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -15262,15 +16028,18 @@ class $$SessionWakeUpsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SessionWakeUpsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () => $$SessionWakeUpsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SessionWakeUpsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SessionWakeUpsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SessionWakeUpsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionWakeUpsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
@@ -15278,7 +16047,8 @@ class $$SessionWakeUpsTableTableTableManager
                 Value<String> label = const Value.absent(),
                 Value<String> prompt = const Value.absent(),
                 Value<String?> command = const Value.absent(),
-                Value<SessionWakeUpCommandApproval?> commandApproval = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 Value<String> scheduleJson = const Value.absent(),
                 Value<int> nextDueAt = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
@@ -15300,7 +16070,8 @@ class $$SessionWakeUpsTableTableTableManager
                 required String label,
                 required String prompt,
                 Value<String?> command = const Value.absent(),
-                Value<SessionWakeUpCommandApproval?> commandApproval = const Value.absent(),
+                Value<SessionWakeUpCommandApproval?> commandApproval =
+                    const Value.absent(),
                 required String scheduleJson,
                 required int nextDueAt,
                 required int createdAt,
@@ -15349,8 +16120,11 @@ class $$SessionWakeUpsTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SessionWakeUpsTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SessionWakeUpsTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable: $$SessionWakeUpsTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn: $$SessionWakeUpsTableTableReferences
+                            ._sessionIdTable(db)
+                            .sessionId,
                       ) as T;
                     }
 
@@ -15379,32 +16153,40 @@ typedef $$SessionWakeUpsTableTableProcessedTableManager =
       SessionWakeUpDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$SesoriToolSessionRecordsTableTableCreateCompanionBuilder = SesoriToolSessionRecordsTableCompanion Function({
-  required String groupId,
-  required String sessionId,
-  required String recordKey,
-  required String valueJson,
-  required int updatedAt,
-});
-typedef $$SesoriToolSessionRecordsTableTableUpdateCompanionBuilder = SesoriToolSessionRecordsTableCompanion Function({
-  Value<String> groupId,
-  Value<String> sessionId,
-  Value<String> recordKey,
-  Value<String> valueJson,
-  Value<int> updatedAt,
-});
+typedef $$SesoriToolSessionRecordsTableTableCreateCompanionBuilder =
+    SesoriToolSessionRecordsTableCompanion Function({
+      required String groupId,
+      required String sessionId,
+      required String recordKey,
+      required String valueJson,
+      required int updatedAt,
+    });
+typedef $$SesoriToolSessionRecordsTableTableUpdateCompanionBuilder =
+    SesoriToolSessionRecordsTableCompanion Function({
+      Value<String> groupId,
+      Value<String> sessionId,
+      Value<String> recordKey,
+      Value<String> valueJson,
+      Value<int> updatedAt,
+    });
 
 final class $$SesoriToolSessionRecordsTableTableReferences
-    extends BaseReferences<_$AppDatabase, $SesoriToolSessionRecordsTableTable, SesoriToolSessionRecordDto> {
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SesoriToolSessionRecordsTableTable,
+          SesoriToolSessionRecordDto
+        > {
   $$SesoriToolSessionRecordsTableTableReferences(
     super.$_db,
     super.$_table,
     super.$_typedResult,
   );
 
-  static $SessionTableTable _sessionIdTable(_$AppDatabase db) => db.sessionTable.createAlias(
-    'sesori_tool_session_records__session_id__sessions_table__session_id',
-  );
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'sesori_tool_session_records__session_id__sessions_table__session_id',
+      );
 
   $$SessionTableTableProcessedTableManager get sessionId {
     final $_column = $_itemColumn<String>('session_id')!;
@@ -15466,7 +16248,8 @@ class $$SesoriToolSessionRecordsTableTableFilterComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -15518,7 +16301,8 @@ class $$SesoriToolSessionRecordsTableTableOrderingComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -15534,13 +16318,17 @@ class $$SesoriToolSessionRecordsTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get groupId => $composableBuilder(column: $table.groupId, builder: (column) => column);
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
 
-  GeneratedColumn<String> get recordKey => $composableBuilder(column: $table.recordKey, builder: (column) => column);
+  GeneratedColumn<String> get recordKey =>
+      $composableBuilder(column: $table.recordKey, builder: (column) => column);
 
-  GeneratedColumn<String> get valueJson => $composableBuilder(column: $table.valueJson, builder: (column) => column);
+  GeneratedColumn<String> get valueJson =>
+      $composableBuilder(column: $table.valueJson, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
   $$SessionTableTableAnnotationComposer get sessionId {
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
@@ -15558,7 +16346,8 @@ class $$SesoriToolSessionRecordsTableTableAnnotationComposer
             $table: $db.sessionTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer: $removeJoinBuilderFromRootComposer,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
           ),
     );
     return composer;
@@ -15590,18 +16379,21 @@ class $$SesoriToolSessionRecordsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SesoriToolSessionRecordsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SesoriToolSessionRecordsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SesoriToolSessionRecordsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SesoriToolSessionRecordsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SesoriToolSessionRecordsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SesoriToolSessionRecordsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> groupId = const Value.absent(),
@@ -15633,7 +16425,10 @@ class $$SesoriToolSessionRecordsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SesoriToolSessionRecordsTableTable, SesoriToolSessionRecordDto>(table),
+                  e.readTable<
+                    $SesoriToolSessionRecordsTableTable,
+                    SesoriToolSessionRecordDto
+                  >(table),
                   $$SesoriToolSessionRecordsTableTableReferences(db, table, e),
                 ),
               )
@@ -15662,8 +16457,13 @@ class $$SesoriToolSessionRecordsTableTableTableManager
                       state = state.withJoin(
                         currentTable: table,
                         currentColumn: table.sessionId,
-                        referencedTable: $$SesoriToolSessionRecordsTableTableReferences._sessionIdTable(db),
-                        referencedColumn: $$SesoriToolSessionRecordsTableTableReferences._sessionIdTable(db).sessionId,
+                        referencedTable:
+                            $$SesoriToolSessionRecordsTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SesoriToolSessionRecordsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
                       ) as T;
                     }
 
@@ -15695,20 +16495,23 @@ typedef $$SesoriToolSessionRecordsTableTableProcessedTableManager =
       SesoriToolSessionRecordDto,
       PrefetchHooks Function({bool sessionId})
     >;
-typedef $$SesoriToolRecordsTableTableCreateCompanionBuilder = SesoriToolRecordsTableCompanion Function({
-  required String groupId,
-  required String recordKey,
-  required String valueJson,
-  required int updatedAt,
-});
-typedef $$SesoriToolRecordsTableTableUpdateCompanionBuilder = SesoriToolRecordsTableCompanion Function({
-  Value<String> groupId,
-  Value<String> recordKey,
-  Value<String> valueJson,
-  Value<int> updatedAt,
-});
+typedef $$SesoriToolRecordsTableTableCreateCompanionBuilder =
+    SesoriToolRecordsTableCompanion Function({
+      required String groupId,
+      required String recordKey,
+      required String valueJson,
+      required int updatedAt,
+    });
+typedef $$SesoriToolRecordsTableTableUpdateCompanionBuilder =
+    SesoriToolRecordsTableCompanion Function({
+      Value<String> groupId,
+      Value<String> recordKey,
+      Value<String> valueJson,
+      Value<int> updatedAt,
+    });
 
-class $$SesoriToolRecordsTableTableFilterComposer extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+class $$SesoriToolRecordsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
   $$SesoriToolRecordsTableTableFilterComposer({
     required super.$db,
     required super.$table,
@@ -15737,7 +16540,8 @@ class $$SesoriToolRecordsTableTableFilterComposer extends Composer<_$AppDatabase
   );
 }
 
-class $$SesoriToolRecordsTableTableOrderingComposer extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+class $$SesoriToolRecordsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
   $$SesoriToolRecordsTableTableOrderingComposer({
     required super.$db,
     required super.$table,
@@ -15766,7 +16570,8 @@ class $$SesoriToolRecordsTableTableOrderingComposer extends Composer<_$AppDataba
   );
 }
 
-class $$SesoriToolRecordsTableTableAnnotationComposer extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
+class $$SesoriToolRecordsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SesoriToolRecordsTableTable> {
   $$SesoriToolRecordsTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
@@ -15774,13 +16579,17 @@ class $$SesoriToolRecordsTableTableAnnotationComposer extends Composer<_$AppData
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get groupId => $composableBuilder(column: $table.groupId, builder: (column) => column);
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
 
-  GeneratedColumn<String> get recordKey => $composableBuilder(column: $table.recordKey, builder: (column) => column);
+  GeneratedColumn<String> get recordKey =>
+      $composableBuilder(column: $table.recordKey, builder: (column) => column);
 
-  GeneratedColumn<String> get valueJson => $composableBuilder(column: $table.valueJson, builder: (column) => column);
+  GeneratedColumn<String> get valueJson =>
+      $composableBuilder(column: $table.valueJson, builder: (column) => column);
 
-  GeneratedColumn<int> get updatedAt => $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
 class $$SesoriToolRecordsTableTableTableManager
@@ -15796,7 +16605,11 @@ class $$SesoriToolRecordsTableTableTableManager
           $$SesoriToolRecordsTableTableUpdateCompanionBuilder,
           (
             SesoriToolRecordDto,
-            BaseReferences<_$AppDatabase, $SesoriToolRecordsTableTable, SesoriToolRecordDto>,
+            BaseReferences<
+              _$AppDatabase,
+              $SesoriToolRecordsTableTable,
+              SesoriToolRecordDto
+            >,
           ),
           SesoriToolRecordDto,
           PrefetchHooks Function()
@@ -15808,18 +16621,21 @@ class $$SesoriToolRecordsTableTableTableManager
         TableManagerState(
           db: db,
           table: table,
-          createFilteringComposer: () => $$SesoriToolRecordsTableTableFilterComposer(
-            $db: db,
-            $table: table,
-          ),
-          createOrderingComposer: () => $$SesoriToolRecordsTableTableOrderingComposer(
-            $db: db,
-            $table: table,
-          ),
-          createComputedFieldComposer: () => $$SesoriToolRecordsTableTableAnnotationComposer(
-            $db: db,
-            $table: table,
-          ),
+          createFilteringComposer: () =>
+              $$SesoriToolRecordsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SesoriToolRecordsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SesoriToolRecordsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
                 Value<String> groupId = const Value.absent(),
@@ -15847,8 +16663,15 @@ class $$SesoriToolRecordsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable<$SesoriToolRecordsTableTable, SesoriToolRecordDto>(table),
-                  BaseReferences<_$AppDatabase, $SesoriToolRecordsTableTable, SesoriToolRecordDto>(db, table, e),
+                  e.readTable<
+                    $SesoriToolRecordsTableTable,
+                    SesoriToolRecordDto
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SesoriToolRecordsTableTable,
+                    SesoriToolRecordDto
+                  >(db, table, e),
                 ),
               )
               .toList(),
@@ -15869,7 +16692,11 @@ typedef $$SesoriToolRecordsTableTableProcessedTableManager =
       $$SesoriToolRecordsTableTableUpdateCompanionBuilder,
       (
         SesoriToolRecordDto,
-        BaseReferences<_$AppDatabase, $SesoriToolRecordsTableTable, SesoriToolRecordDto>,
+        BaseReferences<
+          _$AppDatabase,
+          $SesoriToolRecordsTableTable,
+          SesoriToolRecordDto
+        >,
       ),
       SesoriToolRecordDto,
       PrefetchHooks Function()
@@ -15878,25 +16705,29 @@ typedef $$SesoriToolRecordsTableTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
-  $$ProjectsTableTableTableManager get projectsTable => $$ProjectsTableTableTableManager(_db, _db.projectsTable);
+  $$ProjectsTableTableTableManager get projectsTable =>
+      $$ProjectsTableTableTableManager(_db, _db.projectsTable);
   $$ScheduledTasksTableTableTableManager get scheduledTasksTable =>
       $$ScheduledTasksTableTableTableManager(_db, _db.scheduledTasksTable);
-  $$SessionTableTableTableManager get sessionTable => $$SessionTableTableTableManager(_db, _db.sessionTable);
+  $$SessionTableTableTableManager get sessionTable =>
+      $$SessionTableTableTableManager(_db, _db.sessionTable);
   $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
       $$DeletedSessionsTableTableTableManager(_db, _db.deletedSessionsTable);
-  $$CatalogHydrationsTableTableTableManager get catalogHydrationsTable => $$CatalogHydrationsTableTableTableManager(
-    _db,
-    _db.catalogHydrationsTable,
-  );
+  $$CatalogHydrationsTableTableTableManager get catalogHydrationsTable =>
+      $$CatalogHydrationsTableTableTableManager(
+        _db,
+        _db.catalogHydrationsTable,
+      );
   $$SessionOptionsCacheTableTableTableManager get sessionOptionsCacheTable =>
       $$SessionOptionsCacheTableTableTableManager(
         _db,
         _db.sessionOptionsCacheTable,
       );
-  $$NewSessionDefaultsTableTableTableManager get newSessionDefaultsTable => $$NewSessionDefaultsTableTableTableManager(
-    _db,
-    _db.newSessionDefaultsTable,
-  );
+  $$NewSessionDefaultsTableTableTableManager get newSessionDefaultsTable =>
+      $$NewSessionDefaultsTableTableTableManager(
+        _db,
+        _db.newSessionDefaultsTable,
+      );
   $$AcceptedPromptsTableTableTableManager get acceptedPromptsTable =>
       $$AcceptedPromptsTableTableTableManager(_db, _db.acceptedPromptsTable);
   $$SessionContinuationTableTableTableManager get sessionContinuationTable =>
@@ -15904,14 +16735,16 @@ class $AppDatabaseManager {
         _db,
         _db.sessionContinuationTable,
       );
-  $$SideChatExchangesTableTableTableManager get sideChatExchangesTable => $$SideChatExchangesTableTableTableManager(
-    _db,
-    _db.sideChatExchangesTable,
-  );
-  $$ScheduledTaskRunsTableTableTableManager get scheduledTaskRunsTable => $$ScheduledTaskRunsTableTableTableManager(
-    _db,
-    _db.scheduledTaskRunsTable,
-  );
+  $$SideChatExchangesTableTableTableManager get sideChatExchangesTable =>
+      $$SideChatExchangesTableTableTableManager(
+        _db,
+        _db.sideChatExchangesTable,
+      );
+  $$ScheduledTaskRunsTableTableTableManager get scheduledTaskRunsTable =>
+      $$ScheduledTaskRunsTableTableTableManager(
+        _db,
+        _db.scheduledTaskRunsTable,
+      );
   $$SessionRunningTurnsTableTableTableManager get sessionRunningTurnsTable =>
       $$SessionRunningTurnsTableTableTableManager(
         _db,
@@ -15926,13 +16759,15 @@ class $AppDatabaseManager {
       $$AgentPagesTableTableTableManager(_db, _db.agentPagesTable);
   $$SessionWakeUpsTableTableTableManager get sessionWakeUpsTable =>
       $$SessionWakeUpsTableTableTableManager(_db, _db.sessionWakeUpsTable);
-  $$SesoriToolSessionRecordsTableTableTableManager get sesoriToolSessionRecordsTable =>
+  $$SesoriToolSessionRecordsTableTableTableManager
+  get sesoriToolSessionRecordsTable =>
       $$SesoriToolSessionRecordsTableTableTableManager(
         _db,
         _db.sesoriToolSessionRecordsTable,
       );
-  $$SesoriToolRecordsTableTableTableManager get sesoriToolRecordsTable => $$SesoriToolRecordsTableTableTableManager(
-    _db,
-    _db.sesoriToolRecordsTable,
-  );
+  $$SesoriToolRecordsTableTableTableManager get sesoriToolRecordsTable =>
+      $$SesoriToolRecordsTableTableTableManager(
+        _db,
+        _db.sesoriToolRecordsTable,
+      );
 }

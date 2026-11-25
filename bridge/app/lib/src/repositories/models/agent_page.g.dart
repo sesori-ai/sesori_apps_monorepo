@@ -14,14 +14,15 @@ AgentPageAnswered _$AgentPageAnsweredFromJson(Map json) => AgentPageAnswered(
   $type: json['type'] as String?,
 );
 
-Map<String, dynamic> _$AgentPageAnsweredToJson(AgentPageAnswered instance) => <String, dynamic>{
-  'answers': instance.answers.map((e) => e.toJson()).toList(),
-  'note': ?instance.note,
-  'type': instance.$type,
-};
+Map<String, dynamic> _$AgentPageAnsweredToJson(AgentPageAnswered instance) =>
+    <String, dynamic>{
+      'answers': instance.answers.map((e) => e.toJson()).toList(),
+      'note': ?instance.note,
+      'type': instance.$type,
+    };
 
-AgentPageDismissed _$AgentPageDismissedFromJson(Map json) => AgentPageDismissed($type: json['type'] as String?);
+AgentPageDismissed _$AgentPageDismissedFromJson(Map json) =>
+    AgentPageDismissed($type: json['type'] as String?);
 
-Map<String, dynamic> _$AgentPageDismissedToJson(AgentPageDismissed instance) => <String, dynamic>{
-  'type': instance.$type,
-};
+Map<String, dynamic> _$AgentPageDismissedToJson(AgentPageDismissed instance) =>
+    <String, dynamic>{'type': instance.$type};

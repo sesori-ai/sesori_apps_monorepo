@@ -6,8 +6,10 @@ part of 'scheduled_task_dao.dart';
 mixin _$ScheduledTaskDaoMixin on DatabaseAccessor<AppDatabase> {
   $ProjectsTableTable get projectsTable => attachedDatabase.projectsTable;
   $SessionTableTable get sessionTable => attachedDatabase.sessionTable;
-  $ScheduledTasksTableTable get scheduledTasksTable => attachedDatabase.scheduledTasksTable;
-  $ScheduledTaskRunsTableTable get scheduledTaskRunsTable => attachedDatabase.scheduledTaskRunsTable;
+  $ScheduledTasksTableTable get scheduledTasksTable =>
+      attachedDatabase.scheduledTasksTable;
+  $ScheduledTaskRunsTableTable get scheduledTaskRunsTable =>
+      attachedDatabase.scheduledTaskRunsTable;
   ScheduledTaskDaoManager get managers => ScheduledTaskDaoManager(this);
 }
 
@@ -18,12 +20,14 @@ class ScheduledTaskDaoManager {
       $$ProjectsTableTableTableManager(_db.attachedDatabase, _db.projectsTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db.attachedDatabase, _db.sessionTable);
-  $$ScheduledTasksTableTableTableManager get scheduledTasksTable => $$ScheduledTasksTableTableTableManager(
-    _db.attachedDatabase,
-    _db.scheduledTasksTable,
-  );
-  $$ScheduledTaskRunsTableTableTableManager get scheduledTaskRunsTable => $$ScheduledTaskRunsTableTableTableManager(
-    _db.attachedDatabase,
-    _db.scheduledTaskRunsTable,
-  );
+  $$ScheduledTasksTableTableTableManager get scheduledTasksTable =>
+      $$ScheduledTasksTableTableTableManager(
+        _db.attachedDatabase,
+        _db.scheduledTasksTable,
+      );
+  $$ScheduledTaskRunsTableTableTableManager get scheduledTaskRunsTable =>
+      $$ScheduledTaskRunsTableTableTableManager(
+        _db.attachedDatabase,
+        _db.scheduledTaskRunsTable,
+      );
 }

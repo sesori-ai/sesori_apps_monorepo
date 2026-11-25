@@ -9,7 +9,9 @@ part of 'bridge_settings.dart';
 _BridgeAgentToolGroupSettings _$BridgeAgentToolGroupSettingsFromJson(
   Map json,
 ) => _BridgeAgentToolGroupSettings(
-  disabledIds: (json['disabled'] as List<dynamic>?)?.map((e) => e as String).toSet() ?? const <String>{},
+  disabledIds:
+      (json['disabled'] as List<dynamic>?)?.map((e) => e as String).toSet() ??
+      const <String>{},
 );
 
 Map<String, dynamic> _$BridgeAgentToolGroupSettingsToJson(

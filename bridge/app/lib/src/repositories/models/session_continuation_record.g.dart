@@ -47,14 +47,15 @@ Map<String, dynamic> _$SessionContinuationResetUnknownToJson(
   'kind': instance.$type,
 };
 
-SessionContinuationPaused _$SessionContinuationPausedFromJson(Map json) => SessionContinuationPaused(
-  errorMessageId: json['errorMessageId'] as String,
-  observedAt: DateTime.parse(json['observedAt'] as String),
-  resetAt: DateTime.parse(json['resetAt'] as String),
-  reason: $enumDecode(_$AutoContinuationPauseReasonEnumMap, json['reason']),
-  recheckAt: DateTime.parse(json['recheckAt'] as String),
-  $type: json['kind'] as String?,
-);
+SessionContinuationPaused _$SessionContinuationPausedFromJson(Map json) =>
+    SessionContinuationPaused(
+      errorMessageId: json['errorMessageId'] as String,
+      observedAt: DateTime.parse(json['observedAt'] as String),
+      resetAt: DateTime.parse(json['resetAt'] as String),
+      reason: $enumDecode(_$AutoContinuationPauseReasonEnumMap, json['reason']),
+      recheckAt: DateTime.parse(json['recheckAt'] as String),
+      $type: json['kind'] as String?,
+    );
 
 Map<String, dynamic> _$SessionContinuationPausedToJson(
   SessionContinuationPaused instance,
@@ -77,12 +78,13 @@ const _$AutoContinuationPauseReasonEnumMap = {
   AutoContinuationPauseReason.unknown: 'unknown',
 };
 
-SessionContinuationConsumed _$SessionContinuationConsumedFromJson(Map json) => SessionContinuationConsumed(
-  errorMessageId: json['errorMessageId'] as String,
-  promptId: json['promptId'] as String,
-  attemptedAt: DateTime.parse(json['attemptedAt'] as String),
-  $type: json['kind'] as String?,
-);
+SessionContinuationConsumed _$SessionContinuationConsumedFromJson(Map json) =>
+    SessionContinuationConsumed(
+      errorMessageId: json['errorMessageId'] as String,
+      promptId: json['promptId'] as String,
+      attemptedAt: DateTime.parse(json['attemptedAt'] as String),
+      $type: json['kind'] as String?,
+    );
 
 Map<String, dynamic> _$SessionContinuationConsumedToJson(
   SessionContinuationConsumed instance,
@@ -93,12 +95,13 @@ Map<String, dynamic> _$SessionContinuationConsumedToJson(
   'kind': instance.$type,
 };
 
-SessionContinuationSubmitted _$SessionContinuationSubmittedFromJson(Map json) => SessionContinuationSubmitted(
-  errorMessageId: json['errorMessageId'] as String,
-  promptId: json['promptId'] as String,
-  acceptedAt: DateTime.parse(json['acceptedAt'] as String),
-  $type: json['kind'] as String?,
-);
+SessionContinuationSubmitted _$SessionContinuationSubmittedFromJson(Map json) =>
+    SessionContinuationSubmitted(
+      errorMessageId: json['errorMessageId'] as String,
+      promptId: json['promptId'] as String,
+      acceptedAt: DateTime.parse(json['acceptedAt'] as String),
+      $type: json['kind'] as String?,
+    );
 
 Map<String, dynamic> _$SessionContinuationSubmittedToJson(
   SessionContinuationSubmitted instance,
@@ -109,10 +112,11 @@ Map<String, dynamic> _$SessionContinuationSubmittedToJson(
   'kind': instance.$type,
 };
 
-SessionContinuationCancelled _$SessionContinuationCancelledFromJson(Map json) => SessionContinuationCancelled(
-  errorMessageId: json['errorMessageId'] as String,
-  $type: json['kind'] as String?,
-);
+SessionContinuationCancelled _$SessionContinuationCancelledFromJson(Map json) =>
+    SessionContinuationCancelled(
+      errorMessageId: json['errorMessageId'] as String,
+      $type: json['kind'] as String?,
+    );
 
 Map<String, dynamic> _$SessionContinuationCancelledToJson(
   SessionContinuationCancelled instance,
@@ -121,7 +125,8 @@ Map<String, dynamic> _$SessionContinuationCancelledToJson(
   'kind': instance.$type,
 };
 
-SessionContinuationSubmissionFailed _$SessionContinuationSubmissionFailedFromJson(Map json) =>
+SessionContinuationSubmissionFailed
+_$SessionContinuationSubmissionFailedFromJson(Map json) =>
     SessionContinuationSubmissionFailed(
       errorMessageId: json['errorMessageId'] as String,
       reason: $enumDecode(
