@@ -31,6 +31,7 @@ void main() {
   late int contentTaps;
   late _MockProjectListCubit projects;
   late _MockComputerSwitcherCubit computerSwitcher;
+  late _MockPullRequestWatchListCubit pullRequests;
   late _MockProjectInventoryService projectInventory;
   late _MockSessionWindowService window;
 
@@ -157,6 +158,12 @@ void main() {
       ),
     );
     computerSwitcher = _MockComputerSwitcherCubit();
+    pullRequests = _MockPullRequestWatchListCubit();
+    whenListen(
+      pullRequests,
+      const Stream<PullRequestWatchListState>.empty(),
+      initialState: const PullRequestWatchListLoaded(watches: [], stopping: {}),
+    );
     whenListen(
       computerSwitcher,
       const Stream<ComputerSwitcherState>.empty(),
@@ -211,6 +218,7 @@ void main() {
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<ComputerSwitcherCubit>.value(value: computerSwitcher),
+            BlocProvider<PullRequestWatchListCubit>.value(value: pullRequests),
             RepositoryProvider<ProjectInventoryService>.value(value: projectInventory),
             RepositoryProvider<SessionWindowService>.value(value: window),
             RepositoryProvider.value(value: launchService),
@@ -246,6 +254,7 @@ void main() {
                 onOpenSettings: _noOp,
                 onOpenArchived: _noOp,
                 onOpenScheduled: _noOp,
+                onOpenPullRequests: _noOp,
                 onNewTask: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
@@ -403,6 +412,11 @@ void main() {
 
       await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
       await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(of: find.byKey(const Key("desktop-command-palette")), matching: find.byType(TextField)),
+        "switch",
+      );
+      await tester.pump();
       expect(find.textContaining("Switch to this computer"), findsOneWidget);
       expect(find.textContaining("Switch to gpu-box"), findsOneWidget);
       expect(find.textContaining("Switch to Studio Mac"), findsNothing);
@@ -451,6 +465,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onOpenPullRequests: _noOp,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: SizedBox.expand(
@@ -530,6 +545,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onOpenPullRequests: _noOp,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
@@ -587,6 +603,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onOpenPullRequests: _noOp,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: DesktopPageToolbar(
@@ -683,6 +700,7 @@ void main() {
   ) async {
     var archivedOpens = 0;
     var scheduledOpens = 0;
+    var pullRequestOpens = 0;
     await tester.pumpWidget(
       app(
         state: running,
@@ -697,6 +715,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: () => archivedOpens++,
           onOpenScheduled: () => scheduledOpens++,
+          onOpenPullRequests: () => pullRequestOpens++,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
@@ -713,7 +732,11 @@ void main() {
     final scheduled = find.byKey(const Key("desktop-sidebar-scheduled"));
     expect(find.descendant(of: scheduled, matching: find.text("Scheduled")), findsOneWidget);
     expect(tester.getTopLeft(scheduled), tester.getBottomLeft(archived));
-    expect(tester.getBottomLeft(scheduled).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
+    final pullRequestsRow = find.byKey(const Key("desktop-sidebar-pull-requests"));
+    expect(find.descendant(of: pullRequestsRow, matching: find.text("Pull requests")), findsOneWidget);
+    expect(tester.getTopLeft(pullRequestsRow), tester.getBottomLeft(scheduled));
+    expect(tester.getSize(pullRequestsRow), tester.getSize(search));
+    expect(tester.getBottomLeft(pullRequestsRow).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
     final footer = find.byKey(const Key("desktop-sidebar-footer"));
     expect(find.descendant(of: footer, matching: find.byIcon(TablerLight.archive)), findsNothing);
 
@@ -721,6 +744,41 @@ void main() {
     expect(archivedOpens, 1);
     await tester.tap(scheduled);
     expect(scheduledOpens, 1);
+    await tester.tap(pullRequestsRow);
+    expect(pullRequestOpens, 1);
+  });
+
+  testWidgets("the Pull requests row says how many pull requests need the user", (tester) async {
+    whenListen(
+      pullRequests,
+      const Stream<PullRequestWatchListState>.empty(),
+      initialState: const PullRequestWatchListLoaded(
+        watches: [
+          PullRequestWatchListItem(
+            sessionId: "session-1",
+            sessionTitle: "Session",
+            projectId: "project-1",
+            watch: SessionPullRequestWatch(
+              repository: "acme/web",
+              number: 7,
+              title: "Fix",
+              url: "https://github.com/acme/web/pull/7",
+              autoMerge: false,
+              status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
+            ),
+          ),
+        ],
+        stopping: {},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel("Pull requests, 1 needs you"), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(const Key("desktop-sidebar-pull-requests")), matching: find.text("1")),
+      findsOneWidget,
+    );
   });
 
   testWidgets("Bridge opens from the footer without replacing the main pane", (tester) async {
@@ -762,6 +820,7 @@ void main() {
           onOpenSettings: () => settingsOpens++,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onOpenPullRequests: _noOp,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -1205,6 +1264,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onOpenPullRequests: _noOp,
           onNewTask: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
@@ -1652,6 +1712,7 @@ void main() {
     var archivedOpens = 0;
     var newTasks = 0;
     var scheduledOpens = 0;
+    var pullRequestOpens = 0;
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1669,6 +1730,7 @@ void main() {
             onOpenSettings: _noOp,
             onOpenArchived: () => archivedOpens++,
             onOpenScheduled: () => scheduledOpens++,
+            onOpenPullRequests: () => pullRequestOpens++,
             onNewTask: () => newTasks++,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),
@@ -1769,6 +1831,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(newTasks, 1);
 
+    // Pull requests too, for a window too narrow to show the sidebar.
+    await press(LogicalKeyboardKey.keyK);
+    await type("pull requests");
+    expect(inPalette("Pull requests"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(pullRequestOpens, 1);
+
     // A project filters the sidebar's list, and a hidden sidebar opens to show it.
     await press(LogicalKeyboardKey.keyK);
     await type("sesori");
@@ -1820,10 +1890,19 @@ void main() {
     expect(inPalette("Note 0"), findsNothing);
     final blankBuildTop = tester.getTopLeft(inPalette("Fix the build")).dy;
     await tester.pumpAndSettle();
-    expect(find.descendant(of: palette, matching: find.text("Note 0")), findsOneWidget);
-    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
     expect(tester.getTopLeft(inPalette("Fix the build")).dy, blankBuildTop);
-    expect(tester.getTopLeft(inPalette("Note 0")).dy, greaterThan(blankBuildTop));
+    // The bridge's rows start below the fold, under the commands.
+    final paletteList = find.descendant(
+      of: palette,
+      matching: find.byWidgetPredicate((widget) => widget is Scrollable && widget.axisDirection == AxisDirection.down),
+    );
+    final note = find.descendant(of: palette, matching: find.text("Note 0"));
+    await tester.scrollUntilVisible(note, 40, scrollable: paletteList);
+    expect(note, findsOneWidget);
+    expect(tester.getTopLeft(note).dy, greaterThan(tester.getTopLeft(inPalette("Fix the build")).dy));
+    await tester.drag(paletteList, const Offset(0, 1000));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: palette, matching: find.text("Landing page")), findsWidgets);
 
     await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), "i");
     await tester.pump();
@@ -1898,6 +1977,10 @@ BridgeSummary _computer({required String id, required String name, required Brid
     );
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
+class _MockPullRequestWatchListCubit()
+    extends MockCubit<PullRequestWatchListState>
+    implements PullRequestWatchListCubit;
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 

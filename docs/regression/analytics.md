@@ -111,7 +111,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   `same_session`), `approval_mode` (`ask`, `approve_all`), `missed_run_policy` (`run_when_back`, `wait_for_next`)
   only for a repeating task (Once omits it), and `auto_compact` only for a same-session task. It never carries the prompt, name, project, harness, model or times, and a
   refused or failed save reports nothing. The Scheduled page, a task's page and the task editor report
-  `scheduled_tasks`, `scheduled_task_detail` and `scheduled_task_editor`. Run outcomes are not tracked.
+  `scheduled_tasks`, `scheduled_task_detail` and `scheduled_task_editor`; the desktop Pull requests page reports
+  `sessions`, as Archived does. Run outcomes are not tracked.
   See [Scheduled tasks](scheduled-tasks.md).
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see

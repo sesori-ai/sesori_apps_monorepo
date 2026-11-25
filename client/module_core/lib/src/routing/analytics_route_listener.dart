@@ -122,7 +122,8 @@ class AnalyticsRouteListener {
     AppRouteDef.settingsDefaultInput => AnalyticsScreen.settingsDefaultInput,
     AppRouteDef.settingsNotifications => AnalyticsScreen.settingsNotifications,
     AppRouteDef.settingsProfile => AnalyticsScreen.settingsProfile,
-    AppRouteDef.home || AppRouteDef.archivedSessions => AnalyticsScreen.sessions,
+    // The warehouse accepts a closed screen set; the PR page counts as sessions.
+    AppRouteDef.home || AppRouteDef.archivedSessions || AppRouteDef.pullRequests => AnalyticsScreen.sessions,
     AppRouteDef.newSession => AnalyticsScreen.newSession,
     AppRouteDef.sessionDetail || AppRouteDef.archivedSessionDetail => AnalyticsScreen.sessionDetail,
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,
