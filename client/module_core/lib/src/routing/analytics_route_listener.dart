@@ -129,6 +129,7 @@ class AnalyticsRouteListener {
     AppRouteDef.scheduledTasks => AnalyticsScreen.scheduledTasks,
     AppRouteDef.scheduledTaskDetail => AnalyticsScreen.scheduledTaskDetail,
     AppRouteDef.scheduledTaskEditor => AnalyticsScreen.scheduledTaskEditor,
+    AppRouteDef.pullRequests => AnalyticsScreen.pullRequests,
   };
 
   @disposeMethod

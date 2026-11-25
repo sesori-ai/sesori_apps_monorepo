@@ -35,6 +35,7 @@ class const DesktopSidebar({
   required final VoidCallback onOpenSearch,
   required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenScheduled,
+  required final VoidCallback onOpenPullRequests,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
   required final ComputerSwitchCallback onSwitchComputer,
@@ -100,6 +101,7 @@ class const DesktopSidebar({
               shortcut: null,
               onPressed: onOpenScheduled,
             ),
+            _PullRequestsButton(onPressed: onOpenPullRequests),
             _SidebarFilter(projectState: state, projectId: filterId, projectName: filterName),
             Expanded(
               // Ink paints on the nearest Material, outside the list's own clip: this
@@ -468,6 +470,29 @@ class const _SidebarComputerRow({
           builder: (context, close) => DesktopBridgePopover(close: close, onOpenSettings: onOpenBridgeSettings),
         ),
       ],
+    );
+  }
+}
+
+/// Always shown, so the sidebar never shifts; a red count trails it while
+/// some watched pull requests need the user.
+class const _PullRequestsButton({required final VoidCallback onPressed}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final needsYou = context.select(
+      (PullRequestWatchListCubit cubit) => switch (cubit.state) {
+        PullRequestWatchListLoaded(:final needsYouCount) => needsYouCount,
+        PullRequestWatchListLoading() || PullRequestWatchListFailed() || PullRequestWatchListUnsupported() => 0,
+      },
+    );
+    return _SidebarButton(
+      key: const Key("desktop-sidebar-pull-requests"),
+      label: context.loc.pullRequestWatchesTitle,
+      icon: const Icon(TablerLight.git_pull_request, size: _navIconSize),
+      status: needsYou > 0 ? context.loc.pullRequestWatchesNeedsYouStatus(needsYou) : null,
+      shortcut: null,
+      trailing: PullRequestWatchesCountBadge(count: needsYou),
+      onPressed: onPressed,
     );
   }
 }

@@ -37,6 +37,7 @@ enum AnalyticsScreen({required final String wireValue}) {
   scheduledTasks(wireValue: "scheduled_tasks"),
   scheduledTaskDetail(wireValue: "scheduled_task_detail"),
   scheduledTaskEditor(wireValue: "scheduled_task_editor"),
+  pullRequests(wireValue: "pull_requests"),
 }
 
 enum AnalyticsInputMode({required final String wireValue}) {

@@ -6565,6 +6565,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{Pull requests, 1 needs you} other{Pull requests, {count} need you}}'**
   String pullRequestWatchesButtonNeedsYou(int count);
 
+  /// Spoken and tooltip status of the desktop sidebar's Pull requests row while some watched pull requests need the user.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 needs you} other{{count} need you}}'**
+  String pullRequestWatchesNeedsYouStatus(int count);
+
+  /// Accessibility label of the desktop Pull requests page's close button.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Pull requests'**
+  String get pullRequestWatchesClose;
+
   /// No description provided for @pullRequestWatchesGroupNeedsYou.
   ///
   /// In en, this message translates to:

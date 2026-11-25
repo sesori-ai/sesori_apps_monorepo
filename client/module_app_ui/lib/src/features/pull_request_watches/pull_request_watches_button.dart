@@ -51,7 +51,7 @@ class const PullRequestWatchesButton({
                   top: -4,
                   end: -4,
                   child: IgnorePointer(
-                    child: _CountBadge(count: needsYou, duration: duration),
+                    child: PullRequestWatchesCountBadge(key: const Key("home-pull-requests-badge"), count: needsYou),
                   ),
                 ),
               ],
@@ -62,19 +62,19 @@ class const PullRequestWatchesButton({
 }
 
 /// The red needs-you count; it grows in from nothing and rolls between counts.
-class const _CountBadge({required final int count, required final Duration duration}) extends StatefulWidget {
+class const PullRequestWatchesCountBadge({super.key, required final int count}) extends StatefulWidget {
   @override
-  State<_CountBadge> createState() => _CountBadgeState();
+  State<PullRequestWatchesCountBadge> createState() => _PullRequestWatchesCountBadgeState();
 }
 
-class _CountBadgeState() extends State<_CountBadge> {
+class _PullRequestWatchesCountBadgeState() extends State<PullRequestWatchesCountBadge> {
   static const double _height = 18;
 
   /// The last count above zero, which a leaving badge keeps while it shrinks.
   late int _shown = widget.count;
 
   @override
-  void didUpdateWidget(_CountBadge oldWidget) {
+  void didUpdateWidget(PullRequestWatchesCountBadge oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.count > 0) _shown = widget.count;
   }
@@ -82,14 +82,13 @@ class _CountBadgeState() extends State<_CountBadge> {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
-    final duration = widget.duration;
+    final duration = context.isReducedMotion ? Duration.zero : _motionDuration;
     return ExcludeSemantics(
       child: AnimatedScale(
         scale: widget.count > 0 ? 1 : 0,
         duration: duration,
         curve: Curves.easeOutBack,
         child: Container(
-          key: const Key("home-pull-requests-badge"),
           height: _height,
           constraints: const BoxConstraints(minWidth: _height),
           padding: const EdgeInsets.symmetric(horizontal: 5),

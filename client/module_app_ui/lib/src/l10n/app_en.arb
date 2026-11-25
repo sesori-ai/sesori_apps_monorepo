@@ -2816,6 +2816,13 @@
     "description": "Screen-reader label of the home pull-request button while some watched pull requests need the user.",
     "placeholders": {"count": {"type": "int"}}
   },
+  "pullRequestWatchesNeedsYouStatus": "{count, plural, =1{1 needs you} other{{count} need you}}",
+  "@pullRequestWatchesNeedsYouStatus": {
+    "description": "Spoken and tooltip status of the desktop sidebar's Pull requests row while some watched pull requests need the user.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "pullRequestWatchesClose": "Close Pull requests",
+  "@pullRequestWatchesClose": {"description": "Accessibility label of the desktop Pull requests page's close button."},
   "pullRequestWatchesGroupNeedsYou": "Needs you",
   "pullRequestWatchesGroupWaiting": "Waiting",
   "pullRequestWatchesGroupReady": "Ready",

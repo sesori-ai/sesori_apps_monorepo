@@ -97,6 +97,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onOpenArchived: () => _openPage(context: context, route: const AppRoute.archivedSessions()),
             onOpenScheduled: () => _openPage(context: context, route: const AppRoute.scheduledTasks()),
+            onOpenPullRequests: () => _openPage(context: context, route: const AppRoute.pullRequests()),
             onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
             onGoBack: () => _goBack(context: context),
             // A route over the page, such as a file preview, keeps its top bar
@@ -192,6 +193,24 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             route: AppRoute.scheduledTaskDetail(taskId: taskId),
           ),
           onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
+        ),
+      ),
+      GoRoute(
+        path: AppRouteDef.pullRequests.path,
+        builder: (BuildContext context, GoRouterState state) => PullRequestWatchesPage(
+          onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
+          onOpenSession: ({required projectId, required projectName, required sessionId, required sessionTitle}) =>
+              _pushRoute(
+                context: context,
+                route: AppRoute.sessionDetail(
+                  projectId: projectId,
+                  projectName: projectName,
+                  sessionId: sessionId,
+                  sessionTitle: sessionTitle,
+                  readOnly: false,
+                  fromLaunch: false,
+                ),
+              ),
         ),
       ),
       GoRoute(

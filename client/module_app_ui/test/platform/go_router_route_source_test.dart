@@ -208,6 +208,7 @@ void main() {
       AppRouteDef.scheduledTasks: "/scheduled-tasks",
       AppRouteDef.scheduledTaskDetail: "/scheduled-tasks/t1",
       AppRouteDef.scheduledTaskEditor: "/scheduled-task-editor",
+      AppRouteDef.pullRequests: "/pull-requests",
       AppRouteDef.newSession: "/sessions/new",
       AppRouteDef.sessionDetail: "/sessions/p1/s1",
       AppRouteDef.sessionDiffs: "/sessions/p1/s1/diffs",

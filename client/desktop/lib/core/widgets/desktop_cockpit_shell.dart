@@ -97,6 +97,9 @@ class const DesktopCockpitShell({
   /// Opens the Scheduled page over the current one.
   required final VoidCallback onOpenScheduled,
 
+  /// Opens the Pull requests page over the current one.
+  required final VoidCallback onOpenPullRequests,
+
   /// Opens the New task page.
   required final VoidCallback onNewTask,
 
@@ -219,6 +222,12 @@ class const DesktopCockpitShell({
             shortcut: null,
             run: onNewTask,
           ),
+          DesktopCommand(
+            label: loc.pullRequestWatchesTitle,
+            icon: TablerRegular.git_pull_request,
+            shortcut: null,
+            run: onOpenPullRequests,
+          ),
         ];
         void openPalette() => unawaited(
           showDesktopCommandPalette(
@@ -270,6 +279,7 @@ class const DesktopCockpitShell({
                   onOpenSearch: openPalette,
                   onOpenArchived: onOpenArchived,
                   onOpenScheduled: onOpenScheduled,
+                  onOpenPullRequests: onOpenPullRequests,
                   sessionActions: sessionActions,
                   onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                   onSwitchComputer: switchComputer,

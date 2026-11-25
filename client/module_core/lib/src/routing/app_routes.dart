@@ -54,6 +54,7 @@ enum AppRouteDef(final String path) {
   scheduledTasks("/scheduled-tasks"),
   scheduledTaskDetail("/scheduled-tasks/:$taskIdPathParam"),
   scheduledTaskEditor("/scheduled-task-editor"),
+  pullRequests("/pull-requests"),
   newSession("/sessions/new"),
   sessionDetail("/sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   sessionDiffs("/sessions/:$projectIdPathParam/:$sessionIdPathParam/diffs"),
@@ -109,6 +110,7 @@ sealed class const AppRoute() {
   const factory scheduledTasks() = AppRouteScheduledTasks;
   const factory scheduledTaskDetail({required String taskId}) = AppRouteScheduledTaskDetail;
   const factory scheduledTaskEditor({required String? taskId}) = AppRouteScheduledTaskEditor;
+  const factory pullRequests() = AppRoutePullRequests;
   const factory newSession({
     required String? projectId,
     required String? projectName,
@@ -160,6 +162,7 @@ sealed class const AppRoute() {
       AppRouteDef.scheduledTasks => const AppRoute.scheduledTasks(),
       AppRouteDef.scheduledTaskDetail => AppRouteScheduledTaskDetail.fromParams(pathParams: pathParams),
       AppRouteDef.scheduledTaskEditor => AppRouteScheduledTaskEditor.fromParams(queryParams: queryParams),
+      AppRouteDef.pullRequests => const AppRoute.pullRequests(),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
         pathParams: pathParams,
@@ -512,6 +515,15 @@ class const AppRouteArchivedSessionDetail({
 class const AppRouteScheduledTasks() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.scheduledTasks;
+
+  @override
+  String buildPath() => def.path;
+}
+
+/// The current computer's watched pull requests, a desktop page.
+class const AppRoutePullRequests() extends AppRoute {
+  @override
+  AppRouteDef get def => AppRouteDef.pullRequests;
 
   @override
   String buildPath() => def.path;
