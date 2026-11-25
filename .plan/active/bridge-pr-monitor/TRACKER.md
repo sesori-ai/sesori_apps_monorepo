@@ -5,7 +5,7 @@
 | 1 | 🌱 Raise the plan | Done | #2908 |
 | 2 | ⚙️ Tool-group interface and grouped MCP server | Done | #2909 |
 | 3 | 🌿 Per-group toggles and leaner task text | Done | #2911 |
-| 4 | 🚧 Tool host: records, notices and approvals | In review | |
+| 4 | 🚧 Tool host: records, notices and approvals | In review | #2913 |
 | 5 | ⚙️ PR monitor package: `gh` API and snapshots | Done | #2910 |
 | 6 | ⚙️ PR monitor rules | Done | #2912 |
 | 7 | 🚧 Watches: fan-out polling, delivery and restart | Not started | |
