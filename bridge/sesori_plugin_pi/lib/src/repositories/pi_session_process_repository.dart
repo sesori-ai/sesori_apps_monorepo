@@ -289,6 +289,7 @@ final class PiSessionProcessRepository({
         environment: {
           ..._environment,
           if (sesoriMcp != null) ...piSesoriMcpEnvironment(launch: sesoriMcp),
+          if (_sesoriMcp.skillBundle case final bundle?) ...piSesoriSkillsEnvironment(bundle: bundle),
         },
       ),
       processFactory: _processFactory,

@@ -118,6 +118,7 @@ void main() {
       final params = await create("s1");
 
       expect(params["mcpServers"], [httpServer("token-1")]);
+      expect(params["_meta"], {"skills": RecordingSesoriMcpAccess.skills.pluginRoot});
       expect(access.binds, [("token-1", "s1")]);
     });
 
@@ -152,6 +153,7 @@ void main() {
       await sending;
 
       expect(params["mcpServers"], [httpServer("token-1")]);
+      expect(params["_meta"], {"skills": RecordingSesoriMcpAccess.skills.pluginRoot});
       expect(access.binds, [("token-1", "old-1")]);
     });
 
@@ -174,6 +176,7 @@ void main() {
 
       expect(fakes, hasLength(2));
       expect(params["mcpServers"], isEmpty);
+      expect(params, isNot(contains("_meta")));
       expect(access.minted, 0);
     });
 
@@ -185,6 +188,7 @@ void main() {
       final params = await create("s1");
 
       expect(params["mcpServers"], isEmpty);
+      expect(params, isNot(contains("_meta")));
       expect(access.binds, isEmpty);
     });
   });
@@ -204,4 +208,10 @@ class _SesoriMcpTestPlugin({
 }) extends TestAcpPlugin {
   @override
   bool get replaysResidentHistoryOnLiveProcess => replaysOnLiveProcess;
+
+  @override
+  Map<String, dynamic>? sessionActivationMeta({required SesoriSkillBundle? skills}) => switch (skills) {
+    final skills? => {"skills": skills.pluginRoot},
+    null => null,
+  };
 }

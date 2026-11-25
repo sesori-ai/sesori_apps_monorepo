@@ -105,8 +105,8 @@ class ClaudeLaunchSpec({
   required final ClaudeSesoriMcpConfigFile? sesoriMcp,
 
   /// Sesori's skill bundle as a Claude plugin folder
-  /// (`SesoriSkillBundle.pluginRoot`), loaded beside [sesoriMcp] so its
-  /// skills surface as `sesori:<name>`; null to load none.
+  /// (`SesoriSkillBundle.pluginRoot`), whose skills surface as
+  /// `sesori:<name>`; null to load none.
   required final String? sesoriPluginDirectory,
   Map<String, String> environment = const {},
 }) {

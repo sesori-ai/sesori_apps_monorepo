@@ -22,5 +22,6 @@ final class FakeSesoriMcpAccess({required final bool enabled}) implements Sesori
       bound.add((launch: launch, backendSessionId: backendSessionId));
 
   @override
-  SesoriSkillBundle? get skillBundle => null;
+  SesoriSkillBundle? get skillBundle =>
+      enabled ? const SesoriSkillBundle(pluginRoot: "/skills/claude-plugin", skillsRoot: "/skills/skills") : null;
 }

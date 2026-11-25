@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show SesoriSkillBundle;
 
 /// Builds the launch specification for GitHub Copilot CLI's ACP server.
 ///
@@ -27,4 +28,10 @@ abstract final class CopilotBinary() {
       environment: environment,
     );
   }
+
+  /// Loads Sesori's Claude-style plugin, whose skills surface as
+  /// `sesori:<name>`, for this process only.
+  static List<String> skillArguments({required SesoriSkillBundle? skills}) => [
+    if (skills != null) ...["--plugin-dir", skills.pluginRoot],
+  ];
 }
