@@ -100,7 +100,7 @@ In addition to flags, the bridge supports subcommands:
 | Command | Description |
 |---------|-------------|
 | `help` | Show the help message (also available via `--help` or `-h`) |
-| `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
+| `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. A self-updating bridge also shows it in the app's bridge settings as "Internal builds". Either way, a change applies from the next bridge start. |
 | `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
 | `config warmup [on\|off]` | Show or set plugin warm-up when a session screen opens. With no argument, prints the current mode. |
 | `config agent-tools [on\|off]` | Show or set whether harness sessions get Sesori's own tools for agents. With no argument, prints the current mode. |

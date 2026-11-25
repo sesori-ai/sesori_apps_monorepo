@@ -71,6 +71,11 @@ client's update steps shown wherever a feature needs a newer bridge.
   payloads, CI, and the opt-out. Startup and periodic cycles download and apply a newer
   release in place; the running process stays on its old code until the next start. Its
   track is stable by default, internal also takes pre-releases, and a change applies after restart.
+  `config track` sets it on the host; for a bridge that updates itself, the app's bridge
+  settings (phone and desktop) show it as "Internal builds" and save it through PATCH
+  `/settings`. A bridge that does not update itself, or one older than the setting, leaves
+  the track out of GET `/settings`, and the app shows no row. The row stays in place
+  through a reload or dropped connection, and an unknown track is refused with a 400.
   Transient auto-update outages stay quiet and retry on the next cycle.
 - Self-update archive extraction supplies an explicit two-minute per-command budget to the
   shared extractor, covering both member listing and extraction where separate. Traversal,
@@ -109,7 +114,7 @@ client's update steps shown wherever a feature needs a newer bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
-| L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. Automated shared UI: the update sheet lists every command with a copy button and copies the update command, a desktop-kind bridge gets the Sesori Desktop steps with a copyable download link and no commands, and the session old-bridge notice, auto-continuation menu and settings rows open it. |
+| L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt, and its GET `/settings` carries no release track. Headless bridge; no plugin. Automated shared UI: the Internal builds row appears only for a reported track, toggles it, and keeps its place while an unreconciled save's retry reloads; the update sheet lists every command with a copy button and copies the update command, a desktop-kind bridge gets the Sesori Desktop steps with a copyable download link and no commands, and the session old-bridge notice, auto-continuation menu and settings rows open it. |
 | L3 Release | Release gates, artifacts, managed startup and automatic macOS signing. Packaged/external. |
 | L4 Extended | Interrupted or failed apply reconciled at a later start, including lock-contended and deletion-failed residue retained observably for another retry; rollback; refused checksum mismatch; unavailable release service staying quiet; track switch; periodic cycle applying in place and reporting pending activation; and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
@@ -152,6 +157,8 @@ after apply. Use a throwaway machine when mutating an install root.
   an artifact installed without verification.
 - Auto-update running for a supervised run, npm payload, CI, or opted-out process, or a
   managed install never checking at all.
+- The app offering Internal builds for a bridge that does not update itself, the row
+  closing and reopening during a reload, or a saved track not taking effect at the next start.
 - An apply without the lock, a swap leaving a mixed-version install, a failed rollback
   step going unlogged, residue becoming permanently untracked or an unsuccessful sweep
   going unreported, or reconciliation doing network work or failing startup.
@@ -213,7 +220,10 @@ macOS signing are material failures.
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
-  `bridge/app/bin/bridge.dart` (`update`, `config track`)
+  `bridge/app/bin/bridge.dart` (`update`, `config track`),
+  `bridge/app/lib/src/services/release_track_settings_service.dart`
+- App track setting: `client/module_app_ui/lib/src/features/settings/widgets/bridge_settings_section.dart`,
+  `client/module_core/lib/src/cubits/bridge_settings/`
 - Client update steps: `client/module_app_ui/lib/src/widgets/bridge_update_sheet.dart`,
   `client/module_app_ui/lib/src/utils/bridge_install.dart`,
   `client/module_core/lib/src/cubits/bridge_kind/bridge_kind_cubit.dart`, and

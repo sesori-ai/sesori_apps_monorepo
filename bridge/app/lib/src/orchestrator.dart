@@ -252,6 +252,7 @@ import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
+import "services/release_track_settings_service.dart";
 import "services/scheduled_command_result_formatter.dart";
 import "services/scheduled_command_service.dart";
 import "services/scheduled_task_activity_tracker.dart";
@@ -1008,6 +1009,10 @@ class Orchestrator({
       "The orchestrator's tool groups must match SesoriToolGroupIds.all, in order.",
     );
     final toolGroupSettingsService = ToolGroupSettingsService(settings: _bridgeSettingsRepository, groups: toolGroups);
+    final releaseTrackSettingsService = ReleaseTrackSettingsService(
+      settings: _bridgeSettingsRepository,
+      updatesItself: config.updatesItself,
+    );
     final sesoriMcpRequestDispatcher = SesoriMcpRequestDispatcher(
       access: SesoriMcpAccessService(grants: _sesoriMcpGrants, sessions: sessionRepository),
       groups: toolGroups,
@@ -1025,6 +1030,7 @@ class Orchestrator({
         GetBridgeSettingsHandler(
           settingsRepository: _bridgeSettingsRepository,
           toolGroupSettingsService: toolGroupSettingsService,
+          releaseTrackSettingsService: releaseTrackSettingsService,
         ),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PatchBridgeSettingsHandler(
@@ -1032,6 +1038,7 @@ class Orchestrator({
           yoloSettingsService: yoloSettingsService,
           pluginWarmupSettingsService: pluginWarmupSettingsService,
           toolGroupSettingsService: toolGroupSettingsService,
+          releaseTrackSettingsService: releaseTrackSettingsService,
         ),
         PostMcpInventoryHandler(mcpRepository: mcpRepository),
         PostMcpEntryActionHandler(mcpService: mcpService),

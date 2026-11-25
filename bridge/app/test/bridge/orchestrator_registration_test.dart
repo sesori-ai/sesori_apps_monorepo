@@ -545,6 +545,7 @@ class _RegistrationHarness._({
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
         yolo: false,
+        updatesItself: false,
       ),
       client: relayClient,
       pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
