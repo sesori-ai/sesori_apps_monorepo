@@ -48,8 +48,8 @@
   - `watch_pr` returns the first report (every existing comment new, plus the
     startup assessment) in its result instead of sending a notice.
   - A watch ends, and its record is deleted, inside the claim of its terminal
-    report (merged, closed, not found, 10 failures). Step 12's "merged PRs stay
-    listed until end of day" needs its own record of ended watches.
+    report (closed, not found, 10 failures). Since step 12 a merged watch's
+    record is kept as `merged` until local midnight.
   - A `dropped` delivery marks the PR dirty again, so the next poll re-reports;
     there is no delivery-failure stop. `skippedInactive` ends the watch.
   - Step 8 hooks: `PullRequestActionRepository` holds the cached `selfLogin`
