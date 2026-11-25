@@ -19,6 +19,7 @@ void main() {
       String transcriptsDirectory = "/tmp/sesori/transcripts",
       String uploadsDirectory = "/tmp/sesori/uploads",
       ClaudeSesoriMcpConfigFile? sesoriMcp,
+      String? sesoriPluginDirectory,
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -32,6 +33,7 @@ void main() {
         permissionMode: permissionMode,
         allowedTools: allowedTools,
         sesoriMcp: sesoriMcp,
+        sesoriPluginDirectory: sesoriPluginDirectory,
       );
     }
 
@@ -216,10 +218,16 @@ void main() {
         ClaudeResumedSession(sessionId: _oldSessionId),
         ClaudeRewoundSession(sessionId: _oldSessionId, entryUuid: _newSessionId),
       ]) {
-        final spec = specFor(launch, allowedTools: const ["Bash(git status)"], sesoriMcp: server);
+        final spec = specFor(
+          launch,
+          allowedTools: const ["Bash(git status)"],
+          sesoriMcp: server,
+          sesoriPluginDirectory: "/home/a/.sesori/agent-skills/claude-plugin",
+        );
         final arguments = spec.arguments;
 
         expect(arguments, containsAllInOrder(["--mcp-config", "/tmp/sesori/sesori-mcp-1/mcp.json"]));
+        expect(arguments, containsAllInOrder(["--plugin-dir", "/home/a/.sesori/agent-skills/claude-plugin"]));
         // Without `--strict-mcp-config` the user's own servers still load.
         expect(arguments, isNot(contains("--strict-mcp-config")));
         expect(arguments, containsAllInOrder(["--allowedTools", "mcp__sesori_bridge", "Bash(git status)"]));
@@ -232,6 +240,7 @@ void main() {
       final spec = specFor(ClaudeNewSession(sessionId: _newSessionId));
 
       expect(spec.arguments, isNot(contains("--mcp-config")));
+      expect(spec.arguments, isNot(contains("--plugin-dir")));
       expect(spec.arguments.where((argument) => argument.startsWith("mcp__")), isEmpty);
       expect(spec.processLaunch.environment, isEmpty);
     });
@@ -249,6 +258,7 @@ void main() {
         permissionMode: null,
         allowedTools: const [],
         sesoriMcp: null,
+        sesoriPluginDirectory: null,
         environment: const {"HOME": "/tmp/test-home"},
       );
 
@@ -269,6 +279,7 @@ void main() {
         permissionMode: null,
         allowedTools: const [],
         sesoriMcp: null,
+        sesoriPluginDirectory: null,
         environment: environment,
       );
 

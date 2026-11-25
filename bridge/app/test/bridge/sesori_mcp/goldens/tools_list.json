@@ -911,6 +911,29 @@
       "annotations": {
         "readOnlyHint": false
       }
+    },
+    {
+      "name": "get_guide",
+      "description": "Read the how-to for a Sesori tool group before you first use it, unless its Sesori skill is already loaded. Topics: pr_monitor: Use right after you open a GitHub PR, when asked to watch or babysit a PR, and every time a [PR Monitor] message arrives.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "pr_monitor"
+            ],
+            "description": "The tool group whose how-to to read."
+          }
+        },
+        "required": [
+          "topic"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
     }
   ]
 }

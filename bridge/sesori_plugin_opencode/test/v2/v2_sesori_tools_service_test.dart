@@ -299,4 +299,7 @@ class _RecordingAccess({required final String mcpUrl}) implements SesoriMcpAcces
   @override
   void bind({required SesoriMcpLaunch launch, required String backendSessionId}) =>
       bound[launch.token] = backendSessionId;
+
+  @override
+  SesoriSkillBundle? get skillBundle => null;
 }

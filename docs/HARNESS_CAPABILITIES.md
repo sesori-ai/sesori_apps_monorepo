@@ -245,6 +245,18 @@ took a one-shot and answered its notice, and ran `every 2` twice before
 Claude Code and Grok. Oh My Pi reaches the tools through its `xd://` file and
 Grok through tool search, as for pages.
 
+Tool-group guides: a group with a long how-to (today the PR monitor) gives
+agents two ways to read it. Every harness that gets the server can call
+`get_guide`. Harnesses that can load extra skills per process also get the
+guide as a skill, which the bridge writes to `agent-skills/` in its data
+directory while the group is on.
+
+| Harness | Sesori skill |
+|---|---|
+| Claude Code | ✅ `--plugin-dir` on session launches, never on catalog probes, so the skill `sesori:pr-monitor` loads in sessions but is not in the app's command list. Verified live on 2.1.331, 2026-11-25: on "watch this PR", the agent invoked the skill and then called `watch_pr`. |
+| Codex | ✅ `skills/extraRoots/set` before each thread start, resume and fork. It applies to the whole app-server, so the app's command list also shows `sesori-pr-monitor`. Verified live on 0.172.0, 2026-11-25: on "watch this PR", the agent read the skill's `SKILL.md`, then also called `get_guide` (which it did not need) and then `watch_pr`. |
+| Other harnesses | ⬜ `get_guide` only for now. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

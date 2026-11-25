@@ -7,6 +7,9 @@ class FakeSesoriMcpAccess({required final bool _enabled}) implements SesoriMcpAc
   final List<({SesoriMcpLaunch launch, String backendSessionId})> bound = [];
 
   @override
+  SesoriSkillBundle? skillBundle;
+
+  @override
   SesoriMcpLaunch? mint() {
     if (!_enabled) return null;
     final launch = SesoriMcpLaunch(

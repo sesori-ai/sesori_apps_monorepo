@@ -20,6 +20,7 @@ import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
 import "../helpers/plugin_lifecycle_test_support.dart";
+import "../helpers/skill_bundle_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -273,6 +274,7 @@ class _ConcurrencyHarness._({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: const Stream.empty(),
       sesoriMcpGrants: SesoriMcpGrantRepository(random: Random()),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

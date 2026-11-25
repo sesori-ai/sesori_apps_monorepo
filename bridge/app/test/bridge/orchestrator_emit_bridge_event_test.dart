@@ -32,6 +32,7 @@ import "package:test/test.dart";
 import "../helpers/fake_process_runner.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
+import "../helpers/skill_bundle_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -2046,6 +2047,7 @@ class const _OrchestratorHarness({
       startupRetryService: BridgeStartupRetryService(),
       sesoriMcpRequests: sesoriMcpRequests,
       sesoriMcpGrants: sesoriMcpGrants ?? SesoriMcpGrantRepository(random: Random()),
+      skillBundles: temporarySkillBundles(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

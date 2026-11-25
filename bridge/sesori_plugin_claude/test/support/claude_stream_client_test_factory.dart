@@ -55,6 +55,7 @@ ClaudeLaunchSpec testLaunchSpec({String sessionId = testSessionId}) {
     permissionMode: null,
     allowedTools: const [],
     sesoriMcp: null,
+    sesoriPluginDirectory: null,
   );
 }
 

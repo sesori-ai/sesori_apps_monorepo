@@ -415,6 +415,7 @@ void main() {
           "get_pr_report",
           "get_pr_feedback",
           "reply_on_pr",
+          "get_guide",
         ],
       );
       for (final tool in tools) {
@@ -473,6 +474,23 @@ void main() {
       expect(initialized["instructions"], allOf(contains("send_page"), isNot(contains("list_tasks"))));
       final outside = await rpc(method: "tools/call", params: {"name": "list_tasks"}, bearer: pagesOnly);
       expect(outside["error"], {"code": -32602, "message": "Unknown tool: list_tasks"});
+    });
+
+    test("get_guide returns a group's guide and points at its skill", () async {
+      final initialized = (await rpc(method: "initialize", params: {}))["result"] as Map;
+      expect(initialized["instructions"], contains("sesori-pr-monitor, or sesori:pr-monitor in Claude Code"));
+
+      final guide = await call(tool: "get_guide", arguments: {"topic": "pr_monitor"});
+      expect(guide.isError, isFalse);
+      expect(guide.text, contains("watch_pr"));
+      final unknown = await call(tool: "get_guide", arguments: {"topic": "tasks"});
+      expect(unknown.isError, isTrue);
+      expect(unknown.text, contains("topic must be one of"));
+
+      final pagesOnly = grants.mint(pluginId: "fake", groups: {SesoriToolGroupIds.pages});
+      grants.bind(token: pagesOnly, backendSessionId: "backend-s1");
+      final withoutGuides = await rpc(method: "tools/call", params: {"name": "get_guide"}, bearer: pagesOnly);
+      expect(withoutGuides["error"], {"code": -32602, "message": "Unknown tool: get_guide"});
     });
 
     test("malformed JSON, unknown methods and unknown tools are JSON-RPC errors", () async {

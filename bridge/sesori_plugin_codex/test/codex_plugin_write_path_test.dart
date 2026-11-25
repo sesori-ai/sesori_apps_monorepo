@@ -523,6 +523,47 @@ void main() {
           expect(fake.sentParamsFor("thread/resume")["config"], equals(config(token: "token-1")));
           expect(sesoriMcp.bound.single.backendSessionId, "t-existing");
         });
+
+        test("its skills load from the app-server's extra skill roots before the thread starts", () async {
+          sesoriMcp.skillBundle = const SesoriSkillBundle(pluginRoot: "/skills/plugin", skillsRoot: "/skills/plain");
+          // Respond to: initialize, skills/extraRoots/set, thread/start, turn/start.
+          fake.respondInOrder([
+            const _Response(result: _initOk),
+            const _Response(result: <String, dynamic>{}),
+            const _Response(
+              result: {
+                "thread": {"id": "t-skills", "cwd": "/work/sample"},
+              },
+            ),
+            const _Response(
+              result: {
+                "turn": {"id": "u-skills"},
+              },
+            ),
+          ]);
+
+          await plugin.createSession(
+            fastMode: false,
+            directory: "/work/sample",
+            parentSessionId: null,
+            parts: const [PluginPromptPart.text(text: "hello codex")],
+            userVisibleText: "hello codex",
+            variant: null,
+            agent: "Agent",
+            model: null,
+          );
+
+          expect(fake.sentMethods, [
+            "initialize",
+            "skills/extraRoots/set",
+            "config/read",
+            "thread/start",
+            "turn/start",
+          ]);
+          expect(fake.sentParamsFor("skills/extraRoots/set"), {
+            "extraRoots": ["/skills/plain"],
+          });
+        });
       });
     });
 

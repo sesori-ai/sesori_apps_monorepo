@@ -20,4 +20,7 @@ final class FakeSesoriMcpAccess({required final bool enabled}) implements Sesori
   @override
   void bind({required SesoriMcpLaunch launch, required String backendSessionId}) =>
       bound.add((launch: launch, backendSessionId: backendSessionId));
+
+  @override
+  SesoriSkillBundle? get skillBundle => null;
 }

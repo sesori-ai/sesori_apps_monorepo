@@ -4,7 +4,7 @@ import "dart:convert";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations, bridgeVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, sesoriMcpServerName;
 import "package:sesori_tool_interface/sesori_tool_interface.dart"
-    show InvalidToolArguments, SesoriToolFailure, SesoriToolGroup, SesoriToolResult;
+    show InvalidToolArguments, SesoriToolFailure, SesoriToolGroup, SesoriToolGroupId, SesoriToolGuide, SesoriToolResult;
 
 import "../../foundation/sesori_mcp_server.dart";
 import "../../services/sesori_mcp_access_service.dart";
@@ -19,6 +19,7 @@ import "models/sesori_mcp_rpc_request.dart";
 ///
 /// Each tool belongs to one [SesoriToolGroup]; the dispatcher lists the tools
 /// of the groups the caller's grant holds and routes each call to its group.
+/// It answers `get_guide` itself, from those groups' guides.
 class SesoriMcpRequestDispatcher({
   required final SesoriMcpAccessService _access,
   required final List<SesoriToolGroup> _groups,
@@ -30,6 +31,10 @@ class SesoriMcpRequestDispatcher({
   static const List<String> protocolVersions = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
 
   static const String _instructionsLead = "Sesori's tools, served by the Sesori bridge on this computer.";
+
+  /// Lists and returns the granted groups' guides, for harnesses that load no
+  /// Sesori skill.
+  static const String getGuideTool = "get_guide";
 
   static const int _parseError = -32700;
   static const int _invalidRequest = -32600;
@@ -46,6 +51,7 @@ class SesoriMcpRequestDispatcher({
 
   static bool _uniqueToolNames({required List<SesoriToolGroup> groups}) {
     final names = [
+      getGuideTool,
       for (final group in groups)
         for (final tool in group.tools) tool.name,
     ];
@@ -70,6 +76,7 @@ class SesoriMcpRequestDispatcher({
       for (final group in _groups)
         if (granted.contains(group.id)) group,
     ];
+    final guides = {for (final group in groups) group.id: ?group.guide};
 
     final Object? decoded;
     try {
@@ -93,14 +100,14 @@ class SesoriMcpRequestDispatcher({
       case "initialize":
         return _result(
           id: id,
-          result: _initialize(params: request.params, groups: groups),
+          result: _initialize(params: request.params, groups: groups, guides: guides),
         );
       case "ping":
         return _result(id: id, result: const <String, Object?>{});
       case "tools/list":
         return _result(
           id: id,
-          result: _toolList(groups: groups),
+          result: _toolList(groups: groups, guides: guides),
         );
       case "tools/call":
         final SesoriMcpToolCall call;
@@ -108,6 +115,12 @@ class SesoriMcpRequestDispatcher({
           call = SesoriMcpToolCall.fromJson(request.params ?? const {});
         } on Object {
           return _error(id: id, code: _invalidParams, message: "tools/call needs a tool name.");
+        }
+        if (call.name == getGuideTool && guides.isNotEmpty) {
+          return _result(
+            id: id,
+            result: _guide(guides: guides, arguments: call.arguments ?? const {}),
+          );
         }
         // A tool of a group outside the grant reads as one that does not exist.
         final group = _owners[call.name];
@@ -126,7 +139,11 @@ class SesoriMcpRequestDispatcher({
   Map<String, Object?> _initialize({
     required Map<String, dynamic>? params,
     required List<SesoriToolGroup> groups,
+    required Map<SesoriToolGroupId, SesoriToolGuide> guides,
   }) {
+    final skills = [
+      for (final guide in guides.values) "sesori-${guide.name}, or sesori:${guide.name} in Claude Code",
+    ].join("; ");
     String? requested;
     try {
       requested = params == null ? null : SesoriMcpInitializeParams.fromJson(params).protocolVersion;
@@ -139,23 +156,84 @@ class SesoriMcpRequestDispatcher({
         "tools": {"listChanged": false},
       },
       "serverInfo": {"name": sesoriMcpServerName, "version": bridgeVersion},
-      "instructions": [_instructionsLead, for (final group in groups) group.instructions].join(" "),
+      "instructions": [
+        _instructionsLead,
+        for (final group in groups) group.instructions,
+        if (guides.isNotEmpty)
+          "For a group's full how-to, load its Sesori skill if you have it ($skills), otherwise call $getGuideTool.",
+      ].join(" "),
     };
   }
 
-  Map<String, Object?> _toolList({required List<SesoriToolGroup> groups}) {
+  Map<String, Object?> _toolList({
+    required List<SesoriToolGroup> groups,
+    required Map<SesoriToolGroupId, SesoriToolGuide> guides,
+  }) {
     return {
       "tools": [
         for (final group in groups)
           for (final tool in group.tools)
-            {
-              "name": tool.name,
-              "description": tool.description,
-              "inputSchema": tool.inputSchema,
-              "annotations": {"readOnlyHint": tool.readOnly},
+            _listedTool(
+              name: tool.name,
+              description: tool.description,
+              inputSchema: tool.inputSchema,
+              readOnly: tool.readOnly,
+            ),
+        if (guides.isNotEmpty)
+          _listedTool(
+            name: getGuideTool,
+            description:
+                "Read the how-to for a Sesori tool group before you first use it, unless its Sesori skill is "
+                "already loaded. Topics: ${[for (final MapEntry(:key, :value) in guides.entries) "${key.value}: ${value.whenToUse}"].join(" ")}",
+            inputSchema: {
+              "type": "object",
+              "properties": {
+                "topic": {
+                  "type": "string",
+                  "enum": [for (final id in guides.keys) id.value],
+                  "description": "The tool group whose how-to to read.",
+                },
+              },
+              "required": ["topic"],
+              "additionalProperties": false,
             },
+            readOnly: true,
+          ),
       ],
     };
+  }
+
+  Map<String, Object?> _listedTool({
+    required String name,
+    required String description,
+    required Map<String, Object?> inputSchema,
+    required bool readOnly,
+  }) {
+    return {
+      "name": name,
+      "description": description,
+      "inputSchema": inputSchema,
+      "annotations": {"readOnlyHint": readOnly},
+    };
+  }
+
+  /// `get_guide`'s result: the guide of the granted group named by `topic`.
+  Map<String, Object?> _guide({
+    required Map<SesoriToolGroupId, SesoriToolGuide> guides,
+    required Map<String, dynamic> arguments,
+  }) {
+    final guide = switch (arguments["topic"]) {
+      final String topic => guides[SesoriToolGroupId(topic)],
+      _ => null,
+    };
+    if (guide == null) {
+      return _toolResult(
+        text:
+            "Invalid arguments for $getGuideTool: topic must be one of ${guides.keys.map((id) => id.value).join(", ")}.",
+        isError: true,
+      );
+    }
+    return _toolResult(text: guide.body, isError: false);
   }
 
   /// A tool result. Failures an agent can act on come back as `isError`

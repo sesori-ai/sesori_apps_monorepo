@@ -5,6 +5,7 @@ import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "../services/models/pull_request_watch_results.dart";
 import "../services/pull_request_watch_service.dart";
+import "pull_request_monitor_guide.dart";
 import "pull_request_monitor_tool.dart";
 
 /// `watch_pr` and its companions: GitHub PRs Sesori watches for a session,
@@ -33,6 +34,9 @@ class PullRequestMonitorToolGroup({
 
   @override
   List<SesoriToolDefinition> get tools => [for (final tool in PullRequestMonitorTool.values) tool.definition];
+
+  @override
+  SesoriToolGuide get guide => pullRequestMonitorGuide;
 
   @override
   Future<void> start() async {

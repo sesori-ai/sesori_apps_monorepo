@@ -58,6 +58,10 @@ class ScheduledTaskToolGroup({
   @override
   List<SesoriToolDefinition> get tools => [for (final tool in ScheduledTaskTool.values) tool.definition];
 
+  /// None: the tool descriptions say enough.
+  @override
+  SesoriToolGuide? get guide => null;
+
   /// Nothing to start: the app's own services run any background work.
   @override
   Future<void> start() async {}

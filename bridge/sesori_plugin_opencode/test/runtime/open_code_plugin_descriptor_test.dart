@@ -1604,6 +1604,9 @@ class _UnusedSesoriMcpAccess() implements SesoriMcpAccess {
 
   @override
   void bind({required SesoriMcpLaunch launch, required String backendSessionId}) => throw UnimplementedError();
+
+  @override
+  SesoriSkillBundle? get skillBundle => throw UnimplementedError();
 }
 
 class const _ImmediateClock() implements ServerClock {

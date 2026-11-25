@@ -229,6 +229,16 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     );
   }
 
+  /// Replaces the folders, beyond the user's and the project's, that Codex
+  /// loads skills from, for every thread of this app-server.
+  Future<void> setSkillExtraRoots({required List<String> roots}) async {
+    await _client.request(
+      method: "skills/extraRoots/set",
+      params: {"extraRoots": roots},
+      timeout: codexRequestTimeout,
+    );
+  }
+
   Future<CodexModelListResponseDto> listModels() async {
     final result = await _client.request(
       method: "model/list",
