@@ -405,7 +405,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   The plugin's Dart package name is `pi_plugin`, not its directory name. A
   probe-owned `HostProcessService` that wraps children (for example in
   `sandbox-exec`) must resolve bare names against its allowlisted `PATH` and
-  throw `ProcessException` when absent; otherwise the installer's PATH
+  throw `ProcessException` with `errorCode` 2 (ENOENT) when absent, which
+  `IoHostExecutableLocator.isProcessMissingError` requires; otherwise the installer's PATH
   authority sees a runtime and refuses with "The global Pi runtime now takes
   precedence".
 

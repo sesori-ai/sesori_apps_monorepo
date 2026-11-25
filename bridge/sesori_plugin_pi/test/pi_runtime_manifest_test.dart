@@ -8,12 +8,12 @@ import "package:test/test.dart";
 void main() {
   const manifest = PiRuntimeManifest();
 
-  test("keeps the verified PATH floor and pins managed Pi v1.6.0", () {
+  test("keeps the verified PATH floor and pins managed Pi v1.6.1", () {
     expect(manifest.runtimeId, "pi");
     expect(manifest.pathExecutableName, "pi");
     expect(manifest.binaryFileName, Platform.isWindows ? "pi.exe" : "pi");
     expect(manifest.minPathVersion.raw, "0.99.0");
-    expect(PiRuntimeManifest.targetVersion, "1.6.0");
+    expect(PiRuntimeManifest.targetVersion, "1.6.1");
     expect(manifest.bundledVersion.raw, PiRuntimeManifest.targetVersion);
     expect(manifest.parseVersion(value: "0.99.2")?.raw, "0.99.2");
     expect(manifest.parseVersion(value: "pi/0.99.2"), isNull);
@@ -50,12 +50,12 @@ void main() {
       ),
     );
     const expectedSha256 = {
-      "pi-darwin-arm64.tar.gz": "6429287b7ae98d726ec577815d14fd680e7c587e89ecc5153b4a145dc4adba33",
-      "pi-darwin-x64.tar.gz": "5b69cd87c3b00e74cce2d1499df3b7a1ec73632f11abf64696d110f0f4dc4192",
-      "pi-linux-arm64.tar.gz": "5404547b9739be596d50ae7142c52535899e8e7dd37a7bace9be593e0355b468",
-      "pi-linux-x64.tar.gz": "ef77dbe4379b3bdeb425a1e1b862fa3c915c255000dfe4965c98eee96a5765d1",
-      "pi-windows-arm64.zip": "56433d392e1baecf9f1692785a3bf171c125b415a29dd36097d02baca98bc9eb",
-      "pi-windows-x64.zip": "f5defb6c403ee698f5b3f8886db473e55b78aac670a8ce03620a47f5f0aec57c",
+      "pi-darwin-arm64.tar.gz": "d8fd8e24c2a5054ae383d83b26f6eb6f950edf613917e434a52394f44cd4d933",
+      "pi-darwin-x64.tar.gz": "5c2df5744c7828cc8b78c5665a3a785cc073130005c711d35017c6a5c419169a",
+      "pi-linux-arm64.tar.gz": "afde641d6c5904d26960ddb4223bf563b0860cf1a0ebc443b85deff67d048753",
+      "pi-linux-x64.tar.gz": "3c7f00715eb512e165c0da8cad314d73c83b54d5bf7748be4adc618fc8357b68",
+      "pi-windows-arm64.zip": "1d573e8b02f92d3cc3d386481710144f9091a93775d211663919da9ed4c9d31d",
+      "pi-windows-x64.zip": "dbb007c8c50782de1642382fed777c60252aab080f36eef7823324c574c1f3e4",
     };
     expect(
       {for (final asset in assets) asset.assetName: asset.sha256},
@@ -79,7 +79,7 @@ void main() {
         fail("missing macOS arm64 asset");
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/earendil-works/pi/releases/download/v1.6.0/pi-darwin-arm64.tar.gz",
+      "https://github.com/earendil-works/pi/releases/download/v1.6.1/pi-darwin-arm64.tar.gz",
     );
   });
 }
