@@ -63,14 +63,22 @@ class PullRequestMonitorToolGroup({
     return await switch (PullRequestMonitorTool.values.firstWhere((candidate) => candidate.wireName == tool)) {
       PullRequestMonitorTool.watchPr => _withTarget(
         arguments: arguments,
-        run: (target) async => _watchResult(
-          target: target,
-          result: await _watches.watch(
+        run: (target) async {
+          final requested = _flag(value: arguments["auto_merge"], field: "auto_merge");
+          final result = await _watches.watch(
             sessionId: sessionId,
             target: target,
-            requestedAutoMerge: _flag(value: arguments["auto_merge"], field: "auto_merge"),
-          ),
-        ),
+            autoMergeByDefault: requested ?? true,
+          );
+          final started = _watchResult(target: target, result: result);
+          if (requested != true || result is! PullRequestWatchStarted) return started;
+          final request = await _requestAutoMerge(
+            askingSessionId: caller.sessionId,
+            sessionId: sessionId,
+            target: target,
+          );
+          return SesoriToolSuccess(text: "${started.text}\n\n${request.text}");
+        },
       ),
       PullRequestMonitorTool.unwatchPr => _withTarget(
         arguments: arguments,
@@ -145,6 +153,9 @@ class PullRequestMonitorToolGroup({
         run: (target) {
           final enabled = _flag(value: arguments["enabled"], field: "enabled");
           if (enabled == null) throw const InvalidToolArguments(reason: "enabled is required.");
+          if (enabled) {
+            return _requestAutoMerge(askingSessionId: caller.sessionId, sessionId: sessionId, target: target);
+          }
           return _attempt(
             failure: "Cannot change auto-merge for ${target.displayKey}",
             run: () async => _autoMergeText(
@@ -162,6 +173,34 @@ class PullRequestMonitorToolGroup({
       ),
     };
   }
+
+  /// Turns auto-merge on for [sessionId]'s watch of [target], or asks the
+  /// user of [askingSessionId] first.
+  Future<SesoriToolResult> _requestAutoMerge({
+    required String askingSessionId,
+    required String sessionId,
+    required PullRequestTarget target,
+  }) => _attempt(
+    failure: "Cannot turn auto-merge on for ${target.displayKey}",
+    run: () async => switch (await _watches.requestAutoMerge(
+      askingSessionId: askingSessionId,
+      sessionId: sessionId,
+      target: target,
+    )) {
+      PullRequestAutoMergeRequestApplied(:final result) => _autoMergeText(
+        target: target,
+        enabled: true,
+        result: result,
+      ),
+      PullRequestAutoMergeAwaitingApproval() =>
+        "Sent to the user for approval: auto-merge for ${target.displayKey} needs their Allow. A message tells this "
+            "session their answer; end your turn instead of waiting. Until then auto-merge stays off for this "
+            "session's watch.",
+      PullRequestAutoMergeApprovalDropped() =>
+        "Auto-merge stays off for ${target.displayKey}: the request for the user's Allow could not be shown, as the "
+            "bridge is stopping or this session is gone.",
+    },
+  );
 
   Future<SesoriToolResult> _configure({
     required String askingSessionId,

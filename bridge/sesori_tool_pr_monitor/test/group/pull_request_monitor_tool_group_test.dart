@@ -95,20 +95,81 @@ void main() {
     );
   });
 
-  test("watch_pr with auto_merge removes the ready label the PR carried and says so", () async {
+  test("watch_pr with auto_merge under Approve everything turns it on and removes the ready label", () async {
+    host.approvesEverything = true;
     snapshots.enqueue(emptySnapshot.copyWith(labels: ["agent-ready"]));
 
     final started = await call(tool: "watch_pr", session: "root", pr: "sesori/example#42", extra: {"auto_merge": true});
 
-    expect(started.text, contains("Auto-merge enabled: the user chose to have this PR merged without waiting"));
+    expect(started.text, startsWith('Started watching sesori/example#42 — "test PR".'));
+    expect(started.text, contains("Auto-merge enabled for sesori/example#42: the user chose to have this PR merged"));
     expect(started.text, contains('The "agent-ready" label it carried was removed'));
-    expect(started.text, contains('- Ready: NO — label "agent-ready" is absent.'));
+    expect(host.asked, isEmpty);
     expect(actions.calls, ["remove label"]);
     expect((await call(tool: "pr_watch_status", session: "root")).text, contains("auto-merge: squash"));
     await expectLater(
       call(tool: "watch_pr", session: "child", pr: "sesori/example#42", extra: {"auto_merge": "yes"}),
       throwsA(isA<InvalidToolArguments>()),
     );
+  });
+
+  test("an agent's auto-merge waits for the calling session's Allow, and the root hears the answer", () async {
+    snapshots.enqueue(emptySnapshot);
+    final started = await call(
+      tool: "watch_pr",
+      session: "child",
+      pr: "sesori/example#42",
+      extra: {"auto_merge": true},
+    );
+
+    expect(
+      started.text,
+      contains("Sent to the user for approval: auto-merge for sesori/example#42 needs their Allow."),
+    );
+    expect(host.asked.single.sessionId, "child", reason: "the caller's own approval settings decide");
+    expect(host.asked.single.body, startsWith("Turn auto-merge on for **sesori/example#42**?"));
+    expect((await call(tool: "pr_watch_status", session: "root")).text, isNot(contains("auto-merge: squash")));
+
+    host.asked.single.answer.complete(SesoriToolApprovalOutcome.allowed);
+    await pumpEventQueue();
+    expect(host.sent.single.sessionId, "root");
+    expect(host.sent.single.summary, "PR monitor: auto-merge for sesori/example#42 allowed");
+    expect((await call(tool: "pr_watch_status", session: "root")).text, contains("auto-merge: squash"));
+
+    expect(
+      (await call(tool: "set_pr_auto_merge", session: "root", pr: "sesori/example#42", extra: {"enabled": false})).text,
+      "Auto-merge disabled for sesori/example#42: marking it ready hands it to a human reviewer.",
+    );
+    expect(host.asked, hasLength(1), reason: "turning it off never asks");
+
+    await call(tool: "set_pr_auto_merge", session: "root", pr: "sesori/example#42", extra: {"enabled": true});
+    host.asked.last.answer.complete(SesoriToolApprovalOutcome.rejected);
+    await pumpEventQueue();
+    expect(host.sent.last.summary, "PR monitor: auto-merge for sesori/example#42 declined");
+
+    await call(tool: "set_pr_auto_merge", session: "root", pr: "sesori/example#42", extra: {"enabled": true});
+    await call(tool: "unwatch_pr", session: "root", pr: "sesori/example#42");
+    snapshots.enqueue(emptySnapshot);
+    await call(tool: "watch_pr", session: "root", pr: "sesori/example#42");
+    host.asked.last.answer.complete(SesoriToolApprovalOutcome.allowed);
+    await pumpEventQueue();
+    expect(host.sent.last.summary, "PR monitor: auto-merge for sesori/example#42 not applied");
+    expect(
+      (await call(tool: "pr_watch_status", session: "root")).text,
+      isNot(contains("auto-merge: squash")),
+      reason: "the Allow was for the earlier watch",
+    );
+  });
+
+  test("an agent's auto-merge needs no Allow where the user turned the default on", () async {
+    host.approvesEverything = true;
+    await call(tool: "configure_pr_monitor", session: "root", pr: null, extra: {"auto_merge": "on"});
+    host.approvesEverything = false;
+    snapshots.enqueue(emptySnapshot);
+
+    final started = await call(tool: "watch_pr", session: "root", pr: "sesori/example#42", extra: {"auto_merge": true});
+    expect(started.text, contains("Auto-merge enabled: the user chose"));
+    expect(host.asked, isEmpty);
   });
 
   test("mark, unmark and set_pr_auto_merge answer with what changed", () async {

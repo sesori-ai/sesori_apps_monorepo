@@ -52,13 +52,3 @@ final class const PullRequestRepositoryAutoMergeCleared({required final String r
     repositoryAutoMerge: {...config.repositoryAutoMerge}..remove(repositoryKey),
   );
 }
-
-/// What became of an auto-merge default change the user answered.
-enum PullRequestConfigAnswer() {
-  allowed,
-  declined,
-
-  /// Allowed, but the auto-merge settings changed while the card was open,
-  /// so what it described no longer holds and nothing was applied.
-  outdated,
-}
