@@ -19,7 +19,7 @@ final class const PullRequestWatchStarted({
   required final bool readyLabelRemoved,
 }) extends PullRequestWatchStart;
 
-final class const PullRequestAlreadyWatched({required final PullRequestWatchStatus status})
+final class const PullRequestAlreadyWatched({required final PullRequestWatchDetail status})
     extends PullRequestWatchStart;
 
 /// `gh` could not say which account it is signed in as.
@@ -52,7 +52,7 @@ final class const PullRequestReportUnavailable({required final Exception error})
 final class const PullRequestNotWatched() extends PullRequestReportResult;
 
 /// One watch as `pr_watch_status` shows it.
-final class const PullRequestWatchStatus({
+final class const PullRequestWatchDetail({
   required final PullRequestTarget target,
 
   /// A report is due but waits for running CI.
@@ -70,7 +70,7 @@ final class const PullRequestWatchStatus({
 });
 
 final class const PullRequestWatchStatuses({
-  required final List<PullRequestWatchStatus> watches,
+  required final List<PullRequestWatchDetail> watches,
 
   /// Every PR this bridge polls, for any session.
   required final int watchedPullRequests,

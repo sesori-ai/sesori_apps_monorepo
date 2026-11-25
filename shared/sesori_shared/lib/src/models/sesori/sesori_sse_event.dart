@@ -70,6 +70,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("scheduledTasks.changed")
   const factory scheduledTasksChanged() = SesoriScheduledTasksChanged;
 
+  /// Invalidation only: a PR watch on this computer started, changed status
+  /// or ended, so open PR lists refetch `GET /pull-request-watches`.
+  @FreezedUnionValue("pullRequestWatches.changed")
+  const factory pullRequestWatchesChanged() = SesoriPullRequestWatchesChanged;
+
   /// Progress of a phone-triggered managed runtime install for one plugin.
   /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a
   /// known total; [message] carries a sanitized failure description only on

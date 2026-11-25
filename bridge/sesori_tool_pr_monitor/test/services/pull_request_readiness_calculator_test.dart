@@ -1,9 +1,44 @@
+import "package:sesori_shared/sesori_shared.dart" show PullRequestWatchNeed, PullRequestWatchStatus;
 import "package:sesori_tool_pr_monitor/src/repositories/models/pull_request_snapshot.dart";
 import "package:test/test.dart";
 
 import "../support/pull_request_builders.dart";
 
 void main() {
+  test("a watched PR needs the user for every current reason, and is otherwise ready or waiting", () {
+    final ready = emptySnapshot.copyWith(labels: ["agent-ready"]);
+    expect(readiness.watchStatus(snapshot: emptySnapshot, autoMerge: false), const PullRequestWatchStatus.waiting());
+    expect(readiness.watchStatus(snapshot: ready, autoMerge: true), const PullRequestWatchStatus.ready());
+    expect(
+      readiness.watchStatus(
+        snapshot: ready.copyWith(
+          checks: [check(name: "lint", outcome: PullRequestCheckOutcome.failure)],
+          mergeable: PullRequestMergeable.conflicting,
+          issueComments: [comment(id: "c1", author: "reviewer", at: "2026-11-25T12:00:00Z")],
+        ),
+        autoMerge: false,
+      ),
+      const PullRequestWatchStatus.needsYou(
+        reasons: [
+          PullRequestWatchNeed.ciFailing,
+          PullRequestWatchNeed.conflict,
+          PullRequestWatchNeed.newReviewComments,
+          PullRequestWatchNeed.readyWithoutAutoMerge,
+        ],
+      ),
+    );
+    expect(
+      readiness.watchStatus(
+        snapshot: emptySnapshot.copyWith(
+          checks: [check(name: "build", outcome: PullRequestCheckOutcome.pending)],
+        ),
+        autoMerge: false,
+      ),
+      const PullRequestWatchStatus.waiting(),
+      reason: "running CI is not a failure",
+    );
+  });
+
   test("ready-label matching follows GitHub's case-insensitive label identity", () {
     expect(readiness.hasReadyLabel(snapshot: emptySnapshot.copyWith(labels: ["Agent-Ready"])), isTrue);
   });

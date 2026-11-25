@@ -1,14 +1,31 @@
+import "package:clock/clock.dart";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/sesori_tool_record_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart";
+import "package:sesori_bridge/src/repositories/sesori_tool_record_repository.dart";
+import "package:sesori_bridge/src/server/host/bridge_sesori_tool_store_impl.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_tool_pr_monitor/sesori_tool_pr_monitor.dart";
 
 export "single_plugin_repository_test_support.dart";
 
 AppDatabase createTestDatabase() => AppDatabase(NativeDatabase.memory());
+
+/// The PR monitor's watches in [database], as the orchestrator composes them.
+PullRequestWatchRepository createTestPullRequestWatches({required AppDatabase database}) => PullRequestWatchRepository(
+  store: BridgeSesoriToolStoreImpl(
+    groupId: SesoriToolGroupIds.prMonitor,
+    records: SesoriToolRecordRepository(
+      dao: SesoriToolRecordDao(database: database),
+      clock: const Clock(),
+    ),
+  ),
+);
 
 /// Test-only reads over the projects table; production code never needs them.
 extension ProjectsDaoTestQueries on ProjectsDao {

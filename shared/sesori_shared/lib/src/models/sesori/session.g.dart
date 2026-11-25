@@ -88,6 +88,15 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionArming.fromJson(
           Map<String, dynamic>.from(json['arming'] as Map),
         ),
+  pullRequestWatches:
+      (json['pullRequestWatches'] as List<dynamic>?)
+          ?.map(
+            (e) => SessionPullRequestWatch.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const <SessionPullRequestWatch>[],
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -111,6 +120,9 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'forkedFrom': ?instance.forkedFrom?.toJson(),
   'wakeUps': instance.wakeUps.map((e) => e.toJson()).toList(),
   'arming': instance.arming.toJson(),
+  'pullRequestWatches': instance.pullRequestWatches
+      .map((e) => e.toJson())
+      .toList(),
 };
 
 const _$SessionApprovalModeEnumMap = {

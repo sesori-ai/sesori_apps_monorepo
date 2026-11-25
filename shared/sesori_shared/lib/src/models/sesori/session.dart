@@ -3,6 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "agent_info.dart";
 import "message_part.dart";
 import "plugin_identity.dart";
+import "pull_request_watch.dart";
 import "scheduled_task.dart";
 import "session_approval_override.dart";
 import "session_auto_continuation.dart";
@@ -92,6 +93,9 @@ sealed class const Session._() with _$Session {
     @Default(<SessionWakeUp>[]) List<SessionWakeUp> wakeUps,
     // COMPATIBILITY 2026-11-24 (v1.16.0): Bridges before arming omit it, so the app keeps the plain task mark. Remove the default and the unreported variant once the minimum supported bridge always sends it.
     @Default(SessionArming.unreported()) SessionArming arming,
+    // The PRs the bridge's PR monitor watches for this root session, merged ones until local midnight.
+    // COMPATIBILITY 2026-11-25 (v1.16.0): Bridges before the PR monitor omit the list, which honestly means none. Remove the default once the minimum supported bridge always sends it.
+    @Default(<SessionPullRequestWatch>[]) List<SessionPullRequestWatch> pullRequestWatches,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

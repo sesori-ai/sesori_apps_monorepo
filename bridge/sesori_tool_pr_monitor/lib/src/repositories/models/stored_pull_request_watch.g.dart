@@ -16,6 +16,9 @@ _StoredPullRequestWatch _$StoredPullRequestWatchFromJson(Map json) => _StoredPul
     Map<String, dynamic>.from(json['baseline'] as Map),
   ),
   lastReportAt: DateTime.parse(json['lastReportAt'] as String),
+  status: PullRequestWatchStatus.fromJson(
+    Map<String, dynamic>.from(json['status'] as Map),
+  ),
 );
 
 Map<String, dynamic> _$StoredPullRequestWatchToJson(
@@ -28,4 +31,5 @@ Map<String, dynamic> _$StoredPullRequestWatchToJson(
   'autoMerge': instance.autoMerge,
   'baseline': instance.baseline.toJson(),
   'lastReportAt': instance.lastReportAt.toIso8601String(),
+  'status': instance.status.toJson(),
 };

@@ -89,6 +89,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
           SesoriScheduledTasksChanged() ||
+          SesoriPullRequestWatchesChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||
