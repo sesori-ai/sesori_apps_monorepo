@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "pull_request_ci_phase.dart";
 import "pull_request_snapshot.dart" show PullRequestMergeable, PullRequestState;
 
 part "pull_request_baseline.freezed.dart";
@@ -16,8 +17,9 @@ sealed class PullRequestBaseline with _$PullRequestBaseline {
     required String headSha,
     required PullRequestMergeable mergeable,
 
-    /// Whether any check was still pending.
-    required bool ciRunning,
+    /// No checks and all checks passed differ: a report must follow CI
+    /// finishing.
+    required PullRequestCiPhase ciPhase,
     required Set<String> failedCheckIds,
 
     /// Each latest review's author, state and time, plus the pending

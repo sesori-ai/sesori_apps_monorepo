@@ -1,5 +1,6 @@
 import "../models/pull_request_target.dart";
 import "../repositories/models/pull_request_baseline.dart";
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "pull_request_activity_calculator.dart";
 import "pull_request_readiness_calculator.dart";

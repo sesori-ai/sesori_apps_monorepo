@@ -10,7 +10,7 @@ _PullRequestBaseline _$PullRequestBaselineFromJson(Map json) => _PullRequestBase
   state: $enumDecode(_$PullRequestStateEnumMap, json['state']),
   headSha: json['headSha'] as String,
   mergeable: $enumDecode(_$PullRequestMergeableEnumMap, json['mergeable']),
-  ciRunning: json['ciRunning'] as bool,
+  ciPhase: $enumDecode(_$PullRequestCiPhaseEnumMap, json['ciPhase']),
   failedCheckIds: (json['failedCheckIds'] as List<dynamic>).map((e) => e as String).toSet(),
   reviewSignature: json['reviewSignature'] as String,
   issueCommentIds: (json['issueCommentIds'] as List<dynamic>).map((e) => e as String).toSet(),
@@ -32,7 +32,7 @@ Map<String, dynamic> _$PullRequestBaselineToJson(
   'state': _$PullRequestStateEnumMap[instance.state]!,
   'headSha': instance.headSha,
   'mergeable': _$PullRequestMergeableEnumMap[instance.mergeable]!,
-  'ciRunning': instance.ciRunning,
+  'ciPhase': _$PullRequestCiPhaseEnumMap[instance.ciPhase]!,
   'failedCheckIds': instance.failedCheckIds.toList(),
   'reviewSignature': instance.reviewSignature,
   'issueCommentIds': instance.issueCommentIds.toList(),
@@ -55,4 +55,10 @@ const _$PullRequestMergeableEnumMap = {
   PullRequestMergeable.mergeable: 'mergeable',
   PullRequestMergeable.conflicting: 'conflicting',
   PullRequestMergeable.unknown: 'unknown',
+};
+
+const _$PullRequestCiPhaseEnumMap = {
+  PullRequestCiPhase.none: 'none',
+  PullRequestCiPhase.running: 'running',
+  PullRequestCiPhase.concluded: 'concluded',
 };

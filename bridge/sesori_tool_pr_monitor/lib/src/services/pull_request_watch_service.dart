@@ -5,6 +5,7 @@ import "package:sesori_tool_interface/sesori_tool_interface.dart";
 
 import "../models/gh_cli_exception.dart";
 import "../models/pull_request_target.dart";
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "../repositories/models/stored_pull_request_watch.dart";
 import "../repositories/pull_request_action_repository.dart";
@@ -20,9 +21,9 @@ import "pull_request_report_builder.dart";
 /// baseline (spec §3–§5).
 ///
 /// Each PR's polls and tool calls run one at a time on its queue. A report
-/// is delivered with a claim that writes the session's new baseline right
-/// before the send, so a restart never repeats a report and resumes from
-/// the stored baselines.
+/// is claimed right before the send only while its watch still has the
+/// baseline it was rendered against, and becomes the new baseline once sent,
+/// so a restart resumes from the stored baselines.
 class PullRequestWatchService({
   required final PullRequestSnapshotRepository _snapshots,
   required final PullRequestActionRepository _actions,
@@ -336,7 +337,7 @@ class PullRequestWatchService({
       summary: _reports.buildReportSummary(target: runtime.target, snapshot: snapshot, baseline: watch.stored.baseline),
       guidance: _render(runtime: runtime, watch: watch, snapshot: snapshot, forcedHoldMinutes: forcedHoldMinutes),
       timing: SesoriToolNoticeTiming.derived,
-      claim: () => _recordReport(runtime: runtime, watch: watch, snapshot: snapshot),
+      onSent: () => _recordReport(runtime: runtime, watch: watch, snapshot: snapshot),
       // The baseline stayed, so the PR's next poll reports it again.
       onDropped: () => runtime.dirty = true,
     );
@@ -370,7 +371,7 @@ class PullRequestWatchService({
         ),
         timing: SesoriToolNoticeTiming.afterTurn,
         // Repeats one delay later while the PR stays still.
-        claim: () => _saveIfCurrent(
+        onSent: () => _saveIfCurrent(
           runtime: runtime,
           watch: watch,
           stored: watch.stored.copyWith(lastReportAt: _clock.now()),
@@ -387,30 +388,37 @@ class PullRequestWatchService({
     required String summary,
     required String guidance,
     required SesoriToolNoticeTiming timing,
-    required Future<bool> Function() claim,
+    required Future<bool> Function() onSent,
     required void Function() onDropped,
   }) {
     watch.delivering = true;
+    // A get_pr_report while this waited already told the session more.
+    final queued = watch.stored;
+    bool unchanged() => _isCurrent(runtime: runtime, watch: watch) && identical(watch.stored, queued);
     unawaited(
       () async {
-        final outcome = await _host.deliverNotice(
-          sessionId: watch.sessionId,
-          summary: summary,
-          guidance: guidance,
-          timing: timing,
-          claim: claim,
-        );
-        watch.delivering = false;
-        switch (outcome) {
-          case SesoriToolNoticeOutcome.sent:
-          case SesoriToolNoticeOutcome.claimLost:
-            break;
-          case SesoriToolNoticeOutcome.skippedInactive:
-            if (_isCurrent(runtime: runtime, watch: watch)) {
-              await _endWatch(runtime: runtime, sessionId: watch.sessionId);
-            }
-          case SesoriToolNoticeOutcome.dropped:
-            if (_isCurrent(runtime: runtime, watch: watch)) onDropped();
+        try {
+          final outcome = await _host.deliverNotice(
+            sessionId: watch.sessionId,
+            summary: summary,
+            guidance: guidance,
+            timing: timing,
+            claim: () async => unchanged(),
+          );
+          switch (outcome) {
+            case SesoriToolNoticeOutcome.sent:
+              if (unchanged()) await onSent();
+            case SesoriToolNoticeOutcome.claimLost:
+              break;
+            case SesoriToolNoticeOutcome.skippedInactive:
+              if (_isCurrent(runtime: runtime, watch: watch)) {
+                await _endWatch(runtime: runtime, sessionId: watch.sessionId);
+              }
+            case SesoriToolNoticeOutcome.dropped:
+              if (_isCurrent(runtime: runtime, watch: watch)) onDropped();
+          }
+        } finally {
+          watch.delivering = false;
         }
       }().catchError((Object error, StackTrace stackTrace) {
         Log.w("PR monitor: settling a notice for ${runtime.target.displayKey} failed", error, stackTrace);

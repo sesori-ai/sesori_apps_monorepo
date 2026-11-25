@@ -1,16 +1,6 @@
 import "../repositories/models/pull_request_baseline.dart";
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
-
-enum PullRequestCiPhase() {
-  /// The head commit has no checks.
-  none,
-
-  /// At least one check is still pending.
-  running,
-
-  /// Every check finished.
-  concluded,
-}
 
 /// Decides whether two consecutive polls of a PR differ in a way worth
 /// reporting (spec §4).
@@ -72,7 +62,7 @@ class const PullRequestActivityCalculator() {
     state: snapshot.state,
     headSha: snapshot.headSha,
     mergeable: snapshot.mergeable,
-    ciRunning: ciPhase(snapshot: snapshot) == PullRequestCiPhase.running,
+    ciPhase: ciPhase(snapshot: snapshot),
     failedCheckIds: _failedCheckIds(snapshot: snapshot).toSet(),
     reviewSignature: _reviewSignature(snapshot: snapshot),
     issueCommentIds: _relevantIds(comments: snapshot.issueComments),

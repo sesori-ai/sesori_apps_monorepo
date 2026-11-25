@@ -151,6 +151,34 @@ void main() {
     expect(h.sentTo, ["s2"]);
   });
 
+  test("a report queued before a get_pr_report is not sent over the newer report", () async {
+    await h.watch(sessionId: "s1");
+    h.snapshots.enqueue(_withComment);
+    await h.poll();
+    h.host.hold = true;
+    await h.poll(after: const Duration(minutes: 2));
+    expect(await h.service.report(sessionId: "s1", target: target), isA<PullRequestReportFresh>());
+    h.host.release();
+    await pumpEventQueue();
+    expect(h.host.outcomes, [SesoriToolNoticeOutcome.claimLost]);
+
+    h.host.hold = false;
+    await h.poll(after: const Duration(minutes: 3));
+    expect(h.host.sent, isEmpty, reason: "the fetched report already covered the comment");
+  });
+
+  test("checks that appear after the watch and pass are reported", () async {
+    await h.watch(sessionId: "s1");
+    h.snapshots.enqueue(
+      emptySnapshot.copyWith(
+        checks: [check(name: "build", outcome: PullRequestCheckOutcome.success)],
+      ),
+    );
+    await h.poll();
+    await h.poll(after: const Duration(minutes: 2));
+    expect(h.host.sent.single.summary, "PR monitor: sesori/example#42 — CI passing");
+  });
+
   test("activity while a report waits for its session goes into the next report", () async {
     await h.watch(sessionId: "s1");
     h.snapshots.enqueue(_withComment);
