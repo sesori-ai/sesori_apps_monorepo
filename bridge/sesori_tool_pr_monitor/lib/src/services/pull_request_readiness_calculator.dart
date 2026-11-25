@@ -1,5 +1,6 @@
 import "package:meta/meta.dart";
 
+import "../repositories/models/pull_request_ci_phase.dart";
 import "../repositories/models/pull_request_snapshot.dart";
 import "pull_request_activity_calculator.dart";
 

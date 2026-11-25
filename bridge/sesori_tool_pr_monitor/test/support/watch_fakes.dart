@@ -129,6 +129,8 @@ class FakeHost({required final MemoryStore records}) implements SesoriToolHost {
     final done = Completer<SesoriToolNoticeOutcome>();
     Future<void> send() async {
       final forced = forcedOutcome;
+      // A forced drop models a send that fails after its claim ran.
+      if (forced == SesoriToolNoticeOutcome.dropped && claim != null) await claim();
       final outcome =
           forced ?? (claim == null || await claim() ? SesoriToolNoticeOutcome.sent : SesoriToolNoticeOutcome.claimLost);
       if (outcome == SesoriToolNoticeOutcome.sent) {
