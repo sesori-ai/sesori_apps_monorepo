@@ -4,6 +4,7 @@ import "../repositories/models/sesori_tool_group_ids.dart";
 import "../services/plugin_warmup_settings_service.dart";
 import "../services/pull_request_refresh_settings_service.dart";
 import "../services/release_track_settings_service.dart";
+import "../services/sleep_prevention_service.dart";
 import "../services/tool_group_settings_service.dart";
 import "../services/yolo_settings_service.dart";
 import "request_handler.dart";
@@ -14,6 +15,7 @@ class PatchBridgeSettingsHandler({
   required final PluginWarmupSettingsService _pluginWarmupSettingsService,
   required final ToolGroupSettingsService _toolGroupSettingsService,
   required final ReleaseTrackSettingsService _releaseTrackSettingsService,
+  required final SleepPreventionService _sleepPreventionService,
 }) extends BodyRequestHandler<BridgeSettingUpdate, BridgeSettingUpdate> {
   this
     : super(
@@ -78,6 +80,8 @@ class PatchBridgeSettingsHandler({
           );
         }
         return BridgeSettingUpdate.releaseTrack(track: committed);
+      case PreventSleepSettingUpdate(:final enabled):
+        return BridgeSettingUpdate.preventSleep(enabled: await _sleepPreventionService.update(enabled: enabled));
       case UnknownBridgeSettingUpdate():
         throw buildJsonErrorResponse(
           request: request,

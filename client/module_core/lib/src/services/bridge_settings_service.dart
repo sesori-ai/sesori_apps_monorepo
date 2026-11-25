@@ -72,6 +72,9 @@ class BridgeSettingsService({
   Future<ReleaseTrackSettingsMutationResult> updateReleaseTrack({required bool internalBuilds}) =>
       _repository.updateReleaseTrack(internalBuilds: internalBuilds);
 
+  Future<PreventSleepSettingsMutationResult> updatePreventSleep({required bool enabled}) =>
+      _repository.updatePreventSleep(enabled: enabled);
+
   void _onConnectionStatus(ConnectionStatus status) {
     if (status is ConnectionConnected) unawaited(_loadOnConnect());
   }

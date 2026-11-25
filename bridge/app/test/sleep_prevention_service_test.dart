@@ -4,6 +4,7 @@ import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
+import 'package:sesori_shared/sesori_shared.dart' show SleepPreventionStatus;
 import 'package:test/test.dart';
 
 void main() {
@@ -14,7 +15,7 @@ void main() {
       );
       final wakeLockClient = _FakeWakeLockRepository();
       final service = SleepPreventionService(
-        bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+        bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
         wakeLockRepository: wakeLockClient,
         deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
         warningLogger: (_, [_, _]) {},
@@ -33,7 +34,7 @@ void main() {
       );
       final wakeLockClient = _FakeWakeLockRepository();
       final service = SleepPreventionService(
-        bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+        bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
         wakeLockRepository: wakeLockClient,
         deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
         warningLogger: (_, [_, _]) {},
@@ -46,29 +47,29 @@ void main() {
       expect(wakeLockClient.disableCalls, equals(1));
     });
 
-    test('loads settings fresh on every applyConfiguredMode call', () async {
+    test('update stores the choice and toggles the wake lock right away', () async {
       final settingsApi = _QueueBridgeSettingsApi(
-        readResults: <String?>[
-          '{"sleepPrevention":"always"}',
-          '{"sleepPrevention":"off"}',
-        ],
+        readResults: <String?>['{"sleepPrevention":"off"}'],
       );
       final wakeLockClient = _FakeWakeLockRepository();
+      final repository = await _loadedRepository(api: settingsApi);
       final service = SleepPreventionService(
-        bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+        bridgeSettingsRepository: repository,
         wakeLockRepository: wakeLockClient,
         deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
         warningLogger: (_, [_, _]) {},
       );
 
-      final firstMode = await service.applyConfiguredMode();
-      final secondMode = await service.applyConfiguredMode();
-
-      expect(firstMode, SleepPreventionMode.always);
-      expect(secondMode, SleepPreventionMode.off);
-      expect(settingsApi.readCount, equals(2));
+      expect(await service.status(), SleepPreventionStatus.off);
+      expect(await service.update(enabled: true), isTrue);
       expect(wakeLockClient.enableCalls, equals(1));
+      expect(await service.status(), SleepPreventionStatus.awake);
+      expect((await repository.readCommittedSettings()).sleepPrevention, SleepPreventionMode.always);
+      expect(settingsApi.writtenConfigs.last, contains('"sleepPrevention": "always"'));
+
+      expect(await service.update(enabled: false), isFalse);
       expect(wakeLockClient.disableCalls, equals(1));
+      expect((await repository.readCommittedSettings()).sleepPrevention, SleepPreventionMode.off);
     });
 
     test('returns configured mode when enabling wake lock fails', () async {
@@ -77,7 +78,7 @@ void main() {
       );
       final wakeLockClient = _FakeWakeLockRepository(failEnable: true);
       final service = SleepPreventionService(
-        bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+        bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
         wakeLockRepository: wakeLockClient,
         deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
         warningLogger: (_, [_, _]) {},
@@ -87,6 +88,7 @@ void main() {
 
       expect(appliedMode, SleepPreventionMode.always);
       expect(wakeLockClient.enableCalls, equals(1));
+      expect(await service.status(), SleepPreventionStatus.failed);
     });
 
     test('returns configured mode when disabling wake lock fails', () async {
@@ -95,7 +97,7 @@ void main() {
       );
       final wakeLockClient = _FakeWakeLockRepository(failDisable: true);
       final service = SleepPreventionService(
-        bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+        bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
         wakeLockRepository: wakeLockClient,
         deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
         warningLogger: (_, [_, _]) {},
@@ -151,7 +153,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -175,7 +177,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: false),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -199,7 +201,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -224,7 +226,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -255,7 +257,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _FakeDeviceTypeDetector(isLaptop: true),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -283,7 +285,7 @@ void main() {
         );
         final warnings = <String>[];
         final service = SleepPreventionService(
-          bridgeSettingsRepository: BridgeSettingsRepository(defaultEditorApi: null, api: settingsApi),
+          bridgeSettingsRepository: await _loadedRepository(api: settingsApi),
           wakeLockRepository: wakeLockClient,
           deviceTypeDetector: _ThrowingDeviceTypeDetector(),
           warningLogger: (message, [_, _]) => warnings.add(message),
@@ -301,6 +303,12 @@ void main() {
       },
     );
   });
+}
+
+Future<BridgeSettingsRepository> _loadedRepository({required BridgeSettingsApi api}) async {
+  final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
+  await repository.loadSettings();
+  return repository;
 }
 
 class _QueueBridgeSettingsApi({
@@ -322,8 +330,12 @@ class _QueueBridgeSettingsApi({
     return _readResults.removeAt(0);
   }
 
+  final List<String> writtenConfigs = <String>[];
+
   @override
-  Future<void> writeConfig({required String jsonContent}) async {}
+  Future<void> writeConfig({required String jsonContent}) async {
+    writtenConfigs.add(jsonContent);
+  }
 }
 
 class _FakeWakeLockRepository({
@@ -335,7 +347,7 @@ class _FakeWakeLockRepository({
   int disableCalls = 0;
 
   @override
-  bool get isEnabled => enableCalls > disableCalls;
+  bool get isHeld => !failEnable && enableCalls > disableCalls;
 
   @override
   Future<void> enable() async {

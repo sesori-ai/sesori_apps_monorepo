@@ -87,6 +87,16 @@ const _$BridgeReleaseTrackEnumMap = {
   BridgeReleaseTrack.unknown: 'unknown',
 };
 
+PreventSleepSettingUpdate _$PreventSleepSettingUpdateFromJson(Map json) =>
+    PreventSleepSettingUpdate(
+      enabled: json['enabled'] as bool,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PreventSleepSettingUpdateToJson(
+  PreventSleepSettingUpdate instance,
+) => <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
+
 UnknownBridgeSettingUpdate _$UnknownBridgeSettingUpdateFromJson(Map json) =>
     UnknownBridgeSettingUpdate($type: json['type'] as String?);
 

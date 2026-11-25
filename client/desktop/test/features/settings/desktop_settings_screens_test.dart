@@ -203,6 +203,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );
@@ -604,6 +605,34 @@ void main() {
     verifyNever(bridgeControl.refreshLaunchAtLogin);
   });
 
+  testWidgets("a connected bridge toggles Keep computer awake", (tester) async {
+    var loads = 0;
+    when(bridgeSettingsService.load).thenAnswer(
+      (_) async => BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: null,
+          yolo: const YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
+          agentToolsEnabled: null,
+          releaseTrack: null,
+          preventSleep: loads++ == 0 ? SleepPreventionStatus.off : SleepPreventionStatus.awake,
+        ),
+      ),
+    );
+    when(() => bridgeSettingsService.updatePreventSleep(enabled: true)).thenAnswer(
+      (_) async => const PreventSleepSettingsMutationCommitted(enabled: true),
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isFalse);
+
+    await tester.ensureVisible(find.byKey(const Key("prevent_sleep_switch")));
+    await tester.tap(find.byKey(const Key("prevent_sleep_switch")));
+    await tester.pumpAndSettle();
+
+    verify(() => bridgeSettingsService.updatePreventSleep(enabled: true)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("prevent_sleep_switch"))).value, isTrue);
+  });
+
   testWidgets("a connected bridge that updates itself toggles Internal builds", (tester) async {
     when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
@@ -613,6 +642,7 @@ void main() {
           warmUpPluginsOnSessionOpen: true,
           agentToolsEnabled: null,
           releaseTrack: BridgeReleaseTrack.internal,
+          preventSleep: null,
         ),
       ),
     );
@@ -644,6 +674,7 @@ void main() {
             BridgeToolGroupSetting(id: "tasks", title: "Tasks", summary: "Agents can manage tasks.", enabled: true),
           ],
           releaseTrack: null,
+          preventSleep: null,
         ),
       ),
     );

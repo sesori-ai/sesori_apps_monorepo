@@ -16,6 +16,7 @@ import "package:test/test.dart";
 
 import "../bridge/routing/routing_test_helpers.dart";
 import "../helpers/in_memory_bridge_settings_api.dart";
+import "../helpers/sleep_prevention_test_support.dart";
 
 void main() {
   group("pull request refresh settings handlers", () {
@@ -67,6 +68,10 @@ void main() {
         pluginWarmupSettingsService: pluginWarmupSettingsService,
         toolGroupSettingsService: toolGroupSettingsService,
         releaseTrackSettingsService: releaseTrackSettingsService,
+        sleepPreventionService: createTestSleepPreventionService(
+          bridgeSettingsRepository: null,
+          wakeLockRepository: null,
+        ),
       );
 
       expect(handler.method, HttpMethod.patch);
@@ -88,6 +93,10 @@ void main() {
             pluginWarmupSettingsService: pluginWarmupSettingsService,
             toolGroupSettingsService: toolGroupSettingsService,
             releaseTrackSettingsService: releaseTrackSettingsService,
+            sleepPreventionService: createTestSleepPreventionService(
+              bridgeSettingsRepository: null,
+              wakeLockRepository: null,
+            ),
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -117,6 +126,10 @@ void main() {
             pluginWarmupSettingsService: pluginWarmupSettingsService,
             toolGroupSettingsService: toolGroupSettingsService,
             releaseTrackSettingsService: releaseTrackSettingsService,
+            sleepPreventionService: createTestSleepPreventionService(
+              bridgeSettingsRepository: null,
+              wakeLockRepository: null,
+            ),
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -147,6 +160,10 @@ void main() {
             pluginWarmupSettingsService: pluginWarmupSettingsService,
             toolGroupSettingsService: toolGroupSettingsService,
             releaseTrackSettingsService: releaseTrackSettingsService,
+            sleepPreventionService: createTestSleepPreventionService(
+              bridgeSettingsRepository: null,
+              wakeLockRepository: null,
+            ),
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -170,6 +187,10 @@ void main() {
             pluginWarmupSettingsService: pluginWarmupSettingsService,
             toolGroupSettingsService: toolGroupSettingsService,
             releaseTrackSettingsService: releaseTrackSettingsService,
+            sleepPreventionService: createTestSleepPreventionService(
+              bridgeSettingsRepository: null,
+              wakeLockRepository: null,
+            ),
           ).routeForTest(
             makeRequest(
               "PATCH",

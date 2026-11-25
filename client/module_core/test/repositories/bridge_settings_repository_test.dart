@@ -24,6 +24,7 @@ void main() {
       warmUpPluginsOnSessionOpen: true,
       agentToolsEnabled: true,
       releaseTrack: null,
+      preventSleep: null,
     );
     when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.success(response));
 
@@ -117,6 +118,30 @@ void main() {
       ),
     );
     expect(await repository.updateReleaseTrack(internalBuilds: false), isA<ReleaseTrackSettingsMutationUncertain>());
+  });
+
+  test("maps the prevent-sleep update", () async {
+    when(() => api.update(update: const BridgeSettingUpdate.preventSleep(enabled: false))).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.preventSleep(enabled: false)),
+    );
+    final refused = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: '{"type":"unknown"}');
+    when(
+      () => api.update(update: const BridgeSettingUpdate.preventSleep(enabled: true)),
+    ).thenAnswer((_) async => BridgeSettingUpdateApiFailure(error: refused));
+
+    expect(
+      await repository.updatePreventSleep(enabled: false),
+      isA<PreventSleepSettingsMutationCommitted>().having((result) => result.enabled, "enabled", isFalse),
+    );
+    expect(
+      await repository.updatePreventSleep(enabled: true),
+      isA<PreventSleepSettingsMutationFailure>().having((result) => result.error, "error", same(refused)),
+    );
+
+    when(() => api.update(update: const BridgeSettingUpdate.preventSleep(enabled: true))).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.yolo(enabled: true)),
+    );
+    expect(await repository.updatePreventSleep(enabled: true), isA<PreventSleepSettingsMutationUncertain>());
   });
 
   test("maps every setting mutation response", () async {

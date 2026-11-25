@@ -54,6 +54,8 @@ class BridgeSettingsRepository({
       agentToolsEnabled: settings.agentTools,
       // ReleaseTrackSettingsService adds it for an install that updates itself.
       releaseTrack: null,
+      // SleepPreventionService adds it, with whether the wake lock holds.
+      preventSleep: null,
     );
   }
 
@@ -126,6 +128,14 @@ class BridgeSettingsRepository({
   Future<BridgeSettings> updateReleaseTrack({required ReleaseTrack track}) {
     return mutateSettings(
       mutation: ({required current}) => current.releaseTrack == track ? current : current.copyWith(releaseTrack: track),
+    );
+  }
+
+  Future<BridgeSettings> updatePreventSleep({required bool enabled}) {
+    final mode = enabled ? SleepPreventionMode.always : SleepPreventionMode.off;
+    return mutateSettings(
+      mutation: ({required current}) =>
+          current.sleepPrevention == mode ? current : current.copyWith(sleepPrevention: mode),
     );
   }
 

@@ -284,6 +284,7 @@ import "services/session_view_tracker.dart";
 import "services/session_wake_up_description_builder.dart";
 import "services/session_wake_up_service.dart";
 import "services/side_question_service.dart";
+import "services/sleep_prevention_service.dart";
 import "services/tool_group_approval_service.dart";
 import "services/tool_group_settings_service.dart";
 import "services/wake_up_command_description_builder.dart";
@@ -320,6 +321,7 @@ class Orchestrator({
   required final PluginLifecycleService _pluginLifecycleService,
   required final PluginRuntime _pluginRuntime,
   required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final SleepPreventionService _sleepPreventionService,
   required final ServerClock _clock,
   required final AppDatabase _database,
   required final ChatHistoryDatabase _chatHistoryDatabase,
@@ -1031,6 +1033,7 @@ class Orchestrator({
           settingsRepository: _bridgeSettingsRepository,
           toolGroupSettingsService: toolGroupSettingsService,
           releaseTrackSettingsService: releaseTrackSettingsService,
+          sleepPreventionService: _sleepPreventionService,
         ),
         GetPullRequestRefreshSettingsHandler(settingsService: pullRequestRefreshSettingsService),
         PatchBridgeSettingsHandler(
@@ -1039,6 +1042,7 @@ class Orchestrator({
           pluginWarmupSettingsService: pluginWarmupSettingsService,
           toolGroupSettingsService: toolGroupSettingsService,
           releaseTrackSettingsService: releaseTrackSettingsService,
+          sleepPreventionService: _sleepPreventionService,
         ),
         PostMcpInventoryHandler(mcpRepository: mcpRepository),
         PostMcpEntryActionHandler(mcpService: mcpService),

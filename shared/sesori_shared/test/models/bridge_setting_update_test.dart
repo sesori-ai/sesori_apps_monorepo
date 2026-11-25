@@ -94,6 +94,13 @@ void main() {
       );
     });
 
+    test("prevent sleep variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.preventSleep(enabled: false);
+
+      expect(update.toJson(), {"type": "preventSleep", "enabled": false});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

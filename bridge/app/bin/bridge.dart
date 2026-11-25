@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
-import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/auth/auth_api.dart';
 import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
@@ -20,7 +19,6 @@ import 'package:sesori_bridge/src/auth/token_service.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
-import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
@@ -28,7 +26,6 @@ import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.d
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/models/sesori_tool_group_ids.dart';
-import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_logout_runner.dart';
@@ -44,7 +41,6 @@ import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
-import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
@@ -57,7 +53,6 @@ import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 import 'package:sesori_shared/sesori_shared.dart' show BridgeKind;
-import 'package:win32/win32.dart' show SetThreadExecutionState;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -163,36 +158,10 @@ class RunCommand() extends cli.Command<void> {
       if (banner != null) Console.message(banner);
     }
 
-    final settingsRepository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
-    final sleepPreventionService = SleepPreventionService(
-      bridgeSettingsRepository: settingsRepository,
-      wakeLockRepository: WakeLockRepository(
-        client: WakeLockClient.forPlatform(
-          platform: PlatformTarget.current().os,
-          processStarter: Process.start,
-          executionStateSetter: SetThreadExecutionState,
-          warningLogger: Log.w,
-        ),
-      ),
-      deviceTypeDetector: DeviceTypeDetector(
-        processRunner: ProcessRunner(),
-        platform: PlatformTarget.current().os,
-      ),
-      warningLogger: Log.w,
-    );
-
-    try {
-      final mode = await sleepPreventionService.applyConfiguredMode();
-      Log.i('Sleep prevention mode: ${mode.name}');
-    } on Object catch (error, stackTrace) {
-      Log.w('Sleep prevention failed', error, stackTrace);
-    }
-
     final exitCode = await BridgeRuntimeRunner.run(
       options: options,
       pluginConfigs: pluginConfigs,
     );
-    await sleepPreventionService.dispose();
     exit(exitCode);
   }
 }

@@ -12,6 +12,28 @@ final class const BridgeSettingsLoadSupported({required final BridgeSettingsResp
     BridgeReleaseTrack.internal => true,
     BridgeReleaseTrack.unknown || null => null,
   };
+
+  /// Whether the bridge keeps its computer awake, or null when it does not
+  /// report the setting or reports a status this app does not know.
+  PreventSleepStatus? get preventSleepStatus => switch (response.preventSleep) {
+    SleepPreventionStatus.off => PreventSleepStatus.off,
+    SleepPreventionStatus.awake => PreventSleepStatus.awake,
+    SleepPreventionStatus.failed => PreventSleepStatus.failed,
+    SleepPreventionStatus.unknown || null => null,
+  };
+}
+
+/// Whether the bridge keeps its computer from going to sleep.
+enum PreventSleepStatus() {
+  /// The computer may sleep.
+  off,
+
+  /// The bridge keeps the computer awake.
+  awake,
+
+  /// The choice is on, but the computer refused the wake lock and can still
+  /// sleep.
+  failed,
 }
 
 final class const BridgeSettingsLoadUnsupported() extends BridgeSettingsLoadResult;
@@ -64,3 +86,15 @@ final class const ReleaseTrackSettingsMutationUncertain() extends ReleaseTrackSe
 
 final class const ReleaseTrackSettingsMutationFailure({required final ApiError error})
     extends ReleaseTrackSettingsMutationResult;
+
+/// The outcome of keeping the bridge's computer awake, or letting it sleep.
+sealed class const PreventSleepSettingsMutationResult();
+
+/// The bridge's committed choice.
+final class const PreventSleepSettingsMutationCommitted({required final bool enabled})
+    extends PreventSleepSettingsMutationResult;
+
+final class const PreventSleepSettingsMutationUncertain() extends PreventSleepSettingsMutationResult;
+
+final class const PreventSleepSettingsMutationFailure({required final ApiError error})
+    extends PreventSleepSettingsMutationResult;

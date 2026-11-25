@@ -123,6 +123,11 @@ In addition to flags, the bridge supports subcommands:
 }
 ```
 
+`"sleepPrevention"` defaults to `"always"`, which keeps the computer from
+going to sleep while the bridge runs; `"off"` lets it sleep. "Keep computer
+awake" in the app's bridge settings changes it on the connected bridge right
+away. Some platforms still sleep when a laptop lid closes.
+
 Setting `"yolo": true` makes the bridge approve every permission request
 without sending the request to connected clients. The bridge prints a warning
 at startup whenever this mode is active. Use `sesori-bridge config yolo on` or

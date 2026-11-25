@@ -1,3 +1,5 @@
+import 'package:sesori_shared/sesori_shared.dart' show SleepPreventionStatus;
+
 import '../foundation/device_type_detector.dart';
 import '../foundation/warning_logger.dart';
 import '../repositories/bridge_settings.dart';
@@ -10,10 +12,33 @@ class SleepPreventionService({
   required final DeviceTypeDetector _deviceTypeDetector,
   required final WarningLogger _warningLogger,
 }) {
+  /// Applies the stored mode. The settings must already be loaded.
   Future<SleepPreventionMode> applyConfiguredMode() async {
-    final settings = await _bridgeSettingsRepository.loadSettings();
+    final settings = await _bridgeSettingsRepository.readCommittedSettings();
+    await _apply(mode: settings.sleepPrevention);
+    return settings.sleepPrevention;
+  }
 
-    switch (settings.sleepPrevention) {
+  /// Stores whether the computer stays awake and applies it right away.
+  /// Returns the committed choice.
+  Future<bool> update({required bool enabled}) async {
+    final committed = await _bridgeSettingsRepository.updatePreventSleep(enabled: enabled);
+    await _apply(mode: committed.sleepPrevention);
+    return committed.preventsSleep;
+  }
+
+  /// The stored choice, and for an "on" choice whether the wake lock holds.
+  Future<SleepPreventionStatus> status() async {
+    final settings = await _bridgeSettingsRepository.readCommittedSettings();
+    return switch (settings.sleepPrevention) {
+      SleepPreventionMode.off => SleepPreventionStatus.off,
+      SleepPreventionMode.always when _wakeLockRepository.isHeld => SleepPreventionStatus.awake,
+      SleepPreventionMode.always => SleepPreventionStatus.failed,
+    };
+  }
+
+  Future<void> _apply({required SleepPreventionMode mode}) async {
+    switch (mode) {
       case SleepPreventionMode.always:
         try {
           await _wakeLockRepository.enable();
@@ -28,8 +53,6 @@ class SleepPreventionService({
           _warningLogger('[SleepPreventionService] failed to disable wake lock', error, stackTrace);
         }
     }
-
-    return settings.sleepPrevention;
   }
 
   Future<void> _warnIfLidCloseSleepNotPrevented() async {

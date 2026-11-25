@@ -20,6 +20,7 @@ import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/plugin_lifecycle_test_support.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/skill_bundle_test_support.dart";
+import "../helpers/sleep_prevention_test_support.dart";
 import "../helpers/test_chat_history.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -68,6 +69,10 @@ void main() {
     );
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
+      sleepPreventionService: createTestSleepPreventionService(
+        bridgeSettingsRepository: null,
+        wakeLockRepository: null,
+      ),
       connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -153,6 +158,10 @@ void main() {
     );
     final testChatHistory = createTestChatHistory();
     final session = Orchestrator(
+      sleepPreventionService: createTestSleepPreventionService(
+        bridgeSettingsRepository: null,
+        wakeLockRepository: null,
+      ),
       connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${rawServer.port}",
@@ -217,6 +226,10 @@ void main() {
       final httpClient = http.Client();
       final testChatHistory = createTestChatHistory();
       final orchestrator = Orchestrator(
+        sleepPreventionService: createTestSleepPreventionService(
+          bridgeSettingsRepository: null,
+          wakeLockRepository: null,
+        ),
         connectionNotificationPolicies: const Stream.empty(),
         config: const BridgeConfig(
           relayURL: "ws://127.0.0.1:9999",
@@ -346,6 +359,10 @@ class _TestHarness._({
     final httpClient = http.Client();
     final testChatHistory = createTestChatHistory();
     final orchestrator = Orchestrator(
+      sleepPreventionService: createTestSleepPreventionService(
+        bridgeSettingsRepository: null,
+        wakeLockRepository: null,
+      ),
       connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",

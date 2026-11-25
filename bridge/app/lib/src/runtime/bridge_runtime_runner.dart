@@ -7,7 +7,7 @@ import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show DownloadProgress, OsVersionFormatter, PlatformOs, bridgeVersion, sesoriAttachmentsDirectory;
+    show DownloadProgress, OsVersionFormatter, PlatformOs, PlatformTarget, bridgeVersion, sesoriAttachmentsDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePluginDescriptor,
@@ -23,6 +23,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, BridgeKind, BridgeSupervisedExitCode, DeviceInfo;
 import "package:timezone/data/latest_all.dart" as tz_data;
+import "package:win32/win32.dart" show SetThreadExecutionState;
 
 import "../api/app_onboarding_state_storage.dart";
 import "../api/archived_session_storage.dart";
@@ -34,6 +35,7 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/macos_system_power_observer_api.dart";
 import "../api/sesori_server_api.dart";
 import "../api/sesori_skill_bundle_storage.dart";
+import "../api/wake_lock_client.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
 import "../auth/auth_repository.dart";
@@ -56,6 +58,7 @@ import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
+import "../foundation/device_type_detector.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -73,6 +76,7 @@ import "../repositories/plugin_lifecycle_repository.dart";
 import "../repositories/sesori_mcp_grant_repository.dart";
 import "../repositories/sesori_skill_bundle_repository.dart";
 import "../repositories/system_power_event_repository.dart";
+import "../repositories/wake_lock_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
@@ -94,6 +98,7 @@ import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
 import "../services/plugin_lifecycle_service.dart";
+import "../services/sleep_prevention_service.dart";
 import "../sse/sse_manager.dart";
 import "../updater/formatters/update_message_formatter.dart";
 import "../updater/formatters/update_output_formatter.dart";
@@ -460,6 +465,22 @@ class const BridgeRuntimeRunner._() {
         Console.error("Bridge configuration is invalid or unreadable. Repair it with `sesori-bridge config edit`.");
         return 1;
       }
+      final sleepPreventionService = SleepPreventionService(
+        bridgeSettingsRepository: bridgeSettingsRepository,
+        wakeLockRepository: WakeLockRepository(
+          client: WakeLockClient.forPlatform(
+            platform: PlatformTarget.current().os,
+            processStarter: io.Process.start,
+            executionStateSetter: SetThreadExecutionState,
+            warningLogger: Log.w,
+          ),
+        ),
+        deviceTypeDetector: DeviceTypeDetector(processRunner: processRunner, platform: PlatformTarget.current().os),
+        warningLogger: Log.w,
+      );
+      shutdownCoordinator.add(disposable: sleepPreventionService.dispose);
+      final sleepPreventionMode = await sleepPreventionService.applyConfiguredMode();
+      Log.i("Sleep prevention mode: ${sleepPreventionMode.name}");
       final releaseTrack = bridgeSettings.releaseTrack;
       if (bridgeSettings.yolo) {
         Console.warning(
@@ -821,6 +842,7 @@ class const BridgeRuntimeRunner._() {
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
         bridgeSettingsRepository: bridgeSettingsRepository,
+        sleepPreventionService: sleepPreventionService,
         clock: serverClock,
         database: database,
         chatHistoryDatabase: chatHistoryDatabase,

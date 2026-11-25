@@ -15,6 +15,9 @@ sealed class WakeLockClient {
 
   Future<void> disable();
 
+  /// Whether the operating system currently grants the wake lock.
+  bool get isHeld;
+
   /// Whether this platform's wake-lock implementation also prevents the
   /// system from sleeping when the laptop lid is closed.
   bool get preventsLidCloseSleep;
@@ -44,7 +47,16 @@ final class _MacOSWakeLockClient({
   Future<void> enable() async {
     await disable();
     try {
-      _process = await _processStarter('caffeinate', <String>['-i', '-s', '-w', pid.toString()]);
+      final process = await _processStarter('caffeinate', <String>['-i', '-s', '-w', pid.toString()]);
+      _process = process;
+      unawaited(
+        process.exitCode.then((exitCode) {
+          if (_process == process) {
+            _process = null;
+            _warningLogger('[wake-lock] caffeinate exited unexpectedly with code $exitCode');
+          }
+        }),
+      );
     } on ProcessException catch (error, stackTrace) {
       _warningLogger('[wake-lock] caffeinate unavailable', error, stackTrace);
     }
@@ -56,6 +68,9 @@ final class _MacOSWakeLockClient({
     _process = null;
     process?.kill();
   }
+
+  @override
+  bool get isHeld => _process != null;
 
   @override
   bool get preventsLidCloseSleep => false;
@@ -100,6 +115,9 @@ final class _LinuxWakeLockClient({
   }
 
   @override
+  bool get isHeld => _process != null;
+
+  @override
   bool get preventsLidCloseSleep => _process != null;
 }
 
@@ -107,16 +125,28 @@ final class _WindowsWakeLockClient({
   required final ExecutionStateSetter executionStateSetter,
   required final WarningLogger warningLogger,
 }) implements WakeLockClient {
-  @override
-  Future<void> enable() async => _setExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED, action: 'enable');
+  bool _isHeld = false;
 
   @override
-  Future<void> disable() async => _setExecutionState(ES_CONTINUOUS, action: 'disable');
+  Future<void> enable() async {
+    _isHeld = _setExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED, action: 'enable');
+  }
 
-  void _setExecutionState(EXECUTION_STATE flags, {required String action}) {
+  @override
+  Future<void> disable() async {
+    _setExecutionState(ES_CONTINUOUS, action: 'disable');
+    _isHeld = false;
+  }
+
+  @override
+  bool get isHeld => _isHeld;
+
+  bool _setExecutionState(EXECUTION_STATE flags, {required String action}) {
     if (executionStateSetter(flags) == 0) {
       warningLogger('[wake-lock] SetThreadExecutionState($action) failed');
+      return false;
     }
+    return true;
   }
 
   @override

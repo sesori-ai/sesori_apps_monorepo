@@ -83,6 +83,19 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettings
     };
   }
 
+  /// Keeps the bridge's computer awake, or lets it sleep, right away. The app
+  /// offers this only to bridges that report the setting, which all take the
+  /// update, so any refusal is a plain failure.
+  Future<PreventSleepSettingsMutationResult> updatePreventSleep({required bool enabled}) async {
+    return switch (await _bridgeSettingsApi.update(update: BridgeSettingUpdate.preventSleep(enabled: enabled))) {
+      BridgeSettingUpdateApiCommitted(update: PreventSleepSettingUpdate(:final enabled)) =>
+        PreventSleepSettingsMutationCommitted(enabled: enabled),
+      BridgeSettingUpdateApiCommitted() => const PreventSleepSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(isCommitUncertain: true) => const PreventSleepSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(:final error) => PreventSleepSettingsMutationFailure(error: error),
+    };
+  }
+
   /// The app offers these switches only to bridges that send the master
   /// switch, which all take both updates, so any refusal is a plain failure.
   AgentToolsSettingsMutationResult _agentToolsUncommitted({required BridgeSettingUpdateApiResult result}) {
