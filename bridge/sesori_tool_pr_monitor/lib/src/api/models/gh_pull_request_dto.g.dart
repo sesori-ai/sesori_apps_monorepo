@@ -308,3 +308,12 @@ _GhLabelConnectionDto _$GhLabelConnectionDtoFromJson(Map json) => _GhLabelConnec
 );
 
 _GhLabelDto _$GhLabelDtoFromJson(Map json) => _GhLabelDto(name: json['name'] as String);
+
+_GhThreadReplyDto _$GhThreadReplyDtoFromJson(Map json) => _GhThreadReplyDto(
+  comment: GhThreadReplyCommentDto.fromJson(
+    Map<String, dynamic>.from(json['comment'] as Map),
+  ),
+);
+
+_GhThreadReplyCommentDto _$GhThreadReplyCommentDtoFromJson(Map json) =>
+    _GhThreadReplyCommentDto(url: json['url'] as String);

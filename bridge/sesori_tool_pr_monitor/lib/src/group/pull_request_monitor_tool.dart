@@ -5,6 +5,13 @@ const Map<String, Object?> _prSchema = {
   "description": "The PR as owner/repo#123 or its full URL (https://github.com/owner/repo/pull/123).",
 };
 
+const Map<String, Object?> _prOnlySchema = {
+  "type": "object",
+  "properties": {"pr": _prSchema},
+  "required": ["pr"],
+  "additionalProperties": false,
+};
+
 /// The PR monitor's tools.
 enum PullRequestMonitorTool({
   required final String wireName,
@@ -36,12 +43,7 @@ enum PullRequestMonitorTool({
     wireName: "unwatch_pr",
     readOnly: false,
     description: "Stop this session's watch of a PR. Other sessions watching it keep their watch.",
-    inputSchema: {
-      "type": "object",
-      "properties": {"pr": _prSchema},
-      "required": ["pr"],
-      "additionalProperties": false,
-    },
+    inputSchema: _prOnlySchema,
   ),
   prWatchStatus(
     wireName: "pr_watch_status",
@@ -58,10 +60,35 @@ enum PullRequestMonitorTool({
         "Fetch a PR this session watches now and return its report: what changed since this session's last "
         "report, which it then counts as reported. Use it when you need the current state before the next report "
         "arrives; never call it in a loop.",
+    inputSchema: _prOnlySchema,
+  ),
+  getPrFeedback(
+    wireName: "get_pr_feedback",
+    readOnly: true,
+    description:
+        "Fetch the full text of a PR's feedback still awaiting your reply: each unanswered review thread with its "
+        "id, and the PR comments and review summaries since your last reply. Reports only count comments, so read "
+        "them here before acting on them.",
+    inputSchema: _prOnlySchema,
+  ),
+  replyOnPr(
+    wireName: "reply_on_pr",
+    readOnly: false,
+    description:
+        "Post your reply on a PR: in a review thread when thread_id is given, otherwise as a PR comment. Sesori "
+        "prefixes it with [Sesori reply] so the monitor never reports it back as new feedback. Reply to each "
+        "review comment once you have fixed it or decided not to.",
     inputSchema: {
       "type": "object",
-      "properties": {"pr": _prSchema},
-      "required": ["pr"],
+      "properties": {
+        "pr": _prSchema,
+        "body": {"type": "string", "description": "The reply, in GitHub Markdown."},
+        "thread_id": {
+          "type": "string",
+          "description": "The review thread id from get_pr_feedback, such as PRRT_kwDO…; omit for a PR comment.",
+        },
+      },
+      "required": ["pr", "body"],
       "additionalProperties": false,
     },
   );

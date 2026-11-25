@@ -9,6 +9,7 @@ export "src/repositories/pull_request_action_repository.dart" show PullRequestAc
 export "src/repositories/pull_request_snapshot_repository.dart" show PullRequestSnapshotRepository;
 export "src/repositories/pull_request_watch_repository.dart" show PullRequestWatchRepository;
 export "src/services/pull_request_activity_calculator.dart" show PullRequestActivityCalculator;
+export "src/services/pull_request_feedback_builder.dart" show PullRequestFeedbackBuilder;
 export "src/services/pull_request_readiness_calculator.dart" show PullRequestReadinessCalculator;
 export "src/services/pull_request_report_builder.dart" show PullRequestReportBuilder;
 export "src/services/pull_request_watch_service.dart" show PullRequestWatchService;

@@ -3931,4 +3931,294 @@ as String,
 
 }
 
+
+/// @nodoc
+mixin _$GhThreadReplyDto {
+
+ GhThreadReplyCommentDto get comment;
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GhThreadReplyDtoCopyWith<GhThreadReplyDto> get copyWith => _$GhThreadReplyDtoCopyWithImpl<GhThreadReplyDto>(this as GhThreadReplyDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GhThreadReplyDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhThreadReplyDto&&(identical(other.comment, _this.comment) || other.comment == _this.comment));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GhThreadReplyDto;
+  return Object.hash(runtimeType,_this.comment);
+}
+
+@override
+String toString() {
+  final _this = this as GhThreadReplyDto;
+  return 'GhThreadReplyDto(comment: ${_this.comment})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GhThreadReplyDtoCopyWith<$Res>  {
+  factory $GhThreadReplyDtoCopyWith(GhThreadReplyDto value, $Res Function(GhThreadReplyDto) _then) = _$GhThreadReplyDtoCopyWithImpl;
+@useResult
+$Res call({
+ GhThreadReplyCommentDto comment
+});
+
+
+$GhThreadReplyCommentDtoCopyWith<$Res> get comment;
+
+}
+/// @nodoc
+class _$GhThreadReplyDtoCopyWithImpl<$Res>
+    implements $GhThreadReplyDtoCopyWith<$Res> {
+  _$GhThreadReplyDtoCopyWithImpl(this._self, this._then);
+
+  final GhThreadReplyDto _self;
+  final $Res Function(GhThreadReplyDto) _then;
+
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? comment = null,}) {
+  return _then(GhThreadReplyDto(
+comment: null == comment ? _self.comment : comment // ignore: cast_nullable_to_non_nullable
+as GhThreadReplyCommentDto,
+  ));
+}
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GhThreadReplyCommentDtoCopyWith<$Res> get comment {
+  
+  return $GhThreadReplyCommentDtoCopyWith<$Res>(_self.comment, (value) {
+    return _then(_self.copyWith(comment: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GhThreadReplyDto implements GhThreadReplyDto {
+  const _GhThreadReplyDto({required this.comment});
+  factory _GhThreadReplyDto.fromJson(Map<String, dynamic> json) => _$GhThreadReplyDtoFromJson(json);
+
+@override final  GhThreadReplyCommentDto comment;
+
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GhThreadReplyDtoCopyWith<_GhThreadReplyDto> get copyWith => __$GhThreadReplyDtoCopyWithImpl<_GhThreadReplyDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhThreadReplyDto&&(identical(other.comment, comment) || other.comment == comment));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,comment);
+}
+
+@override
+String toString() {
+    return 'GhThreadReplyDto(comment: $comment)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GhThreadReplyDtoCopyWith<$Res> implements $GhThreadReplyDtoCopyWith<$Res> {
+  factory _$GhThreadReplyDtoCopyWith(_GhThreadReplyDto value, $Res Function(_GhThreadReplyDto) _then) = __$GhThreadReplyDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ GhThreadReplyCommentDto comment
+});
+
+
+@override $GhThreadReplyCommentDtoCopyWith<$Res> get comment;
+
+}
+/// @nodoc
+class __$GhThreadReplyDtoCopyWithImpl<$Res>
+    implements _$GhThreadReplyDtoCopyWith<$Res> {
+  __$GhThreadReplyDtoCopyWithImpl(this._self, this._then);
+
+  final _GhThreadReplyDto _self;
+  final $Res Function(_GhThreadReplyDto) _then;
+
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? comment = null,}) {
+  return _then(_GhThreadReplyDto(
+comment: null == comment ? _self.comment : comment // ignore: cast_nullable_to_non_nullable
+as GhThreadReplyCommentDto,
+  ));
+}
+
+/// Create a copy of GhThreadReplyDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GhThreadReplyCommentDtoCopyWith<$Res> get comment {
+  
+  return $GhThreadReplyCommentDtoCopyWith<$Res>(_self.comment, (value) {
+    return _then(_self.copyWith(comment: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$GhThreadReplyCommentDto {
+
+ String get url;
+/// Create a copy of GhThreadReplyCommentDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GhThreadReplyCommentDtoCopyWith<GhThreadReplyCommentDto> get copyWith => _$GhThreadReplyCommentDtoCopyWithImpl<GhThreadReplyCommentDto>(this as GhThreadReplyCommentDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GhThreadReplyCommentDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhThreadReplyCommentDto&&(identical(other.url, _this.url) || other.url == _this.url));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GhThreadReplyCommentDto;
+  return Object.hash(runtimeType,_this.url);
+}
+
+@override
+String toString() {
+  final _this = this as GhThreadReplyCommentDto;
+  return 'GhThreadReplyCommentDto(url: ${_this.url})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GhThreadReplyCommentDtoCopyWith<$Res>  {
+  factory $GhThreadReplyCommentDtoCopyWith(GhThreadReplyCommentDto value, $Res Function(GhThreadReplyCommentDto) _then) = _$GhThreadReplyCommentDtoCopyWithImpl;
+@useResult
+$Res call({
+ String url
+});
+
+
+
+
+}
+/// @nodoc
+class _$GhThreadReplyCommentDtoCopyWithImpl<$Res>
+    implements $GhThreadReplyCommentDtoCopyWith<$Res> {
+  _$GhThreadReplyCommentDtoCopyWithImpl(this._self, this._then);
+
+  final GhThreadReplyCommentDto _self;
+  final $Res Function(GhThreadReplyCommentDto) _then;
+
+/// Create a copy of GhThreadReplyCommentDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? url = null,}) {
+  return _then(GhThreadReplyCommentDto(
+url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GhThreadReplyCommentDto implements GhThreadReplyCommentDto {
+  const _GhThreadReplyCommentDto({required this.url});
+  factory _GhThreadReplyCommentDto.fromJson(Map<String, dynamic> json) => _$GhThreadReplyCommentDtoFromJson(json);
+
+@override final  String url;
+
+/// Create a copy of GhThreadReplyCommentDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GhThreadReplyCommentDtoCopyWith<_GhThreadReplyCommentDto> get copyWith => __$GhThreadReplyCommentDtoCopyWithImpl<_GhThreadReplyCommentDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhThreadReplyCommentDto&&(identical(other.url, url) || other.url == url));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,url);
+}
+
+@override
+String toString() {
+    return 'GhThreadReplyCommentDto(url: $url)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GhThreadReplyCommentDtoCopyWith<$Res> implements $GhThreadReplyCommentDtoCopyWith<$Res> {
+  factory _$GhThreadReplyCommentDtoCopyWith(_GhThreadReplyCommentDto value, $Res Function(_GhThreadReplyCommentDto) _then) = __$GhThreadReplyCommentDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String url
+});
+
+
+
+
+}
+/// @nodoc
+class __$GhThreadReplyCommentDtoCopyWithImpl<$Res>
+    implements _$GhThreadReplyCommentDtoCopyWith<$Res> {
+  __$GhThreadReplyCommentDtoCopyWithImpl(this._self, this._then);
+
+  final _GhThreadReplyCommentDto _self;
+  final $Res Function(_GhThreadReplyCommentDto) _then;
+
+/// Create a copy of GhThreadReplyCommentDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? url = null,}) {
+  return _then(_GhThreadReplyCommentDto(
+url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
 // dart format on

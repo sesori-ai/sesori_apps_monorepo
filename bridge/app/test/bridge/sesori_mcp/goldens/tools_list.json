@@ -864,6 +864,55 @@
       }
     },
     {
+      "name": "get_pr_feedback",
+      "description": "Fetch the full text of a PR's feedback still awaiting your reply: each unanswered review thread with its id, and the PR comments and review summaries since your last reply. Reports only count comments, so read them here before acting on them.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pr": {
+            "type": "string",
+            "description": "The PR as owner/repo#123 or its full URL (https://github.com/owner/repo/pull/123)."
+          }
+        },
+        "required": [
+          "pr"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "reply_on_pr",
+      "description": "Post your reply on a PR: in a review thread when thread_id is given, otherwise as a PR comment. Sesori prefixes it with [Sesori reply] so the monitor never reports it back as new feedback. Reply to each review comment once you have fixed it or decided not to.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pr": {
+            "type": "string",
+            "description": "The PR as owner/repo#123 or its full URL (https://github.com/owner/repo/pull/123)."
+          },
+          "body": {
+            "type": "string",
+            "description": "The reply, in GitHub Markdown."
+          },
+          "thread_id": {
+            "type": "string",
+            "description": "The review thread id from get_pr_feedback, such as PRRT_kwDO…; omit for a PR comment."
+          }
+        },
+        "required": [
+          "pr",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "get_guide",
       "description": "Read the how-to for a Sesori tool group before you first use it. Its Sesori skill (sesori-pr-monitor, sesori:pr-monitor or pr-monitor) holds the same text: when that skill is loaded or listed, use it and don't call this tool. Topics: pr_monitor: Use right after you open a GitHub PR, when asked to watch or babysit a PR, and every time a [PR Monitor] message arrives.",
       "inputSchema": {
