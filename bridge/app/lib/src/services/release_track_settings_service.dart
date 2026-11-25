@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart" show BridgeReleaseTrack;
 
 import "../repositories/bridge_settings_repository.dart";
-import "../updater/foundation/release_track.dart";
+import "../repositories/mappers/release_track_mapper.dart";
 
 /// The auto-updater's release track, as the settings routes show it. The
 /// updater reads the track once at startup, so a change applies from the
@@ -16,23 +16,14 @@ class const ReleaseTrackSettingsService({
   /// The stored track, or null when this install does not update itself.
   Future<BridgeReleaseTrack?> current() async {
     if (!_updatesItself) return null;
-    return _toWire(track: (await _settings.readCommittedSettings()).releaseTrack);
+    return (await _settings.readCommittedSettings()).releaseTrack.toWire();
   }
 
-  /// Stores [track] and returns the committed one.
-  Future<BridgeReleaseTrack> update({required ReleaseTrack track}) async {
-    return _toWire(track: (await _settings.updateReleaseTrack(track: track)).releaseTrack);
+  /// Stores [track] and returns the committed one, or null without storing
+  /// anything when [track] is one this bridge does not know.
+  Future<BridgeReleaseTrack?> update({required BridgeReleaseTrack track}) async {
+    final releaseTrack = track.toReleaseTrack();
+    if (releaseTrack == null) return null;
+    return (await _settings.updateReleaseTrack(track: releaseTrack)).releaseTrack.toWire();
   }
-
-  /// The bridge's track for [track], or null for one it does not know.
-  static ReleaseTrack? parse({required BridgeReleaseTrack track}) => switch (track) {
-    BridgeReleaseTrack.stable => ReleaseTrack.stable,
-    BridgeReleaseTrack.internal => ReleaseTrack.internal,
-    BridgeReleaseTrack.unknown => null,
-  };
-
-  static BridgeReleaseTrack _toWire({required ReleaseTrack track}) => switch (track) {
-    ReleaseTrack.stable => BridgeReleaseTrack.stable,
-    ReleaseTrack.internal => BridgeReleaseTrack.internal,
-  };
 }

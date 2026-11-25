@@ -69,15 +69,14 @@ class PatchBridgeSettingsHandler({
         final committed = await _toolGroupSettingsService.update(id: groupId, enabled: enabled);
         return BridgeSettingUpdate.toolGroup(id: id, enabled: committed);
       case ReleaseTrackSettingUpdate(:final track):
-        final parsed = ReleaseTrackSettingsService.parse(track: track);
-        if (parsed == null) {
+        final committed = await _releaseTrackSettingsService.update(track: track);
+        if (committed == null) {
           throw buildJsonErrorResponse(
             request: request,
             status: 400,
             body: const BridgeSettingUpdateRejection.unknown().toJson(),
           );
         }
-        final committed = await _releaseTrackSettingsService.update(track: parsed);
         return BridgeSettingUpdate.releaseTrack(track: committed);
       case UnknownBridgeSettingUpdate():
         throw buildJsonErrorResponse(
