@@ -23,6 +23,10 @@ import "open_code_protocol.dart";
 /// already migrated the database, so they are refused rather than downgraded.
 final openCodeMinimumV2Version = SemanticVersion.parse(value: "2.0.11");
 
+/// The oldest OpenCode with the client-MCP WebSocket that gives its sessions
+/// Sesori's tools. Older servers run without them.
+final openCodeClientMcpMinimumVersion = SemanticVersion.parse(value: "2.2.0");
+
 /// The reserved default port OpenCode listens on, excluded from dynamic
 /// discovery.
 const int openCodeDefaultPort = 4096;

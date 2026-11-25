@@ -62,6 +62,7 @@ void main() {
         repository: repository,
         pollInterval: const Duration(milliseconds: 1),
       ),
+      sesoriTools: null,
       tracker: tracker,
       compactions: OpenCodeV2CompactionTracker(),
       commandEchoes: commandEchoes,

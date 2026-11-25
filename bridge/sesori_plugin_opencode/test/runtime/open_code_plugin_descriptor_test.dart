@@ -889,8 +889,8 @@ void main() {
       expect(apiRecorder.last, isNull);
     });
 
-    for (final version in ["2.0.11", "2.0.16"]) {
-      test("selects the v2 adapter for owned $version", () async {
+    for (final (version, sesoriTools) in [("2.0.11", false), ("2.0.16", false), ("2.1.9", false), ("2.2.0", true)]) {
+      test("selects the v2 adapter for owned $version, with Sesori tools: $sesoriTools", () async {
         host.ports.defaultBindable = true;
         final descriptor = OpenCodePluginDescriptor(
           catalogSnapshotReader: _unavailableCatalogSnapshot,
@@ -902,6 +902,7 @@ void main() {
         );
         final plugin = await descriptor.start(host);
         expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
+        expect(apiRecorder.sesoriMcp, sesoriTools ? same(host.sesoriMcp) : isNull);
         expect(plugin.currentStatus, isA<PluginReady>());
         expect(host.ownershipRecord("owner-current"), isNotNull);
         await plugin.shutdown(budget: null);
@@ -1467,6 +1468,7 @@ class _FakeApiRecorder() {
   bool neverCompleteInitialize = false;
   final List<_FakeManagedApi> built = <_FakeManagedApi>[];
   OpenCodeProtocol? protocol;
+  SesoriMcpAccess? sesoriMcp;
 
   _FakeManagedApi? get last => built.isEmpty ? null : built.last;
 
@@ -1474,10 +1476,12 @@ class _FakeApiRecorder() {
     required OpenCodeProtocol protocol,
     required String serverUrl,
     required String? password,
+    required SesoriMcpAccess? sesoriMcp,
     required void Function() onConnected,
     required void Function() onDisconnected,
   }) {
     this.protocol = protocol;
+    this.sesoriMcp = sesoriMcp;
     final api = _FakeManagedApi(
       initializeError: initializeError,
       onInitialize: onInitialize,
@@ -1581,7 +1585,7 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
   final _MemoryJsonStore store = _MemoryJsonStore();
 
   @override
-  SesoriMcpAccess get sesoriMcp => throw UnimplementedError();
+  final SesoriMcpAccess sesoriMcp = _UnusedSesoriMcpAccess();
 
   Map<String, dynamic>? ownershipRecord(String ownerSessionId) {
     final contents = store.files["opencode-processes.json"];
@@ -1592,6 +1596,14 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
     final record = root[ownerSessionId];
     return record == null ? null : Map<String, dynamic>.from(record as Map);
   }
+}
+
+class _UnusedSesoriMcpAccess() implements SesoriMcpAccess {
+  @override
+  SesoriMcpLaunch? mint() => throw UnimplementedError();
+
+  @override
+  void bind({required SesoriMcpLaunch launch, required String backendSessionId}) => throw UnimplementedError();
 }
 
 class const _ImmediateClock() implements ServerClock {

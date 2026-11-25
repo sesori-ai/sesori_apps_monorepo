@@ -44,6 +44,7 @@ OpenCodeV2Service _service({required Future<http.Response> Function(http.Request
       repository: repository,
       pollInterval: const Duration(milliseconds: 1),
     ),
+    sesoriTools: null,
     tracker: OpenCodeV2ActivityTracker(),
     compactions: OpenCodeV2CompactionTracker(),
     commandEchoes: OpenCodeV2CommandEchoTracker(),
@@ -345,6 +346,7 @@ void main() {
     final plugin = OpenCodeV2Plugin(
       serverUrl: "http://127.0.0.1:${server.port}",
       password: null,
+      sesoriMcp: null,
       onConnected: () {},
       onDisconnected: () {},
     );

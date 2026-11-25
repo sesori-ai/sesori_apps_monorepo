@@ -10,10 +10,10 @@ The server is streamable HTTP on `127.0.0.1` with an ephemeral port, JSON respon
 that names the calling session. `sesori-bridge config agent-tools on|off` (default on) decides whether launches get a
 token at all.
 
-Claude Code sessions, Codex threads and Pi, Oh My Pi, Grok and GitHub Copilot sessions get the server. Antigravity
-and Cursor stay off until a live check passes, Hermes stays off until a Hermes release fixes the user's own MCP
-servers in sessions that get one ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)), and OpenCode and DeepSeek have no per-session seam for it; their
-checks run headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
+Claude Code sessions, Codex threads and Pi, Oh My Pi, Grok, GitHub Copilot and OpenCode (2.2.0 and newer) sessions
+get the server. Antigravity and Cursor stay off until a live check passes, Hermes stays off until a Hermes release
+fixes the user's own MCP servers in sessions that get one ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)), and DeepSeek has no
+seam for it; their checks run headlessly against the endpoint. Per-harness status is in [harness capabilities](../HARNESS_CAPABILITIES.md).
 
 | Tool | Effect |
 |---|---|
@@ -283,10 +283,16 @@ task to its start and compare it with the app's view of the session. Use fixture
 
 ## Known Limitations
 
-- Only Claude Code, Codex, Pi, Oh My Pi, Grok and GitHub Copilot inject the server, as recorded in
+- Only Claude Code, Codex, Pi, Oh My Pi, Grok, GitHub Copilot and OpenCode inject the server, as recorded in
   [harness capabilities](../HARNESS_CAPABILITIES.md). Antigravity and Cursor stay off until a live check passes;
   Hermes stays off because a session given Sesori's server loses the user's own `config.yaml` MCP servers on 0.23.4
-  and older ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)); OpenCode has no per-session seam; DeepSeek's adapter rejects MCP servers.
+  and older ([hermes-agent#143502](https://github.com/NousResearch/hermes-agent/issues/143502)); DeepSeek's adapter rejects MCP servers.
+- OpenCode older than 2.2.0 has no client-MCP socket and gets no tools, yet the plugin still declares
+  `injectsSesoriTools`, so a scheduled run there gets the tool note without the tools.
+- On OpenCode, the socket rides an experimental endpoint and carries no MCP `instructions`. A subagent's calls
+  belong to its child session. A folder idle for an hour lets its socket go, so the first step of a turn started
+  from OpenCode's own app in it can miss the tools. With the shared service, an OpenCode restart longer than
+  5 seconds brings the tools back only with the next Sesori request.
 - `update_task` and the scheduled-run note ask agents to leave out every field they are not changing, but a model
   that fills every schema field (seen with the OpenAI-compatible test provider through Claude Code and Copilot) can
   still send a whole `schedule` object when only the prompt should change. The request lists every field that
@@ -315,6 +321,13 @@ The endpoint and tools are harness-neutral and live in `bridge/app`. Injected: C
 - Codex: per-thread `config` on `thread/start`, `thread/resume` and `thread/fork` (`CodexSessionService`,
   `CodexAppServerApi`), never process-wide `-c`. An already-loaded thread keeps the token it was loaded with; the
   bridge and its app-server restart together.
+- OpenCode: one client-MCP WebSocket per folder in use (`V2SesoriToolsService`, `OpenCodeV2Api.connectClientMcp`,
+  `SesoriBridgeMcpApi`), relaying JSON-RPC to the endpoint. `initialize` and `tools/list` use one unbound token per
+  socket; each `tools/call` uses its session's own token, bound to the `_meta` `ai.opencode/sessionID` on the
+  session's first call. A call without a session id or while agent tools are off gets a tool error. Sockets open on
+  session activity, before a Sesori prompt or command (waiting up to 5 seconds for the listing), and for every loaded
+  folder when the event stream reconnects; they close on bridge shutdown or after an hour without activity.
+  Covered by `v2_sesori_tools_service_test.dart` and the descriptor's 2.2.0 version gate.
 
 ## Related Coverage and Sources
 
