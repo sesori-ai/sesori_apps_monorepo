@@ -59,8 +59,8 @@ void main() {
   });
 
   test("the list route answers with every watch on this bridge", () async {
-    final response = await const GetPullRequestWatchesHandler(
-      sessionViews: _Views(),
+    final response = await GetPullRequestWatchesHandler(
+      sessionViews: const _Views(),
     ).routeForTest(makeRequest("GET", "/pull-request-watches"));
 
     expect(response.status, 200);
