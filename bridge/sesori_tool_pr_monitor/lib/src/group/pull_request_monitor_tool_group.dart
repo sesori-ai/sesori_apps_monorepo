@@ -208,9 +208,12 @@ class PullRequestMonitorToolGroup({
       autoMerge: autoMergeChange,
       quietMinutes: _minutes(value: arguments["quiet_minutes"], field: "quiet_minutes", min: 1, max: 60),
       ciWaitMinutes: _minutes(value: arguments["ci_wait_minutes"], field: "ci_wait_minutes", min: 5, max: 240),
-      idleReminderMinutes: switch (arguments["idle_reminder_minutes"]) {
-        0 => 0,
-        final value => _minutes(value: value, field: "idle_reminder_minutes", min: 5, max: 240),
+      idleReminder: switch (arguments["idle_reminder_minutes"]) {
+        0 => const PullRequestIdleRemindersOff(),
+        final value => switch (_minutes(value: value, field: "idle_reminder_minutes", min: 5, max: 240)) {
+          final minutes? => PullRequestIdleRemindersAfter(minutes: minutes),
+          null => null,
+        },
       },
     );
   }

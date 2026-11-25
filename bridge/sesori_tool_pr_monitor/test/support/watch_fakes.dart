@@ -211,7 +211,7 @@ class FakeHost({required final MemoryStore records}) implements SesoriToolHost {
     required String title,
     required String body,
   }) async {
-    if (approvesEverything) return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.allowed);
+    if (approvesEverything) return const SesoriToolApprovalAllowed();
     final answer = Completer<SesoriToolApprovalOutcome>();
     asked.add(AskedApproval(sessionId: sessionId, title: title, body: body, answer: answer));
     return SesoriToolApprovalShown(answer: answer.future);

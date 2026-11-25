@@ -74,12 +74,12 @@
     bridge record `config`, loaded in `resume`). `watch_pr` without
     `auto_merge` takes the repo override, else the global default.
   - `SesoriToolHost.requestApproval` now returns `SesoriToolApproval`:
-    `Settled` (approve everything, or dropped) or `Shown` with the answer's
-    future, so the tool can answer at once under YOLO and say "Sent to the
-    user" otherwise. An allowed answer applies on top of the settings at
+    `Allowed` (approve everything, no card), `Dropped`, or `Shown` with the
+    answer's future, so the tool can answer at once under YOLO and say
+    "Sent to the user" otherwise. An allowed answer applies on top of the settings at
     that time, and the session gets an allowed or declined notice.
   - A call that widens applies its timings at once and only its auto-merge
-    part waits. Clearing a repo's `off` override under a global `on` counts
+    part waits. Idle reminders off is a null `idleReminderMinutes`. Clearing a repo's `off` override under a global `on` counts
     as widening.
   - A standalone (unwatched) `mark_pr_ready` stays label-only: the default
     applies to new watches only.

@@ -5,8 +5,9 @@ import "package:sesori_shared/sesori_shared.dart" show PermissionReply;
 import "package:sesori_tool_interface/sesori_tool_interface.dart"
     show
         SesoriToolApproval,
+        SesoriToolApprovalAllowed,
+        SesoriToolApprovalDropped,
         SesoriToolApprovalOutcome,
-        SesoriToolApprovalSettled,
         SesoriToolApprovalShown,
         SesoriToolGroupId;
 
@@ -39,7 +40,7 @@ class ToolGroupApprovalService({
     required String title,
     required String body,
   }) async {
-    if (_closed) return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
+    if (_closed) return const SesoriToolApprovalDropped();
     final String rootSessionId;
     try {
       rootSessionId = (await _sessions.resolveSessionFamily(
@@ -48,13 +49,13 @@ class ToolGroupApprovalService({
       )).rootSessionId;
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("Dropped a ${groupId.value} approval for session $sessionId", error, stackTrace);
-      return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
+      return const SesoriToolApprovalDropped();
     }
     if (await _autoApproval.isYolo(sessionId: sessionId) && await _autoApproval.isYolo(sessionId: rootSessionId)) {
-      return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.allowed);
+      return const SesoriToolApprovalAllowed();
     }
     // The bridge may have begun to stop during the reads.
-    if (_closed) return const SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.dropped);
+    if (_closed) return const SesoriToolApprovalDropped();
     final completer = Completer<SesoriToolApprovalOutcome>();
     final requestId = _approvals.add(
       sessionId: sessionId,

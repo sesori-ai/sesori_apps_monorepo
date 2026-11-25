@@ -13,7 +13,7 @@ _PullRequestMonitorConfig _$PullRequestMonitorConfigFromJson(Map json) => _PullR
   ),
   quietMinutes: (json['quietMinutes'] as num).toInt(),
   ciWaitMinutes: (json['ciWaitMinutes'] as num).toInt(),
-  idleReminderMinutes: (json['idleReminderMinutes'] as num).toInt(),
+  idleReminderMinutes: (json['idleReminderMinutes'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$PullRequestMonitorConfigToJson(
@@ -23,5 +23,5 @@ Map<String, dynamic> _$PullRequestMonitorConfigToJson(
   'repositoryAutoMerge': instance.repositoryAutoMerge,
   'quietMinutes': instance.quietMinutes,
   'ciWaitMinutes': instance.ciWaitMinutes,
-  'idleReminderMinutes': instance.idleReminderMinutes,
+  'idleReminderMinutes': ?instance.idleReminderMinutes,
 };

@@ -174,7 +174,11 @@ class PullRequestWatchService({
   }) async {
     final timed = change.timingsAppliedTo(config: _config);
     final autoMerge = change.autoMerge;
-    if (autoMerge == null || !timed.isWidenedBy(next: autoMerge.appliedTo(config: timed))) {
+    if (autoMerge == null ||
+        !_widensAutoMerge(
+          from: timed,
+          to: autoMerge.appliedTo(config: timed),
+        )) {
       await _saveConfig(config: autoMerge?.appliedTo(config: timed) ?? timed);
       return PullRequestConfigApplied(config: _config);
     }
@@ -185,10 +189,10 @@ class PullRequestWatchService({
       body: _configDescriptions.approvalBody(change: autoMerge, config: _config),
     );
     switch (approval) {
-      case SesoriToolApprovalSettled(outcome: SesoriToolApprovalOutcome.allowed):
+      case SesoriToolApprovalAllowed():
         await _saveConfig(config: autoMerge.appliedTo(config: _config));
         return PullRequestConfigApplied(config: _config);
-      case SesoriToolApprovalSettled():
+      case SesoriToolApprovalDropped():
         return PullRequestConfigApprovalDropped(config: _config, autoMerge: autoMerge);
       case SesoriToolApprovalShown(:final answer):
         unawaited(_applyAnswer(sessionId: sessionId, autoMerge: autoMerge, answer: answer));
@@ -220,6 +224,15 @@ class PullRequestWatchService({
       claim: null,
     );
   }
+
+  /// Whether [to] turns auto-merge on by default anywhere [from] leaves it
+  /// off: that change needs the user's Allow.
+  bool _widensAutoMerge({required PullRequestMonitorConfig from, required PullRequestMonitorConfig to}) =>
+      (to.autoMerge && !from.autoMerge) ||
+      {...from.repositoryAutoMerge.keys, ...to.repositoryAutoMerge.keys}.any(
+        (repositoryKey) =>
+            to.autoMergeFor(repositoryKey: repositoryKey) && !from.autoMergeFor(repositoryKey: repositoryKey),
+      );
 
   Future<void> _saveConfig({required PullRequestMonitorConfig config}) async {
     if (config == _config) return;

@@ -44,8 +44,9 @@ import "package:sesori_bridge/src/services/wake_up_command_description_builder.d
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_tool_interface/sesori_tool_interface.dart"
     show
+        SesoriToolApprovalAllowed,
+        SesoriToolApprovalDropped,
         SesoriToolApprovalOutcome,
-        SesoriToolApprovalSettled,
         SesoriToolApprovalShown,
         SesoriToolGroupId,
         SesoriToolHost;
@@ -423,7 +424,7 @@ void main() {
           "mark_pr_ready",
           "unmark_pr_ready",
           "set_pr_auto_merge",
-        "configure_pr_monitor",
+          "configure_pr_monitor",
           "get_guide",
         ],
       );
@@ -1950,7 +1951,7 @@ void main() {
     expect(await agent.settle(requestId: asked.id, reply: PermissionReply.once), isA<ToolGroupChangeAnswered>());
     final answer = switch (approval) {
       SesoriToolApprovalShown(:final answer) => answer,
-      SesoriToolApprovalSettled() => fail("settled without a card"),
+      SesoriToolApprovalAllowed() || SesoriToolApprovalDropped() => fail("answered without a card"),
     };
     expect(await answer, SesoriToolApprovalOutcome.allowed);
     expect(notices.delivered, isEmpty, reason: "the group tells the session itself");

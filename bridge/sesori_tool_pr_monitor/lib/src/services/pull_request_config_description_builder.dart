@@ -48,9 +48,10 @@ class const PullRequestConfigDescriptionBuilder() {
       for (final MapEntry(key: repositoryKey, value: enabled) in config.repositoryAutoMerge.entries)
         "$repositoryKey: ${_onOff(enabled: enabled)}",
     ];
-    final idle = config.idleReminderMinutes == 0
-        ? "idle reminders are off"
-        : "an open PR that stays still for ${config.idleReminderMinutes} min gets an idle reminder";
+    final idle = switch (config.idleReminderMinutes) {
+      final minutes? => "an open PR that stays still for $minutes min gets an idle reminder",
+      null => "idle reminders are off",
+    };
     return "Auto-merge by default: ${_onOff(enabled: config.autoMerge)}"
         "${overrides.isEmpty ? "" : " (${overrides.join(", ")})"}. Reports wait for ${config.quietMinutes} min of "
         "quiet, running CI holds them for up to ${config.ciWaitMinutes} min, and $idle.";

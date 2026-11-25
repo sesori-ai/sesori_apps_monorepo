@@ -23,8 +23,8 @@ sealed class const PullRequestMonitorConfig._() with _$PullRequestMonitorConfig 
     required int ciWaitMinutes,
 
     /// How long an open PR stays still before its watchers are reminded of
-    /// it; 0 sends no reminders.
-    required int idleReminderMinutes,
+    /// it; null sends no reminders.
+    required int? idleReminderMinutes,
   }) = _PullRequestMonitorConfig;
 
   /// The plugin's timings, with auto-merge off everywhere.
@@ -43,17 +43,11 @@ sealed class const PullRequestMonitorConfig._() with _$PullRequestMonitorConfig 
   Duration get ciWait => Duration(minutes: ciWaitMinutes);
 
   /// Null when reminders are off.
-  Duration? get idleReminderDelay => idleReminderMinutes == 0 ? null : Duration(minutes: idleReminderMinutes);
+  Duration? get idleReminderDelay => switch (idleReminderMinutes) {
+    final minutes? => Duration(minutes: minutes),
+    null => null,
+  };
 
   /// The auto-merge default for [repositoryKey], a lowercased `owner/repo`.
   bool autoMergeFor({required String repositoryKey}) => repositoryAutoMerge[repositoryKey] ?? autoMerge;
-
-  /// Whether [next] turns auto-merge on by default anywhere this leaves it
-  /// off.
-  bool isWidenedBy({required PullRequestMonitorConfig next}) =>
-      (next.autoMerge && !autoMerge) ||
-      {...repositoryAutoMerge.keys, ...next.repositoryAutoMerge.keys}.any(
-        (repositoryKey) =>
-            next.autoMergeFor(repositoryKey: repositoryKey) && !autoMergeFor(repositoryKey: repositoryKey),
-      );
 }

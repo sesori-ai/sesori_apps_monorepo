@@ -41,8 +41,8 @@ abstract interface class SesoriToolHost() {
   /// Asks the user to allow a change [sessionId]'s agent asked for: [title]
   /// names the request and [body] is the Markdown the user approves. It
   /// shows on the session's root. Completes once the request is shown, or
-  /// already settled with nothing shown: allowed when the session approves
-  /// everything.
+  /// at once when it needs no card: the session approves everything, or no
+  /// answer can come.
   ///
   /// The request lives in memory only: once the bridge begins to stop it
   /// ends as [SesoriToolApprovalOutcome.dropped], and the group applies
@@ -92,9 +92,12 @@ final class const SesoriToolSession({
 /// How a [SesoriToolHost.requestApproval] began.
 sealed class const SesoriToolApproval();
 
-/// Settled with nothing shown to the user.
-final class const SesoriToolApprovalSettled({required final SesoriToolApprovalOutcome outcome})
-    extends SesoriToolApproval;
+/// Allowed with nothing shown: the session approves everything.
+final class const SesoriToolApprovalAllowed() extends SesoriToolApproval;
+
+/// Not shown, and no answer will come: the bridge is stopping, or the
+/// session is gone.
+final class const SesoriToolApprovalDropped() extends SesoriToolApproval;
 
 /// Shown to the user; [answer] completes once they answer it, or once the
 /// bridge begins to stop.

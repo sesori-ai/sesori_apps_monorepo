@@ -23,8 +23,8 @@ mixin _$PullRequestMonitorConfig {
 /// as one report.
  int get quietMinutes;/// How long a due report waits for running CI before it goes out anyway.
  int get ciWaitMinutes;/// How long an open PR stays still before its watchers are reminded of
-/// it; 0 sends no reminders.
- int get idleReminderMinutes;
+/// it; null sends no reminders.
+ int? get idleReminderMinutes;
 /// Create a copy of PullRequestMonitorConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -62,7 +62,7 @@ abstract mixin class $PullRequestMonitorConfigCopyWith<$Res>  {
   factory $PullRequestMonitorConfigCopyWith(PullRequestMonitorConfig value, $Res Function(PullRequestMonitorConfig) _then) = _$PullRequestMonitorConfigCopyWithImpl;
 @useResult
 $Res call({
- bool autoMerge, Map<String, bool> repositoryAutoMerge, int quietMinutes, int ciWaitMinutes, int idleReminderMinutes
+ bool autoMerge, Map<String, bool> repositoryAutoMerge, int quietMinutes, int ciWaitMinutes, int? idleReminderMinutes
 });
 
 
@@ -79,14 +79,14 @@ class _$PullRequestMonitorConfigCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestMonitorConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? autoMerge = null,Object? repositoryAutoMerge = null,Object? quietMinutes = null,Object? ciWaitMinutes = null,Object? idleReminderMinutes = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? autoMerge = null,Object? repositoryAutoMerge = null,Object? quietMinutes = null,Object? ciWaitMinutes = null,Object? idleReminderMinutes = freezed,}) {
   return _then(PullRequestMonitorConfig(
 autoMerge: null == autoMerge ? _self.autoMerge : autoMerge // ignore: cast_nullable_to_non_nullable
 as bool,repositoryAutoMerge: null == repositoryAutoMerge ? _self.repositoryAutoMerge : repositoryAutoMerge // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,quietMinutes: null == quietMinutes ? _self.quietMinutes : quietMinutes // ignore: cast_nullable_to_non_nullable
 as int,ciWaitMinutes: null == ciWaitMinutes ? _self.ciWaitMinutes : ciWaitMinutes // ignore: cast_nullable_to_non_nullable
-as int,idleReminderMinutes: null == idleReminderMinutes ? _self.idleReminderMinutes : idleReminderMinutes // ignore: cast_nullable_to_non_nullable
-as int,
+as int,idleReminderMinutes: freezed == idleReminderMinutes ? _self.idleReminderMinutes : idleReminderMinutes // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -120,8 +120,8 @@ class _PullRequestMonitorConfig extends PullRequestMonitorConfig {
 /// How long a due report waits for running CI before it goes out anyway.
 @override final  int ciWaitMinutes;
 /// How long an open PR stays still before its watchers are reminded of
-/// it; 0 sends no reminders.
-@override final  int idleReminderMinutes;
+/// it; null sends no reminders.
+@override final  int? idleReminderMinutes;
 
 /// Create a copy of PullRequestMonitorConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -158,7 +158,7 @@ abstract mixin class _$PullRequestMonitorConfigCopyWith<$Res> implements $PullRe
   factory _$PullRequestMonitorConfigCopyWith(_PullRequestMonitorConfig value, $Res Function(_PullRequestMonitorConfig) _then) = __$PullRequestMonitorConfigCopyWithImpl;
 @override @useResult
 $Res call({
- bool autoMerge, Map<String, bool> repositoryAutoMerge, int quietMinutes, int ciWaitMinutes, int idleReminderMinutes
+ bool autoMerge, Map<String, bool> repositoryAutoMerge, int quietMinutes, int ciWaitMinutes, int? idleReminderMinutes
 });
 
 
@@ -175,14 +175,14 @@ class __$PullRequestMonitorConfigCopyWithImpl<$Res>
 
 /// Create a copy of PullRequestMonitorConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? autoMerge = null,Object? repositoryAutoMerge = null,Object? quietMinutes = null,Object? ciWaitMinutes = null,Object? idleReminderMinutes = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? autoMerge = null,Object? repositoryAutoMerge = null,Object? quietMinutes = null,Object? ciWaitMinutes = null,Object? idleReminderMinutes = freezed,}) {
   return _then(_PullRequestMonitorConfig(
 autoMerge: null == autoMerge ? _self.autoMerge : autoMerge // ignore: cast_nullable_to_non_nullable
 as bool,repositoryAutoMerge: null == repositoryAutoMerge ? _self._repositoryAutoMerge : repositoryAutoMerge // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,quietMinutes: null == quietMinutes ? _self.quietMinutes : quietMinutes // ignore: cast_nullable_to_non_nullable
 as int,ciWaitMinutes: null == ciWaitMinutes ? _self.ciWaitMinutes : ciWaitMinutes // ignore: cast_nullable_to_non_nullable
-as int,idleReminderMinutes: null == idleReminderMinutes ? _self.idleReminderMinutes : idleReminderMinutes // ignore: cast_nullable_to_non_nullable
-as int,
+as int,idleReminderMinutes: freezed == idleReminderMinutes ? _self.idleReminderMinutes : idleReminderMinutes // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

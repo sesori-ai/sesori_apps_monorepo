@@ -26,7 +26,7 @@ void main() {
 
   test("the settings line lists repository settings and reminders that are off", () {
     expect(
-      builder.settingsText(config: withOverride.copyWith(autoMerge: true, idleReminderMinutes: 0)),
+      builder.settingsText(config: withOverride.copyWith(autoMerge: true, idleReminderMinutes: null)),
       "Auto-merge by default: on (sesori/example: off). Reports wait for 2 min of quiet, running CI holds them for "
       "up to 30 min, and idle reminders are off.",
     );

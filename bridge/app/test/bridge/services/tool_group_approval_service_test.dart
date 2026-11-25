@@ -55,7 +55,8 @@ void main() {
 
   Future<SesoriToolApprovalOutcome> request({required String sessionId}) async =>
       switch (await begin(sessionId: sessionId)) {
-        SesoriToolApprovalSettled(:final outcome) => outcome,
+        SesoriToolApprovalAllowed() => SesoriToolApprovalOutcome.allowed,
+        SesoriToolApprovalDropped() => SesoriToolApprovalOutcome.dropped,
         SesoriToolApprovalShown(:final answer) => await answer,
       };
 
@@ -145,10 +146,7 @@ void main() {
     autoApproval.yoloSessionIds.addAll({"root", "child"});
 
     for (final sessionId in ["root", "child"]) {
-      expect(
-        await begin(sessionId: sessionId),
-        isA<SesoriToolApprovalSettled>().having((it) => it.outcome, "outcome", SesoriToolApprovalOutcome.allowed),
-      );
+      expect(await begin(sessionId: sessionId), isA<SesoriToolApprovalAllowed>());
     }
     await pumpEventQueue();
     expect(asked, isEmpty);

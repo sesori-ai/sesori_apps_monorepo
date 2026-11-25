@@ -548,14 +548,14 @@ void main() {
       PullRequestAutoMergeDefaultChange? autoMerge,
       int? quiet,
       int? ciWait,
-      int? idle,
+      PullRequestIdleReminderChange? idle,
     }) => h.service.configure(
       sessionId: sessionId,
       change: PullRequestConfigChange(
         autoMerge: autoMerge,
         quietMinutes: quiet,
         ciWaitMinutes: ciWait,
-        idleReminderMinutes: idle,
+        idleReminder: idle,
       ),
     );
 
@@ -563,19 +563,23 @@ void main() {
 
     test("narrowing and timings apply at once with no card, and are loaded after a restart", () async {
       expect(
-        await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: false), quiet: 5, idle: 0),
+        await configure(
+          autoMerge: const PullRequestGlobalAutoMerge(enabled: false),
+          quiet: 5,
+          idle: const PullRequestIdleRemindersOff(),
+        ),
         isA<PullRequestConfigApplied>(),
       );
       expect(h.host.asked, isEmpty);
 
       h.service = h.build();
       await h.service.resume();
-      expect(config(), PullRequestMonitorConfig.defaults.copyWith(quietMinutes: 5, idleReminderMinutes: 0));
+      expect(config(), PullRequestMonitorConfig.defaults.copyWith(quietMinutes: 5, idleReminderMinutes: null));
     });
 
     test("new timings apply to an existing watch from its next poll", () async {
       await h.watch(sessionId: "s1");
-      await configure(quiet: 5, idle: 0);
+      await configure(quiet: 5, idle: const PullRequestIdleRemindersOff());
 
       h.snapshots.enqueue(_withComment);
       await h.poll();

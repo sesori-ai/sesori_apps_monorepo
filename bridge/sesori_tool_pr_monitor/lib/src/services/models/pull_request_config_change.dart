@@ -6,14 +6,24 @@ final class const PullRequestConfigChange({
   required final PullRequestAutoMergeDefaultChange? autoMerge,
   required final int? quietMinutes,
   required final int? ciWaitMinutes,
-  required final int? idleReminderMinutes,
+  required final PullRequestIdleReminderChange? idleReminder,
 }) {
   PullRequestMonitorConfig timingsAppliedTo({required PullRequestMonitorConfig config}) => config.copyWith(
     quietMinutes: quietMinutes ?? config.quietMinutes,
     ciWaitMinutes: ciWaitMinutes ?? config.ciWaitMinutes,
-    idleReminderMinutes: idleReminderMinutes ?? config.idleReminderMinutes,
+    idleReminderMinutes: switch (idleReminder) {
+      null => config.idleReminderMinutes,
+      PullRequestIdleRemindersOff() => null,
+      PullRequestIdleRemindersAfter(:final minutes) => minutes,
+    },
   );
 }
+
+sealed class const PullRequestIdleReminderChange();
+
+final class const PullRequestIdleRemindersOff() extends PullRequestIdleReminderChange;
+
+final class const PullRequestIdleRemindersAfter({required final int minutes}) extends PullRequestIdleReminderChange;
 
 /// A change to where auto-merge is on by default.
 sealed class const PullRequestAutoMergeDefaultChange() {
