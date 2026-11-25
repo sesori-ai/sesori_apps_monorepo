@@ -40,8 +40,8 @@ class ToolGroupApprovalService({
         sessionId: sessionId,
         operation: SessionOperation.requestToolApproval,
       )).rootSessionId;
-    } on PluginOperationException catch (error) {
-      Log.i("Dropped a ${groupId.value} approval for session $sessionId: $error");
+    } on PluginOperationException catch (error, stackTrace) {
+      Log.w("Dropped a ${groupId.value} approval for session $sessionId", error, stackTrace);
       return SesoriToolApprovalOutcome.dropped;
     }
     if (await _autoApproval.isYolo(sessionId: sessionId) && await _autoApproval.isYolo(sessionId: rootSessionId)) {
