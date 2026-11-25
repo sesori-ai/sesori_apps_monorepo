@@ -200,7 +200,7 @@ void main() {
       waiting.text,
       startsWith("Sent to the user for approval: turning auto-merge on by default needs their Allow."),
     );
-    expect(host.asked.single.sessionId, "root");
+    expect(host.asked.single.sessionId, "child", reason: "the caller's own approval settings decide, not its root's");
     expect(host.asked.single.body, startsWith("Turn auto-merge on by default for **sesori/example**?"));
   });
 }

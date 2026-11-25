@@ -156,15 +156,24 @@ class PullRequestMonitorToolGroup({
         },
       ),
       PullRequestMonitorTool.configurePrMonitor => _configure(
+        askingSessionId: caller.sessionId,
         sessionId: sessionId,
         change: _configChange(arguments: arguments),
       ),
     };
   }
 
-  Future<SesoriToolResult> _configure({required String sessionId, required PullRequestConfigChange change}) => _attempt(
+  Future<SesoriToolResult> _configure({
+    required String askingSessionId,
+    required String sessionId,
+    required PullRequestConfigChange change,
+  }) => _attempt(
     failure: "Cannot change the PR monitor settings",
-    run: () async => switch (await _watches.configure(sessionId: sessionId, change: change)) {
+    run: () async => switch (await _watches.configure(
+      askingSessionId: askingSessionId,
+      sessionId: sessionId,
+      change: change,
+    )) {
       PullRequestConfigApplied(:final config) => "Saved. ${_configDescriptions.settingsText(config: config)}",
       PullRequestConfigAwaitingApproval(:final config) =>
         "Sent to the user for approval: turning auto-merge on by default needs their Allow. A message tells "

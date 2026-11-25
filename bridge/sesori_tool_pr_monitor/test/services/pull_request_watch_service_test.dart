@@ -581,11 +581,13 @@ void main() {
 
     Future<PullRequestConfigureResult> configure({
       String sessionId = "s1",
+      String? askingSessionId,
       PullRequestAutoMergeDefaultChange? autoMerge,
       int? quiet,
       int? ciWait,
       PullRequestIdleReminderChange? idle,
     }) => h.service.configure(
+      askingSessionId: askingSessionId ?? sessionId,
       sessionId: sessionId,
       change: PullRequestConfigChange(
         autoMerge: autoMerge,
@@ -632,12 +634,17 @@ void main() {
       () async {
         await h.watch(sessionId: "s1");
 
-        final result = await configure(sessionId: "s2", autoMerge: repositoryOn, ciWait: 60);
+        final result = await configure(
+          sessionId: "s2",
+          askingSessionId: "s2-subagent",
+          autoMerge: repositoryOn,
+          ciWait: 60,
+        );
         expect(result, isA<PullRequestConfigAwaitingApproval>());
         expect(config().ciWaitMinutes, 60, reason: "timings do not wait for the answer");
         expect(config().autoMergeFor(repositoryKey: "sesori/example"), isFalse);
         final asked = h.host.asked.single;
-        expect(asked.sessionId, "s2");
+        expect(asked.sessionId, "s2-subagent", reason: "the calling session's approval settings decide");
         expect(asked.title, "Sesori: PR monitor auto-merge");
         expect(asked.body, startsWith("Turn auto-merge on by default for **sesori/example**?"));
 
@@ -660,6 +667,11 @@ void main() {
         );
       },
     );
+
+    test("overlapping changes keep each other", () async {
+      await Future.wait([configure(quiet: 5), configure(ciWait: 60)]);
+      expect(config(), PullRequestMonitorConfig.defaults.copyWith(quietMinutes: 5, ciWaitMinutes: 60));
+    });
 
     test("a declined request changes nothing and tells the session", () async {
       await configure(autoMerge: const PullRequestGlobalAutoMerge(enabled: true));

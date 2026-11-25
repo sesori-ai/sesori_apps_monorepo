@@ -166,32 +166,37 @@ class PullRequestWatchService({
   );
 
   /// `configure_pr_monitor`: applies [change] at once, except an auto-merge
-  /// change that turns it on by default anywhere. That one first asks
-  /// [sessionId]'s user, and once they answer the session hears the outcome.
+  /// change that turns it on by default anywhere. That one first asks the
+  /// user of [askingSessionId], the session that called the tool, so its own
+  /// approval settings decide; once they answer, the watching [sessionId]
+  /// hears the outcome.
   Future<PullRequestConfigureResult> configure({
+    required String askingSessionId,
     required String sessionId,
     required PullRequestConfigChange change,
   }) async {
-    final timed = change.timingsAppliedTo(config: _config);
     final autoMerge = change.autoMerge;
-    if (autoMerge == null ||
-        !_widensAutoMerge(
-          from: timed,
-          to: autoMerge.appliedTo(config: timed),
-        )) {
-      await _saveConfig(config: autoMerge?.appliedTo(config: timed) ?? timed);
-      return PullRequestConfigApplied(config: _config);
-    }
-    await _saveConfig(config: timed);
+    var needsAllow = false;
+    await _updateConfig(
+      update: (config) {
+        final timed = change.timingsAppliedTo(config: config);
+        if (autoMerge == null) return timed;
+        final next = autoMerge.appliedTo(config: timed);
+        needsAllow = _widensAutoMerge(from: timed, to: next);
+        return needsAllow ? timed : next;
+      },
+    );
+    if (autoMerge == null || !needsAllow) return PullRequestConfigApplied(config: _config);
     final approval = await _host.requestApproval(
-      sessionId: sessionId,
+      sessionId: askingSessionId,
       title: PullRequestConfigDescriptionBuilder.approvalTitle,
       body: _configDescriptions.approvalBody(change: autoMerge, config: _config),
     );
     switch (approval) {
       case SesoriToolApprovalAllowed():
-        await _saveConfig(config: autoMerge.appliedTo(config: _config));
-        return PullRequestConfigApplied(config: _config);
+        return PullRequestConfigApplied(
+          config: await _updateConfig(update: (config) => autoMerge.appliedTo(config: config)),
+        );
       case SesoriToolApprovalDropped():
         return PullRequestConfigApprovalDropped(config: _config, autoMerge: autoMerge);
       case SesoriToolApprovalShown(:final answer):
@@ -211,7 +216,7 @@ class PullRequestWatchService({
     if (outcome == SesoriToolApprovalOutcome.dropped) return;
     final allowed = outcome == SesoriToolApprovalOutcome.allowed;
     try {
-      if (allowed) await _saveConfig(config: autoMerge.appliedTo(config: _config));
+      if (allowed) await _updateConfig(update: (config) => autoMerge.appliedTo(config: config));
     } on Exception catch (error, stackTrace) {
       Log.w("PR monitor: saving the allowed auto-merge default failed", error, stackTrace);
       return;
@@ -234,10 +239,25 @@ class PullRequestWatchService({
             to.autoMergeFor(repositoryKey: repositoryKey) && !from.autoMergeFor(repositoryKey: repositoryKey),
       );
 
-  Future<void> _saveConfig({required PullRequestMonitorConfig config}) async {
-    if (config == _config) return;
-    await _watches.saveConfig(config: config);
-    _config = config;
+  /// The tail of the config writes: each one computes from the settings the
+  /// previous one saved, so overlapping changes keep each other.
+  Future<void> _configWrites = Future.value();
+
+  /// Saves `update` of the current settings once earlier writes finish, and
+  /// completes with the settings then in effect.
+  Future<PullRequestMonitorConfig> _updateConfig({
+    required PullRequestMonitorConfig Function(PullRequestMonitorConfig config) update,
+  }) {
+    final result = _configWrites.then((_) async {
+      final next = update(_config);
+      if (next != _config) {
+        await _watches.saveConfig(config: next);
+        _config = next;
+      }
+      return _config;
+    });
+    _configWrites = result.then((_) {}, onError: (Object _) {});
+    return result;
   }
 
   /// Fetches [target] now and renders [sessionId]'s report, which then
