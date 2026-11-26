@@ -7,6 +7,7 @@ import "omp_approval_registry.dart";
 import "omp_binary.dart";
 import "omp_event_mapper.dart";
 import "omp_identity.dart";
+import "repositories/mappers/omp_harness_turn_mapper.dart";
 import "repositories/mappers/omp_skill_mapper.dart";
 import "repositories/omp_catalog_repository.dart";
 import "repositories/omp_session_cleanup_repository.dart";
@@ -264,7 +265,11 @@ class OmpPlugin._({
 
   @override
   Future<List<PluginMessageWithParts>> replaySessionMessages({required String sessionId}) async =>
-      const OmpSkillMapper().nameSkillRuns(messages: await super.replaySessionMessages(sessionId: sessionId));
+      const OmpSkillMapper().nameSkillRuns(
+        messages: const OmpHarnessTurnMapper().withoutHarnessTurns(
+          messages: await super.replaySessionMessages(sessionId: sessionId),
+        ),
+      );
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) =>

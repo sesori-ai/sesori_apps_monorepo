@@ -1225,6 +1225,58 @@ void main() {
       expect((message.parts.single as PluginMessagePartText).text, "/skill:hello for Bob");
     });
 
+    test("drops a replayed OMP harness reminder instead of showing it as a user turn", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      respond(await waitForFrame(AcpMethods.initialize), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      respond(await waitForFrame(AcpMethods.authenticate), const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      // The shape OMP 19.2.1 replays (probed offline): every message under a
+      // fresh id, the developer-role reminder as a plain user chunk.
+      for (final (kind, id, text) in [
+        ("user_message_chunk", "u1", "start a server"),
+        ("agent_message_chunk", "a1", "started it"),
+        (
+          "user_message_chunk",
+          "u2",
+          "<system-reminder>\nYour bash calls left 1 process running:\n"
+              "- pid 4242 (&, started 3s ago): `sleep 600 &`\n</system-reminder>",
+        ),
+        ("agent_message_chunk", "a2", "registered it"),
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "stored",
+            "update": {
+              "sessionUpdate": kind,
+              "content": {"type": "text", "text": text},
+              "messageId": id,
+            },
+          },
+        });
+      }
+      respond(load, {"sessionId": "stored"});
+
+      final messages = await loading;
+      expect(messages.map((message) => message.info), [
+        isA<PluginMessageUser>(),
+        isA<PluginMessageAssistant>(),
+        isA<PluginMessageAssistant>(),
+      ]);
+      expect(
+        [for (final message in messages) (message.parts.single as PluginMessagePartText).text],
+        ["start a server", "started it", "registered it"],
+      );
+    });
+
     test("replays a session the live process holds on that process, without a second omp", () async {
       await connect(capabilities: {"loadSession": true});
       final session = await create("live");
