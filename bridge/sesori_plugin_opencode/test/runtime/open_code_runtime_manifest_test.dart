@@ -60,12 +60,12 @@ void main() {
           fail("missing the macOS arm64 asset");
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.4.1.tgz"),
+        equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.4.2.tgz"),
       );
     });
 
     test("bundled version is at least the minimum supported version", () {
-      expect(OpenCodeRuntimeManifest.targetVersion, "2.4.1");
+      expect(OpenCodeRuntimeManifest.targetVersion, "2.4.2");
       expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(
