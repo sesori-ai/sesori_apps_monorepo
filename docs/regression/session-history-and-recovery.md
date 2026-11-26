@@ -577,6 +577,13 @@ reconnect or restart.
   image caption or automation preamble appearing as a user bubble during a live
   turn, a peer message disappearing, or live and replay disagreeing about which
   user turns are visible.
+- An Oh My Pi notice the harness wrote to the model (such as the leftover
+  background-process reminder) never renders as a user turn after a reload.
+  OMP replays its developer-role messages as plain user chunks, so a replayed
+  user turn whose every text part is one whole `<system-…>`, `<tangent-notice>`
+  or `<irc>` block is dropped; the replies around it stay. Material failure
+  signals: a `<system-reminder>` bubble appearing after reopening an OMP
+  session, or a user's own message that quotes such a block disappearing.
 - Claude history follows the active branch of a rewound transcript. A rewind in
   the Claude Code terminal (Esc Esc) or a resume with `--resume-session-at`
   leaves the old turns in the `.jsonl` and parents the next prompt to an earlier
