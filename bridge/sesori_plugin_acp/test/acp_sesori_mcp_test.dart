@@ -159,7 +159,7 @@ void main() {
       expect(access.binds, [("token-1", "old-1")]);
     });
 
-    test("the short-lived history process gets no server", () async {
+    test("the short-lived history process gets no server, but the live sessions' activation meta", () async {
       plugin = buildPlugin(replaysOnLiveProcess: false);
       await connect();
 
@@ -178,7 +178,9 @@ void main() {
 
       expect(fakes, hasLength(2));
       expect(params["mcpServers"], isEmpty);
-      expect(params, isNot(contains("_meta")));
+      // The commands it advertises replace the shared snapshot, so it loads
+      // the same skills as a live session.
+      expect(params["_meta"], {"skills": RecordingSesoriMcpAccess.skills.pluginRoot});
       expect(access.minted, 0);
     });
 

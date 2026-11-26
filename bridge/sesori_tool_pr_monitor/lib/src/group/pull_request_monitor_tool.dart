@@ -31,7 +31,8 @@ enum PullRequestMonitorTool({
         "[PR Monitor] report when CI finishes or fails, a review or comment arrives, a conflict appears, or the PR "
         "is merged or closed; act on every report. Reports arrive on their own, so end your turn instead of "
         "polling or sleeping. The result is the PR's current report. The watch survives a bridge restart and ends "
-        "once the PR is merged or closed; a sub-agent's watch belongs to its root session.",
+        "once the PR is merged or closed; a sub-agent's watch belongs to its root session. Before your first watch, "
+        "read the how-to: the Sesori pr-monitor skill when you have it, otherwise get_guide with topic pr_monitor.",
     inputSchema: {
       "type": "object",
       "properties": {
