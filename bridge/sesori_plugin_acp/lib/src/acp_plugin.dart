@@ -325,8 +325,8 @@ abstract class AcpPlugin({
   bool isBusyPromptRejection({required AcpRpcException error}) => false;
 
   /// Optional `_meta` for `session/new`, `session/load` and `session/resume`
-  /// on a live process, given Sesori's skills ([skills]; null when there are
-  /// none).
+  /// on a live process and for the history process's `session/load`, given
+  /// Sesori's skills ([skills]; null when there are none).
   Map<String, dynamic>? sessionActivationMeta({required SesoriSkillBundle? skills}) => null;
 
   /// Optional top-level metadata for an outbound `session/prompt` request.
@@ -2741,11 +2741,14 @@ abstract class AcpPlugin({
       final AcpNewSessionResult result;
       try {
         // A short-lived history process runs no turn, so it gets no server.
+        // It still gets the live session's activation meta: the commands it
+        // advertises replace the shared snapshot, which would otherwise lose
+        // the commands that meta adds (Grok's Sesori skill).
         result = await AcpAgentApi(client: replayClient).loadSession(
           sessionId: sessionId,
           cwd: directoryForSession(sessionId: sessionId),
           sesoriMcp: null,
-          meta: null,
+          meta: sessionActivationMeta(skills: _sesoriMcp?.skillBundle),
           timeout: const Duration(minutes: 2),
         );
       } on AcpRpcException catch (error, stackTrace) {
