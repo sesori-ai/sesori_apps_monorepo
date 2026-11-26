@@ -86,7 +86,7 @@ The main pane hosts one full-width routed page.
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
   `projects-and-sessions.md`): its search field, All, Running and Unread chips, date headings with running sessions
   under Today, launching rows, the floating catalog scan card, pages with their loader row and the Retry row. Each row names its project while the
-  filter shows all of them (a "No project" row says "No project"), and opens its session in
+  filter shows all of them (a "No project" session's row names none), and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.

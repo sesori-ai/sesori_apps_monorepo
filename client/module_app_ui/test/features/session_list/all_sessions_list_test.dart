@@ -524,7 +524,7 @@ void main() {
       scratchProject: scratch,
     );
 
-    testWidgets("says No project unfiltered, as its session header does, in the project's grey", (tester) async {
+    testWidgets("names no project unfiltered, while a project's session names its own", (tester) async {
       await pumpList(
         tester,
         mode: AllSessionsMode.active,
@@ -540,11 +540,8 @@ void main() {
         projectList: projectList,
       );
       expect(find.text("Jot down ideas"), findsOneWidget);
-      expect(find.text("No project"), findsOneWidget);
-      expect(
-        tester.widget<Text>(find.text("No project")).style?.color,
-        tester.widget<Text>(find.text("Project One")).style?.color,
-      );
+      expect(find.text("Project One"), findsOneWidget);
+      expect(find.text("No project"), findsNothing);
     });
 
     testWidgets("names none in a list filtered to No project", (tester) async {

@@ -6,6 +6,7 @@ import "package:flutter/gestures.dart" show Drag;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectKind;
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -1114,9 +1115,11 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     // Actions run against the list's context, not the row's: a delete
     // unmounts the row before its follow-ups run.
     SessionActionsCubit actions() => context.read<SessionActionsCubit>();
+    // A session without a project names none: its row just has no project part.
+    final namesProject = labelsProject && row.project.kind != ProjectKind.scratch;
     final tile = SessionTile(
       session: row.session,
-      projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
+      projectLabel: namesProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
       isArchived: row.session.time?.archived != null,
       isRunning: row.isRunning,
       unseen: row.isUnseen,
