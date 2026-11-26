@@ -10,7 +10,7 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "17.2.13");
 
   /// The Oh My Pi release targeted by this plugin.
-  static const String targetVersion = "19.2.0";
+  static const String targetVersion = "19.2.1";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
@@ -18,21 +18,21 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
     PlatformOs.macos: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-darwin-arm64",
-        sha256: "56cf390ea50791ba089878318d0107a959c6f05c3fb9ad7d422023282be3926f",
+        sha256: "43943119837612b2da72250ab7efe22ff8ca239eabebd4f702f34e3a144fdd3d",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-darwin-x64",
-        sha256: "e56583001be5abf63c70783c48ae287c9c64469261adf4a544e3076b7878ba7f",
+        sha256: "4face26750f5679857a606a61df22b1587925d4b308d5938de470d8c780cd871",
       ),
     },
     PlatformOs.windows: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-windows-arm64.exe",
-        sha256: "05a41e00a420bc495386eb980cc30cf8b341b493025a76a187b447b1da5300e9",
+        sha256: "1b4546429f1326e33948649f76caa5f67c4c12eb630c8688c350d97fbc1e6f88",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-windows-x64.exe",
-        sha256: "3cbb698ef9180cbaf4c861bd0c7523b1364262839df0538a3e39321cfaf52e98",
+        sha256: "2d039b068497333c2e23c06531ed50314edb9ec96123fa1a5d24a78316a1e5db",
       ),
     },
   };
@@ -41,21 +41,21 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
     OmpLinuxLibc.glibc: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-arm64",
-        sha256: "5e30bfb1d1dab1778d24c576ddb23c942db3159f536a805abb4cda661fd607fb",
+        sha256: "92d4cce4b14814f6b838aa86dcec6359f0cb089cbcc300e8463cbb5326991fe0",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-x64",
-        sha256: "74cb641d3fcdc22fa3f2141dafa4e66c9fc581d7d2d71753e690160980472c31",
+        sha256: "e8b937f9bf023baa147bdd300ad5421af0a6ef8b1f350c47a9a93d5fca94feca",
       ),
     },
     OmpLinuxLibc.musl: {
       PlatformArch.arm64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-musl-arm64",
-        sha256: "e1a2970346f9a74ccc1a8e954465551d4cc4dab8ed4940c2bdf758a04b93e2d9",
+        sha256: "15b226083921a71b078d784d64d16a60401aa97ca0498b2a77b6c8821da3520e",
       ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-linux-musl-x64",
-        sha256: "4d3bac3438d45c3b12da224c9f726e5c1c685e890cb5ed3cc32c3702b2f3dfe6",
+        sha256: "1ac04f354952a0bb65aee3e347e8d516d386a01d6bd90b84f960b4e6b5a26d1c",
       ),
     },
   };
