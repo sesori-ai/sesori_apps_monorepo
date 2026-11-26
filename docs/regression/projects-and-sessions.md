@@ -333,7 +333,7 @@ state.
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
   shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
-  project, a "No project" row saying "No project" as its session header does. The large title reads "All projects"
+  project; a "No project" session's row names none and leaves no separator behind. The large title reads "All projects"
   with a chevron, and a tap opens the project picker in filter mode: the folder projects, with "All projects" pinned
   below them, beside "No project" when the bridge has it. Picking a project, or "No project", narrows the list to it:
   the title takes its name ("No project" for "No project"), rows stop naming the project, and an empty result names
@@ -608,7 +608,7 @@ state.
   line names neither the harness, which session detail
   still shows, nor the branch. The home and Archived while filtered to one
   project give no project; across
-  every project the home and Archived name each row's, "No project" included. Screen
+  every project the home and Archived name each row's, except a "No project" session's, which names none. Screen
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size under touch. Under a pointer (the desktop app) the title is
@@ -985,7 +985,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A scratch session folder appears as a project, a scratch session lists outside "No project", "No project" is
   missing, hidden, or renamed back after startup, a hide request for it succeeds, or a scratch folder path reports
   kind `scratch`. An import fails because "No project" is missing instead of leaving scratch sessions out.
-- A "No project" row names another project, or the unfiltered list leaves its "No project" out, a project list or
+- A "No project" session's row names any project or leaves a stray separator, or the unfiltered list leaves its
+  "No project" sessions out, a project list or
   Settings › Projects lists "No project" as a folder, or filtering to it titles the home with anything but
   "No project".
 - The computer menu checks a computer other than the one the header names, a switch leaves the previous
