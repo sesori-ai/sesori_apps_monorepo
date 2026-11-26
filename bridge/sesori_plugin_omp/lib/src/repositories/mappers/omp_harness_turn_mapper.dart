@@ -14,7 +14,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// its parts is text holding one whole block of OMP's harness tags, the set its
 /// `session/harness-tags.ts` defines: `irc`, `tangent-notice` and `system-*`.
 class const OmpHarnessTurnMapper() {
-  static final RegExp _harnessBlock = RegExp(r"^<(irc|tangent-notice|system-[a-z][a-z-]*)(?:\s[^>]*)?>[\s\S]*</\1>$");
+  /// One block: its body never closes the tag, so text between two blocks
+  /// keeps the turn.
+  static final RegExp _harnessBlock = RegExp(
+    r"^<(irc|tangent-notice|system-[a-z][a-z-]*)(?:\s[^>]*)?>(?:(?!</\1>)[\s\S])*</\1>$",
+  );
 
   /// [messages] without the user turns OMP's harness generated.
   List<PluginMessageWithParts> withoutHarnessTurns({required List<PluginMessageWithParts> messages}) => [

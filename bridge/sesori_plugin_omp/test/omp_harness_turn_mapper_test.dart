@@ -54,6 +54,7 @@ void main() {
       "Why did you get this? <system-reminder>\nx\n</system-reminder>",
       "<system-reminder>\nx\n</system-reminder>\nand then do this",
       "<system-reminder>\nunclosed",
+      "<system-reminder>a</system-reminder>\nPlease compare these.\n<system-reminder>b</system-reminder>",
       "<system-reminder>\nx\n</system-notice>",
       "<skill>\nbody\n</skill>",
       "<context-window-reminder>\nx\n</context-window-reminder>",
