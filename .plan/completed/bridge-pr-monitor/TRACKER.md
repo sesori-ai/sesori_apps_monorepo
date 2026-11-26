@@ -19,7 +19,7 @@
 | 14 | ⚙️ App: watched-PR list | Done | #2929 (14.a), #2930 (14.b) |
 | 15 | ⚙️ Sesori tools on OpenCode | Done | #2914 |
 | 16 | 🌱 Reconcile regression docs | Done | #2932 |
-| 17 | 🌿 Verify and retire | Not started | |
+| 17 | 🌿 Verify and retire | Done | #2946 (Grok skill fix, `get_guide` pointer), plus this retire PR. Matrix in `docs/regression/pull-request-monitor.md` ("L3 run, 2026-11-26"); Hermes pending its MCP. |
 
 ## Notes for later steps
 
@@ -107,7 +107,8 @@
   first live session; it appeared from the next session on. Probably the list
   was read before Grok loaded `_meta.pluginDirs`; not confirmed. Check during
   the final verification and fix if the command list can be refreshed after
-  load.
+  load. Resolved in #2946: the short-lived history process's `session/load`
+  had no `_meta`, and its command list replaced the shared one.
 - Step 13.a as built: `GET /settings` also sends `agentToolsEnabled`
   (`bool?`, null from v1.15.0 bridges) and `PATCH /settings` takes
   `BridgeSettingUpdate.agentTools`. `BridgeSettingsReady.agentTools` is null

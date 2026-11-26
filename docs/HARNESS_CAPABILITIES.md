@@ -272,8 +272,19 @@ waits for the user there, and for an auto-merge Allow it waits twice;
 `pr_watch_status`, `get_pr_report`, `get_pr_feedback` and `get_guide` run
 without a prompt. The Grok plugin answers Grok's own prompt for these tools.
 Verified live on 2026-11-25: on every harness with a skill seam the agent
-loaded the guide and called `watch_pr` (table below). Report delivery and its
-timing per harness are not yet verified live.
+loaded the guide and called `watch_pr` (table below). Report delivery verified
+live on 2026-11-26 through the local test proxy, on a scratch repository:
+Claude Code 2.1.331, Codex 0.172.0, Pi 1.6.0, Oh My Pi 19.1.1, Grok 1.0.30,
+GitHub Copilot 1.0.114 and OpenCode 2.4.1 each called `watch_pr`. A comment
+reached every watching session in the same poll, 2.5 to 3 minutes after it was
+posted (the 2-minute quiet window, then the next poll), and each agent acted
+on it: it read the feedback with `get_pr_feedback` and answered with
+`reply_on_pr`, or tried to make the requested change. Oh My Pi called
+`watch_pr` through its bash tool. Two OpenCode sessions in one folder each got
+their own report. A report due during a long Claude Code text turn joined that
+turn and was answered as soon as the text ended, without a new turn. On Grok
+it waited about 50 seconds for the turn to end. Hermes is not verified,
+because it does not get the server yet (above).
 
 Tool-group guides: a group with a long how-to (today the PR monitor) gives
 agents two ways to read it. Every harness that gets the server can call

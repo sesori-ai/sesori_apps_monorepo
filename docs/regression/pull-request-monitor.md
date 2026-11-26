@@ -160,6 +160,58 @@ The how-to lives in the group's guide, served as the `sesori-pr-monitor` skill w
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
+### L3 run, 2026-11-26
+
+This run used a headless bridge, an isolated home, the local test proxy and a private scratch repository with no
+real code. Per-harness delivery timing is recorded in [harness capabilities](../HARNESS_CAPABILITIES.md).
+
+- **Passed, bridge:**
+  - **Report timing:** a comment reported after 2.5 to 3 minutes, the quiet window plus the next poll. A failing
+    check reported at the next poll. A merge reported at the next poll, or 4 seconds after a restart when it
+    happened while the bridge was stopped.
+  - **Restart:** a restart mid-watch resumed the watch. A check that failed during the downtime reported at once to
+    both watchers.
+  - **One poll per PR:** two sessions, and later seven, on one PR caused one GraphQL poll a minute, and each
+    session got each report once.
+  - **Replies and readiness:** `reply_on_pr` posted with the `[Sesori reply]` prefix once and answered the comment.
+    `agent-ready` landed with the next quiet report.
+  - **Auto-merge:**
+    - An agent's per-PR auto-merge showed the Allow card. Allow turned auto-merge on and removed the existing
+      `agent-ready`.
+    - `mark_pr_ready` then squash-merged at the head, with one parent, the title as the whole message, and
+      `automatically-merged` added.
+    - A push 2 seconds after a poll, followed by a mark before the next poll, got GitHub's 409, and the merge was
+      cancelled. The next report removed the label. The agent judged the new head and marked it again, and it merged.
+  - **Group toggle:** with the group off, there were no polls, the list route was empty, and a new session's tools
+    had no PR monitor tools. Turning it back on polled at once and restored the watches.
+  - **Archive:** archiving a session ended its watch at the next tick, and polling of that PR stopped.
+  - **`configure_pr_monitor`:** widening the auto-merge default showed the card and applied on Allow. Under Approve
+    everything it applied with no card. Narrowing and `clear_repository` applied at once.
+  - **Idle reminder:** a reminder arrived after a long idle stretch.
+  - **Ten poll failures:** about 10 minutes offline ended every watch, each with a stop notice.
+- **Passed, privacy:**
+  - **Tokens:** the `gh` token was absent from the bridge log, from a log of every `gh` argv, and from harness argv.
+  - **Reply bodies:** `gh`'s errors for a rejected reply, a body that is too long or an unknown thread, carry only
+    stderr, without the body, and the bridge logs only that message.
+- **Passed, harnesses:**
+  - Claude Code, Codex, Pi, Oh My Pi, Grok, GitHub Copilot and OpenCode each watched, got a report and acted on it.
+  - The skill loaded where its seam is wired, and Codex called `get_guide` before `watch_pr`.
+  - A mid-turn report steered on Claude Code and waited on Grok.
+  - Two OpenCode sessions in one folder each got their own report.
+- **Passed, client** (iOS simulator, `sesori-dev-1`, an integration test against this bridge):
+  - **Home button:** it faded and grew in and out within about 250 ms when the group was toggled. The other home
+    buttons kept exactly the same frames.
+  - **Count:** the red count showed only needs-you PRs. It went from 2 to 3 when a watched PR got a comment, then
+    back to 2 when the agent replied, rolling both times.
+  - **Sheet:** it showed Needs you, Waiting and Merged today, in light and in dark mode.
+- **Not run:**
+  - **Hermes:** it does not get the Sesori MCP yet. The fix is upstream in hermes-agent#154438.
+  - **Remaining client checks:** the composer chip, the row mark against a timed arming, tap to session, swipe
+    actions, regrouping on the next open and the older-bridge fixture. These are covered by the L2 widget tests
+    above.
+  - **Desktop sidebar row:** agents may not launch a desktop debug build, because it raises keychain prompts on
+    the owner's screen. It is covered by `desktop_cockpit_shell_test.dart`.
+
 ## Exploration Guidance
 
 Vary who watches (one session, two sessions on one PR, a sub-agent and its root), when activity lands (during the
@@ -201,6 +253,8 @@ Use only scratch repositories and fixture text.
   that are missing.
 - Polling, not webhooks: a report waits for the next 60-second poll, and each poll costs about one GraphQL point, so
   50 watched PRs use about 3,000 of the 5,000 points an hour.
+- Ten failed polls in a row end a watch, so about 10 minutes offline while the bridge runs ends
+  every watch with a stop notice; the agent must watch again.
 - `gh` must be on the bridge's PATH; a supervised desktop bridge gets the user's login-shell environment.
 - The labels and the `[Sesori reply]` prefix are fixed, and the plugin's config files are not read. Only agents change
   the settings, through `configure_pr_monitor`.
@@ -228,5 +282,5 @@ newer). Delivery timing and skill seams differ per harness; see [harness capabil
 - App: `SessionScheduledMarkCalculator`, `PullRequestWatchListCubit` and `arrangePullRequestWatches` in `module_core`;
   `pullRequestWatchLook`, `session_wake_up_chip.dart` and `features/pull_request_watches/` in `module_app_ui`; the
   desktop sidebar and cockpit shell.
-- Plan: [.plan/active/bridge-pr-monitor/PLAN.md](../../.plan/active/bridge-pr-monitor/PLAN.md), with the plugin
+- Plan: [.plan/completed/bridge-pr-monitor/PLAN.md](../../.plan/completed/bridge-pr-monitor/PLAN.md), with the plugin
   behaviour it ports in `PR_MONITOR_SPEC.md`.
