@@ -878,6 +878,14 @@ cancel while the session has no turn running or queued and no sub-agent work. Ve
 proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
 ended can still cost the next prompt, which then needs resending.
 
+### Taking back a prompt stopped before any reply
+
+| Harness | Sesori availability |
+|---|---|
+| Every harness | ⬜ Not implemented: a Stop that lands before the model writes anything leaves the prompt in the transcript; Sesori does not remove it and put its text back in the composer. |
+
+OpenCode's own clients do this since 2.4.2. Sesori tracks it here and has not planned it.
+
 ## Interrupted turns
 
 The bridge records a running turn for every harness from the session's busy and idle status, with no plugin
@@ -928,6 +936,13 @@ model is mapped under the existing Antigravity OAuth provider and dispatched
 with its exact native ID. Synthetic mixed-provider catalogs and initialize
 requests are tested; native authenticated catalog/third-party execution is
 unverified. Actual availability still depends on Google's account entitlements.
+
+### Context-size choice
+
+| Harness | Status |
+|---|---|
+| GitHub Copilot | ⬜ Not implemented. 1.0.116 adds a "Context Size" session option for supported models; its ACP category and values are unverified (they need a signed-in `session/new`). If it reused the `model`, `mode` or `thought_level` category and came first, the shared ACP option parser would read it as that picker. |
+| Every other harness | ⬜ Not implemented (not assessed). |
 
 ## Fast mode
 
