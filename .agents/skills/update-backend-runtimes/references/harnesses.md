@@ -24,7 +24,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   that add migrations) migrates the native database one-way.
 - **Assets:** six npm packages `@opencode/cli-{darwin,linux,windows}-{arm64,x64}`.
   Fetch exact-version registry metadata, verify each downloaded `.tgz` against
-  published integrity, and independently compute its manifest SHA-256. URLs are
+  published integrity, and independently compute its manifest SHA-256 (npm
+  publishes no SHA-256). For an upstream cross-check, the GitHub release's
+  `opencode-<os>-<arch>.zip` matches its GitHub asset digest and holds a binary
+  byte-identical to the npm one (2.4.2). URLs are
   `https://registry.npmjs.org/@opencode/cli-<target>/-/cli-<target>-<version>.tgz`.
   All use `ArchiveFormat.tarGz` with `package/bin/opencode[.exe]`, normalized by
   `RuntimeArchiveLayout.singleBinary`. As of 2.2.7 the darwin and windows
@@ -241,11 +244,17 @@ concrete problem can justify a documented temporary hold with a resolution path.
   between versions do not work. For the audit, diff the digest-checked
   `github-copilot-X.Y.Z-<os>-<arch>.tgz` release assets instead: they hold
   readable `cli-main.js`, `changelog.json` and `copilot-sdk/generated/*.d.ts`
-  (verified on 1.0.112 to 1.0.115). The ACP server itself lives in the native
+  (verified on 1.0.112 to 1.0.116). The ACP server itself lives in the native
   `prebuilds/<os>-<arch>/runtime.node`, not in `cli-main.js`. From 1.0.115 its
   ACP method names are no longer literal strings, so check the method surface
   with the network-denied, unauthenticated probe instead: bogus-session calls
   answer "not found" for implemented methods and `-32601` for absent ones.
+  Session option labels and their validation errors are still readable there,
+  which is how new options (1.0.116's "Context Size", `allow_all`'s `auto`)
+  show up without a signed-in session. A new option's ACP `category` is only
+  visible from an authenticated `session/new`; the shared parser takes the
+  first option of `model`, `mode` and `thought_level`, so check it does not
+  reuse one of those.
 - **Probe:** production current-host install, isolated `COPILOT_HOME` and
   `COPILOT_CACHE_HOME` (the loader can run a newer package cached there unless
   auto-update is off), branded `GitHub Copilot CLI X.Y.Z.` version, then
@@ -536,6 +545,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   process. Re-check that on each bump: point `session/new` `mcpServers` at a
   loopback HTTP fixture and see which process connects (`lsof`). OMP first sends
   `server/discover`; Sesori's `-32601` answer selects the handshake era.
+  From 19.2.1 `bash.reapBackground` is on in ACP mode: a leftover `cmd &`
+  process adds a `<system-reminder>` developer message and one more turn, and
+  session end kills unregistered `&` processes. OMP replays developer messages
+  as plain `user_message_chunk`s; `OmpHarnessTurnMapper` hides whole
+  harness-tag blocks (`session/harness-tags.ts`), so re-check that tag set on
+  each bump. A process adopted with `o2ctl services add` stays in `omp`'s tree,
+  so the bridge's stop still ends it.
 
 ## DeepSeek
 
