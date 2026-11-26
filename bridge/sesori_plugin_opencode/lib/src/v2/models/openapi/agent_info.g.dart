@@ -1,6 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.4.1 (6f0514052a3c859894ad01bb14cc14dda1e44b96)
+// Source: anomalyco/opencode@v2.4.2 (fc31a485317970bcf6be7b431a9830aaef875731)
 
+import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'model_ref.g.dart';
@@ -15,6 +16,7 @@ class AgentInfo {
     required this.model,
     required this.request,
     required this.system,
+    required this.instructions,
     required this.description,
     required this.mode,
     required this.hidden,
@@ -30,6 +32,7 @@ class AgentInfo {
       model: json["model"] == null ? null : ModelRef.fromJson(json["model"] as Map<String, dynamic>),
       request: ProviderRequest.fromJson(json["request"] as Map<String, dynamic>),
       system: json["system"] as String?,
+      instructions: json["instructions"] as Object?,
       description: json["description"] as String?,
       mode: AgentInfoMode.fromJson(json["mode"] as String),
       hidden: json["hidden"] as bool,
@@ -46,6 +49,7 @@ class AgentInfo {
       "model": ?model?.toJson(),
       "request": request.toJson(),
       "system": ?system,
+      "instructions": ?instructions,
       "description": ?description,
       "mode": mode.toJson(),
       "hidden": hidden,
@@ -63,6 +67,7 @@ class AgentInfo {
     ModelRef? model,
     ProviderRequest? request,
     String? system,
+    Object? instructions,
     String? description,
     AgentInfoMode? mode,
     bool? hidden,
@@ -76,6 +81,7 @@ class AgentInfo {
       model: model ?? this.model,
       request: request ?? this.request,
       system: system ?? this.system,
+      instructions: instructions ?? this.instructions,
       description: description ?? this.description,
       mode: mode ?? this.mode,
       hidden: hidden ?? this.hidden,
@@ -94,6 +100,7 @@ class AgentInfo {
           other.model == model &&
           other.request == request &&
           other.system == system &&
+          const DeepCollectionEquality().equals(other.instructions, instructions) &&
           other.description == description &&
           other.mode == mode &&
           other.hidden == hidden &&
@@ -102,13 +109,14 @@ class AgentInfo {
           other.permissions == permissions);
 
   @override
-  int get hashCode => Object.hash(id, name, model, request, system, description, mode, hidden, color, steps, permissions);
+  int get hashCode => Object.hash(id, name, model, request, system, const DeepCollectionEquality().hash(instructions), description, mode, hidden, color, steps, permissions);
 
   final String id;
   final String name;
   final ModelRef? model;
   final ProviderRequest request;
   final String? system;
+  final Object? instructions;
   final String? description;
   final AgentInfoMode mode;
   final bool hidden;
