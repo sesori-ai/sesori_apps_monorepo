@@ -140,6 +140,18 @@ class const PullRequestReportBuilder({
       ),
   ].join("\n");
 
+  String buildOutageSummary({required PullRequestTarget target}) =>
+      _summary(target: target, reason: "GitHub unreachable, still watching");
+
+  /// Tells a watcher that polls of [target] keep failing while its watch goes
+  /// on, with the first line of [lastError].
+  String buildOutageNotice({required PullRequestTarget target, required Exception lastError}) => [
+    "[PR Monitor] [${target.displayKey}](${target.url}) — GitHub can't be reached; still watching",
+    "- Polls have failed for about 10 minutes. Reports resume once a poll succeeds and cover what changed meanwhile.",
+    "- Don't watch it again; act only when the last error asks for it, such as signing `gh` in.",
+    "- Last error: ${"$lastError".split("\n").first}",
+  ].join("\n");
+
   String _startupAssessmentLine({required PullRequestTarget target}) =>
       "- Startup/restart assessment: inspect the current head's checks, expected automated reviews, and existing "
       "feedback now. If already settled with nothing left to do, call ${_markReadyCall(target: target)} without "
