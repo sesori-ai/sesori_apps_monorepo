@@ -8,6 +8,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_list/send_session_sheet.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectKind;
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
@@ -148,5 +149,30 @@ void main() {
 
     expect(find.text("/work/demo-app"), findsOneWidget);
     expect(find.text("/forks/demo-app"), findsOneWidget);
+  });
+
+  testWidgets("a session without a project names none, and a row left with only its title keeps its height", (
+    tester,
+  ) async {
+    final scratch = testProjectSummary(id: "scratch", path: "/scratch").copyWith(kind: ProjectKind.scratch);
+    await pumpSheet(
+      tester,
+      shown: [
+        (session: testSession(id: "a", title: "Folder chat"), project: project, running: null),
+        (session: testSession(id: "b", title: "Loose chat"), project: scratch, running: null),
+        (session: testSession(id: "c", title: "Busy chat"), project: scratch, running: RunningTarget.keepsTurn),
+      ],
+    );
+    await tester.tap(find.byKey(const Key("send_session_target")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("No project"), findsNothing);
+    expect(find.textContaining("No project ·"), findsNothing);
+    expect(find.text("Running"), findsOneWidget);
+    Finder row(String title) => find.ancestor(of: find.text(title), matching: find.byType(ConstrainedBox)).first;
+    expect(tester.getSize(row("Loose chat")).height, tester.getSize(row("Folder chat")).height);
+    expect(tester.getSize(row("Loose chat")).height, greaterThan(tester.getSize(find.text("Loose chat")).height));
+    // The lone title sits in the middle of the row rather than over a gap.
+    expect(tester.getCenter(find.text("Loose chat")).dy, closeTo(tester.getCenter(row("Loose chat")).dy, 0.5));
   });
 }

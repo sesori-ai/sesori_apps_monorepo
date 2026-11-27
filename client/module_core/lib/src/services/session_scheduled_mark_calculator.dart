@@ -18,7 +18,7 @@ class const SessionScheduledMarkCalculator() {
         lead: _lead(watches: watches),
         others: watches.length - 1,
       ),
-      SessionArmingNotArmed() when task != null => SessionScheduledMark.fromTask(name: task.name),
+      SessionArmingNotArmed() when task != null => const SessionScheduledMark.fromTask(),
       SessionArmingUnreported() when task != null => SessionScheduledMark.legacyTask(task: task),
       SessionArmingNotArmed() || SessionArmingUnreported() => const SessionScheduledMark.none(),
     };

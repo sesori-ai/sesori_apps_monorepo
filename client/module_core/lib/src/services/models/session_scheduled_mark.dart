@@ -20,7 +20,8 @@ sealed class SessionScheduledMark with _$SessionScheduledMark {
       SessionScheduledMarkWatchingPullRequests;
 
   /// A scheduled task started the session, but nothing will wake it again.
-  const factory fromTask({required String name}) = SessionScheduledMarkFromTask;
+  /// The row names no task: its name usually repeats the session's title.
+  const factory fromTask() = SessionScheduledMarkFromTask;
 
   /// An older bridge that does not report what wakes the session: the task
   /// that started it, as rows showed it before.

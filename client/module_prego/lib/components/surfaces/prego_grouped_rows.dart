@@ -41,16 +41,18 @@ class const PregoGroupedRows({
   final Color? color,
   final bool showDividers = true,
 }) extends StatelessWidget {
+  /// The card's corner radius, for a card built row by row that must match it.
+  static double cornerRadiusOf(BuildContext context) =>
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+      PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l;
+
   @override
   Widget build(BuildContext context) {
     return Material(
       color: color ?? context.prego.colors.bgSurface3,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-          PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l,
-        ),
+        borderRadius: BorderRadius.circular(cornerRadiusOf(context)),
         // White on near-white needs an edge; dark surfaces step apart by fill.
         side:
             // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics

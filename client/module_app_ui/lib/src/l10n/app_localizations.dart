@@ -4645,11 +4645,11 @@ abstract class AppLocalizations {
   /// **'Wakes again for {name} at {time}'**
   String sessionListArmedDescription(String name, String time);
 
-  /// Quiet session-row mark on a session a scheduled task started that nothing will wake again. Lowercase: it reads as part of the row's meta line.
+  /// Quiet session-row mark, after a grey repeat glyph, on a session a scheduled task started that nothing will wake again. It names no task: the task's name usually repeats the session's title.
   ///
   /// In en, this message translates to:
-  /// **'from {name}'**
-  String sessionListFromTask(String name);
+  /// **'Scheduled run'**
+  String get sessionListScheduledRun;
 
   /// Screen-reader label for the session-list mark on a session a one-time scheduled task started
   ///
