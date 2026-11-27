@@ -235,10 +235,7 @@ class const _CardSegment({required final bool isFirst, required final bool isLas
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final radius = Radius.circular(
-      // ignore: no_slop_linter/avoid_interaction_mode_reads, matches PregoGroupedRows' card
-      PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l,
-    );
+    final radius = Radius.circular(PregoGroupedRows.cornerRadiusOf(context));
     return PregoGroupedRowPosition(
       isLast: isLast,
       child: Material(
@@ -370,63 +367,70 @@ class const _WatchRow({
       ),
       leadingWidth: 20,
       title: Text(watch.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            spacing: PregoSpacing.xs,
-            children: [
-              Flexible(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: "${watch.repository}#${watch.number} · "),
-                      TextSpan(
-                        text: words,
-                        style: TextStyle(color: look.color, fontWeight: strong ? FontWeight.w500 : null),
-                      ),
-                      if (reasons != null) TextSpan(text: " · $reasons"),
-                    ],
+      // A stage's words can wrap differently; the row eases to its new height
+      // rather than snapping the rows below.
+      subtitle: AnimatedSize(
+        duration: duration,
+        curve: Curves.easeOut,
+        alignment: AlignmentDirectional.topStart,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              spacing: PregoSpacing.xs,
+              children: [
+                Flexible(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: "${watch.repository}#${watch.number} · "),
+                        TextSpan(
+                          text: words,
+                          style: TextStyle(color: look.color, fontWeight: strong ? FontWeight.w500 : null),
+                        ),
+                        if (reasons != null) TextSpan(text: " · $reasons"),
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              AnimatedSize(
-                duration: duration,
-                curve: Curves.easeOut,
-                child: AnimatedSwitcher(
+                AnimatedSize(
                   duration: duration,
-                  child: autoMergeMark
-                      ? Row(
-                          key: const Key("pull-request-watch-auto-merge-mark"),
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: PregoSpacing.xxs,
-                          children: [
-                            Icon(TablerRegular.arrows_join, size: PregoIconSize.sm, color: tertiary),
-                            Text(loc.pullRequestWatchAutoMergeMark, style: TextStyle(color: tertiary)),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
+                  curve: Curves.easeOut,
+                  child: AnimatedSwitcher(
+                    duration: duration,
+                    child: autoMergeMark
+                        ? Row(
+                            key: const Key("pull-request-watch-auto-merge-mark"),
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: PregoSpacing.xxs,
+                            children: [
+                              Icon(TablerRegular.arrows_join, size: PregoIconSize.sm, color: tertiary),
+                              Text(loc.pullRequestWatchAutoMergeMark, style: TextStyle(color: tertiary)),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Row(
-            spacing: PregoSpacing.xs,
-            children: [
-              Icon(TablerRegular.message_circle, size: PregoIconSize.sm, color: secondary),
-              Flexible(
-                child: Text(
-                  item.sessionTitle ?? loc.sessionListUntitled,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ],
+            ),
+            Row(
+              spacing: PregoSpacing.xs,
+              children: [
+                Icon(TablerRegular.message_circle, size: PregoIconSize.sm, color: secondary),
+                Flexible(
+                  child: Text(
+                    item.sessionTitle ?? loc.sessionListUntitled,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
       onTap: () => onOpenSession(
         projectId: item.projectId,
