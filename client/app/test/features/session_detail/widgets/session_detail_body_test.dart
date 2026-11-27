@@ -1765,6 +1765,48 @@ void main() {
     expect(find.text(" · Xhigh"), findsNothing);
   });
 
+  testWidgets("the bar's pull-request button comes and goes with the session's watches, growing its room", (
+    tester,
+  ) async {
+    SessionPullRequestWatch watch(int number) => SessionPullRequestWatch(
+      repository: "acme/web",
+      number: number,
+      title: "Fixture $number",
+      url: "https://github.com/acme/web/pull/$number",
+      autoMerge: false,
+      status: const PullRequestWatchStatus.waiting(),
+    );
+    final idle = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final watching = idle.copyWith(session: testConstSession.copyWith(pullRequestWatches: [watch(1), watch(2)]));
+    final controller = StreamController<SessionDetailState>.broadcast();
+    addTearDown(controller.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.state).thenReturn(idle);
+    when(() => cubit.stream).thenAnswer((_) => controller.stream);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key("session-detail-pull-requests"));
+    expect(button, findsNothing);
+
+    when(() => cubit.state).thenReturn(watching);
+    controller.add(watching);
+    // The state lands, then the button mounts and its room starts growing.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final growing = tester.getSize(find.ancestor(of: button, matching: find.byType(AnimatedSize)).first).width;
+    await tester.pumpAndSettle();
+    final grown = tester.getSize(find.ancestor(of: button, matching: find.byType(AnimatedSize)).first).width;
+    expect(growing, inExclusiveRange(0, grown), reason: "the title gives way gradually");
+    expect(find.descendant(of: button, matching: find.text("2")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^2 pull requests")), findsOneWidget);
+
+    when(() => cubit.state).thenReturn(idle);
+    controller.add(idle);
+    await tester.pumpAndSettle();
+    expect(button, findsNothing);
+  });
+
   testWidgets("the bar carries only Prompts and the menu, and the menu holds Changes", (tester) async {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     await tester.pumpWidget(_buildApp(cubit: cubit));

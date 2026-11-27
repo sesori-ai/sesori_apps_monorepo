@@ -8,7 +8,7 @@ however many sessions watch it, and messages every watching session a `[PR Monit
 when CI, reviews, comments, mergeability or the PR's state change. Watches are stored per session and resume after a
 bridge restart. When a PR is ready the bridge adds the `agent-ready` label, handing it to a human, and with
 auto-merge on it makes one squash merge pinned to the head. The app shows the watched PRs on session rows, in the
-composer chip, and in a Pull requests list: a home button and sheet on the phone, a sidebar row and page on desktop.
+session header, and in a Pull requests list: a home button and sheet on the phone, a sidebar row and page on desktop.
 
 `gh` is an optional dependency: the group's tools are listed without it, and a call that needs GitHub answers with
 what to do ("Install it from https://cli.github.com, then run `gh auth login`", or "Run `gh auth login`, or check
@@ -135,10 +135,10 @@ The how-to lives in the group's guide, served as the `sesori-pr-monitor` skill w
   lead is the first by stage order (To merge, Agent on it, Waiting, Merges automatically, Merged today), ties to the
   lower number. A timed arming wins over it, and it wins over the plain task mark. A status change cross-fades the
   mark in place without changing the row's height.
-- The composer chip also shows for watches: with a wake-up it keeps "Wakes <time>"; with only watches it is a
-  pull-request glyph and "N pull requests", cross-fading between the two, and nothing above the composer moves. With
-  only watches a tap opens the session's pull-request list; with a wake-up its menu lists the wake-ups, then an
-  "N pull requests" row that opens the same list.
+- While a session watches PRs, its header has a pull-request button with their count between Prompts and the menu
+  (on desktop, a small button beside Changes), spoken and in its tooltip as "N pull requests". It fades in and out as
+  watches come and go mid-session, and its room grows and folds so the title gives way gradually instead of in one
+  frame. It opens the Pull requests list filtered to that session. The composer's alarm chip is for wake-ups only.
 - The phone home bar has a pull-request button left of the computer and Settings buttons (on a tablet, in the sidebar
   footer). It fades and grows in while the computer has watched PRs and out when none are left, in its own reserved
   slot so the other buttons never move, and carries a muted grey count of the PRs to merge while there are any; the
@@ -147,18 +147,21 @@ The how-to lives in the group's guide, served as the `sesori-pr-monitor` skill w
   lazily under To merge (its heading in green with the merge glyph), Agent on it, Waiting, Merges automatically and
   Merged today: open ones by repository and number, merged ones newest first. Each row shows the stage glyph in its
   colour, the PR title, `owner/repo#N` with the stage and any reasons in full, an Auto-merge mark on To merge and Agent
-  on it rows when on (Waiting says "then merges automatically" instead), and the session title. While the sheet stays open a row keeps its group and
-  place and only its content changes; it regroups the next time it opens, a new watch joins the end of its group,
-  and an ended one leaves. Tapping a row closes the sheet and opens its session; from the composer chip the sheet
-  lists only that session's PRs and a tap just closes it.
-- Swiping a row offers Auto-merge (or No auto-merge) and Stop, and a full swipe stops; a long press lists the same
-  actions. Merged rows offer only Stop. Auto-merge moves at once and a failed change goes back and says so; Stop shows
-  a spinner on the row, and a failed stop keeps the row and says so. A computer switch clears the list until the new
+  on it rows when on (Waiting says "then merges automatically" instead), and the session title. While the sheet stays
+  open a row keeps its group and place and only its content changes; it regroups the next time it opens, a new watch
+  joins the end of its group, and an ended one leaves.
+- Tapping a row opens its detail card over the list (a dialog under a pointer): the PR title, the stage and
+  `owner/repo#N`, and each of the agent's reasons with a line on what it means. Its actions: Open on GitHub (the
+  watch's URL in the browser), Go to session (closes the card and list and opens it; absent inside that session), an
+  Auto-merge switch (absent once merged), and Stop watching in red. The card follows the list while open, so a status
+  or auto-merge change shows in place. Auto-merge moves at once and a failed change goes back and says so; Stop
+  watching closes the card and shows a spinner on the row, and a failed stop keeps the row and says so. A computer switch clears the list until the new
   computer's loads. A bridge without the list route shows an update note instead.
 - On desktop the sidebar has an always-shown "Pull requests" row under Scheduled, with the same muted To merge count
   at its end (spoken and in its tooltip as "N to merge"); the command palette has a Pull requests command for a
   window too narrow to show the sidebar. Both open the same list as a page over the main pane, with a close button
-  and pull-to-refresh; a row opens its session over the page, so back returns to the list. The page reports the
+  and pull-to-refresh; a row opens the same detail card, whose Go to session opens the session over the page, so back
+  returns to the list. The page reports the
   `sessions` screen ([analytics](analytics.md)); the list adds no product event.
 
 ## Regression Levels
@@ -166,8 +169,8 @@ The how-to lives in the group's guide, served as the `sesori-pr-monitor` skill w
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, in `bridge/sesori_tool_pr_monitor/test/`: `gh_cli_api_test.dart` (the poll query and its 60 s limit, page queries, not found, a GraphQL `errors` array, a missing `gh`, a timeout, unauthenticated), `pull_request_snapshot_repository_test.dart` (normalization and pagination on synthetic fixtures), `pull_request_activity_calculator_test.dart`, `pull_request_readiness_calculator_test.dart`, `pull_request_report_builder_test.dart` and `pull_request_feedback_builder_test.dart` (the ported plugin cases), `pull_request_action_repository_test.dart` (the pinned title-only squash, 409, reconciliation, the merged label, the ready label's preflight, the reply prefix and thread replies), `pull_request_watch_service_test.dart` (one poll for two sessions, per-watcher baselines, the quiet window, the CI hold, urgent reports, a merged watch kept until midnight across a restart, claim lost and dropped deliveries, restart resume, archived and deleted sessions, an outage notice once per failure streak with the watch kept and reports resuming after it, not found ending the watch, idle reminders, the group toggle; readiness and auto-merge across watchers; `configure`), `pull_request_monitor_tool_group_test.dart` (argument checks, the agent's per-PR auto-merge cards) and `pull_request_config_description_builder_test.dart`. Bridge app: `pull_request_watch_handlers_test.dart` (stop, auto-merge, a bad repository, the list route), `session_view_service_test.dart` (watches on sessions, left out while the group or agent tools are off) and `goldens/tools_list.json`. Wire: `pull_request_watch_test.dart` in `sesori_shared` (older bridges, unknown status and reason). App: `pull_request_watch_stage_test.dart` (each status's stage, agent reasons winning over To merge), `session_scheduled_mark_calculator_test.dart` (the lead by stage, the count, a timed arming winning), `session_tile_states_test.dart` (the pill's tint and glyph, its spoken label, the row height kept), `session_wake_up_chip_test.dart` (the PR count giving way to a wake-up's time, the chip or its menu row opening the list), `pull_request_watch_list_cubit_test.dart` (the To merge count, a reload on the changed event, a failed load retried, an older bridge, a computer switch, auto-merge applied or reverted, stop applied or kept), `pull_request_watch_sections_test.dart` (the five groups and their order, rows held in place while open, the session filter), `pull_request_watches_test.dart` (the home button and its To merge count, the groups and row wording, rows changing in place, a failed stop) and `desktop_cockpit_shell_test.dart` (the sidebar row under Scheduled, opening the page, its spoken count). |
-| L3 Release | Headless bridge with GitHub, on a private scratch repository with no real code and `gh` signed in: a report about 2 minutes after a comment, and at once after a failing check and after a merge; `reply_on_pr` makes its thread count as answered and the label lands with the next quiet report; `mark_pr_ready` with auto-merge squash-merges at the head with the title only and adds `automatically-merged`; a push after the mark cancels a stale merge; a restart mid-watch resumes it, and a merge during the downtime reports at once; two sessions on one PR cause one poll a minute and both get reports; the group off stops polling and listing; archiving a session ends its watch. `configure_pr_monitor`: widening shows the card and applies on Allow, applies with no card under Approve everything, and narrowing applies at once. Live plugin, on every harness that gets the Sesori MCP, through the local test proxy: the tools list only while the group is on, `watch_pr` works, a report arrives and the agent acts on it, the skill loads where its seam is wired and `get_guide` works everywhere, and a mid-turn report steers on Claude Code and waits on Grok; on OpenCode two sessions in one folder each get their own reports. Client on a headless iOS simulator: the chip with only watches and with a wake-up too, opening the session's list from it; the row mark against a timed arming; the home button appearing and leaving without moving the other buttons, the muted count only for To merge and its roll; the row pill's tint; the sheet's five groups and the agent reasons in words, tap to session, swipe Auto-merge and Stop, a row changing in place while open and regrouping on the next open, Merged today; dark mode; an older-bridge fixture with no chip and no button. Desktop shell: the sidebar row opens the page. |
+| L2 Routine | Automated, in `bridge/sesori_tool_pr_monitor/test/`: `gh_cli_api_test.dart` (the poll query and its 60 s limit, page queries, not found, a GraphQL `errors` array, a missing `gh`, a timeout, unauthenticated), `pull_request_snapshot_repository_test.dart` (normalization and pagination on synthetic fixtures), `pull_request_activity_calculator_test.dart`, `pull_request_readiness_calculator_test.dart`, `pull_request_report_builder_test.dart` and `pull_request_feedback_builder_test.dart` (the ported plugin cases), `pull_request_action_repository_test.dart` (the pinned title-only squash, 409, reconciliation, the merged label, the ready label's preflight, the reply prefix and thread replies), `pull_request_watch_service_test.dart` (one poll for two sessions, per-watcher baselines, the quiet window, the CI hold, urgent reports, a merged watch kept until midnight across a restart, claim lost and dropped deliveries, restart resume, archived and deleted sessions, an outage notice once per failure streak with the watch kept and reports resuming after it, not found ending the watch, idle reminders, the group toggle; readiness and auto-merge across watchers; `configure`), `pull_request_monitor_tool_group_test.dart` (argument checks, the agent's per-PR auto-merge cards) and `pull_request_config_description_builder_test.dart`. Bridge app: `pull_request_watch_handlers_test.dart` (stop, auto-merge, a bad repository, the list route), `session_view_service_test.dart` (watches on sessions, left out while the group or agent tools are off) and `goldens/tools_list.json`. Wire: `pull_request_watch_test.dart` in `sesori_shared` (older bridges, unknown status and reason). App: `pull_request_watch_stage_test.dart` (each status's stage, agent reasons winning over To merge), `session_scheduled_mark_calculator_test.dart` (the lead by stage, the count, a timed arming winning), `session_tile_states_test.dart` (the pill's tint and glyph, its spoken label, the row height kept), `pull_request_watch_list_cubit_test.dart` (the To merge count, a reload on the changed event, a failed load retried, an older bridge, a computer switch, auto-merge applied or reverted, stop applied or kept), `pull_request_watch_sections_test.dart` (the five groups and their order, rows held in place while open, the session filter), `pull_request_watches_test.dart` (the home button and its To merge count, the groups and row wording, rows changing in place, the detail card's reasons, GitHub link, live auto-merge switch and Go to session, which is absent inside the session, a failed stop), `session_detail_body_test.dart` in the app (the header button coming and going with the watches, its room growing) and `desktop_cockpit_shell_test.dart` (the sidebar row under Scheduled, opening the page, its spoken count). |
+| L3 Release | Headless bridge with GitHub, on a private scratch repository with no real code and `gh` signed in: a report about 2 minutes after a comment, and at once after a failing check and after a merge; `reply_on_pr` makes its thread count as answered and the label lands with the next quiet report; `mark_pr_ready` with auto-merge squash-merges at the head with the title only and adds `automatically-merged`; a push after the mark cancels a stale merge; a restart mid-watch resumes it, and a merge during the downtime reports at once; two sessions on one PR cause one poll a minute and both get reports; the group off stops polling and listing; archiving a session ends its watch. `configure_pr_monitor`: widening shows the card and applies on Allow, applies with no card under Approve everything, and narrowing applies at once. Live plugin, on every harness that gets the Sesori MCP, through the local test proxy: the tools list only while the group is on, `watch_pr` works, a report arrives and the agent acts on it, the skill loads where its seam is wired and `get_guide` works everywhere, and a mid-turn report steers on Claude Code and waits on Grok; on OpenCode two sessions in one folder each get their own reports. Client on a headless iOS simulator: the session header's pull-request button appearing and leaving mid-session without the title jumping, opening the session's list; the row mark against a timed arming; the home button appearing and leaving without moving the other buttons, the muted count only for To merge and its roll; the row pill's tint; the sheet's five groups and the agent reasons in words, the detail card from a tap with Open on GitHub, Go to session, the Auto-merge switch and Stop watching, a row changing in place while open and regrouping on the next open, Merged today; dark mode; an older-bridge fixture with no header button and no home button. Desktop shell: the sidebar row opens the page. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -248,7 +251,7 @@ Use only scratch repositories and fixture text.
 - A network outage or other passing poll failure ends a watch, the outage notice repeats within one streak, or the
   log gains a line for every failed poll.
 - A GitHub token or the Sesori MCP token reaches logs or argv.
-- The home button or the chip moves other controls as it appears, a sheet row jumps groups while the sheet is open, or
+- The home button or the session header button moves other controls or jumps the title as it appears, a sheet row jumps groups while the sheet is open, or
   the count includes PRs that are not To merge, or any PR UI shows red.
 
 ## Known Limitations
@@ -290,7 +293,7 @@ newer). Delivery timing and skill seams differ per harness; see [harness capabil
   `pullRequestMonitorGuide` in `bridge/sesori_tool_pr_monitor`; `SessionViewService` and the pull-request watch
   handlers in `bridge/app`; the wire in `sesori_shared` (`pull_request_watch.dart`).
 - App: `SessionScheduledMarkCalculator`, `PullRequestWatchListCubit` and `arrangePullRequestWatches` in `module_core`;
-  `pullRequestWatchLook`, `session_wake_up_chip.dart` and `features/pull_request_watches/` in `module_app_ui`; the
-  desktop sidebar and cockpit shell.
+  `pullRequestWatchLook`, the session header in `session_detail_body.dart` and `features/pull_request_watches/` in
+  `module_app_ui`; the desktop session header, sidebar and cockpit shell.
 - Plan: [.plan/completed/bridge-pr-monitor/PLAN.md](../../.plan/completed/bridge-pr-monitor/PLAN.md), with the plugin
   behaviour it ports in `PR_MONITOR_SPEC.md`.

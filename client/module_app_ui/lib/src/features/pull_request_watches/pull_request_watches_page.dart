@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../platform/external_link_opener.dart";
 import "pull_request_watches_list.dart";
 
 /// The watched pull requests as a page over the main pane, for the desktop
@@ -11,6 +12,7 @@ import "pull_request_watches_list.dart";
 class const PullRequestWatchesPage({
   super.key,
   required final VoidCallback onExit,
+  required final ExternalLinkOpener openExternalLink,
   required final OpenPullRequestWatchSession onOpenSession,
 }) extends StatelessWidget {
   @override
@@ -38,7 +40,11 @@ class const PullRequestWatchesPage({
             PregoSpacing.xl,
             PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
           ),
-          sliver: PullRequestWatchesSliver(sessionId: null, onOpenSession: onOpenSession),
+          sliver: PullRequestWatchesSliver(
+            sessionId: null,
+            openExternalLink: openExternalLink,
+            onOpenSession: onOpenSession,
+          ),
         ),
       ],
       titleKeptSuffix: null,

@@ -27,10 +27,8 @@ void main() {
         SessionWakeUpChip(
           surfaceStyle: PregoComposerSurfaceStyle.subtle,
           wakeUps: wakeUps,
-          pullRequestWatches: const [],
           showLabel: true,
           onCancel: cancelled.add,
-          onOpenPullRequests: () => fail("no watches"),
         ),
       ),
     );
@@ -48,68 +46,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(cancelled, ["w-2"]);
     expect(find.text("Ping review"), findsNothing);
-  });
-
-  testWidgets("watched pull requests: the count leads and opens the list without a wake-up; with one the time leads "
-      "and the menu opens the list", (tester) async {
-    const watches = [
-      SessionPullRequestWatch(
-        repository: "acme/app",
-        number: 12,
-        title: "Fix the login",
-        url: "https://github.com/acme/app/pull/12",
-        autoMerge: false,
-        status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
-      ),
-      SessionPullRequestWatch(
-        repository: "acme/app",
-        number: 15,
-        title: "Bump deps",
-        url: "https://github.com/acme/app/pull/15",
-        autoMerge: true,
-        status: PullRequestWatchStatus.waiting(),
-      ),
-    ];
-    // Room below the chip for the whole menu.
-    tester.view.physicalSize = const Size(800, 1600);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    var opened = 0;
-    final withWakeUps = ValueNotifier(<SessionWakeUp>[]);
-    addTearDown(withWakeUps.dispose);
-    await tester.pumpWidget(
-      app(
-        ValueListenableBuilder(
-          valueListenable: withWakeUps,
-          builder: (context, wakeUps, _) => SessionWakeUpChip(
-            surfaceStyle: PregoComposerSurfaceStyle.subtle,
-            wakeUps: wakeUps,
-            pullRequestWatches: watches,
-            showLabel: true,
-            onCancel: (_) {},
-            onOpenPullRequests: () => opened++,
-          ),
-        ),
-      ),
-    );
-    expect(find.text("2 pull requests"), findsOneWidget);
-    await tester.tap(find.byKey(const Key("session-wake-up-chip")));
-    await tester.pumpAndSettle();
-    expect(opened, 1);
-
-    withWakeUps.value = wakeUps;
-    await tester.pumpAndSettle();
-    expect(find.textContaining("Wakes "), findsOneWidget);
-    expect(find.text("2 pull requests"), findsNothing);
-
-    await tester.tap(find.byKey(const Key("session-wake-up-chip")));
-    await tester.pumpAndSettle();
-    expect(find.text("Check CI"), findsOneWidget);
-    expect(opened, 1);
-
-    await tester.tap(find.byKey(const Key("session-pull-request-watches")));
-    await tester.pumpAndSettle();
-    expect(opened, 2);
   });
 
   testWidgets("the chip grows in beside the pickers and folds away without a jump", (tester) async {

@@ -6,6 +6,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
+import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "onboarding/bridge_onboarding.dart";
 
@@ -20,6 +21,7 @@ class const HomeScreen({super.key}) extends StatelessWidget {
       onSwitchComputer: switchComputer,
       onManageComputers: manageComputers,
       onOpenPullRequestSession: openPullRequestWatchSession(context: context),
+      openExternalLink: openExternalLink,
     ),
     onNewSession: ({required context, required projectId, required projectName, required entry}) =>
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),

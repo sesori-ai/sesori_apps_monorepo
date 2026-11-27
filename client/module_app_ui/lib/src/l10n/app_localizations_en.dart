@@ -3851,7 +3851,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionWakeUpCancelFailed => 'Could not cancel the wake-up. It may still run. Reconnect and try again.';
 
   @override
-  String sessionPullRequestWatchesChip(int count) {
+  String sessionPullRequestWatchesButton(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -3932,16 +3932,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pullRequestWatchAutoMergeMark => 'Auto-merge';
 
   @override
-  String get pullRequestWatchAutoMergeOn => 'Auto-merge';
+  String get pullRequestWatchAutoMergeSwitch => 'Auto-merge';
 
   @override
-  String get pullRequestWatchAutoMergeOff => 'No auto-merge';
+  String get pullRequestWatchAutoMergeDescription => 'Merge once checks and reviews pass';
+
+  @override
+  String get pullRequestWatchOpenOnGitHub => 'Open on GitHub';
+
+  @override
+  String get pullRequestWatchGoToSession => 'Go to session';
+
+  @override
+  String get pullRequestWatchNeedCiFailingDetail => 'A check failed on the latest push.';
+
+  @override
+  String get pullRequestWatchNeedConflictDetail =>
+      'The branch conflicts with its base. The agent resolves it on its next turn.';
+
+  @override
+  String get pullRequestWatchNeedNewReviewCommentsDetail =>
+      'Comments without a Sesori reply yet. The agent answers them on its next turn.';
 
   @override
   String get pullRequestWatchAutoMergeFailed => 'Could not change auto-merge. Reconnect and try again.';
 
   @override
-  String get pullRequestWatchStop => 'Stop';
+  String get pullRequestWatchStop => 'Stop watching';
 
   @override
   String get pullRequestWatchesEmpty => 'No pull requests are watched on this computer. Ask an agent to watch one.';

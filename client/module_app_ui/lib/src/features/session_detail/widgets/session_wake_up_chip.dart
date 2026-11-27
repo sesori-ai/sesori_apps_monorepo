@@ -4,16 +4,11 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "transcript_motion.dart";
 
-/// Chip in the session's model row for what will wake the session's agent:
-/// the wake-ups agents set, and the pull requests they watch. With a wake-up
-/// it is an alarm clock saying when the next one fires; with only watches, a
-/// pull-request glyph and their count. It cross-fades in place between the
-/// two. Its menu lists each wake-up with its time and label, a repeat mark
-/// when it repeats and a terminal mark when it runs a command, with Cancel,
-/// then a row opening the session's pull requests. With only watches, a tap
-/// opens them directly.
+/// Alarm-clock chip in the session's model row while agents have set wake-ups
+/// for the session, saying when the next one fires. Its menu lists each
+/// wake-up with its time and label, a repeat mark when it repeats and a
+/// terminal mark when it runs a command, and offers Cancel on each.
 class const SessionWakeUpChip({
   super.key,
   required final PregoComposerSurfaceStyle surfaceStyle,
@@ -21,54 +16,32 @@ class const SessionWakeUpChip({
   /// The session's wake-ups, soonest first.
   required final List<SessionWakeUp> wakeUps,
 
-  /// The pull requests the session's agent watches.
-  required final List<SessionPullRequestWatch> pullRequestWatches,
-
   /// Touch rows show only the glyph, which keeps the pickers readable.
   required final bool showLabel,
   required final ValueChanged<String> onCancel,
-
-  /// Opens the list of the session's watched pull requests.
-  required final VoidCallback onOpenPullRequests,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final (icon, label) = switch (wakeUps) {
-      [final next, ...] => (
-        TablerRegular.alarm,
-        loc.sessionWakeUpChip(context.formatMessageTimestamp(next.nextDueAt)),
-      ),
-      [] => (TablerRegular.git_pull_request, loc.sessionPullRequestWatchesChip(pullRequestWatches.length)),
+    final label = switch (wakeUps) {
+      [final next, ...] => loc.sessionWakeUpChip(context.formatMessageTimestamp(next.nextDueAt)),
+      [] => loc.sessionWakeUpsTitle,
     };
-    final duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 280,
       menuMaxHeight: null,
-      triggerBuilder: (context, toggle) => AnimatedSize(
-        duration: duration,
-        curve: transcriptMotionCurve,
-        child: AnimatedSwitcher(
-          duration: duration,
-          switchInCurve: transcriptMotionCurve,
-          switchOutCurve: transcriptMotionCurve.flipped,
-          child: KeyedSubtree(
-            key: ValueKey(icon),
-            child: PregoComposerChip(
-              key: const Key("session-wake-up-chip"),
-              icon: icon,
-              label: label,
-              showLabel: showLabel,
-              isWarning: false,
-              surfaceStyle: surfaceStyle,
-              onPressed: wakeUps.isEmpty ? onOpenPullRequests : toggle,
-            ),
-          ),
-        ),
+      triggerBuilder: (context, toggle) => PregoComposerChip(
+        key: const Key("session-wake-up-chip"),
+        icon: TablerRegular.alarm,
+        label: label,
+        showLabel: showLabel,
+        isWarning: false,
+        surfaceStyle: surfaceStyle,
+        onPressed: toggle,
       ),
       entriesBuilder: () => [
-        if (wakeUps.isNotEmpty) PregoMenuLabel(text: loc.sessionWakeUpsTitle),
+        PregoMenuLabel(text: loc.sessionWakeUpsTitle),
         for (final wakeUp in wakeUps)
           PregoMenuCustom(
             // Only the glass menu reads the height; this one is flat.
@@ -80,16 +53,6 @@ class const SessionWakeUpChip({
                 onCancel(wakeUp.id);
               },
             ),
-          ),
-        if (pullRequestWatches.isNotEmpty)
-          PregoMenuItem(
-            key: const Key("session-pull-request-watches"),
-            leadingIcon: TablerRegular.git_pull_request,
-            title: loc.sessionPullRequestWatchesChip(pullRequestWatches.length),
-            subtitle: null,
-            isSelected: false,
-            shortcutLabel: null,
-            onTap: onOpenPullRequests,
           ),
       ],
     );

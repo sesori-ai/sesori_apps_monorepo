@@ -725,8 +725,8 @@ variant, and worktree mode, and creating the session with its first input.
 - On the touch composer (phone and touch iPad, in New Session and session
   detail) the chip leads the row, and the agent pill and the trailing status
   chips (such as YOLO) sit at its end. In session detail, while agents have set
-  wake-ups, an alarm chip joins after them (see [Sesori MCP](sesori-mcp.md)), and while it watches PRs the same chip
-  shows their count (see [pull request monitor](pull-request-monitor.md)). An eligible catalog folds the ⚡ pill
+  wake-ups, an alarm chip joins after them (see [Sesori MCP](sesori-mcp.md)); watched PRs show in the session
+  header instead (see [pull request monitor](pull-request-monitor.md)). An eligible catalog folds the ⚡ pill
   into the chip's bolt; an ineligible one keeps the ⚡ pill beside the chip.
   The run-detail pills of sub-agent and archived sessions show the same chip,
   read-only.

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -320,6 +322,38 @@ class const DesktopSessionDetailView({
                         onPressed: onShowDiffs,
                       ),
                     ),
+            ),
+            // Comes and goes as the agent watches pull requests, mid-session, so
+            // it grows its room rather than squeezing the title in one frame.
+            AnimatedSize(
+              duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration,
+              curve: Curves.easeOut,
+              child: SessionDetailActionSwitcher(
+                surface: SessionDetailActionSurface.plain,
+                gapAfter: PregoSpacing.md,
+                child: switch (session?.pullRequestWatches) {
+                  null || [] => null,
+                  final watches => Tooltip(
+                    message: loc.sessionPullRequestWatchesButton(watches.length),
+                    child: PregoButtonsSolid(
+                      key: const Key("desktop-session-page-pull-requests"),
+                      label: "${watches.length}",
+                      leadingIcon: TablerRegular.git_pull_request,
+                      hierarchy: PregoButtonsSolidHierarchy.secondary,
+                      size: PregoButtonsSolidSize.sm,
+                      onPressed: () => unawaited(
+                        showPullRequestWatchesSheet(
+                          context: context,
+                          sessionId: sessionId,
+                          openExternalLink: openDesktopExternalLink,
+                          // This session is already open.
+                          onOpenSession: null,
+                        ),
+                      ),
+                    ),
+                  ),
+                },
+              ),
             ),
             SessionDetailActionSwitcher(
               surface: SessionDetailActionSurface.plain,

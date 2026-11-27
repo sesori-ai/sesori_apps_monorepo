@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../platform/external_link_opener.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/computer_menu.dart";
 import "../project_list/project_path_labels.dart";
@@ -48,6 +49,9 @@ final class const SessionsHomePage({
 
   /// Opens the session watching a pull request picked in the list.
   required final OpenPullRequestWatchSession onOpenPullRequestSession,
+
+  /// Opens a watched pull request on GitHub.
+  required final ExternalLinkOpener openExternalLink,
 }) extends SessionsHomePresentation;
 
 /// The wide layout's sidebar body: New session, then the list with the project
@@ -219,6 +223,7 @@ class const SessionsHomeView({
             showPullRequestWatchesSheet(
               context: context,
               sessionId: null,
+              openExternalLink: page.openExternalLink,
               onOpenSession: page.onOpenPullRequestSession,
             ),
           ),

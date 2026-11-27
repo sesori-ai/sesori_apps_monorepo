@@ -6577,11 +6577,11 @@ abstract class AppLocalizations {
   /// **'Could not cancel the wake-up. It may still run. Reconnect and try again.'**
   String get sessionWakeUpCancelFailed;
 
-  /// Label of the pull-request chip beside the session's model picker while the session watches pull requests and has no wake-up. Tapping it lists them.
+  /// Spoken label and tooltip of the session header's pull-request button, shown while the session watches pull requests. Tapping it lists them.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 pull request} other{{count} pull requests}}'**
-  String sessionPullRequestWatchesChip(int count);
+  String sessionPullRequestWatchesButton(int count);
 
   /// No description provided for @sessionPullRequestWatchStopFailed.
   ///
@@ -6703,17 +6703,47 @@ abstract class AppLocalizations {
   /// **'Auto-merge'**
   String get pullRequestWatchAutoMergeMark;
 
-  /// Swipe action on a watched pull request: the bridge merges it once it is ready.
+  /// Switch in a watched pull request's detail card: when on, the bridge merges it once it is ready.
   ///
   /// In en, this message translates to:
   /// **'Auto-merge'**
-  String get pullRequestWatchAutoMergeOn;
+  String get pullRequestWatchAutoMergeSwitch;
 
-  /// Swipe action on a watched pull request with auto-merge on: turns it off, so the user merges it.
+  /// Subtitle under the Auto-merge switch in a watched pull request's detail card.
   ///
   /// In en, this message translates to:
-  /// **'No auto-merge'**
-  String get pullRequestWatchAutoMergeOff;
+  /// **'Merge once checks and reviews pass'**
+  String get pullRequestWatchAutoMergeDescription;
+
+  /// Row in a watched pull request's detail card that opens the pull request in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on GitHub'**
+  String get pullRequestWatchOpenOnGitHub;
+
+  /// Row in a watched pull request's detail card that opens the session watching it; the session title is under it.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to session'**
+  String get pullRequestWatchGoToSession;
+
+  /// Explains the CI failing reason in a watched pull request's detail card.
+  ///
+  /// In en, this message translates to:
+  /// **'A check failed on the latest push.'**
+  String get pullRequestWatchNeedCiFailingDetail;
+
+  /// Explains the merge conflict reason in a watched pull request's detail card.
+  ///
+  /// In en, this message translates to:
+  /// **'The branch conflicts with its base. The agent resolves it on its next turn.'**
+  String get pullRequestWatchNeedConflictDetail;
+
+  /// Explains the unanswered review comments reason in a watched pull request's detail card.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments without a Sesori reply yet. The agent answers them on its next turn.'**
+  String get pullRequestWatchNeedNewReviewCommentsDetail;
 
   /// No description provided for @pullRequestWatchAutoMergeFailed.
   ///
@@ -6721,10 +6751,10 @@ abstract class AppLocalizations {
   /// **'Could not change auto-merge. Reconnect and try again.'**
   String get pullRequestWatchAutoMergeFailed;
 
-  /// Swipe action on a watched pull request: the agent stops watching it.
+  /// Destructive row in a watched pull request's detail card: the agent stops watching it.
   ///
   /// In en, this message translates to:
-  /// **'Stop'**
+  /// **'Stop watching'**
   String get pullRequestWatchStop;
 
   /// No description provided for @pullRequestWatchesEmpty.

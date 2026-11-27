@@ -5,6 +5,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "home_screen.dart";
 import "onboarding/bridge_onboarding.dart";
@@ -34,6 +35,7 @@ class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse
               showPullRequestWatchesSheet(
                 context: context,
                 sessionId: null,
+                openExternalLink: openExternalLink,
                 onOpenSession: openPullRequestWatchSession(context: context),
               ),
             ),
