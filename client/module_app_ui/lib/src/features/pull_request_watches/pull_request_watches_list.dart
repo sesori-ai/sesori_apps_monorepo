@@ -236,13 +236,32 @@ class const _CardSegment({required final bool isFirst, required final bool isLas
   @override
   Widget build(BuildContext context) {
     final radius = Radius.circular(PregoGroupedRows.cornerRadiusOf(context));
+    final borderRadius = BorderRadius.vertical(
+      top: isFirst ? radius : Radius.zero,
+      bottom: isLast ? radius : Radius.zero,
+    );
+    final edge = PregoGroupedRows.edgeOf(context);
     return PregoGroupedRowPosition(
       isLast: isLast,
-      child: Material(
-        color: context.prego.colors.bgSurface3,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: BorderRadius.vertical(top: isFirst ? radius : Radius.zero, bottom: isLast ? radius : Radius.zero),
-        child: child,
+      // Each slice draws its part of the card's edge, so the slices read as
+      // one card.
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          border: Border(
+            left: edge,
+            right: edge,
+            top: isFirst ? edge : BorderSide.none,
+            bottom: isLast ? edge : BorderSide.none,
+          ),
+        ),
+        child: Material(
+          color: context.prego.colors.bgSurface3,
+          clipBehavior: Clip.antiAlias,
+          borderRadius: borderRadius,
+          child: child,
+        ),
       ),
     );
   }

@@ -46,6 +46,14 @@ class const PregoGroupedRows({
       // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
       PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? PregoRadius.xl : PregoRadius.x5l;
 
+  /// The card's edge: white on near-white needs one, while dark surfaces step
+  /// apart by fill.
+  static BorderSide edgeOf(BuildContext context) =>
+      // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+      PregoInteractionScope.of(context) == PregoInteractionMode.pointer && context.prego.colors.brightness == .light
+      ? BorderSide(color: context.prego.colors.pointerHairline)
+      : BorderSide.none;
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -53,13 +61,7 @@ class const PregoGroupedRows({
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(cornerRadiusOf(context)),
-        // White on near-white needs an edge; dark surfaces step apart by fill.
-        side:
-            // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-            PregoInteractionScope.of(context) == PregoInteractionMode.pointer &&
-                context.prego.colors.brightness == .light
-            ? BorderSide(color: context.prego.colors.pointerHairline)
-            : BorderSide.none,
+        side: edgeOf(context),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
