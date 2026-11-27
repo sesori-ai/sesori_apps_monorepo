@@ -1943,14 +1943,9 @@
       }
     }
   },
-  "sessionListFromTask": "from {name}",
-  "@sessionListFromTask": {
-    "description": "Quiet session-row mark on a session a scheduled task started that nothing will wake again. Lowercase: it reads as part of the row's meta line.",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
+  "sessionListScheduledRun": "Scheduled run",
+  "@sessionListScheduledRun": {
+    "description": "Quiet session-row mark, after a grey repeat glyph, on a session a scheduled task started that nothing will wake again. It names no task: the task's name usually repeats the session's title."
   },
   "sessionListOnceTaskRun": "Run of one-time task {name}",
   "@sessionListOnceTaskRun": {
