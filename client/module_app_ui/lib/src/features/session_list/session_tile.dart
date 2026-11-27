@@ -559,8 +559,8 @@ class const SessionTile({
   }
 
   /// The row's second line, starting under the logo: any state that needs
-  /// words, then the scheduled task that started the session, then the
-  /// project, then the background tasks, apart by middle dots.
+  /// words, then the scheduled mark, then the project, then the background
+  /// tasks, apart by middle dots.
   /// Under a pointer it starts on the title's edge and the harness logo ends it.
   Widget _metaLine({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
@@ -592,35 +592,12 @@ class const SessionTile({
                 context: context,
                 style: style,
                 pointer: pointer,
-                details: LayoutBuilder(
-                  builder: (context, constraints) => Row(
-                    children: [
-                      // The status keeps its words and the count its number; the
-                      // task and the project give way first. Only a status too
-                      // long for the whole line, with its separator, ellipsizes.
-                      if (status != null)
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Flexible(child: status),
-                              if (task != null || project != null) separator(),
-                            ],
-                          ),
-                        ),
-                      if (task != null) Flexible(child: task),
-                      if (task != null && project != null) separator(),
-                      if (project != null) Flexible(child: project),
-                      if ((task != null || project != null) && backgroundTasks != null) separator(),
-                      ?backgroundTasks,
-                      // With no words at all, a line of the meta text's height holds
-                      // the line box, so the row is as tall as one with words at
-                      // any text size.
-                      if (status == null && task == null && project == null && backgroundTasks == null)
-                        SizedBox(height: context.lineHeightOf(style)),
-                    ],
-                  ),
+                details: _detailsRow(
+                  context: context,
+                  style: style,
+                  words: [?status, ?task, ?project],
+                  count: backgroundTasks,
+                  separator: separator,
                 ),
               ),
             ),
@@ -634,8 +611,6 @@ class const SessionTile({
         ),
       );
     }
-    final details = <Widget>[?status, ?task, ?project, ?backgroundTasks];
-
     Widget separator() => ExcludeSemantics(
       child: Text(_separator, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip),
     );
@@ -648,31 +623,43 @@ class const SessionTile({
         context: context,
         style: style,
         pointer: pointer,
-        details: Row(
-          children: [
-            for (final (index, detail) in details.indexed)
-              // Each separator yields with the detail it leads, so scaled-up
-              // text shrinks details rather than overflowing the line.
-              Flexible(
-                child: index == 0
-                    ? detail
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(child: separator()),
-                          Flexible(flex: 3, child: detail),
-                        ],
-                      ),
-              ),
-            // With nothing to show, a line of the meta text's height still
-            // holds the line at the current text scale, so the row stays as
-            // tall as its neighbours and as the launching row it replaces.
-            if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
-          ],
+        details: _detailsRow(
+          context: context,
+          style: style,
+          words: [?status, ?task, ?project],
+          count: backgroundTasks,
+          separator: separator,
         ),
       ),
     );
   }
+
+  /// The meta line's [words] apart by separators, then the background-task
+  /// [count]. Each word takes the room it needs before the ones after it
+  /// shrink: the status keeps its words, then the scheduled mark, and the
+  /// project gives way first; nothing ellipsizes while the line has room. The
+  /// count keeps its number. With nothing to show, a line of the meta text's
+  /// height still holds the line at the current text scale, so the row stays
+  /// as tall as its neighbours and as the launching row it replaces.
+  Widget _detailsRow({
+    required BuildContext context,
+    required TextStyle style,
+    required List<Widget> words,
+    required Widget? count,
+    required Widget Function() separator,
+  }) => Row(
+    children: [
+      Flexible(
+        child: _YieldingRow(
+          children: [
+            for (final (index, word) in words.indexed) ...[if (index > 0) separator(), word],
+          ],
+        ),
+      ),
+      if (count != null) ...[if (words.isNotEmpty) separator(), count],
+      if (words.isEmpty && count == null) SizedBox(height: context.lineHeightOf(style)),
+    ],
+  );
 
   /// The target's name in "Sending to …" words.
   String _sendingWords({required BuildContext context, required SessionSending sending}) {
@@ -773,7 +760,8 @@ class const SessionTile({
 
   /// The meta line's word on Sesori waking the session again, cross-fading in
   /// its own room as it changes: the accent repeat glyph with what wakes it
-  /// and when, a quiet "from" and the task for a task's session nothing wakes again,
+  /// and when, a grey repeat glyph and "Scheduled run" for a task's session
+  /// nothing wakes again,
   /// or, from an older bridge, the task that started it. Null when there is
   /// nothing to say.
   Widget? _scheduledMark({required BuildContext context, required TextStyle style}) {
@@ -784,10 +772,23 @@ class const SessionTile({
         return null;
       case SessionScheduledMarkLegacyTask(:final task):
         mark = _legacyTaskMark(context: context, style: style, mark: task);
-      case SessionScheduledMarkFromTask(:final name):
-        mark = Text(
-          loc.sessionListFromTask(name),
-          semanticsLabel: loc.sessionListScheduledTaskRun(name),
+      case SessionScheduledMarkFromTask():
+        // One paragraph, so the glyph sits in the text's own line box and
+        // the words ellipsize with it when the line runs out of room.
+        mark = Text.rich(
+          TextSpan(
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                  child: Icon(TablerRegular.repeat, size: _backgroundTasksGlyphSize, color: style.color),
+                ),
+              ),
+              TextSpan(text: loc.sessionListScheduledRun),
+            ],
+          ),
+          semanticsLabel: loc.sessionListScheduledRun,
           style: style,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -804,12 +805,27 @@ class const SessionTile({
             builder: (context, constraints) => Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
-                  child: Icon(TablerRegular.repeat, size: _backgroundTasksGlyphSize, color: accent.color),
-                ),
+                // The glyph shares the name's paragraph, so a line too narrow
+                // for it ellipsizes it rather than overflowing.
                 Flexible(
-                  child: Text(name, style: accent, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                            child: Icon(TablerRegular.repeat, size: _backgroundTasksGlyphSize, color: accent.color),
+                          ),
+                        ),
+                        TextSpan(text: name),
+                      ],
+                    ),
+                    style: accent,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: max(0, constraints.maxWidth - glyphRoom)),
@@ -1516,4 +1532,27 @@ class const _FadingTitle({required final Text title}) extends StatelessWidget {
       );
     },
   );
+}
+
+/// [children] in a row, in order of precedence: each takes the room it needs,
+/// up to the whole row, and the ones after it share what is left. The last
+/// gives way first, and none shrinks while the row has room for it.
+class const _YieldingRow({required final List<Widget> children}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => switch (children) {
+    [] => const SizedBox.shrink(),
+    [final only] => only,
+    [final first, ...final rest] => LayoutBuilder(
+      builder: (context, constraints) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+            child: first,
+          ),
+          Flexible(child: _YieldingRow(children: rest)),
+        ],
+      ),
+    ),
+  };
 }

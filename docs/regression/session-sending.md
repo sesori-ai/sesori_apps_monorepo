@@ -55,7 +55,9 @@ the file and what a prompt to a running target does.
   in "Search sessions" filters the loaded rows at once, then shows the
   bridge's answer. "No sessions match" shows when nothing does.
 - The source never lists. Each row shows the session's title over its project
-  name, with the project's path only when two listed projects share a name.
+  name, with the project's path only when two listed projects share a name. A
+  "No project" session names none; a row left with only its title keeps the
+  others' height, its title centred.
 - A running session adds what a send does to it, from its plugin's declared
   busy-prompt handling: "Running" where the prompt steers into the running
   turn, and "Running: sending stops its current turn" where it stops the turn.
@@ -269,8 +271,9 @@ flight.
 
 - The menu entry shows on an archived or sub-agent session, or is missing on
   one of the four surfaces.
-- The picker lists the source, or a running row's label disagrees with what a
-  send does to it.
+- The picker lists the source, a running row's label disagrees with what a
+  send does to it, or a "No project" row says "No project" or leaves a gap
+  under its title.
 - The sheet's switch flips while it opens, or forgets its last value.
 - A pinned source is archived without the confirmation, or asked twice.
 - The summary request or reply shows as messages in the source, or the marker
