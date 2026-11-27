@@ -38,9 +38,7 @@ class const PullRequestWatchesPage({
             PregoSpacing.xl,
             PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
           ),
-          sliver: SliverToBoxAdapter(
-            child: PullRequestWatchesList(sessionId: null, onOpenSession: onOpenSession),
-          ),
+          sliver: PullRequestWatchesSliver(sessionId: null, onOpenSession: onOpenSession),
         ),
       ],
       titleKeptSuffix: null,

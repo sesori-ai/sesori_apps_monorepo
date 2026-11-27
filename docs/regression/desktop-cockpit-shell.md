@@ -80,7 +80,7 @@ The main pane hosts one full-width routed page.
   all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
   opens in New session. Search under it opens the command palette, Archived sessions under Search opens the
   Archived page, and Scheduled and Pull requests follow; none shows a selected state. Pull requests always shows,
-  with a red count of the PRs that need the user at its end ([pull request monitor](pull-request-monitor.md)). Below them the project filter, "All projects
+  with a muted count of the PRs to merge at its end ([pull request monitor](pull-request-monitor.md)). Below them the project filter, "All projects
   ▾", "No project ▾" or the chosen project's name, heads the shared all-projects session list beside Refresh: it
   opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see

@@ -21,7 +21,8 @@ PullRequestWatchListItem _item({
   ),
 );
 
-const _needsYou = PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.conflict]);
+const _agentOnIt = PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.conflict]);
+const _toMerge = PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]);
 const _waiting = PullRequestWatchStatus.waiting();
 const _ready = PullRequestWatchStatus.ready();
 
@@ -39,15 +40,19 @@ void main() {
         _item(repository: "acme/a", number: 3, status: const PullRequestWatchStatus.unknown()),
         _item(repository: "acme/a", number: 4, status: const PullRequestWatchStatus.merged(mergedAt: 10)),
         _item(repository: "acme/a", number: 5, status: const PullRequestWatchStatus.merged(mergedAt: 20)),
-        _item(repository: "acme/a", number: 9, status: _needsYou),
+        _item(repository: "acme/a", number: 9, status: _agentOnIt),
+        _item(repository: "acme/a", number: 8, status: _ready),
+        _item(repository: "acme/a", number: 6, status: _toMerge),
       ],
       sessionId: null,
       shown: null,
     );
 
     expect(_shape(sections), [
-      "needsYou: 9",
+      "toMerge: 6",
+      "agentOnIt: 9",
       "waiting: 3, 7, 1",
+      "mergesAutomatically: 8",
       "mergedToday: 5, 4",
     ]);
   });
@@ -55,7 +60,7 @@ void main() {
   test("while open, rows keep their place; ended ones leave and new ones join their group's end", () {
     final shown = arrangePullRequestWatches(
       watches: [
-        _item(repository: "acme/a", number: 1, status: _needsYou),
+        _item(repository: "acme/a", number: 1, status: _agentOnIt),
         _item(repository: "acme/a", number: 2, status: _waiting),
         _item(repository: "acme/a", number: 3, status: _waiting),
       ],
@@ -67,7 +72,7 @@ void main() {
       watches: [
         _item(repository: "acme/a", number: 1, status: _ready),
         _item(repository: "acme/a", number: 3, status: _waiting),
-        _item(repository: "acme/a", number: 4, status: _needsYou),
+        _item(repository: "acme/a", number: 4, status: _agentOnIt),
         _item(repository: "acme/a", number: 0, status: _waiting),
       ],
       sessionId: null,
@@ -75,7 +80,7 @@ void main() {
     );
 
     expect(_shape(next), [
-      "needsYou: 1, 4",
+      "agentOnIt: 1, 4",
       "waiting: 3, 0",
     ]);
     expect(next.first.watches.first.watch.status, _ready);

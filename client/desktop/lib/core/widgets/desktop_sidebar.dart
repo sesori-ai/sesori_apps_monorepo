@@ -474,14 +474,14 @@ class const _SidebarComputerRow({
   }
 }
 
-/// Always shown, so the sidebar never shifts; a red count trails it while
-/// some watched pull requests need the user.
+/// Always shown, so the sidebar never shifts; a muted count trails it while
+/// some watched pull requests wait for the user to merge them.
 class const _PullRequestsButton({required final VoidCallback onPressed}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final needsYou = context.select(
+    final toMerge = context.select(
       (PullRequestWatchListCubit cubit) => switch (cubit.state) {
-        PullRequestWatchListLoaded(:final needsYouCount) => needsYouCount,
+        PullRequestWatchListLoaded(:final toMergeCount) => toMergeCount,
         PullRequestWatchListLoading() || PullRequestWatchListFailed() || PullRequestWatchListUnsupported() => 0,
       },
     );
@@ -489,9 +489,9 @@ class const _PullRequestsButton({required final VoidCallback onPressed}) extends
       key: const Key("desktop-sidebar-pull-requests"),
       label: context.loc.pullRequestWatchesTitle,
       icon: const Icon(TablerLight.git_pull_request, size: _navIconSize),
-      status: needsYou > 0 ? context.loc.pullRequestWatchesNeedsYouStatus(needsYou) : null,
+      status: toMerge > 0 ? context.loc.pullRequestWatchesToMergeStatus(toMerge) : null,
       shortcut: null,
-      trailing: PullRequestWatchesCountBadge(count: needsYou),
+      trailing: PullRequestWatchesCountBadge(count: toMerge),
       onPressed: onPressed,
     );
   }

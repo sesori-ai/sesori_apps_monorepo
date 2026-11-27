@@ -14,8 +14,8 @@ sealed class SessionScheduledMark with _$SessionScheduledMark {
   /// one's [name] and when, in UTC milliseconds.
   const factory armed({required String name, required int nextAt}) = SessionScheduledMarkArmed;
 
-  /// The bridge watches pull requests for the session: the one that needs
-  /// the user most, and how many [others] there are.
+  /// The bridge watches pull requests for the session: the most urgent one,
+  /// and how many [others] there are.
   const factory watchingPullRequests({required SessionPullRequestWatch lead, required int others}) =
       SessionScheduledMarkWatchingPullRequests;
 

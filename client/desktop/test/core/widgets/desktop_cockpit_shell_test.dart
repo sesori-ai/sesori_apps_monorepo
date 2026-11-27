@@ -748,7 +748,7 @@ void main() {
     expect(pullRequestOpens, 1);
   });
 
-  testWidgets("the Pull requests row says how many pull requests need the user", (tester) async {
+  testWidgets("the Pull requests row counts only the pull requests to merge", (tester) async {
     whenListen(
       pullRequests,
       const Stream<PullRequestWatchListState>.empty(),
@@ -764,6 +764,19 @@ void main() {
               title: "Fix",
               url: "https://github.com/acme/web/pull/7",
               autoMerge: false,
+              status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]),
+            ),
+          ),
+          PullRequestWatchListItem(
+            sessionId: "session-1",
+            sessionTitle: "Session",
+            projectId: "project-1",
+            watch: SessionPullRequestWatch(
+              repository: "acme/web",
+              number: 8,
+              title: "Retry",
+              url: "https://github.com/acme/web/pull/8",
+              autoMerge: false,
               status: PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
             ),
           ),
@@ -774,7 +787,7 @@ void main() {
     await tester.pumpWidget(app(state: running));
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsLabel("Pull requests, 1 needs you"), findsOneWidget);
+    expect(find.bySemanticsLabel("Pull requests, 1 to merge"), findsOneWidget);
     expect(
       find.descendant(of: find.byKey(const Key("desktop-sidebar-pull-requests")), matching: find.text("1")),
       findsOneWidget,

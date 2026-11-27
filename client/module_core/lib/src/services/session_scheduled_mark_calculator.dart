@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "models/pull_request_watch_stage.dart";
 import "models/session_scheduled_mark.dart";
 
 /// Decides what a session row says about Sesori waking the session again,
@@ -23,17 +24,10 @@ class const SessionScheduledMarkCalculator() {
     };
   }
 
-  /// The pull request that needs the user most: needs you, then ready, then
-  /// waiting, then one a newer bridge reports in an unknown state, then
-  /// merged; ties go to the lower number.
+  /// The most urgent pull request, by [PullRequestWatchStage]'s order, To
+  /// merge first; ties go to the lower number.
   SessionPullRequestWatch _lead({required List<SessionPullRequestWatch> watches}) {
-    int rank(SessionPullRequestWatch watch) => switch (watch.status) {
-      PullRequestWatchStatusNeedsYou() => 0,
-      PullRequestWatchStatusReady() => 1,
-      PullRequestWatchStatusWaiting() => 2,
-      PullRequestWatchStatusUnknown() => 3,
-      PullRequestWatchStatusMerged() => 4,
-    };
+    int rank(SessionPullRequestWatch watch) => PullRequestWatchStage.of(status: watch.status).index;
     return watches.reduce((lead, watch) {
       final order = rank(watch).compareTo(rank(lead));
       return order < 0 || (order == 0 && watch.number < lead.number) ? watch : lead;

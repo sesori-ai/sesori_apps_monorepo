@@ -746,7 +746,12 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                     opacity: _heldOpacity,
                     child: ColoredBox(
                       color: Theme.of(context).scaffoldBackgroundColor,
-                      child: SessionListHeading(heading: loc.sessionListPinned, isFirst: true, action: pinnedAction),
+                      child: SessionListHeading(
+                        heading: loc.sessionListPinned,
+                        isFirst: true,
+                        action: pinnedAction,
+                        accent: null,
+                      ),
                     ),
                   ),
                 ),
@@ -945,12 +950,18 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                           } =>
                     _LaidOut(
                       onChanged: (heading) => _pinnedHeading = heading,
-                      child: SessionListHeading(heading: heading, isFirst: index == 0, action: pinnedAction),
+                      child: SessionListHeading(
+                        heading: heading,
+                        isFirst: index == 0,
+                        action: pinnedAction,
+                        accent: null,
+                      ),
                     ),
                   SessionListHeadingEntry(:final heading) => SessionListHeading(
                     heading: heading,
                     isFirst: index == 0,
                     action: null,
+                    accent: null,
                   ),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,

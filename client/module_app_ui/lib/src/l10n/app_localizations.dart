@@ -6589,35 +6589,41 @@ abstract class AppLocalizations {
   /// **'Could not stop watching the pull request. Reconnect and try again.'**
   String get sessionPullRequestWatchStopFailed;
 
-  /// Status of a watched pull request with failing CI, a conflict, new review comments, or ready without auto-merge.
+  /// Status of a watched pull request that is ready with auto-merge off, so the user merges it; also the heading of those pull requests. The only status that needs the user.
   ///
   /// In en, this message translates to:
-  /// **'needs you'**
-  String get pullRequestWatchStatusNeedsYou;
+  /// **'To merge'**
+  String get pullRequestWatchStageToMerge;
 
-  /// Status of a watched pull request the agent marked ready.
+  /// Status of a watched pull request with failing CI, a merge conflict or unanswered review comments, which the agent handles; also the heading of those pull requests.
   ///
   /// In en, this message translates to:
-  /// **'ready'**
-  String get pullRequestWatchStatusReady;
+  /// **'Agent on it'**
+  String get pullRequestWatchStageAgentOnIt;
 
   /// Status of a watched pull request waiting on CI or review.
   ///
   /// In en, this message translates to:
-  /// **'waiting'**
-  String get pullRequestWatchStatusWaiting;
+  /// **'Waiting for checks or review'**
+  String get pullRequestWatchStageWaiting;
 
-  /// No description provided for @pullRequestWatchStatusMerged.
+  /// Status of a watched pull request waiting on CI or review, with auto-merge on.
   ///
   /// In en, this message translates to:
-  /// **'merged'**
-  String get pullRequestWatchStatusMerged;
+  /// **'Waiting for checks or review, then merges automatically'**
+  String get pullRequestWatchStageWaitingThenMerges;
 
-  /// No description provided for @pullRequestWatchStatusUnknown.
+  /// Status of a watched pull request that is ready, which auto-merge will merge; also the heading of those pull requests.
   ///
   /// In en, this message translates to:
-  /// **'status unknown'**
-  String get pullRequestWatchStatusUnknown;
+  /// **'Merges automatically'**
+  String get pullRequestWatchStageMergesAutomatically;
+
+  /// Status of a watched pull request merged today.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged'**
+  String get pullRequestWatchStageMerged;
 
   /// Title of the list of pull requests that agents on this computer watch, and of its home button and desktop sidebar row.
   ///
@@ -6625,17 +6631,17 @@ abstract class AppLocalizations {
   /// **'Pull requests'**
   String get pullRequestWatchesTitle;
 
-  /// Screen-reader label of the home pull-request button while some watched pull requests need the user.
+  /// Screen-reader label of the home pull-request button while some watched pull requests wait for the user to merge them.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Pull requests, 1 needs you} other{Pull requests, {count} need you}}'**
-  String pullRequestWatchesButtonNeedsYou(int count);
+  /// **'{count, plural, =1{Pull requests, 1 to merge} other{Pull requests, {count} to merge}}'**
+  String pullRequestWatchesButtonToMerge(int count);
 
-  /// Spoken and tooltip status of the desktop sidebar's Pull requests row while some watched pull requests need the user.
+  /// Spoken and tooltip status of the desktop sidebar's Pull requests row while some watched pull requests wait for the user to merge them.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 needs you} other{{count} need you}}'**
-  String pullRequestWatchesNeedsYouStatus(int count);
+  /// **'{count} to merge'**
+  String pullRequestWatchesToMergeStatus(int count);
 
   /// Accessibility label of the desktop Pull requests page's close button.
   ///
@@ -6643,23 +6649,11 @@ abstract class AppLocalizations {
   /// **'Close Pull requests'**
   String get pullRequestWatchesClose;
 
-  /// No description provided for @pullRequestWatchesGroupNeedsYou.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs you'**
-  String get pullRequestWatchesGroupNeedsYou;
-
   /// No description provided for @pullRequestWatchesGroupWaiting.
   ///
   /// In en, this message translates to:
   /// **'Waiting'**
   String get pullRequestWatchesGroupWaiting;
-
-  /// No description provided for @pullRequestWatchesGroupReady.
-  ///
-  /// In en, this message translates to:
-  /// **'Ready'**
-  String get pullRequestWatchesGroupReady;
 
   /// Heading of the pull requests merged since the computer's local midnight.
   ///
@@ -6667,31 +6661,43 @@ abstract class AppLocalizations {
   /// **'Merged today'**
   String get pullRequestWatchesGroupMergedToday;
 
-  /// No description provided for @pullRequestWatchNeedCiFailing.
+  /// Why the agent is on a watched pull request: a check failed. Starts the list of reasons after Agent on it.
   ///
   /// In en, this message translates to:
   /// **'CI failing'**
   String get pullRequestWatchNeedCiFailing;
 
-  /// No description provided for @pullRequestWatchNeedConflict.
+  /// Why the agent is on a watched pull request: it conflicts with its base. Starts the list of reasons after Agent on it.
   ///
   /// In en, this message translates to:
-  /// **'conflict'**
+  /// **'Merge conflict'**
   String get pullRequestWatchNeedConflict;
 
-  /// No description provided for @pullRequestWatchNeedNewReviewComments.
+  /// Why the agent is on a watched pull request: review feedback has no Sesori reply yet. Starts the list of reasons after Agent on it.
   ///
   /// In en, this message translates to:
-  /// **'new review comments'**
+  /// **'Review comments the agent hasn\'t answered'**
   String get pullRequestWatchNeedNewReviewComments;
 
-  /// Why a watched pull request needs the user: it is ready, and nobody turned on auto-merge, so the user merges it.
+  /// The CI failing reason after another one in the list of reasons after Agent on it.
   ///
   /// In en, this message translates to:
-  /// **'ready to merge'**
-  String get pullRequestWatchNeedReadyWithoutAutoMerge;
+  /// **'CI failing'**
+  String get pullRequestWatchNeedCiFailingInList;
 
-  /// Mark on a watched pull request that the bridge merges once it is ready.
+  /// The merge conflict reason after another one in the list of reasons after Agent on it.
+  ///
+  /// In en, this message translates to:
+  /// **'merge conflict'**
+  String get pullRequestWatchNeedConflictInList;
+
+  /// The unanswered review comments reason after another one in the list of reasons after Agent on it.
+  ///
+  /// In en, this message translates to:
+  /// **'review comments the agent hasn\'t answered'**
+  String get pullRequestWatchNeedNewReviewCommentsInList;
+
+  /// Quiet mark on a watched pull request the agent is on, which the bridge merges once it is ready.
   ///
   /// In en, this message translates to:
   /// **'Auto-merge'**
@@ -6745,7 +6751,7 @@ abstract class AppLocalizations {
   /// **'Update Sesori on this computer to see its pull requests.'**
   String get pullRequestWatchesUnsupported;
 
-  /// Screen-reader wording for the session-row mark of a session whose agent watches pull requests: the one that needs the user most, its status, and how many more.
+  /// Screen-reader wording for the session-row mark of a session whose agent watches pull requests: the most urgent one, its status, and how many more.
   ///
   /// In en, this message translates to:
   /// **'{others, plural, =0{Watching pull request {number}, {status}} =1{Watching pull request {number}, {status}, and 1 more} other{Watching pull request {number}, {status}, and {others} more}}'**

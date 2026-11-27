@@ -760,13 +760,49 @@ void main() {
         );
 
     for (final brightness in Brightness.values) {
-      testWidgets("the lead pull request is coloured by its status, then a quiet count, in ${brightness.name}", (
+      testWidgets("one pill holds the lead pull request and the count, green only to merge, in ${brightness.name}", (
         tester,
       ) async {
         final semantics = tester.ensureSemantics();
         final themeColors = brightness == Brightness.light
             ? PregoDesignSystem.light.colors
             : PregoDesignSystem.dark.colors;
+        Color? markColor(String number) => tester
+            .widget<RichText>(
+              find.byWidgetPredicate((widget) => widget is RichText && widget.text.toPlainText().contains(number)),
+            )
+            .text
+            .style
+            ?.color;
+
+        await pumpTile(
+          tester,
+          tile(
+            session: testSession(title: "My Session").copyWith(
+              arming: const SessionArming.notArmed(),
+              pullRequestWatches: [
+                watch(number: 7, status: const PullRequestWatchStatus.waiting()),
+                watch(
+                  number: 12,
+                  status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.conflict]),
+                ),
+                watch(
+                  number: 15,
+                  status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]),
+                ),
+              ],
+            ),
+            projectLabel: "demo-app",
+          ),
+          brightness: brightness,
+        );
+
+        expect(find.textContaining("#15 +2", findRichText: true), findsOneWidget);
+        expect(markColor("#15"), themeColors.textSuccessPrimary);
+        expect(find.byIcon(TablerRegular.git_merge), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp("Watching pull request 15, To merge, and 2 more")), findsOneWidget);
+        expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+
         await pumpTile(
           tester,
           tile(
@@ -784,20 +820,13 @@ void main() {
           ),
           brightness: brightness,
         );
+        await tester.pumpAndSettle();
 
-        final mark = find.byWidgetPredicate(
-          (widget) => widget is RichText && widget.text.toPlainText().contains("#12"),
-        );
-        expect(mark, findsOneWidget);
-        final spans = <TextSpan>[];
-        tester.widget<RichText>(mark).text.visitChildren((span) {
-          if (span is TextSpan && span.text != null) spans.add(span);
-          return true;
-        });
-        expect(spans.map((span) => span.text), ["#12", " +1"]);
-        expect(spans.first.style?.color, themeColors.textErrorPrimary);
+        // The agent is on the lead: grey, never red.
+        expect(find.textContaining("#12 +1", findRichText: true), findsOneWidget);
+        expect(markColor("#12"), themeColors.textSecondary);
         expect(find.byIcon(TablerRegular.git_pull_request), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp("Watching pull request 12, needs you, and 1 more")), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp("Watching pull request 12, Agent on it, and 1 more")), findsOneWidget);
         expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
         semantics.dispose();
       });
