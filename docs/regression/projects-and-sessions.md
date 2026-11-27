@@ -596,14 +596,16 @@ state.
   words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
   session that is not running, whose turn a bridge stop cut off, until the user
   opens it or sends to it), then the scheduled mark, ellipsizing with the line: an accent "<name> · next <time>"
-  with a repeat glyph for a session a wake-up or task will wake again, a grey "from <task>" for a task's run that
-  nothing will wake again, or the task glyph and name from an older bridge (see scheduled-tasks.md); a session with
+  with a repeat glyph for a session a wake-up or task will wake again, a grey repeat glyph and "Scheduled run", naming
+  no task, for a task's run that nothing will wake again, or the task glyph and name from an older bridge (see scheduled-tasks.md); a session with
   watched PRs and no timed wake-up shows the lead PR's `#number` in its status colour and `+N` instead (see
   pull-request-monitor.md), then the project
   when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
-  the count. A plain running session has no words on the line; the sparkle and
+  the count. Each part takes the room it needs before the parts after it shrink: the state keeps its words, then the
+  scheduled mark, and the project gives way first; the count keeps its number, and nothing ellipsizes while the line
+  has room. A plain running session has no words on the line; the sparkle and
   the lit logo say it, and screen readers hear "Running" from the mark. The
   line names neither the harness, which session detail
   still shows, nor the branch. The home and Archived while filtered to one
@@ -1106,7 +1108,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   pushes its status mark off the line behind a long title,
   shows a project in a list filtered to one project, changes height when its
   meta line is empty or holds a status word, a project or a count, or clips its
-  meta line under enlarged text. The harness logo shows colour while a read,
+  meta line under enlarged text. A meta-line part ellipsizes while the line has room for it, or the scheduled mark
+  shrinks before the project. The harness logo shows colour while a read,
   unselected session is quiet or waits for the user, stays grey while unread
   or open, snaps between grey and colour or out of its breath with reduced motion
   off, or breathes under reduced motion; a desktop row shows "Running" in

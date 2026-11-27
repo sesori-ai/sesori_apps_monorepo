@@ -2,6 +2,7 @@ import "dart:math";
 
 import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -668,7 +669,7 @@ void main() {
         ),
       );
 
-      for (final words in [find.text("Nightly triage"), find.textContaining(" · next ")]) {
+      for (final words in [find.textContaining("Nightly triage"), find.textContaining(" · next ")]) {
         final style = tester.widget<Text>(words).style;
         expect(style?.color, colors.textBrandSecondary);
         expect(style?.fontWeight, FontWeight.w500);
@@ -729,9 +730,10 @@ void main() {
       expect(tester.getTopLeft(project).dx, greaterThan(before));
     });
 
-    testWidgets("a task's row that nothing wakes again says where it came from, in grey with no glyph", (
+    testWidgets("a task's row that nothing wakes again says Scheduled run after a grey glyph, naming no task", (
       tester,
     ) async {
+      final semantics = tester.ensureSemantics();
       await pumpTile(
         tester,
         tile(
@@ -739,13 +741,72 @@ void main() {
             scheduledTask: task,
             arming: const SessionArming.notArmed(),
           ),
+          projectLabel: "demo-app",
         ),
       );
 
-      expect(find.text("from Nightly triage"), findsOneWidget);
-      expect(tester.widget<Text>(find.text("from Nightly triage")).style?.color, isNot(colors.textBrandSecondary));
-      expect(find.byIcon(TablerRegular.repeat), findsNothing);
+      final mark = find.text("\u{FFFC}Scheduled run");
+      expect(mark, findsOneWidget);
+      expect(tester.widget<Text>(mark).style?.color, isNot(colors.textBrandSecondary));
+      expect(tester.widget<Icon>(find.byIcon(TablerRegular.repeat)).color, tester.widget<Text>(mark).style?.color);
+      expect(find.textContaining("Nightly triage"), findsNothing);
+      expect(find.bySemanticsLabel(RegExp("Scheduled run")), findsOneWidget);
+      expect(tester.getTopRight(mark).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
+      expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+      semantics.dispose();
     });
+
+    // A paragraph that ellipsized or clipped ran out of room. The first
+    // paragraph is the text's own; a glyph inside it paints another.
+    bool cut(WidgetTester tester, Finder text) => tester
+        .renderObject<RenderParagraph>(find.descendant(of: text, matching: find.byType(RichText)).first)
+        .didExceedMaxLines;
+
+    for (final pointer in [false, true]) {
+      group(pointer ? "under a pointer" : "under touch", () {
+        Future<void> pump(WidgetTester tester, SessionTile row) =>
+            pointer ? pumpPointerTile(tester, row) : pumpTile(tester, row);
+
+        testWidgets("an armed mark keeps its whole name while the line has room", (tester) async {
+          tester.view.physicalSize = const Size(800, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          await pump(
+            tester,
+            tile(
+              session: testSession(title: "My Session").copyWith(
+                arming: SessionArming.armed(name: "Morning triage", nextAt: now + 3600000),
+              ),
+              projectLabel: "demo-app",
+            ),
+          );
+
+          expect(cut(tester, find.textContaining("Morning triage")), isFalse);
+          expect(cut(tester, find.textContaining(" · next ")), isFalse);
+          expect(cut(tester, find.text("demo-app")), isFalse);
+        });
+
+        testWidgets("the project gives way before the scheduled mark", (tester) async {
+          tester.view.physicalSize = const Size(600, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          await pump(
+            tester,
+            tile(
+              session: testSession(title: "My Session").copyWith(
+                arming: SessionArming.armed(name: "Morning triage", nextAt: now + 3600000),
+              ),
+              projectLabel: "a-project-name-far-too-long-to-share-the-meta-line-with-anything",
+            ),
+          );
+
+          expect(tester.takeException(), isNull);
+          expect(cut(tester, find.textContaining("Morning triage")), isFalse);
+          expect(cut(tester, find.textContaining(" · next ")), isFalse);
+          expect(cut(tester, find.textContaining("a-project-name")), isTrue);
+        });
+      });
+    }
   });
 
   group("watched pull requests", () {
@@ -921,6 +982,26 @@ void main() {
     for (final row in [
       tile(session: session, projectLabel: "demo-app", awaitingInput: true),
       tile(session: session, projectLabel: "a-very-long-project-name", isRunning: true, backgroundTaskCount: 12),
+      // Waiting fills the line, leaving the scheduled mark's glyph no room.
+      tile(
+        session: session.copyWith(
+          arming: SessionArming.armed(name: "Morning triage", nextAt: now + 3600000),
+        ),
+        projectLabel: "demo-app",
+        awaitingInput: true,
+      ),
+      tile(
+        session: session.copyWith(
+          scheduledTask: const SessionScheduledTaskMark(
+            taskId: "stk_1",
+            name: "Nightly triage",
+            kind: ScheduledTaskKind.recurring,
+          ),
+          arming: const SessionArming.notArmed(),
+        ),
+        projectLabel: "demo-app",
+        awaitingInput: true,
+      ),
     ]) {
       await pumpTile(tester, row);
       expect(tester.takeException(), isNull);

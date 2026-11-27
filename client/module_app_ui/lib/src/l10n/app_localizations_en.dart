@@ -2665,9 +2665,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String sessionListFromTask(String name) {
-    return 'from $name';
-  }
+  String get sessionListScheduledRun => 'Scheduled run';
 
   @override
   String sessionListOnceTaskRun(String name) {

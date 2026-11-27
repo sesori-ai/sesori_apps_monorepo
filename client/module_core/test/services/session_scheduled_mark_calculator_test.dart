@@ -24,10 +24,10 @@ void main() {
     }
   });
 
-  test("a task's session that nothing wakes again says where it came from", () {
+  test("a task's session that nothing wakes again says it was a scheduled run", () {
     expect(
       markOf(arming: const SessionArming.notArmed(), task: task),
-      const SessionScheduledMark.fromTask(name: "Nightly triage"),
+      const SessionScheduledMark.fromTask(),
     );
   });
 

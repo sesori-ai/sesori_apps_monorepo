@@ -228,69 +228,33 @@ $SessionPullRequestWatchCopyWith<$Res> get lead {
 
 
 class SessionScheduledMarkFromTask implements SessionScheduledMark {
-  const SessionScheduledMarkFromTask({required this.name});
+  const SessionScheduledMarkFromTask();
   
 
- final  String name;
 
-/// Create a copy of SessionScheduledMark
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$SessionScheduledMarkFromTaskCopyWith<SessionScheduledMarkFromTask> get copyWith => _$SessionScheduledMarkFromTaskCopyWithImpl<SessionScheduledMarkFromTask>(this, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionScheduledMarkFromTask&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionScheduledMarkFromTask);
 }
 
 
 @override
-int get hashCode {
-    return Object.hash(runtimeType,name);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'SessionScheduledMark.fromTask(name: $name)';
+    return 'SessionScheduledMark.fromTask()';
 }
 
 
 }
 
-/// @nodoc
-abstract mixin class $SessionScheduledMarkFromTaskCopyWith<$Res> implements $SessionScheduledMarkCopyWith<$Res> {
-  factory $SessionScheduledMarkFromTaskCopyWith(SessionScheduledMarkFromTask value, $Res Function(SessionScheduledMarkFromTask) _then) = _$SessionScheduledMarkFromTaskCopyWithImpl;
-@useResult
-$Res call({
- String name
-});
 
 
-
-
-}
-/// @nodoc
-class _$SessionScheduledMarkFromTaskCopyWithImpl<$Res>
-    implements $SessionScheduledMarkFromTaskCopyWith<$Res> {
-  _$SessionScheduledMarkFromTaskCopyWithImpl(this._self, this._then);
-
-  final SessionScheduledMarkFromTask _self;
-  final $Res Function(SessionScheduledMarkFromTask) _then;
-
-/// Create a copy of SessionScheduledMark
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? name = null,}) {
-  return _then(SessionScheduledMarkFromTask(
-name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
 
 /// @nodoc
 
