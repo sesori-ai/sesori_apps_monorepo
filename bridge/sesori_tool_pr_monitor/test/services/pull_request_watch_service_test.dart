@@ -337,9 +337,9 @@ void main() {
     expect(h.snapshots.fetches, hasLength(fetches), reason: "a PR nobody watches is not polled");
   });
 
-  test("ten consecutive poll failures stop the watch and tell the session", () async {
+  test("failing polls keep the watch and tell the session once per streak", () async {
     await h.watch(sessionId: "s1");
-    h.snapshots.enqueue(const GhCliCommandFailedException(exitCode: 1, httpStatus: 502, detail: "HTTP 502"));
+    h.snapshots.enqueue(const GhCliCommandFailedException(exitCode: 1, httpStatus: 502, detail: "HTTP 502\nmore"));
     for (var poll = 0; poll < 9; poll++) {
       await h.poll();
     }
@@ -347,14 +347,48 @@ void main() {
     expect(h.service.statusOf(sessionId: "s1").watches.single.consecutiveFailures, 9);
 
     await h.poll();
-    expect(h.host.sent.single.summary, "PR monitor: sesori/example#42 — monitor stopped");
-    expect(h.host.sent.single.guidance, contains("Monitor stopped: 10 consecutive poll failures."));
-    expect(h.store.sessionRecords["s1"], isEmpty);
+    expect(h.host.sent.single.summary, "PR monitor: sesori/example#42 — GitHub unreachable, still watching");
+    expect(h.host.sent.single.guidance, contains("GitHub can't be reached; still watching"));
+    expect(h.host.sent.single.guidance, endsWith("- Last error: GitHub CLI (gh) failed: HTTP 502"));
+
+    for (var poll = 0; poll < 20; poll++) {
+      await h.poll();
+    }
+    expect(h.host.sent, hasLength(1), reason: "one notice per streak");
+    expect(h.store.sessionRecords["s1"], isNotEmpty);
+    expect(h.service.statusOf(sessionId: "s1").watches.single.consecutiveFailures, 30);
   });
 
-  test("a PR that is no longer found stops its watch at once", () async {
+  test("after an outage reports resume with what changed meanwhile, and a new streak tells again", () async {
     await h.watch(sessionId: "s1");
-    h.snapshots.enqueue(const GhCliNotFoundException(detail: "Could not resolve to a PullRequest"));
+    h.snapshots.enqueue(const GhCliTimedOutException(timeout: Duration(seconds: 60), innerError: "timeout"));
+    for (var poll = 0; poll < 10; poll++) {
+      await h.poll();
+    }
+    expect(h.host.sent, hasLength(1));
+
+    h.snapshots.enqueue(_withComment);
+    await h.poll();
+    expect(h.service.statusOf(sessionId: "s1").watches.single.consecutiveFailures, 0);
+    await h.poll(after: const Duration(minutes: 2));
+    expect(h.host.sent, hasLength(2));
+    expect(h.host.sent.last.guidance, contains("1 new relevant since last flush"));
+
+    h.snapshots.enqueue(const GhCliCommandFailedException(exitCode: 1, httpStatus: 503, detail: "HTTP 503"));
+    for (var poll = 0; poll < 10; poll++) {
+      await h.poll();
+    }
+    expect(h.host.sent, hasLength(3));
+    expect(h.host.sent.last.summary, "PR monitor: sesori/example#42 — GitHub unreachable, still watching");
+  });
+
+  test("a PR that is no longer found stops its watch at once, also during an outage", () async {
+    await h.watch(sessionId: "s1");
+    h.snapshots
+      ..enqueue(const GhCliCommandFailedException(exitCode: 1, httpStatus: null, detail: "connection refused"))
+      ..enqueue(const GhCliNotFoundException(detail: "Could not resolve to a PullRequest"));
+    await h.poll();
+    expect(h.host.sent, isEmpty);
     await h.poll();
 
     expect(h.host.sent.single.guidance, contains("Monitor stopped: PR not found (deleted or inaccessible)."));
