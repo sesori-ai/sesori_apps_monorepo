@@ -106,6 +106,10 @@ class const SessionListHeading({
   /// A text button at the heading's end, on its line, as Pinned's Edit;
   /// changing or removing it cross-fades it.
   required final ({String label, VoidCallback onTap})? action,
+
+  /// Tints the heading and leads it with a glyph in its line, as the pull
+  /// requests' To merge.
+  required final ({IconData glyph, Color color})? accent,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -123,7 +127,24 @@ class const SessionListHeading({
             duration: duration,
             curve: transcriptMotionCurve,
             padding: padding,
-            child: Text(heading, style: style),
+            child: switch (accent) {
+              (:final glyph, :final color)? => Text.rich(
+                TextSpan(
+                  children: [
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Padding(
+                        padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                        child: Icon(glyph, size: style.fontSize, color: color),
+                      ),
+                    ),
+                    TextSpan(text: heading),
+                  ],
+                ),
+                style: style.copyWith(color: color),
+              ),
+              null => Text(heading, style: style),
+            },
           ),
           // Over the heading's end, the full height of it, so it moves nothing.
           PositionedDirectional(

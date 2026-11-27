@@ -361,6 +361,7 @@ export "src/services/models/new_session_selection_intent.dart";
 export "src/services/models/plugin_install_state.dart";
 export "src/services/models/product_analytics_state.dart";
 export "src/services/models/project_list_state.dart";
+export "src/services/models/pull_request_watch_stage.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/models/session_cleanup_outcome.dart";
 export "src/services/models/session_delete_result.dart";

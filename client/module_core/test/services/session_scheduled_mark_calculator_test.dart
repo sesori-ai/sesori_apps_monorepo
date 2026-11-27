@@ -56,26 +56,34 @@ void main() {
       session: testSession(id: "s-1").copyWith(arming: arming, scheduledTask: task, pullRequestWatches: watches),
     );
 
-    test("lead with the PR that needs the user most, and count the others", () {
+    test("lead with the most urgent PR, To merge first, and count the others", () {
       final waiting = watch(number: 3, status: const PullRequestWatchStatus.waiting());
       final ready = watch(number: 9, status: const PullRequestWatchStatus.ready());
-      final needsYou = watch(
+      final agentOnIt = watch(
         number: 12,
         status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]),
+      );
+      final toMerge = watch(
+        number: 14,
+        status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]),
       );
       final merged = watch(number: 1, status: const PullRequestWatchStatus.merged(mergedAt: 5));
 
       expect(
-        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, needsYou, ready]),
-        SessionScheduledMark.watchingPullRequests(lead: needsYou, others: 3),
+        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, agentOnIt, toMerge, ready]),
+        SessionScheduledMark.watchingPullRequests(lead: toMerge, others: 4),
       );
       expect(
-        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, ready]),
-        SessionScheduledMark.watchingPullRequests(lead: ready, others: 2),
+        watchingMark(arming: const SessionArming.notArmed(), watches: [waiting, merged, agentOnIt, ready]),
+        SessionScheduledMark.watchingPullRequests(lead: agentOnIt, others: 3),
       );
       expect(
-        watchingMark(arming: const SessionArming.notArmed(), watches: [merged, waiting]),
-        SessionScheduledMark.watchingPullRequests(lead: waiting, others: 1),
+        watchingMark(arming: const SessionArming.notArmed(), watches: [merged, ready, waiting]),
+        SessionScheduledMark.watchingPullRequests(lead: waiting, others: 2),
+      );
+      expect(
+        watchingMark(arming: const SessionArming.notArmed(), watches: [merged, ready]),
+        SessionScheduledMark.watchingPullRequests(lead: ready, others: 1),
       );
     });
 

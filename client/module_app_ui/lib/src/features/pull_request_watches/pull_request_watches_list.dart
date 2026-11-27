@@ -54,11 +54,40 @@ Future<void> showPullRequestWatchesSheet({
   );
 }
 
-/// The watched pull requests under Needs you, Waiting, Ready and Merged
-/// today. While it stays open a row keeps its group and place and only its
-/// content changes; it regroups the next time it opens. Swiping a row offers
-/// Auto-merge and Stop, which a long press also lists.
+/// The watched pull requests in the modal, as tall as they need up to most of
+/// the screen, then scrolling. The rows are built as they scroll into view.
 class const PullRequestWatchesList({
+  super.key,
+
+  /// Lists only this session's watches when set.
+  required final String? sessionId,
+  required final OpenPullRequestWatchSession onOpenSession,
+}) extends StatelessWidget {
+  static const double _maxHeightFraction = 0.7;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSize(
+    duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration,
+    curve: Curves.easeOut,
+    alignment: AlignmentDirectional.topStart,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.heightOf(context) * _maxHeightFraction),
+      child: CustomScrollView(
+        // The modal's own scroll view owns the primary controller.
+        primary: false,
+        shrinkWrap: true,
+        slivers: [PullRequestWatchesSliver(sessionId: sessionId, onOpenSession: onOpenSession)],
+      ),
+    ),
+  );
+}
+
+/// The watched pull requests under To merge, Agent on it, Waiting, Merges
+/// automatically and Merged today, as a sliver built lazily. While it stays
+/// open a row keeps its group and place and only its content changes; it
+/// regroups the next time it opens. Swiping a row offers Auto-merge and Stop,
+/// which a long press also lists.
+class const PullRequestWatchesSliver({
   super.key,
 
   /// Lists only this session's watches when set.
@@ -66,10 +95,10 @@ class const PullRequestWatchesList({
   required final OpenPullRequestWatchSession onOpenSession,
 }) extends StatefulWidget {
   @override
-  State<PullRequestWatchesList> createState() => _PullRequestWatchesListState();
+  State<PullRequestWatchesSliver> createState() => _PullRequestWatchesSliverState();
 }
 
-class _PullRequestWatchesListState() extends State<PullRequestWatchesList> {
+class _PullRequestWatchesSliverState() extends State<PullRequestWatchesSliver> {
   /// The sections as this list last showed them.
   List<PullRequestWatchSection>? _shown;
 
@@ -83,28 +112,31 @@ class _PullRequestWatchesListState() extends State<PullRequestWatchesList> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return switch (context.watch<PullRequestWatchListCubit>().state) {
-      PullRequestWatchListLoading() => const Padding(
-        padding: EdgeInsets.all(PregoSpacing.xl),
-        child: Center(child: PregoActivityIndicator(color: null)),
+      PullRequestWatchListLoading() => const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(PregoSpacing.xl),
+          child: Center(child: PregoActivityIndicator(color: null)),
+        ),
       ),
-      PullRequestWatchListFailed() => PregoGroupedRows(
-        children: [
-          PregoGroupedRow(
-            key: const Key("pull-request-watches-failed"),
-            icon: TablerRegular.alert_circle,
-            title: Text(loc.pullRequestWatchesLoadFailed),
-            trailing: PregoButtonsSolid(
-              label: loc.pullRequestWatchesRetry,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.sm,
-              onPressed: () => unawaited(context.read<PullRequestWatchListCubit>().retry()),
+      PullRequestWatchListFailed() => SliverToBoxAdapter(
+        child: PregoGroupedRows(
+          children: [
+            PregoGroupedRow(
+              key: const Key("pull-request-watches-failed"),
+              icon: TablerRegular.alert_circle,
+              title: Text(loc.pullRequestWatchesLoadFailed),
+              trailing: PregoButtonsSolid(
+                label: loc.pullRequestWatchesRetry,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: () => unawaited(context.read<PullRequestWatchListCubit>().retry()),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      PullRequestWatchListUnsupported() => _Note(
-        key: const Key("pull-request-watches-unsupported"),
-        text: loc.pullRequestWatchesUnsupported,
+      PullRequestWatchListUnsupported() => SliverToBoxAdapter(
+        child: _Note(key: const Key("pull-request-watches-unsupported"), text: loc.pullRequestWatchesUnsupported),
       ),
       PullRequestWatchListLoaded(:final watches, :final stopping) => _sections(
         context: context,
@@ -121,55 +153,117 @@ class _PullRequestWatchesListState() extends State<PullRequestWatchesList> {
   }) {
     final sections = arrangePullRequestWatches(watches: watches, sessionId: widget.sessionId, shown: _shown);
     _shown = sections;
-    final loc = context.loc;
-    return AnimatedSize(
-      duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration,
-      curve: Curves.easeOut,
-      alignment: AlignmentDirectional.topStart,
-      child: sections.isEmpty
-          ? _Note(key: const Key("pull-request-watches-empty"), text: loc.pullRequestWatchesEmpty)
-          : PregoAnimatedList<PullRequestWatchSection>(
-              items: sections,
-              itemKey: (section) => ValueKey(section.group),
-              itemBuilder: (context, index, section) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SessionListHeading(
-                    heading: _heading(context: context, group: section.group),
-                    isFirst: index == 0,
-                    action: null,
-                  ),
-                  PregoGroupedRows(
-                    children: [
-                      PregoAnimatedList<PullRequestWatchListItem>(
-                        items: section.watches,
-                        itemKey: (item) => ValueKey(item.key),
-                        itemBuilder: (context, index, item) => PregoGroupedRowPosition(
-                          isLast: index == section.watches.length - 1,
-                          child: _WatchRow(
-                            item: item,
-                            stopping: stopping.contains(item.key),
-                            onOpenSession: widget.onOpenSession,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+    final entries = [
+      for (final section in sections) ...[
+        _HeadingEntry(group: section.group),
+        for (final (index, item) in section.watches.indexed)
+          _RowEntry(item: item, isFirst: index == 0, isLast: index == section.watches.length - 1),
+      ],
+    ];
+    // The list stays mounted when the last row leaves, so it closes before
+    // the empty note fades in.
+    return SliverMainAxisGroup(
+      slivers: [
+        PregoAnimatedSliverList<_Entry>(
+          items: entries,
+          slidesWhenMoved: (_) => false,
+          itemKey: (entry) => switch (entry) {
+            _HeadingEntry(:final group) => ValueKey(group),
+            _RowEntry(:final item) => ValueKey(item.key),
+          },
+          itemBuilder: (context, index, entry) => switch (entry) {
+            _HeadingEntry(:final group) => _heading(context: context, group: group, isFirst: index == 0),
+            _RowEntry(:final item, :final isFirst, :final isLast) => _CardSegment(
+              isFirst: isFirst,
+              isLast: isLast,
+              child: _WatchRow(
+                item: item,
+                stopping: stopping.contains(item.key),
+                onOpenSession: widget.onOpenSession,
               ),
             ),
+          },
+        ),
+        if (sections.isEmpty)
+          SliverToBoxAdapter(
+            // Fades in once departing rows have had time to close.
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration * 2,
+              curve: const Interval(0.5, 1),
+              builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
+              child: _Note(key: const Key("pull-request-watches-empty"), text: context.loc.pullRequestWatchesEmpty),
+            ),
+          ),
+      ],
     );
   }
 
-  static String _heading({required BuildContext context, required PullRequestWatchGroup group}) {
+  /// A group's heading; To merge, the only group that needs the user, is
+  /// green and leads with the merge glyph.
+  static Widget _heading({required BuildContext context, required PullRequestWatchStage group, required bool isFirst}) {
     final loc = context.loc;
-    return switch (group) {
-      PullRequestWatchGroup.needsYou => loc.pullRequestWatchesGroupNeedsYou,
-      PullRequestWatchGroup.waiting => loc.pullRequestWatchesGroupWaiting,
-      PullRequestWatchGroup.ready => loc.pullRequestWatchesGroupReady,
-      PullRequestWatchGroup.mergedToday => loc.pullRequestWatchesGroupMergedToday,
-    };
+    final look = pullRequestWatchLook(context: context, stage: group);
+    return SessionListHeading(
+      heading: switch (group) {
+        PullRequestWatchStage.waiting => loc.pullRequestWatchesGroupWaiting,
+        PullRequestWatchStage.mergedToday => loc.pullRequestWatchesGroupMergedToday,
+        PullRequestWatchStage.toMerge ||
+        PullRequestWatchStage.agentOnIt ||
+        PullRequestWatchStage.mergesAutomatically => look.words,
+      },
+      isFirst: isFirst,
+      action: null,
+      accent: group == PullRequestWatchStage.toMerge ? (glyph: look.glyph, color: look.color) : null,
+    );
+  }
+}
+
+sealed class const _Entry();
+
+final class const _HeadingEntry({required final PullRequestWatchStage group}) extends _Entry;
+
+final class const _RowEntry({
+  required final PullRequestWatchListItem item,
+  required final bool isFirst,
+  required final bool isLast,
+}) extends _Entry;
+
+/// One row's slice of its group's rounded card, so the card is built row by
+/// row with the list.
+class const _CardSegment({required final bool isFirst, required final bool isLast, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final radius = Radius.circular(PregoGroupedRows.cornerRadiusOf(context));
+    final borderRadius = BorderRadius.vertical(
+      top: isFirst ? radius : Radius.zero,
+      bottom: isLast ? radius : Radius.zero,
+    );
+    final edge = PregoGroupedRows.edgeOf(context);
+    return PregoGroupedRowPosition(
+      isLast: isLast,
+      // Each slice draws its part of the card's edge, so the slices read as
+      // one card.
+      child: DecoratedBox(
+        position: DecorationPosition.foreground,
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          border: Border(
+            left: edge,
+            right: edge,
+            top: isFirst ? edge : BorderSide.none,
+            bottom: isLast ? edge : BorderSide.none,
+          ),
+        ),
+        child: Material(
+          color: context.prego.colors.bgSurface3,
+          clipBehavior: Clip.antiAlias,
+          borderRadius: borderRadius,
+          child: child,
+        ),
+      ),
+    );
   }
 }
 
@@ -185,8 +279,9 @@ class const _Note({super.key, required final String text}) extends StatelessWidg
   );
 }
 
-/// One watched pull request: its status glyph, its title, its repository,
-/// number and status with an auto-merge mark, and the session watching it.
+/// One watched pull request: its stage glyph, its title, its repository,
+/// number and stage with the agent's reasons or a quiet auto-merge mark, and
+/// the session watching it.
 class const _WatchRow({
   required final PullRequestWatchListItem item,
   required final bool stopping,
@@ -252,15 +347,29 @@ class const _WatchRow({
     final prego = context.prego;
     final loc = context.loc;
     final watch = item.watch;
-    final look = pullRequestWatchLook(context: context, status: watch.status);
-    final words = switch (watch.status) {
-      PullRequestWatchStatusNeedsYou(:final reasons) when reasons.isNotEmpty => [
-        for (final reason in reasons) _needWords(context: context, need: reason),
-      ].join(", "),
+    final stage = PullRequestWatchStage.of(status: watch.status);
+    final look = pullRequestWatchLook(context: context, stage: stage);
+    final words = switch (stage) {
+      PullRequestWatchStage.waiting when watch.autoMerge => loc.pullRequestWatchStageWaitingThenMerges,
       _ => look.words,
+    };
+    final reasons = pullRequestWatchAgentReasons(context: context, status: watch.status);
+    final strong = switch (stage) {
+      PullRequestWatchStage.toMerge || PullRequestWatchStage.agentOnIt => true,
+      PullRequestWatchStage.waiting ||
+      PullRequestWatchStage.mergesAutomatically ||
+      PullRequestWatchStage.mergedToday => false,
+    };
+    // Waiting says it in words, and merging automatically already means it.
+    final autoMergeMark = switch (stage) {
+      PullRequestWatchStage.toMerge || PullRequestWatchStage.agentOnIt => watch.autoMerge,
+      PullRequestWatchStage.waiting ||
+      PullRequestWatchStage.mergesAutomatically ||
+      PullRequestWatchStage.mergedToday => false,
     };
     final duration = context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration;
     final secondary = prego.colors.textSecondary;
+    final tertiary = prego.colors.textTertiary;
     return PregoGroupedRow(
       leading: SizedBox(
         width: 20,
@@ -272,79 +381,75 @@ class const _WatchRow({
                   dimension: 20,
                   child: PregoActivityIndicator(color: null),
                 )
-              : Icon(
-                  _glyph(status: watch.status),
-                  key: ValueKey(watch.status.runtimeType),
-                  size: 20,
-                  color: look.color,
-                ),
+              : Icon(look.glyph, key: ValueKey(stage), size: 20, color: look.color),
         ),
       ),
       leadingWidth: 20,
       title: Text(watch.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            spacing: PregoSpacing.xs,
-            children: [
-              Flexible(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(text: "${watch.repository}#${watch.number} · "),
-                      TextSpan(
-                        text: words,
-                        style: TextStyle(color: look.color),
-                      ),
-                    ],
+      // A stage's words can wrap differently; the row eases to its new height
+      // rather than snapping the rows below.
+      subtitle: AnimatedSize(
+        duration: duration,
+        curve: Curves.easeOut,
+        alignment: AlignmentDirectional.topStart,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              spacing: PregoSpacing.xs,
+              children: [
+                Flexible(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: "${watch.repository}#${watch.number} · "),
+                        TextSpan(
+                          text: words,
+                          style: TextStyle(color: look.color, fontWeight: strong ? FontWeight.w500 : null),
+                        ),
+                        if (reasons != null) TextSpan(text: " · $reasons"),
+                      ],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              AnimatedSize(
-                duration: duration,
-                curve: Curves.easeOut,
-                child: AnimatedSwitcher(
+                AnimatedSize(
                   duration: duration,
-                  child: watch.autoMerge
-                      ? Row(
-                          key: const Key("pull-request-watch-auto-merge-mark"),
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: PregoSpacing.xxs,
-                          children: [
-                            Icon(
-                              TablerRegular.arrows_join,
-                              size: PregoIconSize.sm,
-                              color: prego.colors.textSuccessPrimary,
-                            ),
-                            Text(
-                              loc.pullRequestWatchAutoMergeMark,
-                              style: TextStyle(color: prego.colors.textSuccessPrimary),
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
+                  curve: Curves.easeOut,
+                  child: AnimatedSwitcher(
+                    duration: duration,
+                    child: autoMergeMark
+                        ? Row(
+                            key: const Key("pull-request-watch-auto-merge-mark"),
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: PregoSpacing.xxs,
+                            children: [
+                              Icon(TablerRegular.arrows_join, size: PregoIconSize.sm, color: tertiary),
+                              Text(loc.pullRequestWatchAutoMergeMark, style: TextStyle(color: tertiary)),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Row(
-            spacing: PregoSpacing.xs,
-            children: [
-              Icon(TablerRegular.message_circle, size: PregoIconSize.sm, color: secondary),
-              Flexible(
-                child: Text(
-                  item.sessionTitle ?? loc.sessionListUntitled,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ],
+            ),
+            Row(
+              spacing: PregoSpacing.xs,
+              children: [
+                Icon(TablerRegular.message_circle, size: PregoIconSize.sm, color: secondary),
+                Flexible(
+                  child: Text(
+                    item.sessionTitle ?? loc.sessionListUntitled,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
       onTap: () => onOpenSession(
         projectId: item.projectId,
@@ -389,25 +494,6 @@ class const _WatchRow({
       unawaited(onPressed());
     },
   );
-
-  static IconData _glyph({required PullRequestWatchStatus status}) => switch (status) {
-    PullRequestWatchStatusNeedsYou() => TablerRegular.alert_circle,
-    PullRequestWatchStatusWaiting() => TablerRegular.clock,
-    PullRequestWatchStatusReady() => TablerRegular.circle_check,
-    PullRequestWatchStatusMerged() => TablerRegular.git_merge,
-    PullRequestWatchStatusUnknown() => TablerRegular.git_pull_request,
-  };
-
-  static String _needWords({required BuildContext context, required PullRequestWatchNeed need}) {
-    final loc = context.loc;
-    return switch (need) {
-      PullRequestWatchNeed.ciFailing => loc.pullRequestWatchNeedCiFailing,
-      PullRequestWatchNeed.conflict => loc.pullRequestWatchNeedConflict,
-      PullRequestWatchNeed.newReviewComments => loc.pullRequestWatchNeedNewReviewComments,
-      PullRequestWatchNeed.readyWithoutAutoMerge => loc.pullRequestWatchNeedReadyWithoutAutoMerge,
-      PullRequestWatchNeed.unknown => loc.pullRequestWatchStatusNeedsYou,
-    };
-  }
 
   static ProjectSummary? _listedProject({required BuildContext context, required String projectId}) =>
       switch (context.read<ProjectListCubit>().state) {

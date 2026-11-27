@@ -1,27 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/pull_request_watch_stage.dart";
 import "pull_request_watch_list_state.dart";
-
-/// The groups of the watched pull-request list, in their order.
-enum PullRequestWatchGroup() {
-  needsYou,
-  waiting,
-  ready,
-  mergedToday;
-
-  /// The group a pull request in [status] joins when the list opens. A status
-  /// this build does not know waits with the open ones.
-  static PullRequestWatchGroup of({required PullRequestWatchStatus status}) => switch (status) {
-    PullRequestWatchStatusNeedsYou() => needsYou,
-    PullRequestWatchStatusWaiting() || PullRequestWatchStatusUnknown() => waiting,
-    PullRequestWatchStatusReady() => ready,
-    PullRequestWatchStatusMerged() => mergedToday,
-  };
-}
 
 /// One group's rows, as the list shows them.
 final class const PullRequestWatchSection({
-  required final PullRequestWatchGroup group,
+  /// The stage the group gathers, which orders the groups.
+  required final PullRequestWatchStage group,
   required final List<PullRequestWatchListItem> watches,
 });
 
@@ -42,7 +27,7 @@ List<PullRequestWatchSection> arrangePullRequestWatches({
     for (final item in watches)
       if (sessionId == null || item.sessionId == sessionId) item.key: item,
   };
-  final placed = {for (final group in PullRequestWatchGroup.values) group: <PullRequestWatchKey>[]};
+  final placed = {for (final group in PullRequestWatchStage.values) group: <PullRequestWatchKey>[]};
   for (final section in shown ?? const <PullRequestWatchSection>[]) {
     for (final item in section.watches) {
       if (current.containsKey(item.key)) placed[section.group]?.add(item.key);
@@ -54,7 +39,7 @@ List<PullRequestWatchSection> arrangePullRequestWatches({
       if (!placedKeys.contains(item.key)) item,
   ]..sort(_listOrder);
   for (final item in arrivals) {
-    placed[PullRequestWatchGroup.of(status: item.watch.status)]?.add(item.key);
+    placed[PullRequestWatchStage.of(status: item.watch.status)]?.add(item.key);
   }
   return [
     for (final MapEntry(key: group, value: keys) in placed.entries)

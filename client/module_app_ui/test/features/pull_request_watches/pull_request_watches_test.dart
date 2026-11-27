@@ -34,6 +34,7 @@ PullRequestWatchListItem _item({
 );
 
 const _ciFailing = PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing]);
+const _toMerge = PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]);
 
 void main() {
   late MockPullRequestWatchRepository repository;
@@ -96,7 +97,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("the home button shows only while pull requests are watched, with a count of those needing the user", (
+  testWidgets("the home button shows only while pull requests are watched, with a count of those to merge", (
     tester,
   ) async {
     answerList([]);
@@ -107,15 +108,20 @@ void main() {
     expect(find.byKey(const Key("home-pull-requests")), findsOneWidget);
     expect(find.bySemanticsLabel("Pull requests"), findsOneWidget);
 
+    // The agent handles a failing check; it is not counted.
     await changeTo(tester, [_item(number: 1, title: "Bump deps", status: _ciFailing)]);
+    expect(find.bySemanticsLabel("Pull requests"), findsOneWidget);
+
+    await changeTo(tester, [_item(number: 1, title: "Bump deps", status: _toMerge)]);
     expect(find.text("1"), findsOneWidget);
-    expect(find.bySemanticsLabel("Pull requests, 1 needs you"), findsOneWidget);
+    expect(find.bySemanticsLabel("Pull requests, 1 to merge"), findsOneWidget);
   });
 
-  testWidgets("rows group by status and change in place while the list is open", (tester) async {
+  testWidgets("rows group by stage and change in place while the list is open", (tester) async {
     answerList([
       _item(number: 2, title: "Bump deps", status: const PullRequestWatchStatus.waiting(), autoMerge: true),
-      _item(number: 1, title: "Add search", status: _ciFailing),
+      _item(number: 1, title: "Add search", status: _ciFailing, autoMerge: true),
+      _item(number: 3, title: "Fix login", status: _toMerge),
     ]);
     await pump(
       tester,
@@ -130,21 +136,31 @@ void main() {
       ),
     );
 
-    expect(find.text("Needs you"), findsOneWidget);
+    // The To merge heading and its row's status.
+    expect(find.textContaining("To merge"), findsNWidgets(2));
+    expect(find.text("Agent on it"), findsOneWidget);
     expect(find.text("Waiting"), findsOneWidget);
-    expect(find.textContaining("CI failing"), findsOneWidget);
+    expect(find.text("acme/web#1 · Agent on it · CI failing"), findsOneWidget);
+    expect(find.textContaining("Waiting for checks or review, then merges automatically"), findsOneWidget);
+    // Only the row the agent is on marks auto-merge; waiting says it in words.
     expect(find.byKey(const Key("pull-request-watch-auto-merge-mark")), findsOneWidget);
-    final needsYouTop = tester.getTopLeft(find.text("Add search")).dy;
+    expect(
+      tester.getTopLeft(find.text("Fix login")).dy,
+      lessThan(tester.getTopLeft(find.text("Add search")).dy),
+      reason: "To merge comes first",
+    );
+    final agentOnItTop = tester.getTopLeft(find.text("Add search")).dy;
 
     await changeTo(tester, [
       _item(number: 2, title: "Bump deps", status: const PullRequestWatchStatus.waiting(), autoMerge: true),
-      _item(number: 1, title: "Add search", status: const PullRequestWatchStatus.ready()),
+      _item(number: 1, title: "Add search", status: const PullRequestWatchStatus.ready(), autoMerge: true),
+      _item(number: 3, title: "Fix login", status: _toMerge),
     ]);
-    // Still under Needs you, where the user saw it; only its status changed.
-    expect(find.text("Needs you"), findsOneWidget);
-    expect(find.text("Ready"), findsNothing);
-    expect(find.textContaining("ready"), findsOneWidget);
-    expect(tester.getTopLeft(find.text("Add search")).dy, needsYouTop);
+    // Still under Agent on it, where the user saw it; only its status changed.
+    expect(find.text("Agent on it"), findsOneWidget);
+    expect(find.text("Merges automatically"), findsNothing);
+    expect(find.text("acme/web#1 · Merges automatically"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Add search")).dy, agentOnItTop);
   });
 
   testWidgets("a failed stop keeps the row and says why", (tester) async {

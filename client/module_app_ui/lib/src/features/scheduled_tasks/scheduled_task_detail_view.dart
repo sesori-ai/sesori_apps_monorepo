@@ -111,7 +111,12 @@ class const ScheduledTaskDetailView({
                         onDeleted: onDeleted,
                         onEdit: onEdit,
                       ),
-                      SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false, action: null),
+                      SessionListHeading(
+                        heading: context.loc.scheduledTaskRunsHeading,
+                        isFirst: false,
+                        action: null,
+                        accent: null,
+                      ),
                       _History(
                         task: task,
                         runs: runs,

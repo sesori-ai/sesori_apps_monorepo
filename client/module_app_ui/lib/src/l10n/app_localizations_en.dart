@@ -3863,56 +3863,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionPullRequestWatchStopFailed => 'Could not stop watching the pull request. Reconnect and try again.';
 
   @override
-  String get pullRequestWatchStatusNeedsYou => 'needs you';
+  String get pullRequestWatchStageToMerge => 'To merge';
 
   @override
-  String get pullRequestWatchStatusReady => 'ready';
+  String get pullRequestWatchStageAgentOnIt => 'Agent on it';
 
   @override
-  String get pullRequestWatchStatusWaiting => 'waiting';
+  String get pullRequestWatchStageWaiting => 'Waiting for checks or review';
 
   @override
-  String get pullRequestWatchStatusMerged => 'merged';
+  String get pullRequestWatchStageWaitingThenMerges => 'Waiting for checks or review, then merges automatically';
 
   @override
-  String get pullRequestWatchStatusUnknown => 'status unknown';
+  String get pullRequestWatchStageMergesAutomatically => 'Merges automatically';
+
+  @override
+  String get pullRequestWatchStageMerged => 'Merged';
 
   @override
   String get pullRequestWatchesTitle => 'Pull requests';
 
   @override
-  String pullRequestWatchesButtonNeedsYou(int count) {
+  String pullRequestWatchesButtonToMerge(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Pull requests, $count need you',
-      one: 'Pull requests, 1 needs you',
+      other: 'Pull requests, $count to merge',
+      one: 'Pull requests, 1 to merge',
     );
     return '$_temp0';
   }
 
   @override
-  String pullRequestWatchesNeedsYouStatus(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count need you',
-      one: '1 needs you',
-    );
-    return '$_temp0';
+  String pullRequestWatchesToMergeStatus(int count) {
+    return '$count to merge';
   }
 
   @override
   String get pullRequestWatchesClose => 'Close Pull requests';
 
   @override
-  String get pullRequestWatchesGroupNeedsYou => 'Needs you';
-
-  @override
   String get pullRequestWatchesGroupWaiting => 'Waiting';
-
-  @override
-  String get pullRequestWatchesGroupReady => 'Ready';
 
   @override
   String get pullRequestWatchesGroupMergedToday => 'Merged today';
@@ -3921,13 +3912,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pullRequestWatchNeedCiFailing => 'CI failing';
 
   @override
-  String get pullRequestWatchNeedConflict => 'conflict';
+  String get pullRequestWatchNeedConflict => 'Merge conflict';
 
   @override
-  String get pullRequestWatchNeedNewReviewComments => 'new review comments';
+  String get pullRequestWatchNeedNewReviewComments => 'Review comments the agent hasn\'t answered';
 
   @override
-  String get pullRequestWatchNeedReadyWithoutAutoMerge => 'ready to merge';
+  String get pullRequestWatchNeedCiFailingInList => 'CI failing';
+
+  @override
+  String get pullRequestWatchNeedConflictInList => 'merge conflict';
+
+  @override
+  String get pullRequestWatchNeedNewReviewCommentsInList => 'review comments the agent hasn\'t answered';
 
   @override
   String get pullRequestWatchAutoMergeMark => 'Auto-merge';

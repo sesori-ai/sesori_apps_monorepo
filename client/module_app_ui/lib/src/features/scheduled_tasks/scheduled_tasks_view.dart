@@ -163,7 +163,12 @@ class const _TaskList({
       _TaskEntry(:final task, :final isRecurring) => ValueKey("task-${task.id}-$isRecurring"),
     },
     itemBuilder: (context, index, entry) => switch (entry) {
-      _HeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0, action: null),
+      _HeadingEntry(:final heading) => SessionListHeading(
+        heading: heading,
+        isFirst: index == 0,
+        action: null,
+        accent: null,
+      ),
       _TaskEntry(:final task, :final isRecurring) => PregoGroupedRowPosition(
         isLast: index == entries.length - 1 || entries[index + 1] is _HeadingEntry,
         child: _TaskRow(

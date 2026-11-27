@@ -598,7 +598,7 @@ state.
   opens it or sends to it), then the scheduled mark, ellipsizing with the line: an accent "<name> · next <time>"
   with a repeat glyph for a session a wake-up or task will wake again, a grey repeat glyph and "Scheduled run", naming
   no task, for a task's run that nothing will wake again, or the task glyph and name from an older bridge (see scheduled-tasks.md); a session with
-  watched PRs and no timed wake-up shows the lead PR's `#number` in its status colour and `+N` instead (see
+  watched PRs and no timed wake-up shows one soft pill with the lead PR's `#number` and `+N` instead, green for To merge (see
   pull-request-monitor.md), then the project
   when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,

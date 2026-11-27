@@ -1,5 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/pull_request_watch_stage.dart";
+
 /// One session's watch of one pull request.
 typedef PullRequestWatchKey = ({String sessionId, String repository, int number});
 
@@ -19,8 +21,11 @@ final class const PullRequestWatchListLoaded({
   /// The watches whose Stop is on its way to the bridge.
   required final Set<PullRequestWatchKey> stopping,
 }) extends PullRequestWatchListState {
-  /// How many watched pull requests need the user: the red count.
-  int get needsYouCount => watches.where((item) => item.watch.status is PullRequestWatchStatusNeedsYou).length;
+  /// How many watched pull requests wait for the user to merge them: the
+  /// muted count.
+  int get toMergeCount => watches
+      .where((item) => PullRequestWatchStage.of(status: item.watch.status) == PullRequestWatchStage.toMerge)
+      .length;
 }
 
 final class const PullRequestWatchListFailed() extends PullRequestWatchListState;

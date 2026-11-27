@@ -68,17 +68,21 @@ void main() {
   List<PullRequestWatchListItem> watchesOf(PullRequestWatchListCubit cubit) =>
       (cubit.state as PullRequestWatchListLoaded).watches;
 
-  test("loads the watches and counts the ones that need the user", () async {
+  test("loads the watches and counts only the ones to merge", () async {
     answerList([
       _item(number: 1),
       _item(number: 2, status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.ciFailing])),
+      _item(
+        number: 3,
+        status: const PullRequestWatchStatus.needsYou(reasons: [PullRequestWatchNeed.readyWithoutAutoMerge]),
+      ),
     ]);
     final cubit = create();
     expect(cubit.state, isA<PullRequestWatchListLoading>());
 
     await pumpEventQueue();
 
-    expect((cubit.state as PullRequestWatchListLoaded).needsYouCount, 1);
+    expect((cubit.state as PullRequestWatchListLoaded).toMergeCount, 1);
   });
 
   test("reloads when the bridge says the watches changed", () async {
