@@ -69,6 +69,8 @@ covers what changed while the bridge was off; assess it the same way.
   user what blocks it.
 - **An idle reminder:** the PR had no activity and no report for a while. Re-check the current head's checks,
   expected reviews and feedback now; act on what is left, or call `mark_pr_ready` when nothing is.
+- **GitHub can't be reached:** polls have failed for about 10 minutes, and the watch goes on. Don't watch again;
+  reports resume once GitHub answers. Act only when the last error asks for it, such as `gh auth login`.
 - **Merged or closed:** the report is the last one; the watch has ended.
 
 A delivered report already counts as reported. Don't call `get_pr_report` after handling one; use it only when you

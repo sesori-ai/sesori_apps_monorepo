@@ -49,7 +49,10 @@ class PullRequestWatchService({
   required final Clock _clock,
 }) {
   static const Duration pollInterval = Duration(seconds: 60);
-  static const int maxConsecutiveFailures = 10;
+
+  /// Failed polls in a row, about 10 minutes, after which the watchers hear
+  /// once that GitHub can't be reached. The watches go on.
+  static const int outageNoticeFailures = 10;
 
   /// By the PR's registry key.
   final Map<String, _PullRequestRuntime> _runtimes = {};
@@ -575,22 +578,24 @@ class PullRequestWatchService({
       );
       return;
     } on Exception catch (error, stackTrace) {
-      runtime.consecutiveFailures++;
-      Log.w(
-        "PR monitor: poll of ${runtime.target.displayKey} failed "
-        "(${runtime.consecutiveFailures}/$maxConsecutiveFailures)",
-        error,
-        stackTrace,
-      );
-      if (runtime.consecutiveFailures >= maxConsecutiveFailures) {
-        await _stopAll(
-          runtime: runtime,
-          reason: "Monitor stopped: $maxConsecutiveFailures consecutive poll failures. Last error: $error",
-        );
+      // Anything but not found may pass, such as a network outage, a GitHub
+      // server error or a rate limit, so the watches go on. The log holds a
+      // streak's first error and its notice, not every failed poll.
+      final failures = ++runtime.consecutiveFailures;
+      final target = runtime.target.displayKey;
+      if (failures == 1) Log.w("PR monitor: poll of $target failed; retrying each poll", error, stackTrace);
+      if (failures == outageNoticeFailures) {
+        Log.w("PR monitor: $failures polls of $target failed in a row; telling its watchers", error);
+        _sendOutageNotices(runtime: runtime, error: error);
       }
       return;
     }
-    runtime.consecutiveFailures = 0;
+    if (runtime.consecutiveFailures > 0) {
+      Log.i(
+        "PR monitor: poll of ${runtime.target.displayKey} works again after ${runtime.consecutiveFailures} failures",
+      );
+      runtime.consecutiveFailures = 0;
+    }
     await _sendDue(
       runtime: runtime,
       snapshot: await _applySnapshot(runtime: runtime, snapshot: snapshot),
@@ -947,6 +952,22 @@ class PullRequestWatchService({
             autoMergeEnabled: watch.stored.autoMerge,
             readinessFailure: runtime.merge.retry,
           ),
+          timing: SesoriToolNoticeTiming.derived,
+          claim: null,
+        ),
+      );
+    }
+  }
+
+  /// Tells every watcher once per failure streak that polls keep failing,
+  /// with [error], the last one.
+  void _sendOutageNotices({required _PullRequestRuntime runtime, required Exception error}) {
+    for (final watch in runtime.watches.values) {
+      unawaited(
+        _host.deliverNotice(
+          sessionId: watch.sessionId,
+          summary: _reports.buildOutageSummary(target: runtime.target),
+          guidance: _reports.buildOutageNotice(target: runtime.target, lastError: error),
           timing: SesoriToolNoticeTiming.derived,
           claim: null,
         ),
