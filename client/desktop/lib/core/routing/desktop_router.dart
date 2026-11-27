@@ -15,6 +15,7 @@ import "../../features/session_diffs/desktop_session_diffs_screen.dart";
 import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/settings/desktop_settings_modal.dart";
 import "../di/injection.dart";
+import "../external_link.dart";
 import "../widgets/desktop_cockpit_shell.dart";
 import "../widgets/desktop_sidebar_expansion.dart";
 
@@ -199,6 +200,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         path: AppRouteDef.pullRequests.path,
         builder: (BuildContext context, GoRouterState state) => PullRequestWatchesPage(
           onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
+          openExternalLink: openDesktopExternalLink,
           onOpenSession: ({required projectId, required projectName, required sessionId, required sessionTitle}) =>
               _pushRoute(
                 context: context,

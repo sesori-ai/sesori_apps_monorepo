@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/composer_or_notice.dart";
+import "../../pull_request_watches/pull_request_watches_list.dart";
 import "../../session_diffs/widgets/session_changes_counts.dart";
 import "../../session_prompts/session_prompts_view.dart";
 import "../session_auto_continuation_menu.dart";
@@ -924,6 +925,35 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                   onPressed: () => openPrompts(origin: buttonContext.globalCentre),
                 ),
               ),
+      ),
+      // Comes and goes as the agent watches pull requests, mid-session, so it
+      // grows its room rather than squeezing the title in one frame.
+      AnimatedSize(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        curve: transcriptMotionCurve,
+        clipBehavior: Clip.none,
+        child: SessionDetailActionSwitcher(
+          surface: SessionDetailActionSurface.glass,
+          gapAfter: PregoSpacing.md,
+          child: switch (session?.pullRequestWatches) {
+            null || [] => null,
+            final watches => PregoButtonsIconGlass(
+              key: const Key("session-detail-pull-requests"),
+              icon: TablerRegular.git_pull_request,
+              semanticLabel: loc.sessionPullRequestWatchesButton(watches.length),
+              trailing: Text("${watches.length}", style: context.prego.textTheme.textMd.medium),
+              onPressed: () => unawaited(
+                showPullRequestWatchesSheet(
+                  context: context,
+                  sessionId: widget.sessionId,
+                  openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+                  // This session is already open.
+                  onOpenSession: null,
+                ),
+              ),
+            ),
+          },
+        ),
       ),
       // Shells restrict mutating menu entries to their valid session owners;
       // read-only entries can also inspect a child session.

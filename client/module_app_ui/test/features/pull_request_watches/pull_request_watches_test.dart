@@ -127,6 +127,7 @@ void main() {
       tester,
       PullRequestWatchesList(
         sessionId: null,
+        openExternalLink: ({required url, required mode}) async => true,
         onOpenSession: ({
           required projectId,
           required projectName,
@@ -176,6 +177,7 @@ void main() {
       tester,
       PullRequestWatchesList(
         sessionId: null,
+        openExternalLink: ({required url, required mode}) async => true,
         onOpenSession: ({
           required projectId,
           required projectName,
@@ -185,13 +187,94 @@ void main() {
       ),
     );
 
-    await tester.longPress(find.text("Add search"));
+    await tester.tap(find.text("Add search"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Stop"));
+    await tester.tap(find.byKey(const Key("pull-request-watch-stop")));
     await tester.pumpAndSettle();
 
     expect(find.text("Add search"), findsOneWidget);
     expect(find.text("Could not stop watching the pull request. Reconnect and try again."), findsOneWidget);
     await tester.pumpAndSettle(const Duration(seconds: 5));
+  });
+
+  testWidgets("a tap opens the detail card: every reason in full, GitHub, the session, and auto-merge in place", (
+    tester,
+  ) async {
+    answerList([
+      _item(
+        number: 1,
+        title: "Add search",
+        status: const PullRequestWatchStatus.needsYou(
+          reasons: [PullRequestWatchNeed.ciFailing, PullRequestWatchNeed.newReviewComments],
+        ),
+      ),
+    ]);
+    when(
+      () => sessions.setPullRequestWatchAutoMerge(
+        sessionId: any(named: "sessionId"),
+        repository: any(named: "repository"),
+        number: any(named: "number"),
+        enabled: any(named: "enabled"),
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        testSession(id: "session-1").copyWith(
+          pullRequestWatches: [
+            _item(number: 1, title: "Add search", status: _ciFailing, autoMerge: true).watch,
+          ],
+        ),
+      ),
+    );
+    final opened = <Uri>[];
+    final sessionsOpened = <String>[];
+    await pump(
+      tester,
+      PullRequestWatchesList(
+        sessionId: null,
+        openExternalLink: ({required url, required mode}) async {
+          opened.add(url);
+          return true;
+        },
+        onOpenSession: ({required projectId, required projectName, required sessionId, required sessionTitle}) =>
+            sessionsOpened.add(sessionId),
+      ),
+    );
+
+    await tester.tap(find.text("Add search"));
+    await tester.pumpAndSettle();
+    expect(find.text("CI failing"), findsOneWidget);
+    expect(find.text("A check failed on the latest push."), findsOneWidget);
+    expect(find.text("Review comments the agent hasn't answered"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("pull-request-watch-open-on-github")));
+    await tester.pumpAndSettle();
+    expect(opened, [Uri.parse("https://github.com/acme/web/pull/1")]);
+
+    // The switch follows the list while the card stays open.
+    await tester.tap(find.byKey(const Key("pull-request-watch-auto-merge")));
+    await tester.pumpAndSettle();
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    expect(find.byKey(const Key("pull-request-watch-auto-merge-mark")), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("pull-request-watch-go-to-session")));
+    await tester.pumpAndSettle();
+    expect(sessionsOpened, ["session-1"]);
+  });
+
+  testWidgets("inside the session the card has no Go to session", (tester) async {
+    answerList([_item(number: 1, title: "Add search", status: _toMerge)]);
+    await pump(
+      tester,
+      PullRequestWatchesList(
+        sessionId: "session-1",
+        openExternalLink: ({required url, required mode}) async => true,
+        onOpenSession: null,
+      ),
+    );
+
+    await tester.tap(find.text("Add search"));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("pull-request-watch-open-on-github")), findsOneWidget);
+    expect(find.byKey(const Key("pull-request-watch-go-to-session")), findsNothing);
   });
 }

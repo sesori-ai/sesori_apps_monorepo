@@ -8,9 +8,11 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../platform/external_link_opener.dart";
 import "../../widgets/pull_request_watch_look.dart";
 import "../project_list/project_path_labels.dart";
 import "../session_list/session_list_headings.dart";
+import "pull_request_watch_detail.dart";
 
 typedef OpenPullRequestWatchSession = void Function({
   required String projectId,
@@ -20,12 +22,14 @@ typedef OpenPullRequestWatchSession = void Function({
 });
 
 /// Shows the computer's watched pull requests over the current page, only
-/// [sessionId]'s when it is set. A row opens its session after the sheet
-/// closes.
+/// [sessionId]'s when it is set. A row opens its detail card, whose Go to
+/// session closes both and opens the session; without [onOpenSession], from
+/// inside the session, the card has no Go to session.
 Future<void> showPullRequestWatchesSheet({
   required BuildContext context,
   required String? sessionId,
-  required OpenPullRequestWatchSession onOpenSession,
+  required ExternalLinkOpener openExternalLink,
+  required OpenPullRequestWatchSession? onOpenSession,
 }) {
   final watches = context.read<PullRequestWatchListCubit>();
   final projects = context.read<ProjectListCubit>();
@@ -39,15 +43,14 @@ Future<void> showPullRequestWatchesSheet({
       ],
       child: PullRequestWatchesList(
         sessionId: sessionId,
-        onOpenSession: ({required projectId, required projectName, required sessionId, required sessionTitle}) {
-          // ignore: no_slop_linter/avoid_navigator_of, pops the pageless sheet route this function pushed
-          Navigator.of(sheetContext).pop();
-          onOpenSession(
-            projectId: projectId,
-            projectName: projectName,
-            sessionId: sessionId,
-            sessionTitle: sessionTitle,
-          );
+        openExternalLink: openExternalLink,
+        onOpenSession: switch (onOpenSession) {
+          final open? => ({required projectId, required projectName, required sessionId, required sessionTitle}) {
+            // ignore: no_slop_linter/avoid_navigator_of, pops the pageless sheet route this function pushed
+            Navigator.of(sheetContext).pop();
+            open(projectId: projectId, projectName: projectName, sessionId: sessionId, sessionTitle: sessionTitle);
+          },
+          null => null,
         },
       ),
     ),
@@ -61,7 +64,10 @@ class const PullRequestWatchesList({
 
   /// Lists only this session's watches when set.
   required final String? sessionId,
-  required final OpenPullRequestWatchSession onOpenSession,
+  required final ExternalLinkOpener openExternalLink,
+
+  /// Opens a watch's session; null inside that session.
+  required final OpenPullRequestWatchSession? onOpenSession,
 }) extends StatelessWidget {
   static const double _maxHeightFraction = 0.7;
 
@@ -76,7 +82,13 @@ class const PullRequestWatchesList({
         // The modal's own scroll view owns the primary controller.
         primary: false,
         shrinkWrap: true,
-        slivers: [PullRequestWatchesSliver(sessionId: sessionId, onOpenSession: onOpenSession)],
+        slivers: [
+          PullRequestWatchesSliver(
+            sessionId: sessionId,
+            openExternalLink: openExternalLink,
+            onOpenSession: onOpenSession,
+          ),
+        ],
       ),
     ),
   );
@@ -85,14 +97,16 @@ class const PullRequestWatchesList({
 /// The watched pull requests under To merge, Agent on it, Waiting, Merges
 /// automatically and Merged today, as a sliver built lazily. While it stays
 /// open a row keeps its group and place and only its content changes; it
-/// regroups the next time it opens. Swiping a row offers Auto-merge and Stop,
-/// which a long press also lists.
+/// regroups the next time it opens. A tap on a row opens its detail card.
 class const PullRequestWatchesSliver({
   super.key,
 
   /// Lists only this session's watches when set.
   required final String? sessionId,
-  required final OpenPullRequestWatchSession onOpenSession,
+  required final ExternalLinkOpener openExternalLink,
+
+  /// Opens a watch's session; null inside that session.
+  required final OpenPullRequestWatchSession? onOpenSession,
 }) extends StatefulWidget {
   @override
   State<PullRequestWatchesSliver> createState() => _PullRequestWatchesSliverState();
@@ -179,6 +193,7 @@ class _PullRequestWatchesSliverState() extends State<PullRequestWatchesSliver> {
               child: _WatchRow(
                 item: item,
                 stopping: stopping.contains(item.key),
+                openExternalLink: widget.openExternalLink,
                 onOpenSession: widget.onOpenSession,
               ),
             ),
@@ -281,67 +296,18 @@ class const _Note({super.key, required final String text}) extends StatelessWidg
 
 /// One watched pull request: its stage glyph, its title, its repository,
 /// number and stage with the agent's reasons or a quiet auto-merge mark, and
-/// the session watching it.
+/// the session watching it. A tap opens its detail card.
 class const _WatchRow({
   required final PullRequestWatchListItem item,
   required final bool stopping,
-  required final OpenPullRequestWatchSession onOpenSession,
+  required final ExternalLinkOpener openExternalLink,
+  required final OpenPullRequestWatchSession? onOpenSession,
 }) extends StatelessWidget {
-  static const double _menuWidth = 220;
-
   @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final watch = item.watch;
-    final merged = watch.status is PullRequestWatchStatusMerged;
-    return PregoSwipeActions(
-      key: Key("pull-request-watch-${item.sessionId}-${watch.repository}#${watch.number}"),
-      // A merged pull request has nothing left to merge.
-      actionsBuilder: (context, close) => [
-        if (!merged)
-          _pill(
-            label: watch.autoMerge ? loc.pullRequestWatchAutoMergeOff : loc.pullRequestWatchAutoMergeOn,
-            icon: TablerRegular.arrows_join,
-            type: PregoButtonsSolidType.success,
-            close: close,
-            onPressed: () => _setAutoMerge(context: context, enabled: !watch.autoMerge),
-          ),
-      ],
-      primaryActionBuilder: (context, close) => _pill(
-        label: loc.pullRequestWatchStop,
-        icon: TablerRegular.eye_off,
-        type: PregoButtonsSolidType.destructive,
-        close: close,
-        onPressed: () => _stop(context: context),
-      ),
-      onFullSwipe: () => _stop(context: context),
-      child: PregoContextMenu(
-        menuWidth: _menuWidth,
-        spotlight: PregoMenuSpotlight.listRow,
-        onOpenChanged: null,
-        entriesBuilder: () => [
-          if (!merged)
-            PregoMenuItem(
-              leadingIcon: TablerRegular.arrows_join,
-              title: watch.autoMerge ? loc.pullRequestWatchAutoMergeOff : loc.pullRequestWatchAutoMergeOn,
-              subtitle: null,
-              isSelected: false,
-              shortcutLabel: null,
-              onTap: () => _setAutoMerge(context: context, enabled: !watch.autoMerge),
-            ),
-          PregoMenuItem(
-            leadingIcon: TablerRegular.eye_off,
-            title: loc.pullRequestWatchStop,
-            subtitle: null,
-            isSelected: false,
-            shortcutLabel: null,
-            onTap: () => _stop(context: context),
-          ),
-        ],
-        builder: (context, menuOpen) => _content(context: context),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => KeyedSubtree(
+    key: Key("pull-request-watch-${item.sessionId}-${item.watch.repository}#${item.watch.number}"),
+    child: _content(context: context),
+  );
 
   Widget _content({required BuildContext context}) {
     final prego = context.prego;
@@ -451,14 +417,26 @@ class const _WatchRow({
           ],
         ),
       ),
-      onTap: () => onOpenSession(
-        projectId: item.projectId,
-        projectName: switch (_listedProject(context: context, projectId: item.projectId)) {
-          final project? => projectDisplayName(loc: loc, project: project),
-          null => null,
-        },
-        sessionId: item.sessionId,
-        sessionTitle: item.sessionTitle,
+      onTap: () => unawaited(
+        showPullRequestWatchDetail(
+          context: context,
+          item: item,
+          openExternalLink: openExternalLink,
+          onOpenSession: switch (onOpenSession) {
+            final open? => () => open(
+              projectId: item.projectId,
+              projectName: switch (_listedProject(context: context, projectId: item.projectId)) {
+                final project? => projectDisplayName(loc: loc, project: project),
+                null => null,
+              },
+              sessionId: item.sessionId,
+              sessionTitle: item.sessionTitle,
+            ),
+            null => null,
+          },
+          onSetAutoMerge: (enabled) => unawaited(_setAutoMerge(context: context, enabled: enabled)),
+          onStop: () => unawaited(_stop(context: context)),
+        ),
       ),
     );
   }
@@ -476,24 +454,6 @@ class const _WatchRow({
     final stopped = await context.read<PullRequestWatchListCubit>().stop(item: item);
     if (!stopped) presenter.show(title: message, variant: PregoPopupAlertsNotificationsVariant.error);
   }
-
-  static Widget _pill({
-    required String label,
-    required IconData icon,
-    required PregoButtonsSolidType type,
-    required VoidCallback close,
-    required Future<void> Function() onPressed,
-  }) => PregoButtonsSolid(
-    label: label,
-    leadingIcon: icon,
-    hierarchy: PregoButtonsSolidHierarchy.primary,
-    type: type,
-    size: PregoButtonsSolidSize.md,
-    onPressed: () {
-      close();
-      unawaited(onPressed());
-    },
-  );
 
   static ProjectSummary? _listedProject({required BuildContext context, required String projectId}) =>
       switch (context.read<ProjectListCubit>().state) {

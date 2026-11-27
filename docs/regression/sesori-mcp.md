@@ -215,7 +215,7 @@ seam for it; their checks run headlessly against the endpoint. Per-harness statu
   or alarm glyph and a terminal glyph when it runs a command, and a Cancel button that closes the menu and cancels
   it. A failed cancel says so and keeps the wake-up. Older bridges send no wake-ups, so the chip never offers them.
 - The `pr_monitor` group's watches, their reports, auto-merge and its Allow cards, `configure_pr_monitor`, and the
-  app's row mark, composer chip and Pull requests list are covered in [pull request monitor](pull-request-monitor.md).
+  app's row mark, session header button and Pull requests list are covered in [pull request monitor](pull-request-monitor.md).
 - Settings (phone and desktop) shows an Agent tools section after the connected bridge's settings when the bridge
   sends the master switch and its groups: a "Sesori tools" master switch, then one switch per group with its title
   and summary, and a note that changes apply to sessions started or resumed afterwards. With the master off the
