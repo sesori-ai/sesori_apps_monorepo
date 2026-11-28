@@ -34,7 +34,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const String minVersion = "0.20.0";
 
   /// Latest stable Hermes Agent release targeted by this plugin.
-  static const String targetVersion = "0.23.4";
+  static const String targetVersion = "0.23.5";
 
   static final SemanticVersion _minHermesVersion = SemanticVersion.parse(value: minVersion);
 
