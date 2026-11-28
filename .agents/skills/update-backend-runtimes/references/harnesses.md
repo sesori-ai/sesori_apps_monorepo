@@ -244,7 +244,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   between versions do not work. For the audit, diff the digest-checked
   `github-copilot-X.Y.Z-<os>-<arch>.tgz` release assets instead: they hold
   readable `cli-main.js`, `changelog.json` and `copilot-sdk/generated/*.d.ts`
-  (verified on 1.0.112 to 1.0.116). The ACP server itself lives in the native
+  (verified on 1.0.112 to 1.0.117). The ACP server itself lives in the native
   `prebuilds/<os>-<arch>/runtime.node`, not in `cli-main.js`. From 1.0.115 its
   ACP method names are no longer literal strings, so check the method surface
   with the network-denied, unauthenticated probe instead: bogus-session calls
@@ -365,6 +365,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Audit:** the actual Hermes ACP implementation (`acp_adapter/gateway_server.py`
   since 0.22, not only `server.py`), not only its CLI release notes: settings,
   model/provider discovery, history, tools and subagents.
+  Patch release notes can be a roll-up that defers details to the next minor;
+  then diff the two tags' source, starting with `acp_adapter/` and the strings
+  Sesori matches.
 
 ## Pi
 
@@ -383,6 +386,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   must not be parsed as wire events without evidence; RPC can instead expose
   `extension_ui_request`. Inspect exact field casing, delta shape, retry/
   compaction, queue controls, models/auth, history and package changes.
+  The upstream repository ships other products too, so size a release by the
+  `coding-agent`, `agent` and `ai` packages, not by its total commit count.
   Check `get_commands` `sourceInfo.path` for bundled extensions: since 0.99.0
   they report `builtin:<name>` (`src/extensions/index.ts`), not `<inline:name>`,
   and the catalog's excluded-source set must match the current form.
